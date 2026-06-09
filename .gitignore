@@ -1,0 +1,26 @@
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Banco SQLite local (regenerado a partir de seed_data.py)
+qclab/qclab.db
+*.db
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Ferramentas locais (Claude Code) e arquivos de teste
+.claude/
+test_westgard.py

@@ -1,0 +1,17 @@
+[theme]
+base = "dark"
+primaryColor = "#5fe3c2"
+backgroundColor = "#0f2a2e"
+secondaryBackgroundColor = "#16383d"
+textColor = "#e7f3f1"
+font = "sans serif"
+
+[server]
+maxUploadSize = 30
+headless = true
+
+[client]
+# "minimal" esconde o menu (incluindo "View source", "Fork", "Deploy"),
+# para que visitantes não consigam ver/copiar o código pela interface.
+toolbarMode = "minimal"
+showErrorDetails = false
