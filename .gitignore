@@ -21,6 +21,5 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Ferramentas locais (Claude Code) e arquivos de teste
+# Ferramentas locais (Claude Code)
 .claude/
-test_westgard.py

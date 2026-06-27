@@ -59,7 +59,8 @@ PERF_FACTORS = {
     "DES": (0.50, 0.250),
     "MIN": (0.75, 0.375),
 }
-EA_Z = 1.96   # multiplicador EA (95 %, bicaudal)
+EA_Z = 1.65   # fator do componente aleatório (padronizado em 1,65 em todo o
+              # sistema: ET = CV% × 1,65 + Bias). Antes era 1,96 (bicaudal).
 
 
 # --------------------------------------------------------------------------- #
@@ -459,16 +460,23 @@ def vb_specs(cvw, cvg, perf):
     return impr, vies, te_vb
 
 
-def compute_sigma(cv_obs, bias_obs, clia_tea, cvw, cvg, perf):
+def compute_sigma(cv_obs, bias_obs, clia_tea, cvw, cvg, perf,
+                  etp_pct=None, etp_source=None):
     """
     Retorna dict com etp, etp_fonte, es, ea, et, sigma,
     cv_limite_clia, cv_limite_vb, cv_status.
-    bias_obs : viés observado (fração) do CQ externo; 0 se ausente.
+    bias_obs : viés observado (fração) — single CQ externo OU Indicador de Bias
+               Anual já convertido p/ fração; 0 se ausente.
+    etp_pct  : Erro Total Permitido configurado no cadastro do ensaio (em %).
+               Quando informado, tem prioridade sobre CLIA/VB.
+    etp_source : origem do ETp configurado (CLIA | VB | Fabricante | ...).
     """
     bias_obs = abs(bias_obs) if bias_obs not in (None, "", "-") else 0.0
     impr_vb, _vies_vb, te_vb = vb_specs(cvw, cvg, perf)
 
-    if clia_tea not in (None, "", "-"):
+    if etp_pct not in (None, "", "-"):
+        etp, fonte = float(etp_pct) / 100.0, (etp_source or "Configurado")
+    elif clia_tea not in (None, "", "-"):
         etp, fonte = float(clia_tea), "CLIA"
     elif te_vb is not None:
         etp, fonte = te_vb, "VB"
@@ -502,10 +510,124 @@ def build_stats(analyte, level, values, bias_obs, specs) -> AnalyteLevelStats:
     if cv is not None:
         sig = compute_sigma(cv, bias_obs,
                             specs.get("clia_tea"), specs.get("cvw"),
-                            specs.get("cvg"), specs.get("perf"))
+                            specs.get("cvg"), specs.get("perf"),
+                            etp_pct=specs.get("etp_pct"),
+                            etp_source=specs.get("etp_source"))
         for k, v in sig.items():
             setattr(s, k, v)
     return s
+
+
+# =========================================================================== #
+#  CONTROLE EXTERNO DA QUALIDADE (EQC) — cálculos puros, em PERCENTUAL
+# =========================================================================== #
+# Convenção de unidades: tudo em % (CV%=2,0; bias=0,93; ET=4,23; Sigma=4,535),
+# idêntico ao exemplo da especificação. Fator do erro aleatório = 1,65 (EA_Z).
+RANDOM_ERROR_FACTOR = EA_Z  # 1,65 — mesma constante usada no IQC
+
+
+def _num(x):
+    """Converte para float aceitando vírgula decimal; None se inválido/vazio/NaN."""
+    if x in (None, "", "-"):
+        return None
+    if isinstance(x, str):
+        x = x.replace(",", ".").strip()
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return None
+    if v != v:          # NaN (ex.: célula vazia de DataFrame)
+        return None
+    return v
+
+
+def sample_bias_pct(lab_value, peer_mean):
+    """
+    Bias percentual de uma amostra (espécime) frente à média do grupo comparativo:
+        Bias_% = ((Resultado_Lab − Média_Grupo) / Média_Grupo) × 100
+    Retorna None (sem cálculo) se faltar dado ou a média do grupo for 0 — evita
+    divisão por zero (regra de negócio 10).
+    """
+    lab = _num(lab_value)
+    peer = _num(peer_mean)
+    if lab is None or peer in (None, 0) or peer == 0.0:
+        return None
+    return ((lab - peer) / peer) * 100.0
+
+
+def round_abs_bias(sample_biases):
+    """
+    |Bias| da RODADA = média aritmética dos |bias| das amostras válidas.
+    Aceita lista de bias percentuais (com sinal) ou None. Retorna None se não
+    houver nenhuma amostra válida.
+    """
+    abs_vals = [abs(b) for b in sample_biases if b is not None and b == b]  # b==b exclui NaN
+    if not abs_vals:
+        return None
+    return sum(abs_vals) / len(abs_vals)
+
+
+def annual_bias_indicator(round_abs_biases):
+    """
+    Indicador de Bias Anual Robusto = média dos |bias| das rodadas do ano.
+        Indicador = média(|Bias_R1|, |Bias_R2|, ..., |Bias_Rn|)
+    Aceita lista de |bias| por rodada (já em módulo) ignorando None.
+    Retorna None se não houver rodadas válidas.
+    """
+    vals = [b for b in round_abs_biases if b is not None and b == b]  # exclui None/NaN
+    if not vals:
+        return None
+    return sum(vals) / len(vals)
+
+
+def external_total_error(cv_pct, bias_anual):
+    """Erro Total (%) = CV% × 1,65 + Indicador_Bias_Anual. None se faltar entrada."""
+    cv = _num(cv_pct)
+    bias = _num(bias_anual)
+    if cv is None or bias is None:
+        return None
+    return cv * RANDOM_ERROR_FACTOR + bias
+
+
+def external_sigma(etp_pct, bias_anual, cv_pct):
+    """
+    Métrica Sigma = (ETp − Indicador_Bias_Anual) / CV%.
+    None se CV% for 0/None ou faltarem ETp/bias (evita divisão por zero).
+    """
+    etp = _num(etp_pct)
+    bias = _num(bias_anual)
+    cv = _num(cv_pct)
+    if etp is None or bias is None or cv in (None, 0) or cv == 0.0:
+        return None
+    return (etp - bias) / cv
+
+
+def annual_performance(cv_pct, bias_anual, etp_pct, etp_source="-"):
+    """
+    Consolida o desempenho analítico anual de um ensaio integrando IQC (CV%) e
+    EQC (Bias Anual): retorna dict com cv_pct, bias_anual, etp, etp_source, et,
+    sigma e listas de pendências ('faltas') para indicar dados insuficientes.
+
+    Todas as entradas/saídas em PERCENTUAL.
+    """
+    cv = _num(cv_pct)
+    bias = _num(bias_anual)
+    etp = _num(etp_pct)
+
+    faltas = []
+    if cv is None:
+        faltas.append("CV% (Controle Interno)")
+    if bias is None:
+        faltas.append("Bias Anual (Controle Externo)")
+    if etp is None:
+        faltas.append("ETp (cadastro do ensaio)")
+
+    et = external_total_error(cv, bias)
+    sigma = external_sigma(etp, bias, cv)
+
+    return dict(cv_pct=cv, bias_anual=bias, etp=etp,
+                etp_source=etp_source if etp is not None else "-",
+                et=et, sigma=sigma, faltas=faltas)
 
 
 # --------------------------------------------------------------------------- #

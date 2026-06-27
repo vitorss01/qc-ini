@@ -17,6 +17,7 @@ import streamlit as st
 
 import database as db
 import qc_engine as qc
+import seed_data as seed
 
 st.set_page_config(page_title="QC-INI · Controle de Qualidade",
                    page_icon="🧪", layout="wide", initial_sidebar_state="expanded")
@@ -191,7 +192,7 @@ def page_dashboard():
                 f"{cfg.get('equipamento','')} · Controle {cfg.get('controle','')}</span>",
                 unsafe_allow_html=True)
 
-    analytes = db.get_analytes()
+    analytes = db.get_analytes(with_reference=True) or db.get_analytes()
     c1, c2, c3 = st.columns([2, 1, 1])
     analyte = c1.selectbox("Analito (ensaio)", analytes, index=0)
     level = c2.selectbox("Nível de controle", [1, 2, 3],
@@ -244,7 +245,15 @@ def page_dashboard():
 
     # estatística + sigma
     vals = [v for _, v in series_valid.get(level, [])]
-    bias = db.get_external_bias(analyte, level) or 0.0
+    # Viés: Indicador de Bias Anual (Controle Externo) quando houver rodadas;
+    # senão, fallback para o viés isolado antigo (external_qc).
+    bias_anual, bias_year, bias_nrod = annual_bias_for(analyte)
+    if bias_anual is not None:
+        bias = bias_anual / 100.0                  # % -> fração
+        bias_origem = f"Indicador Anual {bias_year} · {bias_nrod} rodada(s)"
+    else:
+        bias = abs(db.get_external_bias(analyte, level) or 0.0)
+        bias_origem = "CQ externo (valor isolado)"
     stats = qc.build_stats(analyte, level, vals, bias, db.get_spec(analyte))
 
     # --------- KPIs ----------
@@ -271,6 +280,8 @@ def page_dashboard():
     html += card("Rejeições", str(n_rej), "bad" if n_rej else "ok")
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
+    st.caption(f"Erro Sistemático (viés) · origem: {bias_origem} · "
+               f"ETp: {stats.etp_fonte} · fator do erro aleatório = 1,65.")
 
     st.write("")
     gcol, scol = st.columns([2.4, 1])
@@ -368,7 +379,7 @@ def page_dashboard():
 # --------------------------------------------------------------------------- #
 def page_lancar():
     st.markdown("### Lançar / interfacear resultados")
-    analytes = db.get_analytes()
+    analytes = db.get_analytes(with_reference=True) or db.get_analytes()
     tab1, tab2, tab3 = st.tabs(["➕ Nova corrida (manual)", "📥 Importar arquivo",
                                 "🗂️ Gerenciar / excluir"])
 
@@ -556,7 +567,7 @@ def page_nc():
     st.markdown("<span class='small'>Pontos sinalizados pelo motor de Westgard. "
                 "Marque como não conforme com assinatura eletrônica (login).</span>",
                 unsafe_allow_html=True)
-    analytes = db.get_analytes()
+    analytes = db.get_analytes(with_reference=True) or db.get_analytes()
     analyte = st.selectbox("Analito", analytes)
     cfg = db.get_config()
     series_valid, series_all, refs, ids = carregar_series(analyte)
@@ -647,20 +658,27 @@ def page_referencia():
 # --------------------------------------------------------------------------- #
 def page_specs():
     st.markdown("### Especificação da qualidade · Sigma e Erro Total")
-    st.markdown("<span class='small'>ETP = TEa CLIA quando disponível, senão Erro Total por "
-                "Variação Biológica (EFLM). Sigma = (ETP − |viés|) / CV%.</span>",
+    st.markdown("<span class='small'>ETp = valor configurado por ensaio (ou TEa CLIA/Variação "
+                "Biológica). Viés = Indicador de Bias Anual (Controle Externo) quando houver "
+                "rodadas. ET = CV%×1,65 + viés · Sigma = (ETp − viés) / CV%.</span>",
                 unsafe_allow_html=True)
     level = st.selectbox("Nível", [1, 2, 3], format_func=lambda x: f"Nível {x}", key="spec_lvl")
     rows = []
-    for a in db.get_analytes():
+    for a in db.get_analytes(with_reference=True):
         vals = [r["value"] for r in db.get_results(a, level)]
         if not vals:
             continue
-        bias = db.get_external_bias(a, level) or 0.0
+        bias_anual, _yr, _nr = annual_bias_for(a)
+        if bias_anual is not None:
+            bias = bias_anual / 100.0
+            origem = "Bias Anual"
+        else:
+            bias = abs(db.get_external_bias(a, level) or 0.0)
+            origem = "CQ isolado"
         s = qc.build_stats(a, level, vals, bias, db.get_spec(a))
         rows.append({"Analito": a, "n": s.n, "Média": round(s.mean_obs, 4) if s.mean_obs else None,
                      "CV%": pct(s.cv_obs), "ETP": pct(s.etp), "Fonte": s.etp_fonte,
-                     "ES (viés)": pct(s.es), "EA": pct(s.ea), "ET": pct(s.et),
+                     "ES (viés)": pct(s.es), "Origem viés": origem, "EA": pct(s.ea), "ET": pct(s.et),
                      "Sigma": round(s.sigma, 2) if s.sigma else None,
                      "CV status": s.cv_status})
     df = pd.DataFrame(rows)
@@ -675,6 +693,391 @@ def page_specs():
     sty = df.style.map(sig_color, subset=["Sigma"])
     st.dataframe(sty, use_container_width=True, hide_index=True)
     st.caption("Sigma ≥ 6 excelente · ≥ 4 bom · 3–4 marginal · < 3 inaceitável.")
+
+
+# --------------------------------------------------------------------------- #
+# Integração IQC↔EQC — helpers de CV% e ETp (reusados no painel/Sigma)
+# --------------------------------------------------------------------------- #
+def cv_pct_iqc(analyte, level):
+    """CV% acumulado do Controle Interno (em %) para o analito/nível; None se sem dados."""
+    vals = [r["value"] for r in db.get_results(analyte, level)]
+    if not vals:
+        return None
+    _n, _m, _sd, cv = qc.compute_stats(vals)
+    return cv * 100.0 if cv is not None else None
+
+
+def etp_pct_for(analyte):
+    """ETp (%) e origem: usa o configurado; senão deriva de CLIA/VB. (None,'-') se nada."""
+    etp_pct, src = db.get_etp(analyte)
+    if etp_pct is not None:
+        return float(etp_pct), (src or "Configurado")
+    spec = db.get_spec(analyte)
+    if spec.get("clia_tea") not in (None, "", "-"):
+        return float(spec["clia_tea"]) * 100.0, "CLIA"
+    _i, _v, te_vb = qc.vb_specs(spec.get("cvw"), spec.get("cvg"), spec.get("perf"))
+    if te_vb is not None:
+        return te_vb * 100.0, "VB"
+    return None, "-"
+
+
+def annual_bias_for(analyte, year=None):
+    """
+    Indicador de Bias Anual (%) do EQC para o analito. Se year=None, usa o ano
+    EQC mais recente com dados. Retorna (indicador_pct, year, n_rodadas) ou
+    (None, None, 0).
+    """
+    if year is None:
+        anos = [y for y in db.eqc_years()
+                if db.eqc_annual_indicator(analyte, y)["indicador"] is not None]
+        if not anos:
+            return None, None, 0
+        year = anos[0]
+    info = db.eqc_annual_indicator(analyte, year)
+    return info["indicador"], year, info["n_rodadas"]
+
+
+# --------------------------------------------------------------------------- #
+# Controle Externo da Qualidade (EQC)
+# --------------------------------------------------------------------------- #
+PROVIDERS = ["CAP", "Controllab", "PNCQ", "SBPC/ML", "ControlLab", "Outro"]
+EQC_STATUS = ["Aceitável", "Alerta", "Inaceitável", "Fora de critério"]
+ETP_SOURCES = ["CLIA", "Variação biológica", "Fabricante",
+               "Especificação interna validada", "Outra"]
+
+
+def _samples_from_editor(edited):
+    """Converte o DataFrame do editor em (lista_amostras, lista_bias, |bias|_rodada)."""
+    amostras, biases = [], []
+    for _, row in edited.iterrows():
+        lab = row.get("Resultado lab")
+        peer = row.get("Média grupo")
+        b = qc.sample_bias_pct(lab, peer)
+        if qc._num(lab) is None and qc._num(peer) is None:
+            continue  # linha vazia
+        amostras.append({
+            "sample_label": row.get("Amostra") or f"{len(amostras)+1:02d}",
+            "lab_value": qc._num(lab), "peer_mean": qc._num(peer),
+            "peer_sd": qc._num(row.get("DP grupo")),
+            "lower_limit": qc._num(row.get("Lim. inferior")),
+            "upper_limit": qc._num(row.get("Lim. superior")),
+        })
+        biases.append(b)
+    return amostras, biases, qc.round_abs_bias(biases)
+
+
+def _editor_default(n=5):
+    return pd.DataFrame([
+        {"Amostra": f"{i:02d}", "Resultado lab": None, "Média grupo": None,
+         "DP grupo": None, "Lim. inferior": None, "Lim. superior": None}
+        for i in range(1, n + 1)])
+
+
+def page_controle_externo():
+    cfg = db.get_config()
+    st.markdown("### Controle Externo da Qualidade")
+    st.markdown("<span class='small'>Ensaios de proficiência (CAP, Controllab, PNCQ…). "
+                "Até 6 rodadas/ano por ensaio; cada rodada com várias amostras. O "
+                "<b>Indicador de Bias Anual</b> alimenta o Erro Total e a Métrica Sigma.</span>",
+                unsafe_allow_html=True)
+
+    tab_cad, tab_ger, tab_des, tab_ens = st.tabs(
+        ["➕ Cadastrar rodada", "🗂️ Consultar / gerenciar",
+         "📊 Desempenho anual", "🧬 Ensaios & ETp"])
+
+    # ===================================================================== #
+    # Aba 1 — Cadastrar rodada
+    # ===================================================================== #
+    with tab_cad:
+        areas = db.get_areas() or seed_areas()
+        c1, c2, c3 = st.columns(3)
+        area = c1.selectbox("Área técnica", areas, key="eqc_area")
+        analitos_area = db.get_analytes(area=area)
+        if not analitos_area:
+            c2.info("Nenhum analito nesta área. Cadastre em '🧬 Ensaios & ETp'.")
+            analito = None
+        else:
+            analito = c2.selectbox("Ensaio / analito", analitos_area, key="eqc_analito")
+        ano_default = (db.eqc_years() or [date.today().year])[0]
+        ano = c3.number_input("Ano de referência", min_value=2000, max_value=2100,
+                              value=int(ano_default), step=1, key="eqc_ano")
+
+        if analito:
+            taken = sorted({rd["round_number"] for rd in
+                            db.eqc_list_rounds(year=int(ano), analyte=analito)})
+            n_rod = db.eqc_round_count(analito, int(ano))
+            livres = [n for n in range(1, db.MAX_ROUNDS_POR_ANO + 1) if n not in taken]
+
+            if n_rod >= db.MAX_ROUNDS_POR_ANO:
+                st.warning(f"⚠️ Limite de {db.MAX_ROUNDS_POR_ANO} rodadas/ano já atingido "
+                           f"para {analito} em {ano}. Exclua uma rodada para cadastrar outra.")
+            else:
+                st.caption(f"Rodadas já cadastradas em {ano}: "
+                           f"{taken or '—'} · disponíveis: {livres}")
+                d1, d2, d3 = st.columns(3)
+                rnum = d1.selectbox("Nº da rodada", livres, key="eqc_rnum")
+                rdata = d2.date_input("Data da rodada", value=date.today(), key="eqc_data")
+                prov = d3.selectbox("Provedor", PROVIDERS, key="eqc_prov")
+                if prov == "Outro":
+                    prov = d3.text_input("Qual provedor?", key="eqc_prov_outro") or "Outro"
+
+                e1, e2, e3 = st.columns(3)
+                ainfo = db.get_analyte_info(analito)
+                unidade = e1.text_input("Unidade", value=ainfo.get("unit", ""), key="eqc_unid")
+                lote = e2.text_input("Lote / amostra", key="eqc_lote")
+                status = e3.selectbox("Status de desempenho", EQC_STATUS, key="eqc_status")
+
+                report_ref = st.text_input("Referência ao relatório (PDF)", key="eqc_pdf")
+                notes = st.text_area("Observações técnicas", key="eqc_notes", height=70)
+
+                st.markdown("**Amostras da rodada** (o CAP costuma trazer ~5 espécimes). "
+                            "Preencha resultado do laboratório e média do grupo:")
+                edited = st.data_editor(
+                    _editor_default(5), num_rows="dynamic", hide_index=True,
+                    use_container_width=True, key="eqc_samples_editor",
+                    column_config={
+                        "Amostra": st.column_config.TextColumn("Amostra"),
+                        "Resultado lab": st.column_config.NumberColumn("Resultado lab", format="%.4f"),
+                        "Média grupo": st.column_config.NumberColumn("Média grupo", format="%.4f"),
+                        "DP grupo": st.column_config.NumberColumn("DP grupo", format="%.4f"),
+                        "Lim. inferior": st.column_config.NumberColumn("Lim. inferior", format="%.4f"),
+                        "Lim. superior": st.column_config.NumberColumn("Lim. superior", format="%.4f"),
+                    })
+                amostras, biases, round_bias = _samples_from_editor(edited)
+
+                # Prévia dos cálculos (ao vivo)
+                if amostras:
+                    prev = pd.DataFrame([
+                        {"Amostra": a["sample_label"],
+                         "Resultado": a["lab_value"], "Média grupo": a["peer_mean"],
+                         "Bias %": None if b is None else round(b, 3),
+                         "|Bias| %": None if b is None else round(abs(b), 3)}
+                        for a, b in zip(amostras, biases)])
+                    cprev, cmet = st.columns([2, 1])
+                    cprev.dataframe(prev, use_container_width=True, hide_index=True)
+                    cmet.metric("|Bias| da rodada",
+                                "—" if round_bias is None else f"{round_bias:.3f}%")
+                    cmet.caption("Média dos |bias| das amostras válidas.")
+
+                if st.button("💾 Salvar rodada", key="eqc_save", disabled=not amostras):
+                    rid, err = db.eqc_add_round(
+                        {"area": area, "analyte": analito, "year": int(ano),
+                         "round_number": int(rnum), "round_date": rdata.isoformat(),
+                         "provider": prov, "unit": unidade, "lote": lote,
+                         "status": status, "notes": notes, "report_ref": report_ref},
+                        amostras, user=st.session_state["user"]["login"])
+                    if err:
+                        st.error(err)
+                    else:
+                        st.success(f"Rodada {rnum} de {analito}/{ano} salva "
+                                   f"(|bias| = {round_bias:.3f}%).")
+                        st.rerun()
+
+    # ===================================================================== #
+    # Aba 2 — Consultar / gerenciar
+    # ===================================================================== #
+    with tab_ger:
+        g1, g2, g3 = st.columns(3)
+        f_ano = g1.selectbox("Ano", ["Todos"] + db.eqc_years(), key="ger_ano")
+        f_area = g2.selectbox("Área", ["Todas"] + db.get_areas(), key="ger_area")
+        analitos_f = (db.get_analytes(area=None if f_area == "Todas" else f_area))
+        f_analito = g3.selectbox("Ensaio", ["Todos"] + analitos_f, key="ger_analito")
+        g4, g5, g6 = st.columns(3)
+        f_prov = g4.selectbox("Provedor", ["Todos"] + db.eqc_providers(), key="ger_prov")
+        f_rod = g5.selectbox("Rodada", ["Todas"] + list(range(1, db.MAX_ROUNDS_POR_ANO + 1)),
+                             key="ger_rod")
+        f_lote = g6.selectbox("Lote", ["Todos"] + db.eqc_lotes(), key="ger_lote")
+
+        rounds = db.eqc_list_rounds(
+            year=None if f_ano == "Todos" else f_ano,
+            area=None if f_area == "Todas" else f_area,
+            analyte=None if f_analito == "Todos" else f_analito,
+            provider=None if f_prov == "Todos" else f_prov,
+            round_number=None if f_rod == "Todas" else f_rod,
+            lote=None if f_lote == "Todos" else f_lote)
+
+        st.caption(f"{len(rounds)} rodada(s) encontrada(s).")
+        if rounds:
+            tabela = pd.DataFrame([{
+                "ID": rd["round_id"], "Ano": rd["year"], "Área": rd["area"],
+                "Ensaio": rd["analyte"], "Rodada": rd["round_number"],
+                "Data": rd["round_date"], "Provedor": rd["provider"],
+                "Lote": rd["lote"], "Amostras": rd["n_samples"],
+                "|Bias| %": None if rd["round_abs_bias"] is None else round(rd["round_abs_bias"], 3),
+                "Status": rd["status"]} for rd in rounds])
+            st.dataframe(tabela, use_container_width=True, hide_index=True)
+
+            rotulos = {f'#{rd["round_id"]} · {rd["analyte"]} {rd["year"]} R{rd["round_number"]}':
+                       rd["round_id"] for rd in rounds}
+            sel = st.selectbox("Selecione uma rodada para ver amostras / excluir",
+                               ["—"] + list(rotulos.keys()), key="ger_sel")
+            if sel != "—":
+                rid = rotulos[sel]
+                samples = db.eqc_get_samples(rid)
+                dfp = pd.DataFrame([{
+                    "Amostra": s["sample_label"], "Resultado lab": s["lab_value"],
+                    "Média grupo": s["peer_mean"], "DP grupo": s["peer_sd"],
+                    "Bias %": None if s["bias_pct"] is None else round(s["bias_pct"], 3),
+                    "|Bias| %": None if s["bias_pct"] is None else round(abs(s["bias_pct"]), 3)}
+                    for s in samples])
+                st.dataframe(dfp, use_container_width=True, hide_index=True)
+                rd = db.eqc_get_round(rid)
+                st.caption(f"Última alteração por {rd.get('updated_by') or rd.get('created_by')} "
+                           f"em {rd.get('updated_at') or rd.get('created_at')}.")
+
+                if st.button("🗑️ Excluir esta rodada", key="ger_del"):
+                    st.session_state["eqc_pending_del"] = rid
+                if st.session_state.get("eqc_pending_del") == rid:
+                    st.warning("⚠️ Confirma a exclusão **permanente** desta rodada e suas amostras?")
+                    cc1, cc2 = st.columns(2)
+                    if cc1.button("✅ Sim, excluir", key="ger_del_yes"):
+                        db.eqc_delete_round(rid, user=st.session_state["user"]["login"])
+                        st.session_state.pop("eqc_pending_del", None)
+                        st.success("Rodada excluída.")
+                        st.rerun()
+                    if cc2.button("❌ Cancelar", key="ger_del_no"):
+                        st.session_state.pop("eqc_pending_del", None)
+                        st.rerun()
+
+    # ===================================================================== #
+    # Aba 3 — Desempenho anual (integração IQC↔EQC)
+    # ===================================================================== #
+    with tab_des:
+        anos = db.eqc_years() or [date.today().year]
+        h1, h2 = st.columns(2)
+        ano_d = h1.selectbox("Ano de referência", anos, key="des_ano")
+        nivel_cv = h2.selectbox("Nível do CV% (Controle Interno)", [1, 2, 3],
+                                index=1, format_func=lambda x: f"Nível {x}", key="des_nivel")
+        st.caption("ET = CV% × 1,65 + Bias Anual · Sigma = (ETp − Bias Anual) / CV%")
+
+        analitos_ano = db.eqc_analytes_with_rounds(int(ano_d))
+        linhas, faltas_msgs = [], []
+        for a in analitos_ano:
+            bias, _yr, n_rod = annual_bias_for(a, int(ano_d))
+            cvp = cv_pct_iqc(a, int(nivel_cv))
+            etpp, etps = etp_pct_for(a)
+            perf = qc.annual_performance(cvp, bias, etpp, etps)
+            linhas.append({
+                "Ensaio": a, "Rodadas": n_rod,
+                "Bias Anual %": None if bias is None else round(bias, 3),
+                "CV% (IQC)": None if cvp is None else round(cvp, 3),
+                "ETp %": None if etpp is None else round(etpp, 2),
+                "Origem ETp": etps,
+                "ET %": None if perf["et"] is None else round(perf["et"], 3),
+                "Sigma": None if perf["sigma"] is None else round(perf["sigma"], 2)})
+            if perf["faltas"]:
+                faltas_msgs.append(f"**{a}**: faltam " + ", ".join(perf["faltas"]))
+
+        if not linhas:
+            st.info("Sem rodadas de Controle Externo neste ano.")
+        else:
+            dfd = pd.DataFrame(linhas)
+
+            def sig_color(v):
+                try:
+                    v = float(v)
+                except (TypeError, ValueError):
+                    return ""
+                return ("color:#46d39a;font-weight:700" if v >= 4 else
+                        "color:#f4c430;font-weight:700" if v >= 3 else
+                        "color:#ff5d6c;font-weight:700")
+            st.dataframe(dfd.style.map(sig_color, subset=["Sigma"]),
+                         use_container_width=True, hide_index=True)
+            st.caption("Sigma ≥ 6 excelente · ≥ 4 bom · 3–4 marginal · < 3 inaceitável.")
+
+            # Melhor / pior desempenho (por Sigma)
+            com_sigma = [l for l in linhas if l["Sigma"] is not None]
+            if com_sigma:
+                melhor = max(com_sigma, key=lambda l: l["Sigma"])
+                pior = min(com_sigma, key=lambda l: l["Sigma"])
+                m1, m2 = st.columns(2)
+                m1.success(f"🏆 Melhor: **{melhor['Ensaio']}** · Sigma {melhor['Sigma']}")
+                m2.error(f"⚠️ Pior: **{pior['Ensaio']}** · Sigma {pior['Sigma']}")
+
+            if faltas_msgs:
+                with st.expander("Ensaios com dados insuficientes"):
+                    for m in faltas_msgs:
+                        st.markdown("- " + m)
+
+            # Evolução do bias por rodada
+            st.markdown("**Evolução do bias por rodada**")
+            a_sel = st.selectbox("Ensaio", analitos_ano, key="des_evo")
+            info = db.eqc_annual_indicator(a_sel, int(ano_d))
+            pr = [p for p in info["por_rodada"] if p["abs_bias"] is not None]
+            if pr:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=[f"R{p['round_number']}" for p in pr],
+                    y=[p["abs_bias"] for p in pr], mode="lines+markers",
+                    line=dict(color="#5fe3c2", width=2),
+                    marker=dict(size=11, color="#5fe3c2"), name="|Bias| rodada"))
+                if info["indicador"] is not None:
+                    fig.add_hline(y=info["indicador"], line=dict(color="#f4c430", dash="dash"),
+                                  annotation_text=f"Indicador Anual = {info['indicador']:.3f}%",
+                                  annotation_position="right", annotation_font_color="#f4c430")
+                fig.update_layout(height=320, paper_bgcolor="rgba(0,0,0,0)",
+                                  plot_bgcolor="rgba(0,0,0,0)", font_color="#e7f3f1",
+                                  margin=dict(l=10, r=130, t=10, b=10), showlegend=False)
+                fig.update_yaxes(title="|Bias| %", gridcolor="#24474c")
+                fig.update_xaxes(title="Rodada")
+                st.plotly_chart(fig, use_container_width=True)
+
+    # ===================================================================== #
+    # Aba 4 — Ensaios & ETp (extensibilidade)
+    # ===================================================================== #
+    with tab_ens:
+        st.markdown("#### Cadastrar novo ensaio / analito")
+        st.caption("O sistema é extensível: cadastre novos parâmetros a qualquer momento.")
+        n1, n2, n3, n4 = st.columns([1.2, 1.4, 1, 1])
+        areas_existentes = db.get_areas() or seed_areas()
+        nova_area_opt = n1.selectbox("Área", areas_existentes + ["➕ Nova área"], key="ens_area")
+        if nova_area_opt == "➕ Nova área":
+            nova_area_opt = n1.text_input("Nome da nova área", key="ens_area_nova")
+        novo_nome = n2.text_input("Nome do ensaio", key="ens_nome")
+        nova_unid = n3.text_input("Unidade", key="ens_unid")
+        nova_dec = n4.number_input("Casas decimais", 0, 6, 2, key="ens_dec")
+        if st.button("➕ Adicionar ensaio", key="ens_add"):
+            if novo_nome.strip() and (nova_area_opt or "").strip():
+                db.add_analyte(novo_nome, nova_area_opt, nova_unid, int(nova_dec))
+                st.success(f"Ensaio '{novo_nome}' cadastrado em {nova_area_opt}.")
+                st.rerun()
+            else:
+                st.error("Informe ao menos a área e o nome do ensaio.")
+
+        st.divider()
+        st.markdown("#### Erro Total Permitido (ETp) por ensaio")
+        todos = db.get_analytes()
+        p1, p2, p3 = st.columns([1.6, 1, 1.2])
+        a_etp = p1.selectbox("Ensaio", todos, key="etp_analito")
+        etp_atual, src_atual = db.get_etp(a_etp)
+        val_etp = p2.number_input("ETp (%)", min_value=0.0, max_value=100.0,
+                                  value=float(etp_atual) if etp_atual else 0.0,
+                                  step=0.5, key="etp_val")
+        idx_src = ETP_SOURCES.index(src_atual) if src_atual in ETP_SOURCES else 0
+        src_etp = p3.selectbox("Origem do ETp", ETP_SOURCES, index=idx_src, key="etp_src")
+        if st.button("💾 Salvar ETp", key="etp_save"):
+            db.set_etp(a_etp, val_etp, src_etp)
+            st.success(f"ETp de {a_etp} definido em {val_etp:.2f}% ({src_etp}).")
+            st.rerun()
+
+        st.divider()
+        st.markdown("#### Ensaios cadastrados")
+        linhas_ens = []
+        for a in todos:
+            info = db.get_analyte_info(a)
+            etpp, etps = db.get_etp(a)
+            linhas_ens.append({"Ensaio": a, "Área": info.get("area", ""),
+                               "Unidade": info.get("unit", ""),
+                               "ETp %": etpp, "Origem ETp": etps or "—"})
+        st.dataframe(pd.DataFrame(linhas_ens), use_container_width=True, hide_index=True)
+
+
+def seed_areas():
+    """Áreas sugeridas quando o banco ainda não tem nenhuma."""
+    try:
+        return list(seed.EQC_AREAS)
+    except Exception:
+        return ["Hematologia", "Bioquímica", "Imunologia", "Coagulação"]
 
 
 # --------------------------------------------------------------------------- #
@@ -707,7 +1110,8 @@ with st.sidebar:
     st.divider()
     pagina = st.radio("Navegação", [
         "Painel", "Lançar resultados", "Não conformidades",
-        "Média e DP", "Especificação da qualidade", "Configurações"],
+        "Controle Externo", "Média e DP", "Especificação da qualidade",
+        "Configurações"],
         label_visibility="collapsed")
     st.divider()
     if st.button("Sair", use_container_width=True):
@@ -718,6 +1122,7 @@ with st.sidebar:
     "Painel": page_dashboard,
     "Lançar resultados": page_lancar,
     "Não conformidades": page_nc,
+    "Controle Externo": page_controle_externo,
     "Média e DP": page_referencia,
     "Especificação da qualidade": page_specs,
     "Configurações": page_config,

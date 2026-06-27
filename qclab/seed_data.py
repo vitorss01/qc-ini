@@ -150,3 +150,101 @@ EXTERNAL_QC = {
     ("HGB", 1): (5.58, 5.50, 0.08), ("HGB", 2): (12.40, 12.28, 0.15),
     ("PLT", 2): (231.0, 228.0, 8.0), ("RBC", 1): (2.33, 2.31, 0.05),
 }
+
+
+# =========================================================================== #
+#  CONTROLE EXTERNO — áreas técnicas, analitos extensíveis, ETp e rodadas demo
+# =========================================================================== #
+
+# Áreas técnicas conhecidas (sugestões na UI; o usuário pode criar outras)
+EQC_AREAS = ["Hematologia", "Bioquímica", "Imunologia", "Coagulação", "Urinálise",
+             "Gasometria", "Microbiologia"]
+
+# Analitos extras por área (além dos 28 de Hematologia já existentes).
+# O sistema é extensível: novos analitos podem ser cadastrados a qualquer momento.
+EXTRA_ANALYTES = [
+    # Bioquímica
+    {"name": "Glicose", "area": "Bioquímica", "unit": "mg/dL", "decimals": 1},
+    {"name": "Ureia", "area": "Bioquímica", "unit": "mg/dL", "decimals": 1},
+    {"name": "Creatinina", "area": "Bioquímica", "unit": "mg/dL", "decimals": 2},
+    {"name": "Colesterol total", "area": "Bioquímica", "unit": "mg/dL", "decimals": 1},
+    {"name": "Triglicérides", "area": "Bioquímica", "unit": "mg/dL", "decimals": 1},
+    {"name": "AST/TGO", "area": "Bioquímica", "unit": "U/L", "decimals": 1},
+    {"name": "ALT/TGP", "area": "Bioquímica", "unit": "U/L", "decimals": 1},
+    {"name": "Sódio", "area": "Bioquímica", "unit": "mmol/L", "decimals": 1},
+    {"name": "Potássio", "area": "Bioquímica", "unit": "mmol/L", "decimals": 2},
+    {"name": "Ácido úrico", "area": "Bioquímica", "unit": "mg/dL", "decimals": 2},
+    # Imunologia
+    {"name": "TSH", "area": "Imunologia", "unit": "µUI/mL", "decimals": 3},
+    {"name": "T4 livre", "area": "Imunologia", "unit": "ng/dL", "decimals": 2},
+    {"name": "Ferritina", "area": "Imunologia", "unit": "ng/mL", "decimals": 1},
+    {"name": "PCR", "area": "Imunologia", "unit": "mg/L", "decimals": 2},
+    {"name": "Vitamina D", "area": "Imunologia", "unit": "ng/mL", "decimals": 1},
+    # Coagulação
+    {"name": "TP (atividade)", "area": "Coagulação", "unit": "%", "decimals": 1},
+    {"name": "TTPa (relação)", "area": "Coagulação", "unit": "rel", "decimals": 2},
+    {"name": "Fibrinogênio", "area": "Coagulação", "unit": "mg/dL", "decimals": 1},
+]
+
+# ETp (Erro Total Permitido, em %) e origem, configurável por ensaio.
+ETP = {
+    "WBC": (7.0, "CLIA"),
+    "HGB": (4.0, "CLIA"),
+    "PLT": (15.0, "CLIA"),
+    "RBC": (4.0, "CLIA"),
+    "Glicose": (10.0, "CLIA"),
+    "Creatinina": (15.0, "CLIA"),
+    "Ureia": (9.0, "CLIA"),
+    "Colesterol total": (10.0, "CLIA"),
+    "Sódio": (4.0, "CLIA"),
+    "Potássio": (6.0, "CLIA"),
+    "TSH": (20.0, "Variação biológica"),
+}
+
+
+def _amostras(peer, biases_pct, sd=None):
+    """Gera amostras com viés-alvo (em %) a partir de uma média de grupo `peer`."""
+    out = []
+    for i, b in enumerate(biases_pct, start=1):
+        out.append({
+            "label": f"Amostra {i:02d}",
+            "lab_value": round(peer * (1 + b / 100.0), 4),
+            "peer_mean": peer,
+            "peer_sd": sd,
+            "lower_limit": None,
+            "upper_limit": None,
+        })
+    return out
+
+
+# Rodadas de Controle Externo de demonstração.
+# WBC/2025 reproduz o exemplo da especificação: |bias| de rodada 0,4 / 1,8 / 0,6
+# (cada rodada com 3 amostras cujo |bias| médio dá o alvo) -> Indicador = 0,93.
+EQC_ROUNDS = [
+    {"area": "Hematologia", "analyte": "WBC", "year": 2025, "round_number": 1,
+     "round_date": "2025-03-15", "provider": "CAP", "unit": "10³/µL",
+     "lote": "CAP25C-A", "status": "Aceitável", "notes": "Survey CAP-C.",
+     "report_ref": "CAP25C-A_Svy.pdf",
+     "samples": _amostras(6.80, [0.3, -0.5, 0.4], sd=0.20)},     # |bias| rodada = 0,4
+    {"area": "Hematologia", "analyte": "WBC", "year": 2025, "round_number": 2,
+     "round_date": "2025-06-15", "provider": "CAP", "unit": "10³/µL",
+     "lote": "CAP25C-B", "status": "Alerta", "notes": "Mês atípico (troca de lote).",
+     "report_ref": "CAP25C-B_Svy.pdf",
+     "samples": _amostras(6.80, [2.0, -1.5, 1.9], sd=0.20)},     # |bias| rodada = 1,8
+    {"area": "Hematologia", "analyte": "WBC", "year": 2025, "round_number": 3,
+     "round_date": "2025-09-15", "provider": "CAP", "unit": "10³/µL",
+     "lote": "CAP25C-C", "status": "Aceitável", "notes": "Survey de setembro.",
+     "report_ref": "RODADA DE SETEMBRO_HID0050_FIOCRUZ_CAP25C-C_Svy.pdf",
+     "samples": _amostras(6.80, [0.5, -0.7, 0.6], sd=0.20)},     # |bias| rodada = 0,6
+    # Bioquímica — Glicose (2 rodadas)
+    {"area": "Bioquímica", "analyte": "Glicose", "year": 2025, "round_number": 1,
+     "round_date": "2025-04-10", "provider": "Controllab", "unit": "mg/dL",
+     "lote": "CL-GLI-01", "status": "Aceitável", "notes": "",
+     "report_ref": "",
+     "samples": _amostras(100.0, [1.2, -0.8, 1.0, -1.1, 0.9], sd=2.0)},
+    {"area": "Bioquímica", "analyte": "Glicose", "year": 2025, "round_number": 2,
+     "round_date": "2025-08-10", "provider": "Controllab", "unit": "mg/dL",
+     "lote": "CL-GLI-02", "status": "Aceitável", "notes": "",
+     "report_ref": "",
+     "samples": _amostras(120.0, [0.6, -1.4, 0.8, 1.1, -0.7], sd=2.4)},
+]
