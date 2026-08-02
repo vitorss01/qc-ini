@@ -252,5 +252,79 @@ Fases 1 e 2 completas · validação matemática do motor · 9 asserções de We
 tabela de elegibilidade · correção do Erro 9 · análise estática (limpa).
 
 ## Primeiro comando da próxima sessão
-Ler este arquivo, restaurar ambiente limpo (seção 6) e atacar **apenas** a seção 4.1:
-provar o ponto de congelamento por bissecção instrumentada.
+Ler este arquivo e executar as DECISÕES DO GESTOR abaixo, nesta ordem.
+
+---
+
+# DECISÕES DO GESTOR (tomadas em 01/08/2026)
+
+## ✅ Fechado nesta rodada
+- **Travamento** — causa provada (`aS` = palavra reservada `As`; VBA compila sob demanda,
+  por isso ficou latente). Corrigido nos 3 procedimentos.
+- **Vazamento de estado** — `priR`/`priRun`/`ultR`/`ultRun` agora reiniciados por grupo.
+  Validado: `grupos_com_0_violacoes_reportando_regra = 0`.
+- Build corrigido e validado: `_arquitetura/fase3a_corrigido/QC_Hematologia.xlsm`
+- Tempos: `RegistrarEventosWestgard` 0,098 s · `AtualizarEstatistica` 0,341 s
+
+## 🔴 DECISÃO 1 — PRESERVAR AS FÓRMULAS (aprovada)
+
+O motor **não pode** mais sobrescrever `Painel!B7:J9` nem `Estatística!C7:M126`.
+Evidência do problema: 1.365 fórmulas destruídas (Painel 58→13, Estatística 2160→840).
+
+**Motivo da escolha:** com macros desabilitadas, um auditor precisa conseguir rastrear
+o cálculo célula a célula. Valores literais sem procedência não são defensáveis em
+ISO 15189 nem em banca.
+
+### Implementação
+1. Criar aba de saída do motor — sugestão `Eng_Saida` (hidden, revelada no Modo Desenvolvedor),
+   com uma linha por (analito, nível) e colunas n · média · DP · CV · Bias · ET · Sigma ·
+   classificação · última regra · RUN · classificação da regra · nº violações · maior |Z|.
+2. `AtualizarPainelEng` e `AtualizarEstatisticaAba` passam a escrever **somente** em `Eng_Saida`.
+3. `Painel` e `Estatística` voltam a ter **fórmulas**, referenciando `Eng_Saida`
+   (`INDEX`/`MATCH` por analito+nível).
+4. **Restaurar antes** as fórmulas já destruídas, a partir de `_backup_pre_fase3/QC_Hematologia.xlsm`.
+5. Validar com o mesmo teste do Passo 4: contagem de fórmulas antes/depois deve ficar **igual**.
+
+## 🔴 DECISÃO 2 — NÃO PROMOVER até fechar os 3 críticos de integridade (aprovada)
+
+Ordem de ataque (do mais grave):
+
+### 2.1 Sobrescrita silenciosa + ressurreição de excluído — VETOR DE FRAUDE
+`mDados.bas:50-66` (`NovoRUN`) e `92-110` (`UpsertResultados`).
+Hoje: reenviar a mesma Data+lote reutiliza o RUN, sobrescreve o valor **sem versionar**
+e força `Status = Ativo`, ressuscitando registro excluído. Um técnico que reprovou o CQI
+só precisa relançar com valores dentro dos limites.
+Também colapsa múltiplas corridas no mesmo dia (turno, pós-calibração) — a CLSI C24 trata
+cada uma como evento distinto.
+**Correção:** incluir turno/hora na chave do RUN; nunca sobrescrever a linha original
+(gravar nova versão marcando a anterior como superada); remover a reativação automática
+de `Status` — reverter exclusão passa a ser ação própria, com justificativa e assinatura.
+
+### 2.2 Trilha de auditoria inexistente
+`RegistrarLog` é stub vazio; o schema não guarda usuário, timestamp nem valor anterior.
+**Correção:** aba `Audit_Log` append-only (nunca `ClearContents`) com data/hora, usuário,
+papel, ação, chave `RUN|Nível|Analito`, valor ANTES, valor DEPOIS e justificativa.
+Mudar a assinatura para `RegistrarLog(acao, chave, valorAntes, valorDepois, justificativa)`
+e chamá-la **dentro de `mDados`** (em `UpsertResultados` e `ExcluirLogico`), não nos
+formulários — assim nenhum caminho de gravação escapa.
+ISO 15189:2022 §8.4.1/§8.4.2 · RDC 786/2023.
+
+### 2.3 Nenhuma proteção persistida no arquivo salvo
+Inspeção do OOXML: nenhuma das 18 abas tem `<sheetProtection>`; sem `<workbookProtection>`;
+projeto VBA sem senha. Abrir com macros desabilitadas dá acesso total a `DB_Resultados`.
+Agrava que `ReprotectAll` usa `UserInterfaceOnly:=True` — flag que o Excel **não persiste**.
+**Correção:** salvar o arquivo já em estado bloqueado (pós-`LockApp`) como estado canônico
+de distribuição; reaplicar proteção com senha em `Workbook_Open` antes de qualquer ação;
+`Workbook.Protect Structure:=True`; senha no projeto VBA.
+ISO 15189:2022 §7.6 e §8.4.3.
+
+## Depois disso
+Triar os 52 achados restantes (`FASE3A_achados_estaticos.md`), então retomar o que ficou
+pendente da Fase 3: `frmNaoConforme` → Registros · eixo X com RUN alinhado ·
+padronização "Corrida"→"RUN" · documentação de rastreabilidade normativa.
+
+## Estado dos arquivos nesta data
+- `QC_Hematologia.xlsm` (produção) — **não promovido**, ainda com o travamento
+- `_arquitetura/fase3a_corrigido/QC_Hematologia.xlsm` — corrigido e validado, aguardando decisões
+- `QC_Bioquimica.xlsm` / `QC_Imunologia.xlsm` — Fase 2, funcionais, **não tocados**
+- Branch `fase3a-motor-cqi` no remoto; PR aberto manualmente (corpo em `PR_body.md`)
