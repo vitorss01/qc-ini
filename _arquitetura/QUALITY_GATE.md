@@ -124,3 +124,44 @@ Planejar a migração **antes** de executar, não durante.
 6. **4.2–4.7 QA completo** — só faz sentido com tudo acima fechado.
 7. **Propagar para Bioquímica e Imunologia** — o pipeline é paramétrico; propagar apenas
    depois de Hematologia passar em todo o gate.
+
+---
+
+# Roadmap até o Release Candidate
+
+**Arquitetura congelada.** Nenhuma funcionalidade nova — nem dashboard, nem indicador,
+nem UserForm, nem gráfico — até RC1. Só correção, teste e validação.
+
+### Sprint HARDENING 1 — Fórmulas
+- Criar `Eng_Saida`; motor deixa de escrever em `Painel` e `Estatística`
+- Restaurar as 1.365 fórmulas destruídas (fonte: `_backup_pre_fase3/`)
+- Painel e Estatística voltam a consumir por fórmula
+- **Aceite:** contagem de fórmulas antes/depois idêntica · regressão completa
+
+### Sprint HARDENING 2 — Modelo do RUN
+- RUN sequencial + `Data | Hora | Turno | Lote | Equipamento | Usuário` (ADR-011)
+- Script de migração dos 3.575 registros existentes, com backup obrigatório
+- **Aceite:** unicidade garantida · 3 UserForms validados · nada órfão
+
+### Sprint HARDENING 3 — Auditoria (ISO 15189)
+- `Audit_Log` append-only: usuário, timestamp, ação, chave, valor antes, valor depois, motivo
+- Log chamado de dentro de `mDados` — nenhum caminho de gravação escapa
+- **Aceite:** toda gravação e exclusão rastreável · log não editável pela interface
+
+### Sprint HARDENING 4 — Validação
+- Estresse · regressão · usabilidade · desempenho
+- **Teste com macros desabilitadas** (o cenário do auditor)
+- Teste de recuperação após falha
+- **Aceite:** Quality Gate 100% verde
+
+### Release Candidate (RC1)
+Somente quando **todos** forem verdadeiros:
+- Quality Gate 100% verde
+- Nenhum bug crítico aberto
+- Regressão 100%
+- Auditoria completa e funcional
+- Desempenho validado sob carga
+- **Hematologia, Bioquímica e Imunologia executando arquitetura idêntica**
+
+A partir do RC1: implantação piloto, e toda mudança passa a ser evolução funcional —
+não mais correção estrutural.

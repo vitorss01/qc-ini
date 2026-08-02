@@ -293,10 +293,12 @@ o assistente atua em apoio (revisão, integração com o motor, testes).
 
 **Pontos de integração a resolver no desenho — cada um toca um ADR vigente:**
 
-1. **Atribuição do `RUN` (ADR-004/011).** Power Query carrega dados; ele não sabe atribuir
-   RUN. Ou o RUN vem pronto na origem, ou uma rotina de pós-carga o atribui antes de o
-   registro ser considerado válido. Carga sem RUN quebra `Calc`, `Liberação` e
-   `Eventos_Westgard`, que usam RUN como chave.
+1. **Atribuição do `RUN` (ADR-004/011).** **O ETL nunca gera RUN.** RUN pertence ao
+   domínio da aplicação. Power Query importa exatamente o que veio da origem; a atribuição
+   do RUN acontece no motor VBA, depois da validação. Se cada origem (CSV, XML, API, LIS)
+   trouxesse seu próprio RUN, cada uma traria também sua regra de numeração — e a unicidade
+   global se perderia. Com a geração centralizada, qualquer origem futura entra pelo mesmo
+   caminho sem alterar o modelo.
 
 2. **Trilha de auditoria (pendente).** A decisão de logar **dentro de `mDados`** existe
    justamente para nenhum caminho de gravação escapar. Power Query escreve direto na
@@ -313,3 +315,50 @@ o assistente atua em apoio (revisão, integração com o motor, testes).
 **Recomendação de desenho (não vinculante).** `Power Query → aba de staging →
 validação/atribuição de RUN → mDados → DB_Resultados`. Preserva os três ADRs acima sem
 abrir exceção para nenhum deles.
+
+---
+
+## ADR-018 · Pipeline de importação
+**Status:** ⏳ decidida, não implementada
+
+**Contexto.** Sem um pipeline explícito, cada nova origem de dados tenderia a criar seu
+próprio caminho até o banco — multiplicando regras de validação, de numeração e de log.
+
+**Decisão.** Toda entrada de dados, de qualquer origem, percorre **um único pipeline**:
+
+```
+Origem (LIS · CSV · XML · API · equipamento)
+        ↓
+Power Query                      ← importa exatamente o que veio; não transforma, não numera
+        ↓
+STG_Importacao (aba oculta)      ← única aba gravável; staging
+        ↓
+Validação estrutural             ← colunas presentes, tipos, cardinalidade
+        ↓
+Validação semântica              ← analito existe, lote cadastrado, nível válido, data plausível
+        ↓
+Normalização                     ← decimal, data, código de lote, nome de analito
+        ↓
+Atribuição de RUN                ← SOMENTE aqui; domínio da aplicação
+        ↓
+mDados.Upsert()                  ← ponto único de gravação; dispara a trilha de auditoria
+        ↓
+DB_Resultados                    ← única fonte operacional, protegida
+        ↓
+Motor estatístico
+        ↓
+Eng_Saida
+        ↓
+Estatística · Painel · Liberação  ← consomem por fórmula
+```
+
+**Invariantes que o pipeline garante:**
+
+- Nenhuma origem escreve em `DB_Resultados` diretamente
+- Nenhuma origem gera RUN
+- Nenhuma gravação escapa da trilha de auditoria — o log vive em `mDados`
+- `STG_Importacao` é a **única** aba gravável; todas as demais permanecem protegidas
+- Trocar ou acrescentar origem não altera nada a jusante do staging
+
+**Consequência.** Uma integração futura com LIS ou API não exige rediscutir arquitetura:
+basta fazê-la depositar em `STG_Importacao`.
