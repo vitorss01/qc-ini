@@ -362,3 +362,44 @@ Estatística · Painel · Liberação  ← consomem por fórmula
 
 **Consequência.** Uma integração futura com LIS ou API não exige rediscutir arquitetura:
 basta fazê-la depositar em `STG_Importacao`.
+
+---
+
+## ADR-019 · O motor é a única camada autorizada a calcular
+**Status:** ⏳ decidida, não implementada (fecha com o Sprint HARDENING 1)
+
+**Contexto.** A separação `DB_Resultados → Motor → Eng_Saida → Interface` já estava
+implícita nas decisões anteriores, mas nunca foi escrita como regra. O que não está
+escrito não é padrão — é hábito, e hábito se perde na primeira manutenção feita por
+outra pessoa.
+
+**Decisão.** **Nenhuma planilha executa cálculo estatístico sobre `DB_Resultados`.**
+Todo cálculo — média, DP, CV%, Bias, ET, Sigma, Z, Westgard, elegibilidade — é executado
+exclusivamente pelo motor (`mEstatistica`), que grava em `Eng_Saida`. As abas `Painel`,
+`Estatística`, `Liberação` e qualquer interface futura **apenas consomem** `Eng_Saida`,
+por fórmula ou consulta.
+
+**Fronteira, na prática:**
+
+| Camada | Pode | Não pode |
+|---|---|---|
+| `DB_Resultados` | armazenar | conter fórmula de cálculo |
+| `mEstatistica` | ler o banco, calcular, gravar em `Eng_Saida` | escrever em aba de interface |
+| `Eng_Saida` | receber do motor | ser editada manualmente |
+| `Painel` · `Estatística` · `Liberação` | referenciar `Eng_Saida`, formatar, filtrar | `AGGREGATE`/`MÉDIA`/`DESVPAD`/`CONT.SES` sobre `DB_Resultados` |
+
+**Por quê.** Dois motivos concretos, ambos já observados neste projeto:
+
+1. **Divergência silenciosa.** Uma fórmula de aba e o motor podem calcular a mesma
+   grandeza com critérios de elegibilidade diferentes. Os dois números aparecem, nenhum
+   acusa erro, e o laboratório libera com o que estiver na tela.
+2. **Erosão do padrão.** Uma fórmula nova colocada direto na `Estatística` daqui a seis
+   meses não quebra nada visivelmente — só recria, aos poucos, o acoplamento que a
+   Fase 3 desfez.
+
+**Consequência.** Toda grandeza nova nasce no motor, não na planilha. Isso é mais lento
+para prototipar e é intencional: é o preço de ter um número só, rastreável até a linha
+do banco que o gerou.
+
+**Como se verifica.** Item 2.1 do Quality Gate: varredura de fórmulas nas abas de
+interface procurando referência direta a `DB_Resultados`. Esperado: zero.

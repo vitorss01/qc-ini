@@ -4,7 +4,7 @@ Documento oficial de liberação do projeto. Enquanto houver item ⏳ ou ❌ **n
 para a fase seguinte**. Cada ✅ exige evidência verificável — marcação sem evidência
 não vale.
 
-**Última atualização:** 01/08/2026
+**Última atualização:** 02/08/2026
 **Sprint corrente:** HARDENING (nenhuma funcionalidade nova)
 
 ---
@@ -53,6 +53,8 @@ não vale.
 | 4.5 | Teste de estresse | ⏳ | 5.000 RUNs · 40 analitos × 3 níveis · 50 lotes · importação de 500 linhas |
 | 4.6 | Zero erro de fórmula | ⏳ | Revalidar após as correções de 2.x |
 | 4.7 | Estado global restaurado | ⏳ | `ScreenUpdating`/`EnableEvents`/`Calculation` ao fim de toda rotina |
+| 4.8 | Idempotência | ⏳ | `AtualizarEstatistica` + `RegistrarEventosWestgard` executados 1×, 10× e 100× seguidos sobre o mesmo banco produzem saída **byte a byte idêntica**. Pega vazamento de estado, acúmulo em coleções e linhas duplicadas em `Eventos_Westgard` |
+| 4.9 | Persistência entre sessões | ⏳ | Gerar → salvar → fechar o Excel → reabrir → gerar de novo → resultado idêntico. Expõe dependência de estado em memória, variável `Static`, `UserInterfaceOnly` e cache não persistido |
 
 ## 5. Cobertura por produto
 
@@ -78,7 +80,7 @@ não vale.
 > **Regra de merge:** nada entra na `main` enquanto houver ⏳ ou ❌.
 > A branch `fase3a-motor-cqi` é de trabalho; se um PR for aberto, deve ser **draft**.
 
-**17 ✅ · 23 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
+**17 ✅ · 25 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
 
 O **motor** está pronto e validado. O **sistema** ainda não é auditável nem confiável.
 
@@ -135,8 +137,12 @@ nem UserForm, nem gráfico — até RC1. Só correção, teste e validação.
 ### Sprint HARDENING 1 — Fórmulas
 - Criar `Eng_Saida`; motor deixa de escrever em `Painel` e `Estatística`
 - Restaurar as 1.365 fórmulas destruídas (fonte: `_backup_pre_fase3/`)
-- Painel e Estatística voltam a consumir por fórmula
-- **Aceite:** contagem de fórmulas antes/depois idêntica · regressão completa
+- Painel e Estatística voltam a consumir por fórmula, a partir de `Eng_Saida` (ADR-019)
+- **Validar a restauração, não confiar nela.** Diff automatizado célula a célula contra o
+  backup: endereço, fórmula em R1C1 e resultado. Aceite = 100% idêntico; qualquer
+  divergência é listada, não resumida em contagem
+- **Varredura ADR-019:** nenhuma fórmula de interface referencia `DB_Resultados`. Esperado: zero
+- **Aceite:** contagem **e conteúdo** idênticos · zero referência direta ao banco · regressão completa
 
 ### Sprint HARDENING 2 — Modelo do RUN
 - RUN sequencial + `Data | Hora | Turno | Lote | Equipamento | Usuário` (ADR-011)
@@ -150,6 +156,8 @@ nem UserForm, nem gráfico — até RC1. Só correção, teste e validação.
 
 ### Sprint HARDENING 4 — Validação
 - Estresse · regressão · usabilidade · desempenho
+- **Idempotência (4.8):** 1× · 10× · 100× execuções consecutivas → saída idêntica
+- **Persistência (4.9):** gerar → fechar → reabrir → gerar → resultado idêntico
 - **Teste com macros desabilitadas** (o cenário do auditor)
 - Teste de recuperação após falha
 - **Aceite:** Quality Gate 100% verde
