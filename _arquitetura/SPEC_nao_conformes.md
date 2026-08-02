@@ -1,120 +1,135 @@
-# Especificação — Resultados Não Conformes e Auditoria de Exclusões
+# Especificação — RUN Não Conforme e Auditoria de Exclusões
 
-**Origem:** requisito do gestor, 02/08/2026.
-**Escopo de gate:** não cria item novo. Concretiza os já abertos **3.1** (trilha de
-auditoria), **3.2** (log em todo caminho de gravação) e a pendência **F3-3** (`frmNaoConforme`).
+**Origem:** requisito do gestor, 02/08/2026 (revisão 2 — substitui a versão anterior).
+**Escopo de gate:** não cria item novo. Concretiza **3.1** (trilha de auditoria),
+**3.2** (log em todo caminho de gravação) e a pendência **F3-3**.
 **Sprint:** HARDENING 3.
 
 ---
 
-## 1. Regra de arquitetura que tudo abaixo respeita
+## 1. Regra que tudo abaixo respeita
 
 Nenhum formulário escreve em célula. Toda inclusão, alteração, movimentação ou exclusão
-passa por `mDados` (ADR-001). O log é emitido **de dentro do `mDados`** — nenhum caminho
-de gravação escapa.
+passa por `mDados` (ADR-001), e o log é emitido **de dentro do `mDados`** — nenhum
+caminho de gravação escapa. Não existe exclusão sem rastreabilidade.
 
 ---
 
-## 2. O que "transferir para Registros" significa aqui
+## 2. `Registros` passa a ser aba derivada
 
-O requisito diz *transferir para `Registros`* e também *nada é apagado do banco;
-a exclusão ocorre só na interface*. Os dois se conciliam de uma forma só:
+**Estrutura nova.** Saem `Rep 1 · Rep 2 · Rep 3`. Entra **uma coluna só: `RUN NC`**.
 
-- a linha **permanece** em `DB_Resultados`, com o mesmo RUN, o mesmo lote, o valor
-  original intacto, e o `Status` alterado para um estado **não elegível** do `Cfg_Status`;
-- por não ser elegível, some da view `Resultados` e sai de todos os cálculos;
-- uma **cópia de exibição** é escrita em `Registros`, para leitura e histórico.
+Layout a partir de **B4** (primeira linha gravável):
 
-**Por que não mover fisicamente.** A linha movida perderia o vínculo com a corrida que a
-gerou — RUN, lote, nível — e o registro que se quis preservar deixaria de ser rastreável.
-É o oposto do objetivo, e contraria o ADR-003 e a ISO 15189 §8.4.2 (valor original
-recuperável após a emenda). `Registros` é vitrine; `DB_Resultados` é a verdade.
+`Nº · Data · RUN NC · Nível · Analito · Resultado · Lote · Tipo de NC · Parecer Técnico ·
+Usuário · Data/Hora do registro`
+
+**Digitação manual deixa de existir.** Todo conteúdo chega automaticamente pelo
+formulário da aba `Resultados`. A aba fica protegida contra edição direta. Isso remove a
+classe inteira de erro em que um valor aparece em `Registros` sem corresponder a nenhuma
+linha do banco.
 
 ---
 
-## 3. Formulário `frmNaoConforme` (aba Resultados)
+## 3. `frmRunNC` — "Registrar RUN Não Conforme" (aba Resultados)
 
-Botão **"Registrar Resultado Não Conforme"**, mesmo padrão visual do `frmExcluir`.
+Padrão visual do `frmExcluir`.
 
-| Campo | Comportamento |
+| Etapa | Comportamento |
 |---|---|
-| RUN | combo, via `RunsDoLote` (chave principal) |
-| Nível | combo 1..NLV |
-| Analito | lista de seleção |
-| **Painel de conferência** | exibe Data · RUN · Nível · Lote · Analito · Resultado · Status atual **antes** de confirmar |
-| **Tipo de não conformidade** | combo lido de `Cfg_Status` — nenhum estado no código |
-| **Parecer Técnico da Exclusão** | multilinha, **obrigatório**; sem ele o botão confirmar fica desabilitado |
+| Informar o **RUN** | é a chave: o formulário **preenche sozinho** Data, Lote e Nível |
+| Selecionar analitos | um, vários ou **todos** |
+| Puxar resultados | automático — o RUN identifica a corrida, então o valor vem do banco |
+| Conferência | exibe Data · RUN · Nível · Lote · Analito · Resultado antes de confirmar |
+| Tipo de NC | combo lido do `Cfg_Status` — nenhum estado escrito em código |
+| **Parecer Técnico** | multilinha, obrigatório, **mínimo 5 palavras**; abaixo do resultado |
 
-Sugestões oferecidas na interface (o usuário pode editar e complementar): controle
-contaminado · erro comprovado de pipetagem · material hemolisado · repetição após
-recalibração · resultado lançado incorretamente · falha operacional · controle vencido ·
-troca de lote · equipamento com erro durante a corrida · outro (descrever).
+Sem parecer válido o botão salvar fica desabilitado. A contagem ignora espaços múltiplos
+e exige palavras reais, não 5 caracteres soltos.
 
----
+**Ao salvar:**
 
-## 4. Aba `Registros` — nova estrutura
+1. o registro **sai da aba `Resultados`** — `Status` passa a um estado não elegível
+2. a linha **permanece no `DB_Resultados`**, com RUN, lote e valor original intactos
+3. deixa de entrar em média, DP, CV%, Bias, Erro Total, Sigma, Z-Score e Westgard
+4. aparece em `Registros`, na primeira linha livre a partir de **B4**
 
-`Rep 1 · Rep 2 · Rep 3` → **`NC 1 · NC 2 · NC 3`**
-
-- o resultado não conforme entra automaticamente em **NC 1**
-- **NC 2** e **NC 3** ficam livres para repetições posteriores, digitadas à mão
-- inserção a partir de **B4**, primeira linha livre
-- campos transferidos: Data · RUN · Analito · Nível · Resultado · Lote · Equipamento
-  (quando existir) · tipo de NC
-
-**Impacto a tratar na implementação:** `mEstatistica` lê `Registros` para os marcadores
-do gráfico (repetição = X roxo; calibração = ícone), em `mEstatistica.bas:461` e `:537`.
-A semântica muda de *repetição* para *não conformidade* e o marcador precisa acompanhar.
-Dados existentes: 2 linhas de demonstração — migração trivial, mas obrigatória e
-verificada nos três produtos (`RegistrosStore` por lote).
+> **Por que a linha não sai do banco.** Movida fisicamente, ela perderia o vínculo com a
+> corrida que a gerou e o registro que se quis preservar deixaria de ser rastreável —
+> contrário ao ADR-003 e à ISO 15189 §8.4.2 (valor original recuperável após emenda).
+> `Registros` é vitrine; `DB_Resultados` é a verdade.
 
 ---
 
-## 5. `frmExcluirRegistro` (aba Registros)
+## 4. `frmExcluirRegistro` — "Excluir Registro NC" (aba Registros)
 
-Espelha o `frmExcluir`. Confirmação explícita antes de executar. Exige Parecer Técnico.
-Remove da vitrine `Registros`; **nunca** do `DB_Resultados`.
+O analista pode se enganar ao classificar. O formulário desfaz isso com controle:
+
+- confirmação explícita: *"Deseja realmente excluir este registro?"*
+- **Parecer Técnico obrigatório**, mesma regra de 5 palavras
+- some da aba `Registros`
+- **continua no `DB_Resultados`** — nada é apagado
 
 ---
 
-## 6. `DB_Exclusoes` — trilha de auditoria
+## 5. Duas tabelas de auditoria no `DB_Resultados`
 
-Aba própria, **append-only**, nunca editável pela interface.
+Conforme decidido pelo gestor, as duas tabelas ficam **na própria aba `DB_Resultados`**:
 
-> Aba separada, não uma segunda tabela dentro de `DB_Resultados`: o banco é lido em
-> bloco único (`CarregarDB`), e uma tabela vizinha na mesma planilha quebraria essa
-> leitura.
+| Tabela | Recebe |
+|---|---|
+| `LOG_Resultados` | exclusões e marcações de NC feitas na aba `Resultados` |
+| `LOG_Registros` | exclusões feitas na aba `Registros` |
 
-Colunas:
+**Implementação sem quebrar a leitura do banco.** `CarregarDB` lê o bloco `A:G` e
+`UltimaLinhaBanco` mede a coluna A. As duas tabelas ficam em **blocos de colunas
+deslocados à direita**, com intervalos nomeados próprios, então a leitura do banco
+permanece intacta e o requisito é atendido literalmente.
 
-`ID_Auditoria` · `Data/Hora da operação` · `Tipo de operação` · `RUN` · `Data da corrida` ·
-`Nível` · `Analito` · `Lote` · `Equipamento` · `Resultado` · `Status anterior` ·
+Colunas, idênticas nas duas (para que uma visão de auditoria possa uni-las):
+
+`ID_Auditoria` · `Data/Hora da operação` · `Tipo de operação` · `Aba de origem` · `RUN` ·
+`Data da corrida` · `Nível` · `Analito` · `Lote` · `Resultado` · `Status anterior` ·
 `Status novo` · `Parecer Técnico` · `Usuário do sistema` · `Usuário Office` ·
 `Usuário Windows` · `Nome do computador` · `Nome do arquivo` · `Versão do sistema`
 
-`ID_Auditoria` é único e não reaproveitável. Captura sem API externa:
-`Application.UserName`, `Environ$("USERNAME")`, `Environ$("COMPUTERNAME")`,
-`ThisWorkbook.Name`, mais uma constante `VERSAO_SISTEMA`.
+`ID_Auditoria` é único e nunca reaproveitado. Ambas são **append-only** e não editáveis
+pela interface. Captura sem dependência externa: `Application.UserName`,
+`Environ$("USERNAME")`, `Environ$("COMPUTERNAME")`, `ThisWorkbook.Name` e a constante
+`VERSAO_SISTEMA`.
 
 ---
 
-## 7. Aplicação global
+## 6. Aplicação global
 
 Todo formulário que exclua qualquer coisa — `frmExcluir`, `frmExcluirRegistro`,
-`frmNaoConforme` e os que vierem — obedece ao mesmo contrato: confirmação explícita,
-Parecer Técnico obrigatório, log completo em `DB_Exclusoes`, gravação só por `mDados`.
-**Não existe exclusão sem rastreabilidade.**
+`frmRunNC` e os que vierem — obedece ao mesmo contrato: confirmação explícita, Parecer
+Técnico obrigatório de no mínimo 5 palavras, log completo, gravação só por `mDados`.
+
+---
+
+## 7. Impactos mapeados antes de codificar
+
+1. **Gráfico.** `mEstatistica` lê `Registros` para os marcadores (X roxo = repetição,
+   ícone = calibração), em `mEstatistica.bas:461` e `:537`. Repetições deixam de existir
+   nessa aba; o marcador passa a significar **não conformidade** e o código acompanha.
+2. **Dados existentes.** 2 linhas de demonstração em `Registros`, 3 em `RegistrosStore`.
+   Migração trivial, mas obrigatória e verificada nos três produtos.
+3. **`RegistrosStore`.** A aba é por lote (ADR de armazém). O armazém continua; muda o
+   layout que ele guarda.
+4. **Proteção.** `Registros` passa a protegida de verdade — depende do item 3.3 do gate.
 
 ---
 
 ## 8. Validação obrigatória
 
-1. Unitário: `mDados` recusa exclusão sem parecer
-2. Unitário: `ID_Auditoria` único sob execuções repetidas
-3. Integração: NC → sai da view, sai do cálculo, aparece em `Registros`, gera log
-4. Estatística: média/DP/CV/Bias/ET/Sigma/Z/Westgard recalculados **sem** o valor NC
-5. Interface: confirmar impossível com o Parecer vazio ou só com espaços
-6. Migração `Rep`→`NC` sem perda, nos três produtos
-7. Marcadores do gráfico coerentes com a nova semântica
-8. Regressão completa das Fases 1 e 2
-9. Idempotência e persistência (itens 4.8 e 4.9)
+1. `mDados` recusa exclusão sem parecer, e recusa parecer com menos de 5 palavras
+2. `ID_Auditoria` único sob execuções repetidas
+3. RUN informado preenche Data, Lote, Nível e Resultado corretamente, sem digitação
+4. NC → sai da view, sai do cálculo, aparece em `Registros`, gera log
+5. Média/DP/CV/Bias/ET/Sigma/Z/Westgard recalculados **sem** o valor marcado
+6. Excluir da aba `Registros` **não** remove do `DB_Resultados`
+7. `Registros` recusa digitação manual
+8. Migração `Rep`→`RUN NC` sem perda, nos três produtos
+9. Marcadores do gráfico coerentes com a nova semântica
+10. Regressão completa das Fases 1 e 2 · idempotência (4.8) · persistência (4.9)
