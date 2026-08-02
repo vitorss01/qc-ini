@@ -15,6 +15,10 @@ __pycache__/
 # Streamlit
 .streamlit/secrets.toml
 
+# Segredos do Hórus (chaves/senhas — NUNCA versionar)
+.env
+*.secrets
+
 # Editores / SO
 .vscode/
 .idea/
@@ -23,3 +27,10 @@ Thumbs.db
 
 # Ferramentas locais (Claude Code)
 .claude/
+
+# Backups locais do sistema QC (snapshots de seguranca, nao sao fonte)
+_backup_pre_fase*/
+_backup_autorecuperacao/
+
+# Saidas geradas
+outputs/

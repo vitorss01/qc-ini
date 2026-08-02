@@ -1,0 +1,171 @@
+=== ABAS ===
+  Início           state=visible    dims=A1:H26         prot=True
+  Configuração     state=visible    dims=A1:G200        prot=True
+  Analitos         state=visible    dims=A1:AJ43        prot=True
+  LotesStore       state=veryHidden dims=A1:N41         prot=True
+  Resultados       state=visible    dims=A1:BD15003     prot=True
+  Calc             state=veryHidden dims=A1:CG182       prot=True
+  Painel           state=visible    dims=A1:R9          prot=True
+  Registros        state=visible    dims=A1:M203        prot=True
+  EQC_Dados        state=visible    dims=A1:O1003       prot=True
+  Estatística      state=visible    dims=A1:U126        prot=True
+  Usuarios         state=visible    dims=A1:N53         prot=True
+  Liberação        state=visible    dims=A1:J203        prot=True
+  LiberStore       state=veryHidden dims=A1:D1          prot=True
+  RegistrosStore   state=veryHidden dims=A1:L201        prot=True
+  Login            state=veryHidden dims=C8:I22         prot=True
+
+=== NOMES DEFINIDOS (45) ===
+  aInput           -> Analitos!$E$4:$P$43
+  axmax1           -> Calc!$CA$1
+  axmax2           -> Calc!$CC$1
+  axmax3           -> Calc!$CE$1
+  axmin1           -> Calc!$BZ$1
+  axmin2           -> Calc!$CB$1
+  axmin3           -> Calc!$CD$1
+  cadLogin         -> Usuarios!$H$5
+  cadMsg           -> Usuarios!$G$11
+  cadNome          -> Usuarios!$H$6
+  cadPapel         -> Usuarios!$H$8
+  cadSenha         -> Usuarios!$H$7
+  currentPapel     -> Usuarios!$N$2
+  currentUser      -> Usuarios!$N$1
+  filtroAte        -> Painel!$G$4
+  filtroDe         -> Painel!$G$3
+  libView          -> Liberação!$C$4:$F$203
+  loginMsg         -> Login!$C$20
+  loginPass        -> Login!$E$15
+  loginUser        -> Login!$E$13
+  loteAtivo        -> Configuração!$C$20
+  loteCarregado    -> Configuração!$G$1
+  qsel1            -> Painel!$M$3
+  qsel2            -> Painel!$M$4
+  qsel3            -> Painel!$N$3
+  qsel4            -> Painel!$N$4
+  rAnalito         -> Resultados!$E$4:$E$15003
+  rData            -> Resultados!$A$4:$A$15003
+  rFirst           -> Resultados!$BB$4:$BB$15003
+  rLote            -> Resultados!$BA$4:$BA$15003
+  rNivel           -> Resultados!$B$4:$B$15003
+  rSeq             -> Resultados!$C$4:$C$15003
+  rValor           -> Resultados!$F$4:$F$15003
+  regAnalito       -> Registros!$C$4:$C$203
+  regCalib         -> Registros!$I$4:$I$203
+  regData          -> Registros!$B$4:$B$203
+  regLoteCol       -> Configuração!$C$26:$C$75
+  regNivel         -> Registros!$D$4:$D$203
+  regRep1          -> Registros!$F$4:$F$203
+  regRep2          -> Registros!$G$4:$G$203
+  regRep3          -> Registros!$H$4:$H$203
+  regView          -> Registros!$B$4:$M$203
+  selAnalito       -> Painel!$C$3
+  xrunmax          -> Calc!$CG$1
+  xrunmin          -> Calc!$CF$1
+
+=== FORMULAS-CHAVE ===
+  Resultados!A4: 2025-01-06 00:00:00
+  Resultados!D4: QC-52261101
+  Resultados!E4: WBC
+  Resultados!BA4: =IF($D4="","",MID($D4,4,6))
+  Resultados!BB4: =IF($E4="","",IF(COUNTIFS($E$4:$E4,$E4,$C$4:$C4,$C4,$BA$4:$BA4,$BA4)=1,1,0))
+  Resultados!BD2: =IF(Configuração!$C$26="","",("QC-"&Configuração!$C$26&TEXT(1,"00")))
+  Calc!A3: 1
+  Calc!B3: =IF(selAnalito="","",IFERROR(_xlfn.AGGREGATE(15,6,rSeq/((rAnalito=selAnalito)*(rFirst=1)*((""&rLote)=(""&loteAtivo))),$A3),""))
+  Calc!C3: =IF($B3="","",_xlfn.MAXIFS(rData,rAnalito,selAnalito,rSeq,$B3,rLote,loteAtivo))
+  Calc!D3: =IF($C3="",0,IF(AND(OR(filtroDe="",$C3>=filtroDe),OR(filtroAte="",$C3<=filtroAte),OR(NOT(OR(qsel1,qsel2,qsel3,qsel4)),OR(AND(qsel1,ROUNDUP(MONTH($C3)/3,0)=1),AND(qsel2,ROUNDUP(MONTH($C3)/3,0)=2),AND(qsel3,ROUNDUP(MONTH($C3)/3,0)=3
+  Calc!E3: =IF(OR($B3="",$D3=0),NA(),$A3)
+  Calc!F3: =IF($B3="","",IF(COUNTIFS(rAnalito,selAnalito,rNivel,1,rSeq,$B3,rLote,loteAtivo)=0,"",SUMIFS(rValor,rAnalito,selAnalito,rNivel,1,rSeq,$B3,rLote,loteAtivo)))
+  Calc!G3: =IF(OR($F3="",$BU$1=""),"",($F3-$BT$1)/$BU$1)
+  Liberação!A4: 1
+  Liberação!B4: =IFERROR(IF(_xlfn.MINIFS(rData,rSeq,$A4,rLote,loteAtivo)=0,"",_xlfn.MINIFS(rData,rSeq,$A4,rLote,loteAtivo)),"")
+  Estatística!B3: 2025
+  Estatística!D3: 2025
+  Estatística!C7: =IF($A7="",0,COUNTIFS(rAnalito,$A7,rNivel,$B7,rData,">="&DATE($B$3,1,1),rData,"<="&DATE($D$3,12,31),rLote,IF($B$4="","*",$B$4)))
+  Estatística!D7: =IF($C7=0,"",AVERAGEIFS(rValor,rAnalito,$A7,rNivel,$B7,rData,">="&DATE($B$3,1,1),rData,"<="&DATE($D$3,12,31),rLote,IF($B$4="","*",$B$4)))
+  Estatística!E7: =IF($C7<2,"",SQRT((SUMPRODUCT((rAnalito=$A7)*(rNivel=$B7)*(YEAR(rData)>=$B$3)*(YEAR(rData)<=$D$3)*IF($B$4="",1,((""&rLote)=(""&$B$4)))*(rValor^2))-$C7*$D7^2)/($C7-1)))
+  Estatística!P7: =IF($A7="","",IFERROR(AVERAGEIFS(EQC_Dados!$O$4:$O$1003,EQC_Dados!$A$4:$A$1003,$A7,EQC_Dados!$B$4:$B$1003,">="&$B$3,EQC_Dados!$B$4:$B$1003,"<="&$D$3,EQC_Dados!$C$4:$C$1003,1),""))
+  Estatística!J7: =IF($A7="","",IFERROR(AVERAGE($P7:$U7),""))
+  Estatística!L7: =IF(OR($F7="",$F7=0,$G7="",$J7=""),"",($G7-$J7)/$F7)
+  Painel!B3: 2
+  Painel!C3: =IFERROR(INDEX(Analitos!$A$4:$A$43,$B$3),"")
+  Painel!C4: ="Analito "&$B$3&" de "&SUMPRODUCT(--(Analitos!$A$4:$A$43<>""))&"    ·    Lote em uso: "&loteAtivo
+  Painel!B7: =_xlfn.AGGREGATE(2,6,Calc!$H$3:$H$182)
+  Painel!O3: =IF(OR($G$3<>"",$G$4<>""),"⚠ FILTRO ATIVO: "&IF($G$3<>"",TEXT($G$3,"dd/mm/aa"),"início")&" a "&IF($G$4<>"",TEXT($G$4,"dd/mm/aa"),"hoje")&" — limpe De/Até p/ ver tudo","Sem filtro de data — mostrando todo o período")
+  Analitos!A2: ="LOTE EM USO:  "&loteAtivo&"   ·   Estes valores (Média/DP/CLIA/VB) pertencem só a este lote — troque o lote em Configuração para ver/editar os de outro. Linhas em branco = novos exames."
+  Analitos!R4: =IF($A4="","",IF($P4<>"",$P4,IF($K4<>"",$K4,IF(AND($M4<>"",$N4<>""),(IFERROR(INDEX($W$4:$W$6,MATCH($O4,$U$4:$U$6,0)),0.375))*SQRT($M4^2+$N4^2)+1.65*(IFERROR(INDEX($V$4:$V$6,MATCH($O4,$U$4:$U$6,0)),0.75))*$M4,""))))
+  Analitos!Y4: =IF($A4="","",IF($E4="","",$E4-3*$F4))
+  Analitos!AA4: =IF($Y4="","",$E4-($E4-$Y4)*1.1)
+  Configuração!C20: 522611
+  Configuração!C21: =IFERROR(INDEX(Configuração!$D$26:$D$75,MATCH($C$20,Configuração!$C$26:$C$75,0)),"")
+  Configuração!C26: 522611
+  Registros!A2: ="REGISTROS DO LOTE EM USO:  "&loteAtivo&"   ·   Repetições (até 3/analito/dia) viram X roxo no gráfico; 'Foi calibrado? = Sim' plota o ícone de calibração na média. Troque o lote em Configuração p/ ver outro."
+
+=== VBA ===
+  EstaPastaDeTrabalho.cls (23 linhas)
+      Sub Workbook_Open
+      Sub Workbook_BeforeSave
+      Sub Workbook_BeforeClose
+  Planilha1.cls (8 linhas)
+  Planilha2.cls (21 linhas)
+      Sub Worksheet_Change
+  Planilha3.cls (8 linhas)
+  Planilha4.cls (8 linhas)
+  Planilha5.cls (41 linhas)
+      Sub Worksheet_BeforeDoubleClick
+      Function LastLevel
+  Planilha6.cls (8 linhas)
+  Planilha7.cls (22 linhas)
+      Sub Worksheet_Change
+      Sub Worksheet_Activate
+  Planilha8.cls (8 linhas)
+  Planilha9.cls (8 linhas)
+  Planilha10.cls (8 linhas)
+  Planilha11.cls (8 linhas)
+  Planilha12.cls (21 linhas)
+      Sub Worksheet_BeforeDoubleClick
+  Planilha13.cls (8 linhas)
+  Planilha14.cls (8 linhas)
+  Planilha15.cls (8 linhas)
+  mSystem.bas (439 linhas)
+      Sub InitK
+      Function ToU
+      Function ToS
+      Function AddM
+      Function ShR
+      Function ShL
+      Function RotR
+      Function SHA256Hex
+      Function FindUserRow
+      Sub DoLogin
+      Sub CadastrarUsuario
+      Function AssinarCom
+      Sub CarimbarRubrica
+      Sub AbrirFormCorrida
+      Sub Assinar
+      Sub LockApp
+      Sub UnlockApp
+      Sub UnprotectAll
+      Sub Logout
+      Sub SystemLook
+      Sub AtualizarEixos
+      Sub ReprotectAll
+      Sub HookCharts
+      Function BlocoDoLote
+      Sub SalvarViewNoBloco
+      Sub CarregarBlocoNaView
+      Sub TrocarLote
+      Sub FlushLoteAtual
+  frmAssinar.frm (22 linhas)
+      Sub btnOK_Click
+      Sub btnCancel_Click
+      Sub UserForm_QueryClose
+  frmCorrida.frm (209 linhas)
+      Sub UserForm_Initialize
+      Sub txtData_Change
+      Function SeqParaData
+      Sub AtualizarSeq
+      Sub btnCarregar_Click
+      Sub btnSalvar_Click
+      Sub btnCancelar_Click
+  clsCht.cls (41 linhas)
+      Sub C_MouseMove
