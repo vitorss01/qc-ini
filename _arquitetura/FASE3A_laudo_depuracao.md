@@ -70,3 +70,40 @@ Scripts de diagnóstico e validação em `C:\Users\vitor\AppData\Local\Temp\clau
 1. **`priR`/`priRun`/`ultR`/`ultRun` não são reinicializados por grupo** (`mEstatistica.bas:900`). Em VBA o escopo de `Dim` é o *procedimento*, não o laço; a linha 901 só zera `nv` e `maxZ`. A partir do primeiro grupo com violação, os 62 grupos seguintes gravam em `agg` a "primeira/última regra e RUN" do grupo anterior. Isso vai direto ao Painel em `AtualizarPainelEng:738`. Defeito provado por construção, hoje mascarado porque `AtualizarPainelEng` nunca havia executado. Correção: acrescentar `priR = "": priRun = 0: ultR = "": ultRun = 0` na linha 901.
 
 2. **Primeira execução real destrói fórmulas permanentemente.** Agora que o caminho VBA executa, `AtualizarPainelEng` sobrescreve `Painel!B7:J9` e `AtualizarEstatisticaAba` sobrescreve `Estatística!C7:M126` — células que hoje contêm fórmulas — com valores literais. É o desenho da Fase 3 (motor único em VBA), mas é irreversível e ainda não aconteceu no arquivo entregue (validei sem salvar). Convém decidir conscientemente antes de rodar no arquivo de produção.
+---
+
+# PASSO 3 — Vazamento de estado: CORRIGIDO
+
+`priR`/`priRun`/`ultR`/`ultRun` agora são reiniciados por grupo, junto com `nv` e `maxZ`.
+
+**Validação:** `grupos_com_0_violacoes_reportando_regra = 0` (esperado 0).
+Antes da correção, todo grupo processado após o primeiro com violação herdava a
+regra e o RUN do grupo anterior — falso positivo silencioso em até 62 grupos.
+
+# PASSO 4 — Destruição de fórmulas: CONFIRMADA
+
+Contagem de células com fórmula, antes e depois de uma execução de `AtualizarEstatistica`:
+
+| Aba | Antes | Depois | Perda |
+|---|---|---|---|
+| Painel | 58 | 13 | **45** |
+| Estatística | 2.160 | 840 | **1.320** |
+| Resultados | 0 | 0 | 0 |
+| Liberação | 403 | 403 | 0 |
+| Analitos | 658 | 658 | 0 |
+| DB_Resultados | 45.190 | 45.190 | 0 |
+
+**Perda total: 1.365 fórmulas — irreversível.**
+
+`AtualizarPainelEng` e `AtualizarEstatisticaAba` gravam valores literais sobre células
+que continham fórmulas. É coerente com o desenho da Fase 3 (motor único em VBA, Excel
+guarda só o resultado), mas **não foi decisão explicitamente aprovada** e não tem volta:
+uma vez executado no arquivo de produção, a camada de fórmulas deixa de existir.
+
+**Tempos após as correções:** `RegistrarEventosWestgard` 0,098 s · `AtualizarEstatistica` 0,341 s.
+
+## Decisão necessária antes de promover
+- **(A)** Aceitar: motor VBA é a única fonte de cálculo. Painel e Estatística viram saída.
+  Exige que o motor rode sempre, senão as abas ficam com dados congelados sem aviso.
+- **(B)** Preservar fórmulas: motor escreve em área própria e as abas passam a referenciá-la.
+  Mantém a planilha auditável sem macro, mas duplica a lógica de apresentação.
