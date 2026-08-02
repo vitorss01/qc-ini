@@ -279,8 +279,37 @@ Serão convertidas em ADR quando implementadas:
 - **Proteção persistente** — `<sheetProtection>` no arquivo salvo, senha no projeto VBA,
   distribuição em estado bloqueado
 
-# Não decidido (registrado para evitar suposição)
+---
 
-- **Power Query como alimentador do banco** — nunca foi avaliado nem decidido neste
-  projeto. A entrada de dados hoje é exclusivamente por UserForm ou pela área de dados
-  interfaceados em `DB_Resultados`.
+## ADR-017 · Power Query como alimentador do banco
+**Status:** ⏳ decidida, implementação pelo gestor (Claude auxilia)
+
+**Contexto.** A entrada de dados hoje é por UserForm ou pela área de dados interfaceados
+em `DB_Resultados`. Alimentar o banco a partir de exportações do equipamento/LIS reduz
+digitação e erro de transcrição.
+
+**Decisão.** Power Query passará a alimentar o banco. **Implementação a cargo do gestor**;
+o assistente atua em apoio (revisão, integração com o motor, testes).
+
+**Pontos de integração a resolver no desenho — cada um toca um ADR vigente:**
+
+1. **Atribuição do `RUN` (ADR-004/011).** Power Query carrega dados; ele não sabe atribuir
+   RUN. Ou o RUN vem pronto na origem, ou uma rotina de pós-carga o atribui antes de o
+   registro ser considerado válido. Carga sem RUN quebra `Calc`, `Liberação` e
+   `Eventos_Westgard`, que usam RUN como chave.
+
+2. **Trilha de auditoria (pendente).** A decisão de logar **dentro de `mDados`** existe
+   justamente para nenhum caminho de gravação escapar. Power Query escreve direto na
+   planilha, contornando essa camada. Sem tratamento, a carga externa fica invisível ao
+   log — exatamente a lacuna que ISO 15189 §8.4.1 cobra. Opções: rotina de pós-carga que
+   registra o lote de importação, ou área de *staging* separada que só entra no banco via
+   `mDados`.
+
+3. **Proteção persistente (pendente).** Uma consulta que atualiza precisa da área
+   gravável. Isso conflita com distribuir o arquivo em estado bloqueado. Provável
+   solução: PQ escreve numa aba de staging desprotegida; `DB_Resultados` permanece
+   protegido e só é alimentado por código.
+
+**Recomendação de desenho (não vinculante).** `Power Query → aba de staging →
+validação/atribuição de RUN → mDados → DB_Resultados`. Preserva os três ADRs acima sem
+abrir exceção para nenhum deles.
