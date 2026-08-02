@@ -75,7 +75,10 @@ não vale.
 
 ## Resumo
 
-**8 ✅ · 24 ⏳ · 2 ❌**
+> **Regra de merge:** nada entra na `main` enquanto houver ⏳ ou ❌.
+> A branch `fase3a-motor-cqi` é de trabalho; se um PR for aberto, deve ser **draft**.
+
+**17 ✅ · 23 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
 
 O **motor** está pronto e validado. O **sistema** ainda não é auditável nem confiável.
 
