@@ -1,0 +1,155 @@
+'@@CONSTANTES
+' ===================== IDENTIDADE DA CORRIDA =====================
+' O RUN identifica a CORRIDA, nao o resultado. Uma corrida cobre varios
+' analitos e os 3 niveis; a chave de um resultado continua sendo
+' RUN + Nivel + Analito (ver ChaveReg).
+'
+' ANTES: NovoRUN devolvia max(RUN encontrado no banco) + 1. O contador era
+' DERIVADO do conteudo da tabela, e isso permite REUTILIZACAO: apagando
+' linhas de verdade, o maximo cai e o proximo RUN repete um numero ja usado.
+' Num Audit_Log append-only isso e irreparavel -- duas corridas distintas com
+' a mesma identidade, e nao da para reescrever o log para desambiguar.
+' Havia ainda um defeito de lote: numa importacao com DUAS datas, nenhuma
+' delas ainda esta no banco, entao ambas recebiam max+1 -- o MESMO RUN para
+' corridas diferentes.
+'
+' AGORA: o RUN vem de um contador PERSISTIDO (proxRUN, na aba Corridas) e a
+' corrida e registrada numa tabela propria. O contador nunca e recalculado a
+' partir dos dados; so e reparado PARA CIMA, nunca para baixo. Assim, mesmo
+' que o contador se perca ou que algum caminho de gravacao escape, o proximo
+' RUN nunca repete um numero ja presente no banco ou no registro de corridas.
+'
+' O RUN e IMUTAVEL: uma vez atribuido, nao muda por exclusao, correcao de data
+' ou reordenacao. UpsertResultados nunca reescreve a coluna do RUN.
+Public Const CORRIDAS As String = "Corridas"
+Public Const CORRIDAS_R0 As Long = 4
+Public Const CC_RUN As Long = 1
+Public Const CC_DATA As Long = 2
+Public Const CC_HORA As Long = 3
+Public Const CC_TURNO As Long = 4
+Public Const CC_LOTE As Long = 5
+Public Const CC_EQUIP As Long = 6
+Public Const CC_USER As Long = 7
+Public Const CC_CRIADO As Long = 8
+Public Const CC_CRIADOPOR As Long = 9
+'@@FUNCOES
+
+Public Function UltimaLinhaCorridas() As Long
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets(CORRIDAS)
+    UltimaLinhaCorridas = ws.Cells(ws.rows.Count, CC_RUN).End(xlUp).Row
+    If UltimaLinhaCorridas < CORRIDAS_R0 Then UltimaLinhaCorridas = CORRIDAS_R0 - 1
+End Function
+
+' Maior RUN ja existente, olhando o banco E o registro de corridas.
+' E o piso do contador: ele nunca pode ficar abaixo disso.
+Private Function MaiorRUNUsado() As Long
+    Dim dados As Variant, i As Long, mx As Long, ws As Worksheet, lastRow As Long
+    dados = CarregarDB()
+    If Not IsEmpty(dados) Then
+        For i = 1 To UBound(dados, 1)
+            If IsNumeric(dados(i, COL_RUN)) Then
+                If CLng(Val(dados(i, COL_RUN))) > mx Then mx = CLng(Val(dados(i, COL_RUN)))
+            End If
+        Next i
+    End If
+    Set ws = ThisWorkbook.Sheets(CORRIDAS)
+    lastRow = UltimaLinhaCorridas()
+    For i = CORRIDAS_R0 To lastRow
+        If IsNumeric(ws.Cells(i, CC_RUN).Value) Then
+            If CLng(Val(ws.Cells(i, CC_RUN).Value)) > mx Then mx = CLng(Val(ws.Cells(i, CC_RUN).Value))
+        End If
+    Next i
+    MaiorRUNUsado = mx
+End Function
+
+' Proximo RUN SEM consumir. Auto-reparo: se o contador estiver atrasado em
+' relacao ao que ja existe, ele SOBE. Nunca desce -- e essa assimetria que
+' torna a reutilizacao impossivel.
+Public Function ProximoRUNPeek() As Long
+    Dim r As Range, atual As Long, piso As Long
+    Set r = ThisWorkbook.Names("proxRUN").RefersToRange
+    atual = CLng(Val(r.Value))
+    piso = MaiorRUNUsado() + 1
+    If atual < piso Then
+        atual = piso
+        r.Value = atual
+    End If
+    ProximoRUNPeek = atual
+End Function
+
+' Consome o proximo RUN.
+Public Function AlocarRUN() As Long
+    Dim n As Long
+    n = ProximoRUNPeek()
+    ThisWorkbook.Names("proxRUN").RefersToRange.Value = n + 1
+    AlocarRUN = n
+End Function
+
+' RUN de uma corrida ja registrada. Devolve 0 se ela nao existe.
+' Turno entra na chave: e o que permite duas corridas no mesmo dia (item 2.4).
+' Enquanto a interface nao oferecer o campo, turno chega vazio e o
+' comportamento e identico ao de hoje -- uma corrida por (data, lote).
+Public Function RunDaCorrida(ByVal dt As Date, ByVal loteCore As String, _
+                             Optional ByVal turno As String = "") As Long
+    Dim ws As Worksheet, i As Long, lastRow As Long
+    Set ws = ThisWorkbook.Sheets(CORRIDAS)
+    lastRow = UltimaLinhaCorridas()
+    For i = CORRIDAS_R0 To lastRow
+        If IsDate(ws.Cells(i, CC_DATA).Value) Then
+            If CDate(ws.Cells(i, CC_DATA).Value) = dt Then
+                If Trim$(CStr(ws.Cells(i, CC_LOTE).Value)) = Trim$(loteCore) Then
+                    If Trim$(CStr(ws.Cells(i, CC_TURNO).Value)) = Trim$(turno) Then
+                        RunDaCorrida = CLng(Val(ws.Cells(i, CC_RUN).Value))
+                        Exit Function
+                    End If
+                End If
+            End If
+        End If
+    Next i
+End Function
+
+' Previsao para exibir enquanto o usuario digita. NAO aloca e NAO registra.
+' Usar em qualquer caminho que nao seja gravacao efetiva.
+Public Function PreverRUN(ByVal dt As Date, ByVal loteCore As String, _
+                          Optional ByVal turno As String = "") As Long
+    Dim r As Long
+    r = RunDaCorrida(dt, loteCore, turno)
+    If r > 0 Then
+        PreverRUN = r
+    Else
+        PreverRUN = ProximoRUNPeek()
+    End If
+End Function
+
+' Identidade definitiva da corrida. Cria e registra se ainda nao existir.
+' E o unico caminho que consome numero. Chamar SO na gravacao.
+Public Function ObterOuCriarRUN(ByVal dt As Date, ByVal loteCore As String, _
+                                Optional ByVal turno As String = "") As Long
+    Dim ws As Worksheet, r As Long, lin As Long
+    r = RunDaCorrida(dt, loteCore, turno)
+    If r > 0 Then ObterOuCriarRUN = r: Exit Function
+
+    r = AlocarRUN()
+    Set ws = ThisWorkbook.Sheets(CORRIDAS)
+    lin = UltimaLinhaCorridas() + 1
+    If lin < CORRIDAS_R0 Then lin = CORRIDAS_R0
+    ws.Cells(lin, CC_RUN).Value = r
+    ws.Cells(lin, CC_DATA).Value = dt
+    ws.Cells(lin, CC_TURNO).Value = turno
+    ws.Cells(lin, CC_LOTE).NumberFormat = "@"
+    ws.Cells(lin, CC_LOTE).Value = loteCore
+    ws.Cells(lin, CC_USER).Value = Application.UserName
+    ws.Cells(lin, CC_CRIADO).Value = Now
+    ws.Cells(lin, CC_CRIADOPOR).Value = Environ$("USERNAME")
+    ObterOuCriarRUN = r
+End Function
+
+' MANTIDA POR COMPATIBILIDADE, com semantica de PREVISAO.
+' Qualquer chamador antigo que nao tenha sido migrado passa a nao alocar --
+' falha segura. Se ainda assim um RUN previsto for gravado no banco sem passar
+' por ObterOuCriarRUN, o auto-reparo de ProximoRUNPeek eleva o contador acima
+' dele na proxima chamada, e o numero nao e reutilizado.
+Public Function NovoRUN(ByVal dt As Date, ByVal loteCore As String) As Long
+    NovoRUN = PreverRUN(dt, loteCore)
+End Function

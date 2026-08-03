@@ -124,11 +124,12 @@ $eng.Range($eng.Cells(2, 1), $eng.Cells(2, $ultimaCol)).Font.Bold = $true
 $eng.Cells($LINHA_STAT - 1, 1).Value2 = 'Nivel'
 foreach ($c in $camposStat.Keys) { $eng.Cells($LINHA_STAT - 1, $c).Value2 = $camposStat[$c] }
 $eng.Range($eng.Cells($LINHA_STAT - 1, 1), $eng.Cells($LINHA_STAT - 1, 21)).Font.Bold = $true
-# variavel intermediaria de proposito: a forma inline ".Value2 = $t + 1" faz o
-# PowerShell 5.1 tentar converter Int32 em String e falhar no COM.
+# .Value, nunca .Value2, para escalar numerico: no PowerShell 5.1 o binding COM
+# de .Value2 escolhe de forma intermitente a sobrecarga de String e estoura
+# InvalidCast com Int32/Double. Texto funciona nos dois; numero, so em .Value.
 for ($t = 0; $t -lt $NLV; $t++) {
     $nivel = $t + 1
-    $eng.Cells($LINHA_STAT + $t, 1).Value2 = $nivel
+    $eng.Cells($LINHA_STAT + $t, 1).Value = $nivel
 }
 
 # ---- bloco da tabela de parametros (aba Estatistica) ----
@@ -141,14 +142,14 @@ for ($k = 0; $k -lt $camposEst.Count; $k++) {
 $eng.Range($eng.Cells($LINHA_EST - 1, 1), $eng.Cells($LINHA_EST - 1, 13)).Font.Bold = $true
 for ($r = 0; $r -lt $LINHAS_EST; $r++) {
     $ordem = $r + 1
-    $eng.Cells($LINHA_EST + $r, 1).Value2 = $ordem
+    $eng.Cells($LINHA_EST + $r, 1).Value = $ordem
 }
 # sem AutoFilter de proposito: criaria o nome definido parasita
 # Eng_Saida!_FilterDatabase, que poluiria o inventario de nomes e o diff.
 
 # ---- coluna A: slots ----
 for ($i = 1; $i -le $NK; $i++) {
-    $eng.Cells($KC0 + $i - 1, 1).Value2 = $i
+    $eng.Cells($KC0 + $i - 1, 1).Value = $i
 }
 
 # ---- nomes definidos: o VBA e as formulas referenciam por nome, nao por endereco ----
