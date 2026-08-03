@@ -16,6 +16,9 @@ Private Const CF0 As Long = 6          ' Calc: 1a coluna de nivel (F)
 Private Const NFD As Long = 22         ' Calc: campos por nivel
 Private Const EF0 As Long = 3          ' Eng_Saida: 1a coluna de bloco de nivel
 Private Const NEF As Long = 7          ' Eng_Saida: campos por nivel
+Private Const COL_FILTRO As Long = 24  ' Eng_Saida: filtro de data por corrida
+Private Const COL_VALOR0 As Long = 25  ' Eng_Saida: 1a coluna de valor por nivel
+Private Const LINHA_STAT As Long = 185 ' Eng_Saida: 1a linha do bloco de estatistica
 Private Const AR0 As Long = 4          ' Analitos: 1a linha
 Private Const ARN As Long = 43
 Private Const E0  As Long = 7          ' Estatistica: 1a linha
@@ -329,7 +332,7 @@ Public Sub AtualizarCalc()
     GarantirDB
 
     ' limpa a area de saida (colunas B em diante; a coluna A guarda os slots fixos)
-    ws.Range(ws.Cells(KC0, 2), ws.Cells(KC0 + NK - 1, EF0 + NLV * NEF - 1)).ClearContents
+    ws.Range(ws.Cells(KC0, 2), ws.Cells(KC0 + NK - 1, COL_VALOR0 + NLV - 1)).ClearContents
     ws.Range("C1").Value = analito
     ws.Range("E1").Value = lote
     ws.Range("G1").Value = Now
@@ -417,6 +420,21 @@ Public Sub AtualizarCalc()
         outRun(i, 1) = runs(i)
     Next i
     ws.Range(ws.Cells(KC0, 2), ws.Cells(KC0 + nRun - 1, 2)).Value = outRun
+
+    ' Filtro de data e valores por nivel: e o que AtualizarPainelEng consome.
+    ' Publicados aqui para que o Painel nunca precise ler o Calc -- se lesse,
+    ' dependeria de o Excel ter recalculado as formulas que apontam para ca.
+    Dim outFil() As Variant, outVal() As Variant
+    ReDim outFil(1 To nRun, 1 To 1)
+    ReDim outVal(1 To nRun, 1 To NLV)
+    For i = 1 To nRun
+        outFil(i, 1) = IIf(PassaFiltro(dts(i)), 1, 0)
+        For t = 0 To NLV - 1
+            If temDado(t, i) Then outVal(i, t + 1) = valor(t, i) Else outVal(i, t + 1) = ""
+        Next t
+    Next i
+    ws.Range(ws.Cells(KC0, COL_FILTRO), ws.Cells(KC0 + nRun - 1, COL_FILTRO)).Value = outFil
+    ws.Range(ws.Cells(KC0, COL_VALOR0), ws.Cells(KC0 + nRun - 1, COL_VALOR0 + NLV - 1)).Value = outVal
 
     For t = 0 To NLV - 1
         ReDim outLvl(1 To nRun, 1 To NEF)
@@ -610,74 +628,113 @@ Public Function DetalheViolacao(ByVal analito As String, ByVal nivel As Long) As
 End Function
 
 ' ============================ PAINEL ============================
+' ======================= MOTOR: ESTATISTICA POR NIVEL =======================
+' Marco 3 do Sprint HARDENING 1 (ADR-019).
+'
+' ANTES: lia o Calc, calculava n/media/DP/CV/bias/ET/Sigma e gravava direto nas
+' celulas do Painel, destruindo 45 das 48 formulas da aba.
+'
+' AGORA: le Eng_Saida (nunca o Calc) e publica em Eng_Saida. O Painel virou
+' camada de apresentacao pura: le por formula e nao calcula mais nada.
+'
+' Por que parou de ler o Calc: depois do Marco 2 as colunas de regra do Calc sao
+' formulas que apontam para Eng_Saida. Se o motor as lesse, passaria a depender
+' de o Excel ter recalculado a planilha antes -- com Calculation manual, ou com
+' a rotina chamada em sequencia dentro de outra, leria valor velho sem avisar.
+' Lendo Eng_Saida, le o que o proprio motor acabou de escrever.
+'
+' Correcao de conta que vem junto (as formulas do Painel estavam erradas):
+'   Erro Total  antes 1,65*CV + bias        agora Abs(bias) + 1,65*CV
+'   Sigma       antes (ETp - bias)/CV       agora (ETp - Abs(bias))/CV
+' Sem o Abs, bias negativo -- media abaixo do alvo, situacao corriqueira --
+' subestimava o Erro Total e superestimava o Sigma. CLSI/Westgard: TE = |bias| +
+' 1,65*CV. O motor ja estava certo; a interface e que discordava dele.
 Public Sub AtualizarPainelEng()
-    Dim ws As Worksheet, ca As Worksheet, analito As String, lote As String
+    Dim eng As Worksheet, analito As String
     Dim t As Long, i As Long, n As Long, v() As Double, media As Double, dp As Double
     Dim cv As Double, bias As Double, et As Double, sg As Double, etp As Double
-    Dim aM As Double, aS As Double, rr As Long, rejTot As Long
-    Dim cnt(1 To 5) As Long, k2 As Long, bloco As Variant, blocoF As Variant
-    Set ws = ThisWorkbook.Sheets("Painel")
-    Set ca = ThisWorkbook.Sheets("Calc")
+    ' alvoM/alvoS, nunca alvoM/alvoS: VBA e insensivel a maiusculas, entao "alvoS" e o
+    ' mesmo token que a palavra reservada "As" e o modulo nao compila.
+    Dim alvoM As Double, alvoS As Double, rejTot As Long
+    Dim cnt(1 To 5) As Long, k2 As Long
+    Dim flags As Variant, vals As Variant, filtros As Variant
+    Dim outStat() As Variant
+
+    ' O motor nao referencia mais a aba Painel, nem para leitura.
+    Set eng = ThisWorkbook.Sheets("Eng_Saida")
     analito = Trim$(CStr(ThisWorkbook.Names("selAnalito").RefersToRange.Value))
-    lote = LoteAtivoCore()
+
+    ' uma leitura em bloco de tudo que veio do motor
+    filtros = eng.Range(eng.Cells(KC0, COL_FILTRO), eng.Cells(KC0 + NK - 1, COL_FILTRO)).Value
+    vals = eng.Range(eng.Cells(KC0, COL_VALOR0), eng.Cells(KC0 + NK - 1, COL_VALOR0 + NLV - 1)).Value
+    flags = eng.Range(eng.Cells(KC0, EF0), eng.Cells(KC0 + NK - 1, EF0 + NLV * NEF - 1)).Value
+
+    ReDim outStat(1 To NLV, 1 To 21)
+
     For t = 0 To NLV - 1
-        rr = 7 + t
         n = 0: ReDim v(1 To NK)
         For i = 1 To 5
             cnt(i) = 0
         Next i
         rejTot = 0
-        If IsEmpty(blocoF) Then blocoF = ca.Range(ca.Cells(KC0, 4), ca.Cells(KC0 + NK - 1, 4)).Value
-        bloco = ca.Range(ca.Cells(KC0, CF0 + t * NFD), ca.Cells(KC0 + NK - 1, CF0 + t * NFD + 10)).Value
+
         For i = 1 To NK
-            If Val(blocoF(i, 1)) = 1 Then
-                If IsNumeric(bloco(i, 1)) And Trim$(CStr(bloco(i, 1))) <> "" Then
-                    n = n + 1: v(n) = CDbl(bloco(i, 1))
+            If Val(filtros(i, 1)) = 1 Then
+                If IsNumeric(vals(i, t + 1)) And Trim$(CStr(vals(i, t + 1))) <> "" Then
+                    n = n + 1: v(n) = CDbl(vals(i, t + 1))
                 End If
+                ' campos 1..5 do bloco do nivel = R13s, R22s, RR4s, R41s, R10x
                 For k2 = 1 To 5
-                    If Val(bloco(i, 5 + k2)) = 1 Then cnt(k2) = cnt(k2) + 1
+                    If Val(flags(i, t * NEF + k2)) = 1 Then cnt(k2) = cnt(k2) + 1
                 Next k2
-                If CStr(bloco(i, 11)) = "REJEITADO" Then rejTot = rejTot + 1
+                ' campo 7 = Veredicto
+                If CStr(flags(i, t * NEF + 7)) = "REJEITADO" Then rejTot = rejTot + 1
             End If
         Next i
+
         media = CalcularMedia(v, n)
         dp = CalcularDP(v, n, media)
         cv = CalcularCV(dp, media)
-        AlvoAnalito analito, t + 1, aM, aS, etp
-        bias = CalcularBias(media, aM)
+        AlvoAnalito analito, t + 1, alvoM, alvoS, etp
+        bias = CalcularBias(media, alvoM)
         et = CalcularErroTotal(cv, bias)
         sg = CalcularSigma(etp, bias, cv)
 
-        ws.Cells(rr, 2).Value = n
-        ws.Cells(rr, 3).Value = IIf(n = 0, "", media)
-        ws.Cells(rr, 4).Value = IIf(n < 2, "", dp)
-        ws.Cells(rr, 5).Value = IIf(n < 2 Or media = 0, "", cv)
-        ws.Cells(rr, 6).Value = IIf(etp = 0, "", etp)
-        ws.Cells(rr, 7).Value = IIf(n = 0 Or aM = 0, "", bias)
-        ws.Cells(rr, 8).Value = IIf(n < 2 Or media = 0, "", et)
-        ws.Cells(rr, 9).Value = IIf(n < 2 Or cv = 0 Or etp = 0, "", sg)
-        ws.Cells(rr, 10).Value = IIf(n = 0, "", IIf(rejTot > 0, "REJEITADO", "OK"))
+        outStat(t + 1, 2) = n
+        outStat(t + 1, 3) = IIf(n = 0, "", media)
+        outStat(t + 1, 4) = IIf(n < 2, "", dp)
+        outStat(t + 1, 5) = IIf(n < 2 Or media = 0, "", cv)
+        outStat(t + 1, 6) = IIf(etp = 0, "", etp)
+        outStat(t + 1, 7) = IIf(n = 0 Or alvoM = 0, "", bias)
+        outStat(t + 1, 8) = IIf(n < 2 Or media = 0, "", et)
+        outStat(t + 1, 9) = IIf(n < 2 Or cv = 0 Or etp = 0, "", sg)
+        outStat(t + 1, 10) = IIf(n = 0, "", IIf(rejTot > 0, "REJEITADO", "OK"))
+        outStat(t + 1, 11) = ""
+        outStat(t + 1, 12) = ""
         For i = 1 To 5
-            ws.Cells(rr, 12 + i).Value = cnt(i)
+            outStat(t + 1, 12 + i) = cnt(i)
         Next i
-        ws.Cells(rr, 18).Value = cnt(1) + cnt(2) + cnt(3) + cnt(4) + cnt(5)
-        ' resumo — o historico completo fica na aba Eventos_Westgard
+        outStat(t + 1, 18) = cnt(1) + cnt(2) + cnt(3) + cnt(4) + cnt(5)
+
+        ' resumo: o historico completo fica na aba Eventos_Westgard
         Dim aa As Variant
         aa = AgregadoWestgard(analito, t + 1)
         If CLng(aa(0)) = 0 Then
-            ws.Cells(rr, 19).Value = "—"
-            ws.Cells(rr, 20).Value = ""
-            ws.Cells(rr, 21).Value = ""
+            outStat(t + 1, 19) = Chr$(151)
+            outStat(t + 1, 20) = ""
+            outStat(t + 1, 21) = ""
         Else
-            ws.Cells(rr, 19).Value = aa(3) & " · RUN " & aa(4)
-            ws.Cells(rr, 20).Value = RegraClassificacao(Split(CStr(aa(3)), "+")(0))
-            ws.Cells(rr, 21).Value = aa(0) & "x  |  maior Z " & Format(aa(5), "+0.00;-0.00")
+            outStat(t + 1, 19) = aa(3) & " " & Chr$(183) & " RUN " & aa(4)
+            outStat(t + 1, 20) = RegraClassificacao(Split(CStr(aa(3)), "+")(0))
+            outStat(t + 1, 21) = aa(0) & "x  |  maior Z " & Format(aa(5), "+0.00;-0.00")
         End If
     Next t
-    ws.Cells(6, 19).Value = "Últ. violação": ws.Cells(6, 19).Font.Bold = True
-    ws.Cells(6, 20).Value = "Classificação": ws.Cells(6, 20).Font.Bold = True
-    ws.Cells(6, 21).Value = "Histórico": ws.Cells(6, 21).Font.Bold = True
-    ws.Columns(19).ColumnWidth = 18: ws.Columns(20).ColumnWidth = 18: ws.Columns(21).ColumnWidth = 22
+
+    ' escrita unica do bloco A..U; a coluna A repoe o proprio numero do nivel
+    For t = 1 To NLV
+        outStat(t, 1) = t
+    Next t
+    eng.Range(eng.Cells(LINHA_STAT, 1), eng.Cells(LINHA_STAT + NLV - 1, 21)).Value = outStat
 End Sub
 
 ' ============================ ABA ESTATISTICA ============================
@@ -685,7 +742,7 @@ Public Sub AtualizarEstatisticaAba()
     Dim ws As Worksheet, wa As Worksheet, i As Long, t As Long, er As Long
     Dim analito As String, anoDe As Long, anoAte As Long, loteF As String
     Dim st As Variant, n As Long, media As Double, dp As Double, cv As Double
-    Dim aM As Double, aS As Double, etp As Double, bias As Double, et As Double, sg As Double
+    Dim alvoM As Double, alvoS As Double, etp As Double, bias As Double, et As Double, sg As Double
     Dim outp() As Variant, linhas As Long
     Set ws = ThisWorkbook.Sheets("Estatística")
     Set wa = ThisWorkbook.Sheets("Analitos")
@@ -710,8 +767,8 @@ Public Sub AtualizarEstatisticaAba()
                 st = EstatBasica(analito, t, loteF, anoDe, anoAte)
                 n = st(0): media = st(1): dp = st(2)
                 cv = CalcularCV(dp, media)
-                AlvoAnalito analito, t, aM, aS, etp
-                bias = CalcularBias(media, aM)
+                AlvoAnalito analito, t, alvoM, alvoS, etp
+                bias = CalcularBias(media, alvoM)
                 et = CalcularErroTotal(cv, bias)
                 sg = CalcularSigma(etp, bias, cv)
                 outp(er, 1) = n
@@ -721,7 +778,7 @@ Public Sub AtualizarEstatisticaAba()
                 outp(er, 5) = IIf(etp = 0, "", etp)
                 outp(er, 6) = IIf(IsNumeric(wa.Cells(i, 19).Value), wa.Cells(i, 19).Value, "")
                 outp(er, 7) = IIf(IsNumeric(wa.Cells(i, 20).Value), wa.Cells(i, 20).Value, "")
-                outp(er, 8) = IIf(n = 0 Or aM = 0, "", bias)
+                outp(er, 8) = IIf(n = 0 Or alvoM = 0, "", bias)
                 outp(er, 9) = IIf(n < 2 Or media = 0, "", et)
                 outp(er, 10) = IIf(n < 2 Or cv = 0 Or etp = 0, "", sg)
                 outp(er, 11) = IIf(n < 2 Or cv = 0 Or etp = 0, "", ClassificarSigma(sg))
@@ -816,14 +873,14 @@ Public Sub RegistrarEventosWestgard()
                 partes = Split(CStr(listaCh(ch)), "|")
                 analitoN = partes(0): nivelN = CLng(partes(1))
 
-                Dim aM As Double, aS As Double, etp As Double
-                AlvoAnalito analitoN, nivelN, aM, aS, etp
+                Dim alvoM As Double, alvoS As Double, etp As Double
+                AlvoAnalito analitoN, nivelN, alvoM, alvoS, etp
 
                 Dim zz() As Double, td() As Boolean
                 Dim q13 As Variant, q22 As Variant, qR4 As Variant, q41 As Variant, q10 As Variant, q12 As Variant
                 ReDim zz(0 To 0, 1 To nS): ReDim td(0 To 0, 1 To nS)
                 For j = 1 To nS
-                    If aS > 0 Then zz(0, j) = CalcularZ(ys(j), aM, aS)
+                    If alvoS > 0 Then zz(0, j) = CalcularZ(ys(j), alvoM, alvoS)
                     td(0, j) = True
                 Next j
                 ReDim q13(0 To 0, 1 To nS): ReDim q22(0 To 0, 1 To nS)

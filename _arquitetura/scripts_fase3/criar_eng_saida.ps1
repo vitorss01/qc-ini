@@ -39,6 +39,25 @@ $NEF = 7      # campos por nivel
 
 $campos = @('R13s', 'R22s', 'RR4s', 'R41s', 'R10x', 'Alerta12s', 'Veredicto')
 
+# Bloco auxiliar a direita dos blocos de nivel (Marco 3): permite que
+# AtualizarPainelEng leia tudo de Eng_Saida e nunca do Calc. Sem isso o motor
+# leria colunas do Calc que hoje sao formulas apontando para ca -- e passaria a
+# depender de o Excel ter recalculado antes, o que nao se pode garantir.
+$COL_FILTRO = 24                    # X: 1 se a corrida passa no filtro de data
+$COL_VALOR0 = 25                    # Y,Z,AA: valor por nivel
+
+# Bloco de estatistica por nivel (Marco 3), espelhando as colunas do Painel:
+#   linha 184 cabecalho, linhas 185..187 = niveis 1..3
+#   colunas B..U == colunas 2..21 do Painel (n, media, dp, cv, etp, bias, et,
+#   sigma, veredicto, [K,L vazias], cnt1..5, total, ultViol, classif, historico)
+$LINHA_STAT = 185
+$camposStat = @{
+    2 = 'n'; 3 = 'media'; 4 = 'dp'; 5 = 'cv'; 6 = 'etp'; 7 = 'bias'; 8 = 'et'
+    9 = 'sigma'; 10 = 'veredicto'; 13 = 'cnt13s'; 14 = 'cnt22s'; 15 = 'cntR4s'
+    16 = 'cnt41s'; 17 = 'cnt10x'; 18 = 'totalViol'; 19 = 'ultViolacao'
+    20 = 'classificacao'; 21 = 'historico'
+}
+
 $xl = New-Object -ComObject Excel.Application
 $xl.Visible = $false
 $xl.DisplayAlerts = $false
@@ -77,8 +96,24 @@ for ($t = 0; $t -lt $NLV; $t++) {
         $eng.Cells(2, $col).Value2 = "N$($t + 1)_$($campos[$k])"
     }
 }
-$ultimaCol = $EF0 + $NLV * $NEF - 1
+$eng.Cells(2, $COL_FILTRO).Value2 = 'Filtro'
+for ($t = 0; $t -lt $NLV; $t++) {
+    $eng.Cells(2, $COL_VALOR0 + $t).Value2 = "N$($t + 1)_Valor"
+}
+
+$ultimaCol = $COL_VALOR0 + $NLV - 1
 $eng.Range($eng.Cells(2, 1), $eng.Cells(2, $ultimaCol)).Font.Bold = $true
+
+# ---- bloco de estatistica por nivel ----
+$eng.Cells($LINHA_STAT - 1, 1).Value2 = 'Nivel'
+foreach ($c in $camposStat.Keys) { $eng.Cells($LINHA_STAT - 1, $c).Value2 = $camposStat[$c] }
+$eng.Range($eng.Cells($LINHA_STAT - 1, 1), $eng.Cells($LINHA_STAT - 1, 21)).Font.Bold = $true
+# variavel intermediaria de proposito: a forma inline ".Value2 = $t + 1" faz o
+# PowerShell 5.1 tentar converter Int32 em String e falhar no COM.
+for ($t = 0; $t -lt $NLV; $t++) {
+    $nivel = $t + 1
+    $eng.Cells($LINHA_STAT + $t, 1).Value2 = $nivel
+}
 # sem AutoFilter de proposito: criaria o nome definido parasita
 # Eng_Saida!_FilterDatabase, que poluiria o inventario de nomes e o diff.
 
@@ -96,6 +131,11 @@ $wb.Names.Add('engDados', $refDados) | Out-Null
 # EhElegivel/lote core, entao as duas listas podem divergir de ordem.
 $refRun = "=Eng_Saida!" + $eng.Range($eng.Cells($KC0, 2), $eng.Cells($ultimaLinha, 2)).Address()
 $wb.Names.Add('engRUN', $refRun) | Out-Null
+# engPainel: bloco de estatistica por nivel. O Painel le por INDEX(engPainel,
+# nivel, coluna) usando a MESMA coluna que ele proprio ocupa -- a linha 185+t
+# espelha a linha 7+t do Painel, coluna a coluna.
+$refStat = "=Eng_Saida!" + $eng.Range($eng.Cells($LINHA_STAT, 1), $eng.Cells($LINHA_STAT + $NLV - 1, 21)).Address()
+$wb.Names.Add('engPainel', $refStat) | Out-Null
 $wb.Names.Add('engAnalito', '=Eng_Saida!' + $eng.Range('C1').Address()) | Out-Null
 $wb.Names.Add('engLote', '=Eng_Saida!' + $eng.Range('E1').Address()) | Out-Null
 $wb.Names.Add('engCarimbo', '=Eng_Saida!' + $eng.Range('G1').Address()) | Out-Null
@@ -106,9 +146,10 @@ $eng.Columns('A').ColumnWidth = 6
 $eng.Columns('B').ColumnWidth = 8
 $eng.Visible = 2      # xlSheetVeryHidden: nao aparece nem no menu de reexibir
 
-"Eng_Saida criada: linhas $KC0..$ultimaLinha, colunas 1..$ultimaCol ($($NLV * $NEF) campos, $NLV niveis)"
-"CodeName: $($eng.CodeName)"
-"Nomes definidos: engDados, engRUN, engAnalito, engLote, engCarimbo, engNRun"
+"Eng_Saida criada:"
+"  corridas   linhas $KC0..$ultimaLinha, colunas 1..$ultimaCol"
+"  estatistica linhas $LINHA_STAT..$($LINHA_STAT + $NLV - 1), colunas 1..21"
+"Nomes: engDados, engRUN, engPainel, engAnalito, engLote, engCarimbo, engNRun"
 
 $wb.Save()
 $wb.Close($true)

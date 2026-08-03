@@ -1,0 +1,108 @@
+' ======================= MOTOR: ESTATISTICA POR NIVEL =======================
+' Marco 3 do Sprint HARDENING 1 (ADR-019).
+'
+' ANTES: lia o Calc, calculava n/media/DP/CV/bias/ET/Sigma e gravava direto nas
+' celulas do Painel, destruindo 45 das 48 formulas da aba.
+'
+' AGORA: le Eng_Saida (nunca o Calc) e publica em Eng_Saida. O Painel virou
+' camada de apresentacao pura: le por formula e nao calcula mais nada.
+'
+' Por que parou de ler o Calc: depois do Marco 2 as colunas de regra do Calc sao
+' formulas que apontam para Eng_Saida. Se o motor as lesse, passaria a depender
+' de o Excel ter recalculado a planilha antes -- com Calculation manual, ou com
+' a rotina chamada em sequencia dentro de outra, leria valor velho sem avisar.
+' Lendo Eng_Saida, le o que o proprio motor acabou de escrever.
+'
+' Correcao de conta que vem junto (as formulas do Painel estavam erradas):
+'   Erro Total  antes 1,65*CV + bias        agora Abs(bias) + 1,65*CV
+'   Sigma       antes (ETp - bias)/CV       agora (ETp - Abs(bias))/CV
+' Sem o Abs, bias negativo -- media abaixo do alvo, situacao corriqueira --
+' subestimava o Erro Total e superestimava o Sigma. CLSI/Westgard: TE = |bias| +
+' 1,65*CV. O motor ja estava certo; a interface e que discordava dele.
+Public Sub AtualizarPainelEng()
+    Dim eng As Worksheet, analito As String
+    Dim t As Long, i As Long, n As Long, v() As Double, media As Double, dp As Double
+    Dim cv As Double, bias As Double, et As Double, sg As Double, etp As Double
+    ' alvoM/alvoS, nunca aM/aS: VBA e insensivel a maiusculas, entao "aS" e o
+    ' mesmo token que a palavra reservada "As" e o modulo nao compila.
+    Dim alvoM As Double, alvoS As Double, rejTot As Long
+    Dim cnt(1 To 5) As Long, k2 As Long
+    Dim flags As Variant, vals As Variant, filtros As Variant
+    Dim outStat() As Variant
+
+    ' O motor nao referencia mais a aba Painel, nem para leitura.
+    Set eng = ThisWorkbook.Sheets("Eng_Saida")
+    analito = Trim$(CStr(ThisWorkbook.Names("selAnalito").RefersToRange.Value))
+
+    ' uma leitura em bloco de tudo que veio do motor
+    filtros = eng.Range(eng.Cells(KC0, COL_FILTRO), eng.Cells(KC0 + NK - 1, COL_FILTRO)).Value
+    vals = eng.Range(eng.Cells(KC0, COL_VALOR0), eng.Cells(KC0 + NK - 1, COL_VALOR0 + NLV - 1)).Value
+    flags = eng.Range(eng.Cells(KC0, EF0), eng.Cells(KC0 + NK - 1, EF0 + NLV * NEF - 1)).Value
+
+    ReDim outStat(1 To NLV, 1 To 21)
+
+    For t = 0 To NLV - 1
+        n = 0: ReDim v(1 To NK)
+        For i = 1 To 5
+            cnt(i) = 0
+        Next i
+        rejTot = 0
+
+        For i = 1 To NK
+            If Val(filtros(i, 1)) = 1 Then
+                If IsNumeric(vals(i, t + 1)) And Trim$(CStr(vals(i, t + 1))) <> "" Then
+                    n = n + 1: v(n) = CDbl(vals(i, t + 1))
+                End If
+                ' campos 1..5 do bloco do nivel = R13s, R22s, RR4s, R41s, R10x
+                For k2 = 1 To 5
+                    If Val(flags(i, t * NEF + k2)) = 1 Then cnt(k2) = cnt(k2) + 1
+                Next k2
+                ' campo 7 = Veredicto
+                If CStr(flags(i, t * NEF + 7)) = "REJEITADO" Then rejTot = rejTot + 1
+            End If
+        Next i
+
+        media = CalcularMedia(v, n)
+        dp = CalcularDP(v, n, media)
+        cv = CalcularCV(dp, media)
+        AlvoAnalito analito, t + 1, alvoM, alvoS, etp
+        bias = CalcularBias(media, alvoM)
+        et = CalcularErroTotal(cv, bias)
+        sg = CalcularSigma(etp, bias, cv)
+
+        outStat(t + 1, 2) = n
+        outStat(t + 1, 3) = IIf(n = 0, "", media)
+        outStat(t + 1, 4) = IIf(n < 2, "", dp)
+        outStat(t + 1, 5) = IIf(n < 2 Or media = 0, "", cv)
+        outStat(t + 1, 6) = IIf(etp = 0, "", etp)
+        outStat(t + 1, 7) = IIf(n = 0 Or alvoM = 0, "", bias)
+        outStat(t + 1, 8) = IIf(n < 2 Or media = 0, "", et)
+        outStat(t + 1, 9) = IIf(n < 2 Or cv = 0 Or etp = 0, "", sg)
+        outStat(t + 1, 10) = IIf(n = 0, "", IIf(rejTot > 0, "REJEITADO", "OK"))
+        outStat(t + 1, 11) = ""
+        outStat(t + 1, 12) = ""
+        For i = 1 To 5
+            outStat(t + 1, 12 + i) = cnt(i)
+        Next i
+        outStat(t + 1, 18) = cnt(1) + cnt(2) + cnt(3) + cnt(4) + cnt(5)
+
+        ' resumo: o historico completo fica na aba Eventos_Westgard
+        Dim aa As Variant
+        aa = AgregadoWestgard(analito, t + 1)
+        If CLng(aa(0)) = 0 Then
+            outStat(t + 1, 19) = Chr$(151)
+            outStat(t + 1, 20) = ""
+            outStat(t + 1, 21) = ""
+        Else
+            outStat(t + 1, 19) = aa(3) & " " & Chr$(183) & " RUN " & aa(4)
+            outStat(t + 1, 20) = RegraClassificacao(Split(CStr(aa(3)), "+")(0))
+            outStat(t + 1, 21) = aa(0) & "x  |  maior Z " & Format(aa(5), "+0.00;-0.00")
+        End If
+    Next t
+
+    ' escrita unica do bloco A..U; a coluna A repoe o proprio numero do nivel
+    For t = 1 To NLV
+        outStat(t, 1) = t
+    Next t
+    eng.Range(eng.Cells(LINHA_STAT, 1), eng.Cells(LINHA_STAT + NLV - 1, 21)).Value = outStat
+End Sub

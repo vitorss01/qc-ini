@@ -13,7 +13,7 @@ não vale.
 
 | # | Item | Status | Evidência |
 |---|---|---|---|
-| 1.1 | Projeto compila | ✅ | Execução de procedimento força compilação; 3 erros de sintaxe (`aS`) corrigidos |
+| 1.1 | Projeto compila | ✅ | Execução de procedimento força compilação; 3 erros de sintaxe (`aS`) corrigidos. **Este item é a causa raiz do 2.1** — ver nota abaixo |
 | 1.2 | Nenhum travamento | ✅ | `RegistrarEventosWestgard` 0,098 s · `AtualizarEstatistica` 0,341 s |
 | 1.3 | Média / DP / CV% | ✅ | Idêntico a referência Python em 6 casas: 14,000000 · 3,162278 · 22,587698 |
 | 1.4 | Bias / ET / Sigma / Z | ✅ | 40,000000 · 21,500000 · 5,000000 · 1,000000 |
@@ -21,6 +21,19 @@ não vale.
 | 1.6 | Elegibilidade CLSI EP05/C24 | ✅ | 6/6 estados; desconhecido nunca entra no cálculo |
 | 1.7 | Robustez (n=0, n=1, DP=0, alvo=0) | ✅ | Todos devolvem 0, sem erro |
 | 1.8 | Sem vazamento de estado entre grupos | ✅ | `grupos_com_0_violacoes_reportando_regra = 0` |
+
+> **Nota — por que as fórmulas foram destruídas (liga 1.1 a 2.1).**
+> `aS` não é identificador válido: VBA é insensível a maiúsculas, então `aS` é o
+> mesmo token que a palavra reservada `As`, e o módulo não compila. Como o VBA
+> compila sob demanda, procedimento a procedimento, o defeito ficava invisível —
+> `AtualizarCalc` rodava normalmente enquanto `AtualizarPainelEng`,
+> `AtualizarEstatisticaAba` e `RegistrarEventosWestgard` morriam com "não foi
+> possível executar a macro". **Na produção esses três nunca rodaram, e é por
+> isso que as fórmulas do `Painel` e da `Estatística` sobreviveram lá.** Ao
+> corrigir o `aS`, a Fase 3A deu vida aos três e eles passaram por cima das
+> fórmulas. O gate registrava a correção em 1.1 e o estrago em 2.1 sem ligar um
+> ao outro. `gerar_mEstatistica.ps1` agora renomeia `aS`/`aM` para
+> `alvoS`/`alvoM` e tem lint que barra identificador colidindo com reservada.
 
 ## 2. Integridade dos dados
 
@@ -143,6 +156,13 @@ nem UserForm, nem gráfico — até RC1. Só correção, teste e validação.
   divergência é listada, não resumida em contagem
 - **Varredura ADR-019:** nenhuma fórmula de interface referencia `DB_Resultados`. Esperado: zero
 - **Aceite:** contagem **e conteúdo** idênticos · zero referência direta ao banco · regressão completa
+
+> **Histórico não é reprocessado.** A unificação do Westgard e a correção de
+> ET/Sigma mudam veredictos passados. Decisão do gestor: **não** reprocessar o
+> histórico — o efeito cascata é maior que o benefício. A partir da RC1, as
+> regras Westgard e o cálculo de Erro Total e Sigma passam a ser determinados
+> **exclusivamente pelo motor**. Evidência do impacto medido fica em
+> `src_hardening1/marco2_impacto_westgard.csv`.
 
 ### Sprint HARDENING 2 — Modelo do RUN
 - RUN sequencial + `Data | Hora | Turno | Lote | Equipamento | Usuário` (ADR-011)
