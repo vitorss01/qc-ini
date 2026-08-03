@@ -23,6 +23,8 @@ if ($Workbook -notmatch 'build_hardening') {
     throw "Recusado: este script so roda em copia de build (caminho deve conter build_hardening). Recebido: $Workbook"
 }
 
+$ErrorActionPreference = 'Stop'
+
 $xl = New-Object -ComObject Excel.Application
 $xl.Visible = $false
 $xl.DisplayAlerts = $false
@@ -30,6 +32,16 @@ $xl.EnableEvents = $false
 $xl.AutomationSecurity = 1      # msoAutomationSecurityLow: permite macro
 
 $wb = $xl.Workbooks.Open($Workbook)
+
+# Somente leitura significa que OUTRA instancia do Excel ainda segura o arquivo.
+# Sem esta guarda o script grava no vazio e reporta sucesso: DisplayAlerts=$false
+# suprime o aviso do Excel, e o Save falha em silencio.
+if ($wb.ReadOnly) {
+    try { $wb.Close($false) } catch { }
+    try { $xl.Quit() } catch { }
+    throw "Arquivo aberto em SOMENTE LEITURA (outra instancia do Excel o mantem travado): $Workbook"
+}
+
 
 if ($Analito) {
     $wb.Names('selAnalito').RefersToRange.Value2 = $Analito

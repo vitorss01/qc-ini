@@ -35,6 +35,8 @@ $LINHA_PAINEL = 7      # Painel: 1a linha de nivel
 #       delas (falta de Abs no bias) e corrigido no lugar, mais abaixo.
 $colunas = @(2, 3, 4, 5, 6, 10, 13, 14, 15, 16, 17, 18, 19, 20, 21)
 
+$ErrorActionPreference = 'Stop'
+
 $xl = New-Object -ComObject Excel.Application
 $xl.Visible = $false
 $xl.DisplayAlerts = $false
@@ -42,6 +44,16 @@ $xl.EnableEvents = $false
 $xl.AutomationSecurity = 3
 
 $wb = $xl.Workbooks.Open($Workbook)
+
+# Somente leitura significa que OUTRA instancia do Excel ainda segura o arquivo.
+# Sem esta guarda o script grava no vazio e reporta sucesso: DisplayAlerts=$false
+# suprime o aviso do Excel, e o Save falha em silencio.
+if ($wb.ReadOnly) {
+    try { $wb.Close($false) } catch { }
+    try { $xl.Quit() } catch { }
+    throw "Arquivo aberto em SOMENTE LEITURA (outra instancia do Excel o mantem travado): $Workbook"
+}
+
 $xl.Calculation = -4135
 $pnl = $wb.Worksheets('Painel')
 

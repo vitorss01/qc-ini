@@ -26,7 +26,9 @@ $KC0 = 3; $NK = 180
 $colsVeredicto = @{ 1 = 16; 2 = 38; 3 = 60 }    # P, AL, BH
 
 function Abrir($caminho) {
-    $xl = New-Object -ComObject Excel.Application
+    $ErrorActionPreference = 'Stop'
+
+$xl = New-Object -ComObject Excel.Application
     $xl.Visible = $false; $xl.DisplayAlerts = $false; $xl.EnableEvents = $false
     $xl.AutomationSecurity = 1      # precisa rodar o motor no build
     return @{ App = $xl; Wb = $xl.Workbooks.Open($caminho) }

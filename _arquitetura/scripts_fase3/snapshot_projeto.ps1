@@ -26,6 +26,8 @@ param(
 $vbaDir = Join-Path $OutDir 'vba'
 New-Item -ItemType Directory -Force -Path $vbaDir | Out-Null
 
+$ErrorActionPreference = 'Stop'
+
 $xl = New-Object -ComObject Excel.Application
 $xl.Visible = $false
 $xl.DisplayAlerts = $false
@@ -33,6 +35,16 @@ $xl.EnableEvents = $false
 $xl.AutomationSecurity = 3          # nao executa macro ao abrir
 
 $wb = $xl.Workbooks.Open($Workbook, 0, $true)
+
+# Somente leitura significa que OUTRA instancia do Excel ainda segura o arquivo.
+# Sem esta guarda o script grava no vazio e reporta sucesso: DisplayAlerts=$false
+# suprime o aviso do Excel, e o Save falha em silencio.
+if ($wb.ReadOnly) {
+    try { $wb.Close($false) } catch { }
+    try { $xl.Quit() } catch { }
+    throw "Arquivo aberto em SOMENTE LEITURA (outra instancia do Excel o mantem travado): $Workbook"
+}
+
 
 # ---------- VBA ----------
 $nVba = 0

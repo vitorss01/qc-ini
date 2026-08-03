@@ -17,6 +17,20 @@ param(
     [Parameter(Mandatory = $true)][string[]]$Modulos
 )
 
+# SEM ISTO O SCRIPT MENTE. Erro de COM em PowerShell e nao-terminante por
+# padrao: o Import falha, a mensagem vai para o stderr, o laco continua, e a
+# ultima linha imprime "VBA aplicado em: ..." como se tivesse dado certo. Foi
+# exatamente assim que o motor corrigido deixou de entrar no .xlsm em duas
+# maquinas diferentes, sem ninguem perceber -- o build reportava sucesso e o
+# arquivo continuava com o mEstatistica de producao.
+$ErrorActionPreference = 'Stop'
+
+# Excel resolve caminho relativo contra o DIRETORIO PADRAO DELE, nao contra o
+# diretorio do PowerShell. Um caminho relativo aqui abre outro arquivo ou nao
+# abre nenhum.
+$Workbook = (Resolve-Path -LiteralPath $Workbook).ProviderPath
+$Modulos = $Modulos | ForEach-Object { (Resolve-Path -LiteralPath $_).ProviderPath }
+
 $xl = New-Object -ComObject Excel.Application
 $xl.Visible = $false
 $xl.DisplayAlerts = $false
@@ -68,7 +82,17 @@ foreach ($m in $Modulos) {
         "  removido: $nome"
     }
     $proj.VBComponents.Import($m) | Out-Null
-    "  importado: $nome"
+
+    # Conferir, nao confiar. Import pode falhar sem excecao util, e um modulo
+    # ausente so aparece muito depois, como erro numa rotina sem relacao.
+    $novo = $null
+    foreach ($c in $proj.VBComponents) { if ($c.Name -eq $nome) { $novo = $c; break } }
+    if ($novo -eq $null) { throw "Import de $nome nao criou o componente" }
+
+    $linhasArquivo = ([System.IO.File]::ReadAllLines($m, [System.Text.Encoding]::Default)).Count
+    $linhasModulo = $novo.CodeModule.CountOfLines
+    if ($linhasModulo -lt 1) { throw "$nome entrou vazio" }
+    "  importado: $nome  ($linhasModulo linhas no modulo, $linhasArquivo no arquivo)"
 }
 
 $wb.Save()

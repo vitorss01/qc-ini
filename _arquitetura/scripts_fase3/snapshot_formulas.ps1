@@ -24,13 +24,25 @@ param(
     [Parameter(Mandatory = $true)][string]$OutCsv
 )
 
+$ErrorActionPreference = 'Stop'
+
 $xl = New-Object -ComObject Excel.Application
 $xl.Visible = $false
 $xl.DisplayAlerts = $false
 $xl.EnableEvents = $false
 $xl.AutomationSecurity = 3          # msoAutomationSecurityForceDisable: nao roda macro
 
-$wb = $xl.Workbooks.Open($Workbook, 0, $true)   # UpdateLinks=0, ReadOnly=$true
+$wb = $xl.Workbooks.Open($Workbook, 0, $true)
+
+# Somente leitura significa que OUTRA instancia do Excel ainda segura o arquivo.
+# Sem esta guarda o script grava no vazio e reporta sucesso: DisplayAlerts=$false
+# suprime o aviso do Excel, e o Save falha em silencio.
+if ($wb.ReadOnly) {
+    try { $wb.Close($false) } catch { }
+    try { $xl.Quit() } catch { }
+    throw "Arquivo aberto em SOMENTE LEITURA (outra instancia do Excel o mantem travado): $Workbook"
+}
+   # UpdateLinks=0, ReadOnly=$true
 $xl.Calculation = -4135                          # xlCalculationManual (so vale com wb aberto)
 
 $sw = New-Object System.IO.StreamWriter($OutCsv, $false, [System.Text.UTF8Encoding]::new($true))

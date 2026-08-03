@@ -4,7 +4,7 @@ Documento oficial de liberação do projeto. Enquanto houver item ⏳ ou ❌ **n
 para a fase seguinte**. Cada ✅ exige evidência verificável — marcação sem evidência
 não vale.
 
-**Última atualização:** 02/08/2026
+**Última atualização:** 03/08/2026
 **Sprint corrente:** HARDENING (nenhuma funcionalidade nova)
 
 ---
@@ -39,12 +39,41 @@ não vale.
 
 | # | Item | Status | O que fecha |
 |---|---|---|---|
-| 2.1 | Fórmulas preservadas | ✅ | Marcos 1–5. Motor escreve só em `Eng_Saida`. Diff célula a célula contra a produção: `AUSENTE 0 · ALTERADA 4362 · VALOR 0 · EXTRA 9`, 61.425 fórmulas. As 4362 são lista fechada e versionada (`src_hardening1/marco*_celulas_redirecionadas.csv`): 3240 Calc + 42 Painel + 1080 Estatística. As 9 EXTRA são `Painel!S:U`, onde o motor gravava valor direto |
-| 2.1b | ADR-019 verificado | ✅ | `varredura_adr019.ps1`: produção tinha **120** fórmulas de interface calculando parâmetro estatístico sobre o banco (`Estatística!D`, `AVERAGEIFS`); build tem **0**. As 900 restantes no `Calc` são seleção/filtro, permitidas. Estatística agregada que sobra na interface é só a cadeia do bias EQC (840, mantida por decisão) e 8 células de limite de eixo |
+| 2.1 | Fórmulas preservadas | ⏳ | Marcos 1–5. Motor escreve só em `Eng_Saida`. Diff célula a célula contra a produção: `AUSENTE 0 · ALTERADA 4362 · VALOR 0 · EXTRA 9`, 61.425 fórmulas. As 4362 são lista fechada e versionada (`src_hardening1/marco*_celulas_redirecionadas.csv`): 3240 Calc + 42 Painel + 1080 Estatística. As 9 EXTRA são `Painel!S:U`, onde o motor gravava valor direto |
+| 2.1b | ADR-019 verificado | ⏳ | `varredura_adr019.ps1`: produção tinha **120** fórmulas de interface calculando parâmetro estatístico sobre o banco (`Estatística!D`, `AVERAGEIFS`); build tem **0**. As 900 restantes no `Calc` são seleção/filtro, permitidas. Estatística agregada que sobra na interface é só a cadeia do bias EQC (840, mantida por decisão) e 8 células de limite de eixo |
 | 2.2 | Sem sobrescrita silenciosa | ⏳ | Reenviar mesma Data+lote sobrescreve valor sem versionar. Exige versionamento: linha original nunca alterada |
 | 2.3 | Exclusão lógica não é revertida sozinha | ⏳ | `UpsertResultados` força `Status = Ativo`, ressuscitando excluído. Reverter exclusão deve ser ação própria, com justificativa |
 | 2.4 | RUN representa a corrida analítica | ⏳ | Hoje RUN = (Data + lote) colapsa turnos e pós-calibração. CLSI C24 trata como eventos distintos |
 | 2.5 | `Cfg_Status` não altera histórico retroativamente | ⏳ | Uma célula redefine o que entra na estatística de todo o histórico. Exige versionamento da tabela + log |
+
+
+> **Por que 2.1 e 2.1b voltaram para ⏳ (03/08/2026).**
+> A evidência que os fechou era verdadeira sobre as *planilhas* e falsa sobre o
+> *sistema*: as 4.362 células foram mesmo redirecionadas para `Eng_Saida`, mas o
+> **motor corrigido nunca entrou no `.xlsm`** — nem aqui, nem na máquina do
+> trabalho. Verificado lendo o VBA de dentro dos três artefatos: `mEstatistica`
+> com 1.028 linhas, 8 ocorrências de `aS` e zero referência a `Eng_Saida`,
+> quando o módulo versionado tem 1.049 linhas e nenhuma `aS`. As fórmulas
+> apontavam para uma camada que ninguém abastecia.
+>
+> Quatro defeitos no pipeline, nenhum em VBA nem em lógica de CQI:
+> 1. `Select-Object -First` **encerra o script produtor** (`StopUpstreamCommandsException`).
+>    As etapas morriam depois das primeiras mensagens e **antes** do `Save()`.
+>    `criar_eng_saida` usava `-Last`, que bufferiza — por isso só ela persistia.
+> 2. `$xl.Quit()` não mata o processo enquanto o PowerShell segura referências COM.
+>    O Excel órfão travava o arquivo e a etapa seguinte o abria em **somente leitura**,
+>    sem aviso, porque `DisplayAlerts = $false`.
+> 3. Nenhum dos 12 scripts tinha `$ErrorActionPreference = 'Stop'`: erro de COM é
+>    não-terminante, então falha virava mensagem de sucesso.
+> 4. `aplicar_vba.ps1` imprimia "VBA aplicado" sem conferir nada.
+>
+> **Lição estrutural:** havia lint de VBA, diff célula a célula e varredura de
+> arquitetura — e nenhum controle verificava se a etapa anterior tinha acontecido.
+> O pipeline reportava intenção, não resultado. É o mesmo princípio que o gestor
+> exigiu para as fórmulas: não basta restaurar, precisa comparar.
+>
+> Reabrir estes dois itens é o certo. Gate que aceita evidência sem lastro dá
+> confiança falsa, que é pior do que não ter gate.
 
 ## 3. Auditoria e segurança
 
@@ -94,7 +123,7 @@ não vale.
 > **Regra de merge:** nada entra na `main` enquanto houver ⏳ ou ❌.
 > A branch `fase3a-motor-cqi` é de trabalho; se um PR for aberto, deve ser **draft**.
 
-**17 ✅ · 25 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
+**15 ✅ · 27 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
 
 O **motor** está pronto e validado. O **sistema** ainda não é auditável nem confiável.
 

@@ -201,15 +201,21 @@ Public Function NovoRUN(ByVal dt As Date, ByVal loteCore As String) As Long
     NovoRUN = PreverRUN(dt, loteCore)
 End Function
 
-' ===== UPSERT EM LOTE =====
-' regs: array (1..n, 1..7) já no schema do banco. Atualiza o que existir
-' (mesma chave RUN|Nivel|Analito) e acrescenta o resto — nunca duplica.
-' Devolve "novos|atualizados".
+' ===== UPSERT EM LOTE (auditado) =====
+' regs: array (1..n, 1..7) ja no schema do banco. Atualiza o que existir
+' (mesma chave RUN|Nivel|Analito) e acrescenta o resto - nunca duplica.
+' Devolve "novos|atualizados|bloqueados".
+'
+' ITEM 2.3 DO GATE. A versao anterior forcava Status = Ativo em toda
+' atualizacao: reenviar a mesma chave RESSUSCITAVA uma linha excluida, sem
+' deixar registro. Agora, linha nao ativa e PRESERVADA e a tentativa e
+' auditada. Reverter uma exclusao passa a exigir acao propria, com parecer.
 Public Function UpsertResultados(ByRef regs As Variant) As String
     Dim ws As Worksheet, dados As Variant, idx As Object
-    Dim i As Long, lastRow As Long, novos As Long, atual As Long, k As String, lin As Long
+    Dim i As Long, lastRow As Long, novos As Long, atual As Long, bloq As Long
+    Dim k As String, lin As Long, stAntes As String, antes As Variant
     Dim addBuf() As Variant, nAdd As Long
-    If IsEmpty(regs) Then UpsertResultados = "0|0": Exit Function
+    If IsEmpty(regs) Then UpsertResultados = "0|0|0": Exit Function
     Set ws = ThisWorkbook.Sheets(BANCO)
     Set idx = CreateObject("Scripting.Dictionary")
     dados = CarregarDB()
@@ -223,17 +229,32 @@ Public Function UpsertResultados(ByRef regs As Variant) As String
     End If
     lastRow = UltimaLinhaBanco()
     ReDim addBuf(1 To UBound(regs, 1), 1 To COL_STATUS)
-    nAdd = 0: novos = 0: atual = 0
+    nAdd = 0: novos = 0: atual = 0: bloq = 0
     Application.ScreenUpdating = False
     For i = 1 To UBound(regs, 1)
         k = ChaveReg(CLng(regs(i, COL_RUN)), CLng(regs(i, COL_NIVEL)), CStr(regs(i, COL_ANALITO)))
         If idx.Exists(k) Then
             lin = idx(k)
-            ws.Cells(lin, COL_RESULT).Value = regs(i, COL_RESULT)
-            ws.Cells(lin, COL_STATUS).Value = ST_ATIVO
-            ws.Cells(lin, COL_DATA).Value = regs(i, COL_DATA)
-            ws.Cells(lin, COL_LOTE).Value = regs(i, COL_LOTE)
-            atual = atual + 1
+            stAntes = Trim$(CStr(ws.Cells(lin, COL_STATUS).Value))
+            If stAntes <> "" And stAntes <> ST_ATIVO Then
+                ' Nao ressuscita. Registra a tentativa e segue.
+                Auditar "UPSERT_BLOQUEADO", VIEW, CLng(regs(i, COL_RUN)), regs(i, COL_DATA), _
+                        CLng(regs(i, COL_NIVEL)), CStr(regs(i, COL_ANALITO)), CStr(regs(i, COL_LOTE)), _
+                        regs(i, COL_RESULT), stAntes, stAntes, _
+                        "Reenvio recusado: registro nao esta Ativo. Reverter exclusao exige acao propria."
+                bloq = bloq + 1
+            Else
+                antes = ws.Cells(lin, COL_RESULT).Value
+                ws.Cells(lin, COL_RESULT).Value = regs(i, COL_RESULT)
+                ws.Cells(lin, COL_STATUS).Value = ST_ATIVO
+                ws.Cells(lin, COL_DATA).Value = regs(i, COL_DATA)
+                ws.Cells(lin, COL_LOTE).Value = regs(i, COL_LOTE)
+                Auditar "ATUALIZACAO", VIEW, CLng(regs(i, COL_RUN)), regs(i, COL_DATA), _
+                        CLng(regs(i, COL_NIVEL)), CStr(regs(i, COL_ANALITO)), CStr(regs(i, COL_LOTE)), _
+                        regs(i, COL_RESULT), stAntes, ST_ATIVO, _
+                        "Valor anterior: " & CStr(antes)
+                atual = atual + 1
+            End If
         Else
             nAdd = nAdd + 1
             Dim c As Long
@@ -254,23 +275,41 @@ Public Function UpsertResultados(ByRef regs As Variant) As String
             Next c
         Next i
         ws.Range(ws.Cells(lastRow + 1, COL_RUN), ws.Cells(lastRow + nAdd, COL_STATUS)).Value = outp
+        For i = 1 To nAdd
+            Auditar "INCLUSAO", VIEW, CLng(addBuf(i, COL_RUN)), addBuf(i, COL_DATA), _
+                    CLng(addBuf(i, COL_NIVEL)), CStr(addBuf(i, COL_ANALITO)), CStr(addBuf(i, COL_LOTE)), _
+                    addBuf(i, COL_RESULT), "", CStr(addBuf(i, COL_STATUS)), ""
+        Next i
     End If
     Application.ScreenUpdating = True
-    UpsertResultados = CStr(novos) & "|" & CStr(atual)
+    UpsertResultados = CStr(novos) & "|" & CStr(atual) & "|" & CStr(bloq)
 End Function
 
 ' Exclusao LOGICA por RUN + Nivel + lista de analitos (Dictionary de nomes em UCase).
-Public Function ExcluirLogico(ByVal run As Long, ByVal nivel As Long, ByRef alvoS As Object) As Long
-    Dim ws As Worksheet, dados As Variant, i As Long, n As Long
+' O parecer e opcional na assinatura para nao quebrar chamadores existentes; a
+' Sprint NC passa a exigi-lo na interface. Toda exclusao e auditada aqui, dentro
+' da camada de dados - nenhum caminho de gravacao escapa (item 3.2).
+Public Function ExcluirLogico(ByVal run As Long, ByVal nivel As Long, ByRef alvoS As Object, _
+                              Optional ByVal parecer As String = "", _
+                              Optional ByVal novoStatus As String = "") As Long
+    Dim ws As Worksheet, dados As Variant, i As Long, n As Long, lin As Long
+    Dim stAntes As String, stNovo As String
     Set ws = ThisWorkbook.Sheets(BANCO)
     dados = CarregarDB()
     If IsEmpty(dados) Then ExcluirLogico = 0: Exit Function
+    stNovo = Trim$(novoStatus)
+    If stNovo = "" Then stNovo = ST_EXCLUIDO
     Application.ScreenUpdating = False
     For i = 1 To UBound(dados, 1)
         If Len(Trim$(CStr(dados(i, COL_ANALITO)))) > 0 Then
             If CLng(dados(i, COL_RUN)) = run And CLng(dados(i, COL_NIVEL)) = nivel Then
                 If alvoS.Exists(UCase$(Trim$(CStr(dados(i, COL_ANALITO))))) Then
-                    ws.Cells(BANCO_R0 + i - 1, COL_STATUS).Value = ST_EXCLUIDO
+                    lin = BANCO_R0 + i - 1
+                    stAntes = Trim$(CStr(ws.Cells(lin, COL_STATUS).Value))
+                    ws.Cells(lin, COL_STATUS).Value = stNovo
+                    Auditar "EXCLUSAO_LOGICA", VIEW, run, dados(i, COL_DATA), nivel, _
+                            CStr(dados(i, COL_ANALITO)), CStr(dados(i, COL_LOTE)), _
+                            dados(i, COL_RESULT), stAntes, stNovo, parecer
                     n = n + 1
                 End If
             End If
@@ -329,7 +368,8 @@ Public Sub AtualizarBanco()
     Application.Calculate
 End Sub
 
-' Placeholder — trilha de auditoria e da Fase 5.
+' Compatibilidade: a assinatura antiga continua valida e agora grava de verdade.
 Public Sub RegistrarLog(ByVal acao As String, ByVal detalhe As String)
+    Auditar acao, "", 0, Empty, 0, "", "", Empty, "", "", detalhe
 End Sub
 
