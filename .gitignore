@@ -34,3 +34,8 @@ _backup_autorecuperacao/
 
 # Saidas geradas
 outputs/
+
+# Builds do hardening: .xlsm e ARTEFATO, nao fonte.
+# A fonte oficial do codigo e _arquitetura/snapshot_producao/<produto>/vba/.
+# A build e reproduzivel a partir da producao + scripts_fase3/.
+_arquitetura/build_hardening*/
