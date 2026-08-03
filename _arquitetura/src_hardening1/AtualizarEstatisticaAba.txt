@@ -1,0 +1,72 @@
+' ========================= MOTOR: TABELA DE PARAMETROS =========================
+' Marco 4 do Sprint HARDENING 1 (ADR-019).
+'
+' ANTES: gravava direto em Estatistica!C7:M126, destruindo as 1.320 formulas
+' daquele bloco. Nao rodava na producao porque o procedimento nao compilava
+' (identificador aS colidindo com a palavra reservada As) -- e era exatamente
+' isso que mantinha as formulas vivas la. Com o aS corrigido, passaria a rodar
+' e a destruir a aba; por isso o desvio para Eng_Saida vem junto da correcao.
+'
+' AGORA: publica em Eng_Saida (linhas 190..309, colunas C..M) e a aba
+' Estatistica le por INDEX(engEstat, linha, coluna).
+'
+' Continua lendo B3/D3/B4 da propria aba Estatistica: sao filtros que o usuario
+' digita (ano inicial, ano final, lote), entrada de interface e nao calculo.
+Public Sub AtualizarEstatisticaAba()
+    Dim ws As Worksheet, wa As Worksheet, eng As Worksheet, i As Long, t As Long, er As Long
+    Dim analito As String, anoDe As Long, anoAte As Long, loteF As String
+    Dim st As Variant, n As Long, media As Double, dp As Double, cv As Double
+    ' alvoM/alvoS, nunca aM/aS: VBA e insensivel a maiusculas, entao "aS" e o
+    ' mesmo token que a palavra reservada "As" e o modulo nao compila.
+    Dim alvoM As Double, alvoS As Double, etp As Double, bias As Double, et As Double, sg As Double
+    Dim outp() As Variant, linhas As Long
+
+    Set ws = ThisWorkbook.Sheets("Estatística")
+    Set wa = ThisWorkbook.Sheets("Analitos")
+    Set eng = ThisWorkbook.Sheets("Eng_Saida")
+
+    anoDe = CLng(Val(ws.Range("B3").Value))
+    anoAte = CLng(Val(ws.Range("D3").Value))
+    If anoAte < anoDe Then anoAte = anoDe
+    loteF = Trim$(CStr(ws.Range("B4").Value))
+
+    linhas = 40 * NLV
+    ReDim outp(1 To linhas, 1 To 11)     ' C..M
+    er = 0
+    For i = AR0 To ARN
+        analito = Trim$(CStr(wa.Cells(i, 1).Value))
+        For t = 1 To NLV
+            er = er + 1
+            If analito = "" Then
+                Dim c As Long
+                For c = 1 To 11
+                    outp(er, c) = ""
+                Next c
+            Else
+                st = EstatBasica(analito, t, loteF, anoDe, anoAte)
+                n = st(0): media = st(1): dp = st(2)
+                cv = CalcularCV(dp, media)
+                AlvoAnalito analito, t, alvoM, alvoS, etp
+                bias = CalcularBias(media, alvoM)
+                et = CalcularErroTotal(cv, bias)
+                sg = CalcularSigma(etp, bias, cv)
+                outp(er, 1) = n
+                outp(er, 2) = IIf(n = 0, "", media)
+                outp(er, 3) = IIf(n < 2, "", dp)
+                outp(er, 4) = IIf(n < 2 Or media = 0, "", cv)
+                outp(er, 5) = IIf(etp = 0, "", etp)
+                outp(er, 6) = IIf(IsNumeric(wa.Cells(i, 19).Value), wa.Cells(i, 19).Value, "")
+                outp(er, 7) = IIf(IsNumeric(wa.Cells(i, 20).Value), wa.Cells(i, 20).Value, "")
+                outp(er, 8) = IIf(n = 0 Or alvoM = 0, "", bias)
+                outp(er, 9) = IIf(n < 2 Or media = 0, "", et)
+                outp(er, 10) = IIf(n < 2 Or cv = 0 Or etp = 0, "", sg)
+                outp(er, 11) = IIf(n < 2 Or cv = 0 Or etp = 0, "", ClassificarSigma(sg))
+            End If
+        Next t
+    Next i
+
+    ' publica em Eng_Saida; a aba Estatistica le por formula
+    eng.Range(eng.Cells(LINHA_EST, 3), eng.Cells(LINHA_EST + linhas - 1, 13)).Value = outp
+
+    RegistrarEventosWestgard
+End Sub

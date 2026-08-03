@@ -51,6 +51,13 @@ $COL_VALOR0 = 25                    # Y,Z,AA: valor por nivel
 #   colunas B..U == colunas 2..21 do Painel (n, media, dp, cv, etp, bias, et,
 #   sigma, veredicto, [K,L vazias], cnt1..5, total, ultViol, classif, historico)
 $LINHA_STAT = 185
+
+# Bloco da tabela de parametros da aba Estatistica (Marco 4):
+#   linha 189 cabecalho, linhas 190..309 = 40 analitos x 3 niveis
+#   colunas C..M == colunas 3..13 da aba Estatistica (bloco C7:M126)
+$LINHA_EST = 190
+$LINHAS_EST = 120
+
 $camposStat = @{
     2 = 'n'; 3 = 'media'; 4 = 'dp'; 5 = 'cv'; 6 = 'etp'; 7 = 'bias'; 8 = 'et'
     9 = 'sigma'; 10 = 'veredicto'; 13 = 'cnt13s'; 14 = 'cnt22s'; 15 = 'cntR4s'
@@ -114,6 +121,19 @@ for ($t = 0; $t -lt $NLV; $t++) {
     $nivel = $t + 1
     $eng.Cells($LINHA_STAT + $t, 1).Value2 = $nivel
 }
+
+# ---- bloco da tabela de parametros (aba Estatistica) ----
+$camposEst = @('n', 'media', 'dp', 'cv', 'etp', 'et_desej', 'et_otim', 'bias',
+    'et', 'sigma', 'classificacao')
+$eng.Cells($LINHA_EST - 1, 1).Value2 = 'Linha'
+for ($k = 0; $k -lt $camposEst.Count; $k++) {
+    $eng.Cells($LINHA_EST - 1, 3 + $k).Value2 = $camposEst[$k]
+}
+$eng.Range($eng.Cells($LINHA_EST - 1, 1), $eng.Cells($LINHA_EST - 1, 13)).Font.Bold = $true
+for ($r = 0; $r -lt $LINHAS_EST; $r++) {
+    $ordem = $r + 1
+    $eng.Cells($LINHA_EST + $r, 1).Value2 = $ordem
+}
 # sem AutoFilter de proposito: criaria o nome definido parasita
 # Eng_Saida!_FilterDatabase, que poluiria o inventario de nomes e o diff.
 
@@ -136,6 +156,10 @@ $wb.Names.Add('engRUN', $refRun) | Out-Null
 # espelha a linha 7+t do Painel, coluna a coluna.
 $refStat = "=Eng_Saida!" + $eng.Range($eng.Cells($LINHA_STAT, 1), $eng.Cells($LINHA_STAT + $NLV - 1, 21)).Address()
 $wb.Names.Add('engPainel', $refStat) | Out-Null
+# engEstat: comeca na coluna A pelo mesmo motivo de engPainel -- assim o indice
+# de coluna do INDEX e a propria coluna da aba Estatistica.
+$refEst = "=Eng_Saida!" + $eng.Range($eng.Cells($LINHA_EST, 1), $eng.Cells($LINHA_EST + $LINHAS_EST - 1, 13)).Address()
+$wb.Names.Add('engEstat', $refEst) | Out-Null
 $wb.Names.Add('engAnalito', '=Eng_Saida!' + $eng.Range('C1').Address()) | Out-Null
 $wb.Names.Add('engLote', '=Eng_Saida!' + $eng.Range('E1').Address()) | Out-Null
 $wb.Names.Add('engCarimbo', '=Eng_Saida!' + $eng.Range('G1').Address()) | Out-Null
@@ -149,7 +173,8 @@ $eng.Visible = 2      # xlSheetVeryHidden: nao aparece nem no menu de reexibir
 "Eng_Saida criada:"
 "  corridas   linhas $KC0..$ultimaLinha, colunas 1..$ultimaCol"
 "  estatistica linhas $LINHA_STAT..$($LINHA_STAT + $NLV - 1), colunas 1..21"
-"Nomes: engDados, engRUN, engPainel, engAnalito, engLote, engCarimbo, engNRun"
+"  parametros  linhas $LINHA_EST..$($LINHA_EST + $LINHAS_EST - 1), colunas 1..13"
+"Nomes: engDados, engRUN, engPainel, engEstat, engAnalito, engLote, engCarimbo, engNRun"
 
 $wb.Save()
 $wb.Close($true)

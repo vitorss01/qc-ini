@@ -16,10 +16,18 @@ param(
     [Parameter(Mandatory = $true)][string]$Producao,     # mEstatistica.bas de producao
     [Parameter(Mandatory = $true)][string]$NovoSub,      # AtualizarCalc.txt
     [Parameter(Mandatory = $true)][string]$Saida,
-    [string]$NovoPainel                                  # AtualizarPainelEng.txt (Marco 3)
+    [string]$NovoPainel,                                 # AtualizarPainelEng.txt (Marco 3)
+    [string]$NovoEstat                                   # AtualizarEstatisticaAba.txt (Marco 4)
 )
 
+# Duas codificacoes de proposito, e trocar uma pela outra corrompe o modulo:
+#   $enc      cp1252  - modulos VBA exportados/importados pelo Excel
+#   $encFonte UTF-8   - os .txt de origem, escritos por editor moderno
+# Ler um .txt UTF-8 como cp1252 transforma Sheets("Estatistica" com acento) em
+# Sheets("EstatA-stica") e o procedimento falha em tempo de execucao.
 $enc = [System.Text.Encoding]::Default
+$encFonte = New-Object System.Text.UTF8Encoding($false)
+
 $L = [System.IO.File]::ReadAllLines($Producao, $enc)
 
 # --- validacao das fronteiras: falha alto se o arquivo nao for o esperado ---
@@ -36,7 +44,7 @@ if ($L[15] -notlike '*NFD*') {
     throw "Fronteira de constantes inesperada na linha 16: $($L[15])"
 }
 
-$novo = [System.IO.File]::ReadAllLines($NovoSub, $enc)
+$novo = [System.IO.File]::ReadAllLines($NovoSub, $encFonte)
 
 $out = New-Object System.Collections.ArrayList
 
@@ -47,6 +55,7 @@ for ($i = 0; $i -le 15; $i++) { [void]$out.Add($L[$i]) }
 [void]$out.Add("Private Const COL_FILTRO As Long = 24  ' Eng_Saida: filtro de data por corrida")
 [void]$out.Add("Private Const COL_VALOR0 As Long = 25  ' Eng_Saida: 1a coluna de valor por nivel")
 [void]$out.Add("Private Const LINHA_STAT As Long = 185 ' Eng_Saida: 1a linha do bloco de estatistica")
+[void]$out.Add("Private Const LINHA_EST As Long = 190  ' Eng_Saida: 1a linha da tabela de parametros")
 
 # 17..298 inalteradas
 for ($i = 16; $i -le 297; $i++) { [void]$out.Add($L[$i]) }
@@ -65,7 +74,7 @@ if ($NovoPainel) {
     if ($L[746].Trim() -ne 'End Sub') {
         throw "Fronteira inesperada na linha 747: $($L[746])"
     }
-    foreach ($linha in [System.IO.File]::ReadAllLines($NovoPainel, $enc)) { [void]$out.Add($linha) }
+    foreach ($linha in [System.IO.File]::ReadAllLines($NovoPainel, $encFonte)) { [void]$out.Add($linha) }
     $i0 = 747
 }
 else {
@@ -73,8 +82,27 @@ else {
     $i0 = 747
 }
 
-# 748..fim inalteradas
-for ($i = $i0; $i -lt $L.Count; $i++) { [void]$out.Add($L[$i]) }
+# 748..749 inalteradas
+for ($i = $i0; $i -le 748; $i++) { [void]$out.Add($L[$i]) }
+
+# 750..799 substituidas (AtualizarEstatisticaAba), se fornecido
+if ($NovoEstat) {
+    if ($L[749] -notlike '*Sub AtualizarEstatisticaAba*') {
+        throw "Fronteira inesperada na linha 750: $($L[749])"
+    }
+    if ($L[798].Trim() -ne 'End Sub') {
+        throw "Fronteira inesperada na linha 799: $($L[798])"
+    }
+    foreach ($linha in [System.IO.File]::ReadAllLines($NovoEstat, $encFonte)) { [void]$out.Add($linha) }
+    $i1 = 799
+}
+else {
+    for ($i = 749; $i -le 798; $i++) { [void]$out.Add($L[$i]) }
+    $i1 = 799
+}
+
+# 800..fim inalteradas
+for ($i = $i1; $i -lt $L.Count; $i++) { [void]$out.Add($L[$i]) }
 
 # --- correcao de compilacao: aS/aM como identificadores ---
 # VBA e insensivel a maiusculas, entao o identificador "aS" e o mesmo token que

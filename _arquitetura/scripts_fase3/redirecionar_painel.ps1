@@ -25,7 +25,15 @@ param(
 
 $NLV = 3
 $LINHA_PAINEL = 7      # Painel: 1a linha de nivel
-$colunas = @(2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14, 15, 16, 17, 18, 19, 20, 21)
+
+# G(7), H(8) e I(9) ficam DE FORA do redirecionamento, por decisao do gestor:
+#   G = bias, que vem de Estatistica!J e portanto do controle EXTERNO (EQC_Dados).
+#       O bias do motor e outra grandeza -- desvio contra o alvo do lote --, e
+#       para avaliacao de metodo a trueness se estima por comparacao
+#       interlaboratorial, nao pela media atribuida do proprio controle interno.
+#   H = Erro Total e I = Sigma derivam de G. Continuam formula, e o defeito real
+#       delas (falta de Abs no bias) e corrigido no lugar, mais abaixo.
+$colunas = @(2, 3, 4, 5, 6, 10, 13, 14, 15, 16, 17, 18, 19, 20, 21)
 
 $xl = New-Object -ComObject Excel.Application
 $xl.Visible = $false
@@ -55,6 +63,25 @@ for ($t = 0; $t -lt $NLV; $t++) {
                 Celula   = $cel.Address($false, $false)
                 Coluna   = $c
                 Tipo     = if ($tinha) { 'ALTERADA' } else { 'EXTRA' }
+            })
+    }
+}
+
+# --- correcao no lugar: Erro Total e Sigma sem Abs no bias ---
+# CLSI: TE = |bias| + 1,65*CV  e  Sigma = (ETp - |bias|)/CV.
+# Sem o Abs, bias negativo (media abaixo do alvo) subestimava o Erro Total e
+# superestimava o Sigma -- o metodo aparentava desempenho melhor do que tem.
+# O bias (RC7) continua vindo de Estatistica!J, ou seja, do EQC.
+for ($t = 0; $t -lt $NLV; $t++) {
+    $linha = $LINHA_PAINEL + $t
+    $pnl.Cells($linha, 8).FormulaR1C1 = '=IF(RC5="","",RC5*1.65+ABS(IF(ISNUMBER(RC7),RC7,0)))'
+    $pnl.Cells($linha, 9).FormulaR1C1 = '=IF(OR(RC5="",RC5=0,RC6=""),"",(RC6-ABS(IF(ISNUMBER(RC7),RC7,0)))/RC5)'
+    foreach ($c in @(8, 9)) {
+        [void]$lista.Add([pscustomobject]@{
+                Nivel  = $t + 1
+                Celula = $pnl.Cells($linha, $c).Address($false, $false)
+                Coluna = $c
+                Tipo   = 'ALTERADA'
             })
     }
 }

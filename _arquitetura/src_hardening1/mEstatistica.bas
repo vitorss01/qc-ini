@@ -19,6 +19,7 @@ Private Const NEF As Long = 7          ' Eng_Saida: campos por nivel
 Private Const COL_FILTRO As Long = 24  ' Eng_Saida: filtro de data por corrida
 Private Const COL_VALOR0 As Long = 25  ' Eng_Saida: 1a coluna de valor por nivel
 Private Const LINHA_STAT As Long = 185 ' Eng_Saida: 1a linha do bloco de estatistica
+Private Const LINHA_EST As Long = 190  ' Eng_Saida: 1a linha da tabela de parametros
 Private Const AR0 As Long = 4          ' Analitos: 1a linha
 Private Const ARN As Long = 43
 Private Const E0  As Long = 7          ' Estatistica: 1a linha
@@ -738,19 +739,38 @@ Public Sub AtualizarPainelEng()
 End Sub
 
 ' ============================ ABA ESTATISTICA ============================
+' ========================= MOTOR: TABELA DE PARAMETROS =========================
+' Marco 4 do Sprint HARDENING 1 (ADR-019).
+'
+' ANTES: gravava direto em Estatistica!C7:M126, destruindo as 1.320 formulas
+' daquele bloco. Nao rodava na producao porque o procedimento nao compilava
+' (identificador alvoS colidindo com a palavra reservada As) -- e era exatamente
+' isso que mantinha as formulas vivas la. Com o alvoS corrigido, passaria a rodar
+' e a destruir a aba; por isso o desvio para Eng_Saida vem junto da correcao.
+'
+' AGORA: publica em Eng_Saida (linhas 190..309, colunas C..M) e a aba
+' Estatistica le por INDEX(engEstat, linha, coluna).
+'
+' Continua lendo B3/D3/B4 da propria aba Estatistica: sao filtros que o usuario
+' digita (ano inicial, ano final, lote), entrada de interface e nao calculo.
 Public Sub AtualizarEstatisticaAba()
-    Dim ws As Worksheet, wa As Worksheet, i As Long, t As Long, er As Long
+    Dim ws As Worksheet, wa As Worksheet, eng As Worksheet, i As Long, t As Long, er As Long
     Dim analito As String, anoDe As Long, anoAte As Long, loteF As String
     Dim st As Variant, n As Long, media As Double, dp As Double, cv As Double
+    ' alvoM/alvoS, nunca alvoM/alvoS: VBA e insensivel a maiusculas, entao "alvoS" e o
+    ' mesmo token que a palavra reservada "As" e o modulo nao compila.
     Dim alvoM As Double, alvoS As Double, etp As Double, bias As Double, et As Double, sg As Double
     Dim outp() As Variant, linhas As Long
+
     Set ws = ThisWorkbook.Sheets("Estatística")
     Set wa = ThisWorkbook.Sheets("Analitos")
+    Set eng = ThisWorkbook.Sheets("Eng_Saida")
+
     anoDe = CLng(Val(ws.Range("B3").Value))
     anoAte = CLng(Val(ws.Range("D3").Value))
     If anoAte < anoDe Then anoAte = anoDe
     loteF = Trim$(CStr(ws.Range("B4").Value))
-    If loteF = "" Then loteF = ""
+
     linhas = 40 * NLV
     ReDim outp(1 To linhas, 1 To 11)     ' C..M
     er = 0
@@ -785,7 +805,10 @@ Public Sub AtualizarEstatisticaAba()
             End If
         Next t
     Next i
-    ws.Range(ws.Cells(E0, 3), ws.Cells(E0 + linhas - 1, 13)).Value = outp
+
+    ' publica em Eng_Saida; a aba Estatistica le por formula
+    eng.Range(eng.Cells(LINHA_EST, 3), eng.Cells(LINHA_EST + linhas - 1, 13)).Value = outp
+
     RegistrarEventosWestgard
 End Sub
 
