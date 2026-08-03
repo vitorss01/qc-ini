@@ -1,0 +1,146 @@
+' ============================ MOTOR: ESCREVER Eng_Saida ============================
+' Marco 2 do Sprint HARDENING 1 (ADR-019).
+'
+' ANTES: esta rotina dava ClearContents na area inteira do Calc e reescrevia a
+' matriz toda com valores, destruindo as 12.614 formulas da aba.
+'
+' AGORA: nao toca no Calc. Calcula z e Westgard e publica SO o veredicto em
+' Eng_Saida. O Calc continua fazendo por formula o que a planilha faz bem --
+' buscar, filtrar, ordenar e plotar -- e le as regras daqui.
+'
+' Motivo de existir: as formulas do Calc implementavam Westgard com definicoes
+' diferentes das do motor (41s com 3 pontos em vez de 4, 10x com 6 em vez de 10,
+' R4s como max>2 E min<-2 em vez de amplitude>4, e 22s so entre niveis). Duas
+' camadas emitiam veredictos diferentes sobre o mesmo dado. Agora ha uma so.
+'
+' O nome da rotina foi mantido para nao quebrar as chamadas existentes em
+' AtualizarEstatistica, RecalcularAnalitoAtual e mOperacao.
+Public Sub AtualizarCalc()
+    Dim ws As Worksheet, analito As String, lote As String
+    Dim i As Long, t As Long, nRun As Long, r As Long
+    Dim runs() As Long, dts() As Double, valor() As Double, temDado() As Boolean, z() As Double
+    Dim r13 As Variant, r22 As Variant, rR4 As Variant, r41 As Variant, r10 As Variant, a12 As Variant
+    Dim alvoM() As Double, alvoS() As Double, etp As Double
+    Dim seen As Object, ordem As Object
+
+    Set ws = ThisWorkbook.Sheets("Eng_Saida")
+    analito = Trim$(CStr(ThisWorkbook.Names("selAnalito").RefersToRange.Value))
+    lote = LoteAtivoCore()
+    GarantirDB
+
+    ' limpa a area de saida (colunas B em diante; a coluna A guarda os slots fixos)
+    ws.Range(ws.Cells(KC0, 2), ws.Cells(KC0 + NK - 1, EF0 + NLV * NEF - 1)).ClearContents
+    ws.Range("C1").Value = analito
+    ws.Range("E1").Value = lote
+    ws.Range("G1").Value = Now
+    ws.Range("I1").Value = 0
+    If analito = "" Or IsEmpty(mDB) Then Exit Sub
+
+    ' ---- descobrir corridas (RUN) elegiveis do analito no lote ----
+    Set seen = CreateObject("Scripting.Dictionary")
+    ReDim runs(1 To NK): ReDim dts(1 To NK)
+    For i = 1 To UBound(mDB, 1)
+        If StrComp(Trim$(CStr(mDB(i, COL_ANALITO))), analito, 1) = 0 Then
+            If Mid$(CStr(mDB(i, COL_LOTE)), 4, 6) = lote Then
+                If EhElegivel(mDB(i, COL_STATUS)) Then
+                    If Not seen.Exists(CStr(mDB(i, COL_RUN))) Then
+                        If nRun < NK Then
+                            nRun = nRun + 1
+                            runs(nRun) = CLng(Val(mDB(i, COL_RUN)))
+                            If IsDate(mDB(i, COL_DATA)) Then dts(nRun) = CDbl(CDate(mDB(i, COL_DATA)))
+                            seen.Add CStr(mDB(i, COL_RUN)), nRun
+                        End If
+                    End If
+                End If
+            End If
+        End If
+    Next i
+    If nRun = 0 Then Exit Sub
+
+    ' ordenar por RUN (insercao: nRun e pequeno)
+    Dim a As Long, b As Long, tmpR As Long, tmpD As Double
+    For a = 2 To nRun
+        tmpR = runs(a): tmpD = dts(a): b = a - 1
+        Do While b >= 1
+            If runs(b) <= tmpR Then Exit Do
+            runs(b + 1) = runs(b): dts(b + 1) = dts(b): b = b - 1
+        Loop
+        runs(b + 1) = tmpR: dts(b + 1) = tmpD
+    Next a
+    Set ordem = CreateObject("Scripting.Dictionary")
+    For i = 1 To nRun
+        ordem(CStr(runs(i))) = i
+    Next i
+
+    ' ---- coletar valores por nivel ----
+    ReDim valor(0 To NLV - 1, 1 To nRun)
+    ReDim temDado(0 To NLV - 1, 1 To nRun)
+    ReDim z(0 To NLV - 1, 1 To nRun)
+    For i = 1 To UBound(mDB, 1)
+        If StrComp(Trim$(CStr(mDB(i, COL_ANALITO))), analito, 1) = 0 Then
+            If Mid$(CStr(mDB(i, COL_LOTE)), 4, 6) = lote Then
+                If EhElegivel(mDB(i, COL_STATUS)) And IsNumeric(mDB(i, COL_RESULT)) Then
+                    If ordem.Exists(CStr(mDB(i, COL_RUN))) Then
+                        t = CLng(Val(mDB(i, COL_NIVEL))) - 1
+                        If t >= 0 And t <= NLV - 1 Then
+                            r = ordem(CStr(mDB(i, COL_RUN)))
+                            valor(t, r) = CDbl(mDB(i, COL_RESULT))
+                            temDado(t, r) = True
+                        End If
+                    End If
+                End If
+            End If
+        End If
+    Next i
+
+    ' ---- alvos e z-scores ----
+    ReDim alvoM(0 To NLV - 1): ReDim alvoS(0 To NLV - 1)
+    For t = 0 To NLV - 1
+        AlvoAnalito analito, t + 1, alvoM(t), alvoS(t), etp
+        For i = 1 To nRun
+            If temDado(t, i) Then z(t, i) = CalcularZ(valor(t, i), alvoM(t), alvoS(t))
+        Next i
+    Next t
+
+    ' ---- Westgard ----
+    ReDim r13(0 To NLV - 1, 1 To nRun): ReDim r22(0 To NLV - 1, 1 To nRun)
+    ReDim rR4(0 To NLV - 1, 1 To nRun): ReDim r41(0 To NLV - 1, 1 To nRun)
+    ReDim r10(0 To NLV - 1, 1 To nRun): ReDim a12(0 To NLV - 1, 1 To nRun)
+    AvaliarWestgard z, temDado, nRun, r13, r22, rR4, r41, r10, a12
+
+    ' ---- publicar em Eng_Saida ----
+    ' Sem filtro de data de proposito: as regras dependem da sequencia completa
+    ' de corridas. Quem recorta o periodo exibido e o Calc, na hora de plotar.
+    Dim outRun() As Variant, outLvl() As Variant, rej As Boolean
+    ReDim outRun(1 To nRun, 1 To 1)
+    For i = 1 To nRun
+        outRun(i, 1) = runs(i)
+    Next i
+    ws.Range(ws.Cells(KC0, 2), ws.Cells(KC0 + nRun - 1, 2)).Value = outRun
+
+    For t = 0 To NLV - 1
+        ReDim outLvl(1 To nRun, 1 To NEF)
+        For i = 1 To nRun
+            If temDado(t, i) Then
+                outLvl(i, 1) = IIf(r13(t, i) = 1, 1, 0)
+                outLvl(i, 2) = IIf(r22(t, i) = 1, 1, 0)
+                outLvl(i, 3) = IIf(rR4(t, i) = 1, 1, 0)
+                outLvl(i, 4) = IIf(r41(t, i) = 1, 1, 0)
+                outLvl(i, 5) = IIf(r10(t, i) = 1, 1, 0)
+                outLvl(i, 6) = IIf(a12(t, i) = 1, 1, 0)
+                rej = (r13(t, i) = 1 Or r22(t, i) = 1 Or rR4(t, i) = 1 Or r41(t, i) = 1 Or r10(t, i) = 1)
+                ' So REJEITADO/OK. O alerta 12s vai na coluna propria: o Calc usa
+                ' este campo para separar as series de pontos conformes e
+                ' rejeitados, e publicar "ALERTA" aqui mudaria o grafico.
+                outLvl(i, 7) = IIf(rej, "REJEITADO", "OK")
+            Else
+                outLvl(i, 1) = 0: outLvl(i, 2) = 0: outLvl(i, 3) = 0
+                outLvl(i, 4) = 0: outLvl(i, 5) = 0: outLvl(i, 6) = 0
+                outLvl(i, 7) = ""
+            End If
+        Next i
+        ws.Range(ws.Cells(KC0, EF0 + t * NEF), ws.Cells(KC0 + nRun - 1, EF0 + t * NEF + NEF - 1)).Value = outLvl
+    Next t
+
+    ws.Range("I1").Value = nRun
+End Sub

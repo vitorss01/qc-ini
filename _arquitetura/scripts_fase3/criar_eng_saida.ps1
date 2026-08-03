@@ -91,6 +91,11 @@ for ($i = 1; $i -le $NK; $i++) {
 $ultimaLinha = $KC0 + $NK - 1
 $refDados = "=Eng_Saida!" + $eng.Range($eng.Cells($KC0, 1), $eng.Cells($ultimaLinha, $ultimaCol)).Address()
 $wb.Names.Add('engDados', $refDados) | Out-Null
+# engRUN: chave de juncao. O Calc casa por RUN, nao por posicao de linha --
+# a coluna B do Calc filtra por rFirst/loteAtivo e o motor filtra por
+# EhElegivel/lote core, entao as duas listas podem divergir de ordem.
+$refRun = "=Eng_Saida!" + $eng.Range($eng.Cells($KC0, 2), $eng.Cells($ultimaLinha, 2)).Address()
+$wb.Names.Add('engRUN', $refRun) | Out-Null
 $wb.Names.Add('engAnalito', '=Eng_Saida!' + $eng.Range('C1').Address()) | Out-Null
 $wb.Names.Add('engLote', '=Eng_Saida!' + $eng.Range('E1').Address()) | Out-Null
 $wb.Names.Add('engCarimbo', '=Eng_Saida!' + $eng.Range('G1').Address()) | Out-Null
@@ -103,7 +108,7 @@ $eng.Visible = 2      # xlSheetVeryHidden: nao aparece nem no menu de reexibir
 
 "Eng_Saida criada: linhas $KC0..$ultimaLinha, colunas 1..$ultimaCol ($($NLV * $NEF) campos, $NLV niveis)"
 "CodeName: $($eng.CodeName)"
-"Nomes definidos: engDados, engAnalito, engLote, engCarimbo, engNRun"
+"Nomes definidos: engDados, engRUN, engAnalito, engLote, engCarimbo, engNRun"
 
 $wb.Save()
 $wb.Close($true)
