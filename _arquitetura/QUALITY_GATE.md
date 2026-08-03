@@ -39,7 +39,8 @@ não vale.
 
 | # | Item | Status | O que fecha |
 |---|---|---|---|
-| 2.1 | Fórmulas preservadas | ⏳ | Motor escreve em `Eng_Saida`; Painel/Estatística referenciam por fórmula. **Hoje destrói 1.365** (Painel 58→13, Estatística 2160→840). Teste: contagem antes/depois idêntica |
+| 2.1 | Fórmulas preservadas | ✅ | Marcos 1–5. Motor escreve só em `Eng_Saida`. Diff célula a célula contra a produção: `AUSENTE 0 · ALTERADA 4362 · VALOR 0 · EXTRA 9`, 61.425 fórmulas. As 4362 são lista fechada e versionada (`src_hardening1/marco*_celulas_redirecionadas.csv`): 3240 Calc + 42 Painel + 1080 Estatística. As 9 EXTRA são `Painel!S:U`, onde o motor gravava valor direto |
+| 2.1b | ADR-019 verificado | ✅ | `varredura_adr019.ps1`: produção tinha **120** fórmulas de interface calculando parâmetro estatístico sobre o banco (`Estatística!D`, `AVERAGEIFS`); build tem **0**. As 900 restantes no `Calc` são seleção/filtro, permitidas. Estatística agregada que sobra na interface é só a cadeia do bias EQC (840, mantida por decisão) e 8 células de limite de eixo |
 | 2.2 | Sem sobrescrita silenciosa | ⏳ | Reenviar mesma Data+lote sobrescreve valor sem versionar. Exige versionamento: linha original nunca alterada |
 | 2.3 | Exclusão lógica não é revertida sozinha | ⏳ | `UpsertResultados` força `Status = Ativo`, ressuscitando excluído. Reverter exclusão deve ser ação própria, com justificativa |
 | 2.4 | RUN representa a corrida analítica | ⏳ | Hoje RUN = (Data + lote) colapsa turnos e pós-calibração. CLSI C24 trata como eventos distintos |
