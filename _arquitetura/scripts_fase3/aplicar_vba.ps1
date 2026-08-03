@@ -36,9 +36,32 @@ foreach ($m in $Modulos) {
         if ($alvo.Type -eq 100) {
             # Documento (Planilha/EstaPastaDeTrabalho) nao pode ser removido:
             # substituir o codigo linha a linha.
+            #
+            # ATENCAO: AddFromFile insere o arquivo INTEIRO como codigo. Um .cls
+            # exportado comeca com VERSION / BEGIN / END / Attribute VB_*, que
+            # sao metadados do formato, nao VBA. Inseridos no corpo viram erro
+            # de sintaxe e o PROJETO INTEIRO deixa de compilar -- inclusive
+            # procedimentos de outros modulos, que passam a falhar no
+            # Application.Run com 0x800A9C68. Por isso o cabecalho e removido
+            # antes, e so o codigo entra.
+            $bruto = [System.IO.File]::ReadAllLines($m, [System.Text.Encoding]::Default)
+            $corpo = New-Object System.Collections.ArrayList
+            $emCabecalho = $true
+            foreach ($linha in $bruto) {
+                if ($emCabecalho) {
+                    if ($linha -match '^\s*(VERSION|BEGIN|END|MultiUse|Attribute)\b') { continue }
+                    if ($linha.Trim() -eq '') { continue }
+                    $emCabecalho = $false
+                }
+                [void]$corpo.Add($linha)
+            }
+            $tmp = [System.IO.Path]::GetTempFileName()
+            [System.IO.File]::WriteAllLines($tmp, $corpo.ToArray(), [System.Text.Encoding]::Default)
+
             $alvo.CodeModule.DeleteLines(1, $alvo.CodeModule.CountOfLines)
-            $alvo.CodeModule.AddFromFile($m)
-            "  substituido (documento): $nome"
+            $alvo.CodeModule.AddFromFile($tmp)
+            Remove-Item $tmp -Force
+            "  substituido (documento): $nome  ($($corpo.Count) linhas de codigo)"
             continue
         }
         $proj.VBComponents.Remove($alvo)

@@ -18,6 +18,7 @@ Private Const EF0 As Long = 3          ' Eng_Saida: 1a coluna de bloco de nivel
 Private Const NEF As Long = 7          ' Eng_Saida: campos por nivel
 Private Const COL_FILTRO As Long = 24  ' Eng_Saida: filtro de data por corrida
 Private Const COL_VALOR0 As Long = 25  ' Eng_Saida: 1a coluna de valor por nivel
+Private Const COL_CHAVE As Long = 28   ' Eng_Saida: chave logica ANALITO|RUN
 Private Const LINHA_STAT As Long = 185 ' Eng_Saida: 1a linha do bloco de estatistica
 Private Const LINHA_EST As Long = 190  ' Eng_Saida: 1a linha da tabela de parametros
 Private Const AR0 As Long = 4          ' Analitos: 1a linha
@@ -333,7 +334,7 @@ Public Sub AtualizarCalc()
     GarantirDB
 
     ' limpa a area de saida (colunas B em diante; a coluna A guarda os slots fixos)
-    ws.Range(ws.Cells(KC0, 2), ws.Cells(KC0 + NK - 1, COL_VALOR0 + NLV - 1)).ClearContents
+    ws.Range(ws.Cells(KC0, 2), ws.Cells(KC0 + NK - 1, COL_CHAVE)).ClearContents
     ws.Range("C1").Value = analito
     ws.Range("E1").Value = lote
     ws.Range("G1").Value = Now
@@ -425,17 +426,23 @@ Public Sub AtualizarCalc()
     ' Filtro de data e valores por nivel: e o que AtualizarPainelEng consome.
     ' Publicados aqui para que o Painel nunca precise ler o Calc -- se lesse,
     ' dependeria de o Excel ter recalculado as formulas que apontam para ca.
-    Dim outFil() As Variant, outVal() As Variant
+    Dim outFil() As Variant, outVal() As Variant, outChv() As Variant
     ReDim outFil(1 To nRun, 1 To 1)
     ReDim outVal(1 To nRun, 1 To NLV)
+    ReDim outChv(1 To nRun, 1 To 1)
     For i = 1 To nRun
         outFil(i, 1) = IIf(PassaFiltro(dts(i)), 1, 0)
+        ' Chave logica da linha: ANALITO|RUN. O RUN sozinho identifica a corrida,
+        ' que e compartilhada entre analitos -- casar so por ele deixava o Calc
+        ' ler a linha certa do analito errado.
+        outChv(i, 1) = analito & "|" & runs(i)
         For t = 0 To NLV - 1
             If temDado(t, i) Then outVal(i, t + 1) = valor(t, i) Else outVal(i, t + 1) = ""
         Next t
     Next i
     ws.Range(ws.Cells(KC0, COL_FILTRO), ws.Cells(KC0 + nRun - 1, COL_FILTRO)).Value = outFil
     ws.Range(ws.Cells(KC0, COL_VALOR0), ws.Cells(KC0 + nRun - 1, COL_VALOR0 + NLV - 1)).Value = outVal
+    ws.Range(ws.Cells(KC0, COL_CHAVE), ws.Cells(KC0 + nRun - 1, COL_CHAVE)).Value = outChv
 
     For t = 0 To NLV - 1
         ReDim outLvl(1 To nRun, 1 To NEF)

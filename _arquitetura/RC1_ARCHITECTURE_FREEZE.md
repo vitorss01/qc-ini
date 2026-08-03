@@ -118,6 +118,15 @@ motor → planilha → motor deixou de existir.
 7. **`aS` e `aM` são proibidos como identificadores.** VBA é insensível a maiúsculas:
    `aS` é a palavra reservada `As` e o módulo não compila. O lint de
    `gerar_mEstatistica.ps1` barra a classe inteira.
+8. **A chave lógica da saída do motor é `ANALITO|RUN`, nunca o RUN sozinho.**
+   O RUN identifica a corrida, e a corrida cobre vários analitos. Qualquer consulta
+   futura a `Eng_Saida` casa por `engChave`. Quando a chave não bate, o resultado é
+   vazio — falha visível, jamais dado de outro analito.
+9. **Módulo de documento (`Planilha*.cls`) se aplica sem o cabeçalho.**
+   `AddFromFile` insere o arquivo inteiro como código, e `VERSION`/`BEGIN`/`Attribute`
+   viram erro de sintaxe que derruba a compilação do **projeto todo** — inclusive
+   procedimentos de outros módulos, que passam a falhar com `0x800A9C68`.
+   `aplicar_vba.ps1` remove o cabeçalho antes de aplicar.
 
 ---
 
@@ -131,26 +140,31 @@ Revisão feita sobre o candidato a RC1, sem implementar nada.
 `AtualizarCalc → AtualizarPainelEng → AtualizarEstatisticaAba` é respeitada por
 `AtualizarEstatistica` e por `RecalcularAnalitoAtual`.
 
-### CRÍTICO — 1. `Eng_Saida` fica obsoleto ao trocar de analito
+### RESOLVIDO — 1. `Eng_Saida` ficava obsoleto ao trocar de analito
 
-Regressão introduzida pelo Marco 2. As colunas de regra do `Calc` leem `Eng_Saida`
-casando por `MATCH` sobre o RUN — mas o RUN identifica a **corrida**, e é compartilhado
-entre analitos. Trocar o analito no `Painel` dispara apenas `AtualizarEixos`
-([`Planilha7.cls:10`](snapshot_producao/Hematologia/vba/Planilha7.cls:10)); o motor não
-roda, o `MATCH` encontra o mesmo RUN e devolve o veredicto **do analito anterior**.
+Regressão introduzida pelo Marco 2, encontrada por esta revisão e **corrigida antes do
+congelamento**.
 
-Reproduzido: com o motor rodado para `RDW-CV` e trocando para `WBC` sem reexecutar,
-a linha do RUN 6 exibe `REJEITADO` quando o valor real do WBC é `OK`.
+*O defeito:* as colunas de regra do `Calc` casavam por `MATCH` sobre o RUN — mas o RUN
+identifica a **corrida**, e a mesma corrida cobre vários analitos. Trocar o analito no
+`Painel` disparava apenas `AtualizarEixos`; o motor não rodava, o `MATCH` encontrava o
+mesmo RUN e devolvia o veredicto **do analito anterior**. Reproduzido: motor rodado para
+`RDW-CV`, trocando para `WBC` sem reexecutar, a linha do RUN 6 exibia `REJEITADO` quando
+o WBC real é `OK`. Na produção não ocorria, porque o `Calc` calculava as regras sozinho.
 
-Na produção isso não acontecia, porque o `Calc` calculava as regras por conta própria.
+*A correção, estrutural, em duas camadas:*
 
-**Correção recomendada, em duas camadas:**
-- *À prova de falha:* prefixar as fórmulas de regra com `IF(engAnalito<>selAnalito,"",…)`.
-  O painel passa a exibir vazio em vez de valor errado. Não exige VBA.
-- *Correta:* `Planilha7.Worksheet_Change` chamar `RecalcularAnalitoAtual` quando
-  `selAnalito` mudar. Custo medido: ~0,27 s.
+1. **Chave lógica `ANALITO|RUN`**, publicada pelo motor na coluna AB de `Eng_Saida`
+   (nome `engChave`). As fórmulas casam por `MATCH(selAnalito&"|"&RC2, engChave, 0)`.
+   Se `Eng_Saida` for de outro analito, o `MATCH` **falha** e o `IFERROR` devolve vazio.
+   O erro passa a ser visível, e nunca um veredicto falso.
+2. **`Planilha7.Worksheet_Change` chama `RecalcularAnalitoAtual`** quando muda o analito
+   (B3) ou o filtro (G3, G4, M3, M4, N3, N4) — todos alteram o que o motor publica.
 
-**Bloqueia o congelamento até ser corrigido.**
+*Verificado:* com `Eng_Saida` de RDW-CV e a planilha pedindo WBC, as 10 primeiras linhas
+devolvem vazio — **0 veredictos falsos**, contra 1 em 10 antes. Com eventos ligados, o
+seletor repopula sozinho e o veredicto é o do analito certo. A regressão consolidada
+permanece em 233 divergências com a mesma decomposição: nenhuma nova foi introduzida.
 
 ### ALTO — 2. `UpsertResultados` ressuscita registro excluído
 

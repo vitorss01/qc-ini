@@ -54,6 +54,7 @@ for ($i = 0; $i -le 15; $i++) { [void]$out.Add($L[$i]) }
 [void]$out.Add("Private Const NEF As Long = 7          ' Eng_Saida: campos por nivel")
 [void]$out.Add("Private Const COL_FILTRO As Long = 24  ' Eng_Saida: filtro de data por corrida")
 [void]$out.Add("Private Const COL_VALOR0 As Long = 25  ' Eng_Saida: 1a coluna de valor por nivel")
+[void]$out.Add("Private Const COL_CHAVE As Long = 28   ' Eng_Saida: chave logica ANALITO|RUN")
 [void]$out.Add("Private Const LINHA_STAT As Long = 185 ' Eng_Saida: 1a linha do bloco de estatistica")
 [void]$out.Add("Private Const LINHA_EST As Long = 190  ' Eng_Saida: 1a linha da tabela de parametros")
 

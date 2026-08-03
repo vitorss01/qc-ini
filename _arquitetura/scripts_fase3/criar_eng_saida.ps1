@@ -46,6 +46,14 @@ $campos = @('R13s', 'R22s', 'RR4s', 'R41s', 'R10x', 'Alerta12s', 'Veredicto')
 $COL_FILTRO = 24                    # X: 1 se a corrida passa no filtro de data
 $COL_VALOR0 = 25                    # Y,Z,AA: valor por nivel
 
+# AB: chave logica "ANALITO|RUN".
+# O RUN sozinho NAO identifica a saida do motor: ele identifica a CORRIDA, e a
+# mesma corrida cobre varios analitos. Casar so por RUN fazia o Calc encontrar a
+# linha certa do analito ERRADO quando Eng_Saida estava de outro analito, e
+# exibir o veredicto dele. Com a chave composta o MATCH simplesmente falha, e a
+# formula devolve vazio em vez de um veredicto falso.
+$COL_CHAVE = 28
+
 # Bloco de estatistica por nivel (Marco 3), espelhando as colunas do Painel:
 #   linha 184 cabecalho, linhas 185..187 = niveis 1..3
 #   colunas B..U == colunas 2..21 do Painel (n, media, dp, cv, etp, bias, et,
@@ -108,7 +116,8 @@ for ($t = 0; $t -lt $NLV; $t++) {
     $eng.Cells(2, $COL_VALOR0 + $t).Value2 = "N$($t + 1)_Valor"
 }
 
-$ultimaCol = $COL_VALOR0 + $NLV - 1
+$eng.Cells(2, $COL_CHAVE).Value2 = 'Chave'
+$ultimaCol = $COL_CHAVE
 $eng.Range($eng.Cells(2, 1), $eng.Cells(2, $ultimaCol)).Font.Bold = $true
 
 # ---- bloco de estatistica por nivel ----
@@ -151,6 +160,9 @@ $wb.Names.Add('engDados', $refDados) | Out-Null
 # EhElegivel/lote core, entao as duas listas podem divergir de ordem.
 $refRun = "=Eng_Saida!" + $eng.Range($eng.Cells($KC0, 2), $eng.Cells($ultimaLinha, 2)).Address()
 $wb.Names.Add('engRUN', $refRun) | Out-Null
+# engChave: "ANALITO|RUN". E por ela que o Calc casa, nao por engRUN.
+$refChave = "=Eng_Saida!" + $eng.Range($eng.Cells($KC0, $COL_CHAVE), $eng.Cells($ultimaLinha, $COL_CHAVE)).Address()
+$wb.Names.Add('engChave', $refChave) | Out-Null
 # engPainel: bloco de estatistica por nivel. O Painel le por INDEX(engPainel,
 # nivel, coluna) usando a MESMA coluna que ele proprio ocupa -- a linha 185+t
 # espelha a linha 7+t do Painel, coluna a coluna.
@@ -174,7 +186,7 @@ $eng.Visible = 2      # xlSheetVeryHidden: nao aparece nem no menu de reexibir
 "  corridas   linhas $KC0..$ultimaLinha, colunas 1..$ultimaCol"
 "  estatistica linhas $LINHA_STAT..$($LINHA_STAT + $NLV - 1), colunas 1..21"
 "  parametros  linhas $LINHA_EST..$($LINHA_EST + $LINHAS_EST - 1), colunas 1..13"
-"Nomes: engDados, engRUN, engPainel, engEstat, engAnalito, engLote, engCarimbo, engNRun"
+"Nomes: engDados, engRUN, engChave, engPainel, engEstat, engAnalito, engLote, engCarimbo, engNRun"
 
 $wb.Save()
 $wb.Close($true)

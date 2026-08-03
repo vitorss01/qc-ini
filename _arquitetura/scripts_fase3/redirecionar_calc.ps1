@@ -59,8 +59,14 @@ for ($t = 0; $t -lt $NLV; $t++) {
         $ehVeredicto = ($k -eq 5)
         if ($ehVeredicto) { $colEng = $engBase + 6 }   # pula Alerta12s
 
+        # Casa por ANALITO|RUN, nao por RUN. O RUN identifica a CORRIDA, que e
+        # compartilhada entre analitos: casando so por ele, quando Eng_Saida
+        # estava de outro analito o MATCH encontrava a linha e devolvia o
+        # veredicto DAQUELE analito. Com a chave composta o MATCH falha e o
+        # IFERROR devolve vazio -- erro visivel, nunca veredicto falso.
         $vazio = if ($ehVeredicto) { '""' } else { '0' }
-        $f = "=IF(RC$colValor=" + '""' + ",$vazio,IFERROR(INDEX(engDados,MATCH(RC2,engRUN,0),$colEng),$vazio))"
+        $chave = 'selAnalito&"|"&RC2'
+        $f = "=IF(RC$colValor=" + '""' + ",$vazio,IFERROR(INDEX(engDados,MATCH($chave,engChave,0),$colEng),$vazio))"
 
         $rng = $calc.Range($calc.Cells($KC0, $colCalc), $calc.Cells($KC0 + $NK - 1, $colCalc))
         $rng.FormulaR1C1 = $f
