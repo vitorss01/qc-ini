@@ -19,11 +19,14 @@
 
 param(
     [Parameter(Mandatory = $true)][string]$Workbook,
-    [string]$OutCsv
+    [string]$OutCsv,
+    # Niveis do produto: Hematologia 3, Bioquimica e Imunologia 2. Tem de
+    # casar com a constante NLV de mEstatistica.bas.
+    [int]$NLV = 3
 )
 
 $E0 = 7          # Estatistica: 1a linha do bloco
-$LINHAS = 120    # 40 analitos x 3 niveis
+$LINHAS = 40 * $NLV    # 40 analitos x niveis
 $C0 = 3          # coluna C
 $CN = 9          # coluna I -- para em I de proposito, ver abaixo
 

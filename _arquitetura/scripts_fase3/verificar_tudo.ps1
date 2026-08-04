@@ -20,7 +20,10 @@
 #   .\verificar_tudo.ps1 -PularBuild     (verifica o artefato que ja existe)
 
 param(
-    [switch]$PularBuild
+    [switch]$PularBuild,
+    # Produto alvo. Acompanha o -Produto do build_all.ps1: define o snapshot de
+    # referencia, a pasta de build e o nome do arquivo.
+    [string]$Produto = 'Hematologia'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -28,9 +31,9 @@ $ErrorActionPreference = 'Stop'
 $s = Split-Path -Parent $MyInvocation.MyCommand.Path
 $arq = Split-Path -Parent $s
 $h = Join-Path $arq 'src_hardening1'
-$snap = Join-Path $arq 'snapshot_producao\Hematologia'
-$bd = Join-Path $env:USERPROFILE 'QCINI_build_hardening1'
-$alvo = Join-Path $bd 'QC_Hematologia.xlsm'
+$snap = Join-Path $arq "snapshot_producao\$Produto"
+$bd = Join-Path $env:USERPROFILE "QCINI_build_hardening1_$Produto"
+$alvo = Join-Path $bd "QC_$Produto.xlsm"
 $relatorio = Join-Path $bd 'VERIFICACAO.md'
 
 $itens = New-Object System.Collections.ArrayList
@@ -85,7 +88,7 @@ function Hash-Texto {
 
 ""
 "================================================================"
-"  VERIFICACAO DO QC_INI - Hematologia"
+"  VERIFICACAO DO QC_INI - $Produto"
 "  $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')"
 "================================================================"
 
@@ -93,7 +96,7 @@ function Hash-Texto {
 if (-not $PularBuild) {
     ""
     "-- 0. BUILD ----------------------------------------------------"
-    $saidaBuild = & (Join-Path $s 'build_all.ps1') 2>&1
+    $saidaBuild = & (Join-Path $s 'build_all.ps1') -Produto $Produto 2>&1
     $okBuild = $?
     $saidaBuild | Where-Object { $_ -match '^==|^BUILD PRONTO' } | ForEach-Object { "     $_" }
     Anotar '0.1' 'build_all.ps1 concluiu' $okBuild ''
@@ -105,7 +108,7 @@ if (-not (Test-Path $alvo)) { throw "Artefato nao encontrado: $alvo (rode sem -P
 # artefato sai da suite exatamente como o build o deixou.
 Encerrar-Excel
 $alvoOriginal = $alvo
-$copia = Join-Path $bd "QC_Hematologia_verificacao.xlsm"
+$copia = Join-Path $bd "QC_${Produto}_verificacao.xlsm"
 Copy-Item $alvo $copia -Force
 $alvo = $copia
 
@@ -578,7 +581,7 @@ Encerrar-Excel
 "   (cenario do auditor: abrir com macros DESABILITADAS)"
 
 Encerrar-Excel
-$dist = Join-Path $bd 'QC_Hematologia_distribuicao.xlsm'
+$dist = Join-Path $bd "QC_${Produto}_distribuicao.xlsm"
 Copy-Item $alvoOriginal $dist -Force
 & (Join-Path $s 'blindar_artefato.ps1') -Workbook $dist | ForEach-Object { "     $_" }
 Encerrar-Excel
@@ -644,7 +647,7 @@ finally { $zip.Dispose() }
 # ------------------------------------------------------- 6. relatorio ---------
 $falhas = @($itens | Where-Object { -not $_.Ok })
 $md = New-Object System.Collections.ArrayList
-[void]$md.Add("# Verificacao do QC_INI - Hematologia")
+[void]$md.Add("# Verificacao do QC_INI - $Produto")
 [void]$md.Add("")
 [void]$md.Add("**Executada em:** $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')")
 [void]$md.Add("**Artefato:** ``$alvo``")

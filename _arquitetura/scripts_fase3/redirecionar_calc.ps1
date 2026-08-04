@@ -29,10 +29,13 @@
 
 param(
     [Parameter(Mandatory = $true)][string]$Workbook,
-    [string]$OutCsv
+    [string]$OutCsv,
+    # Niveis do produto: Hematologia 3, Bioquimica e Imunologia 2. Tem de
+    # casar com a constante NLV de mEstatistica.bas.
+    [int]$NLV = 3
 )
 
-$NLV = 3; $KC0 = 3; $NK = 180; $CF0 = 6; $NFD = 22
+$KC0 = 3; $NK = 180; $CF0 = 6; $NFD = 22
 $EF0 = 3; $NEF = 7
 
 $ErrorActionPreference = 'Stop'

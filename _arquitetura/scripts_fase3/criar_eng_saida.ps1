@@ -27,11 +27,14 @@
 #   .\criar_eng_saida.ps1 -Workbook <copia_de_trabalho.xlsm>
 
 param(
-    [Parameter(Mandatory = $true)][string]$Workbook
+    [Parameter(Mandatory = $true)][string]$Workbook,
+    # Niveis de controle do produto. Hematologia usa 3; Bioquimica e Imunologia
+    # usam 2. Tem de casar com a constante NLV de mEstatistica.bas -- se
+    # divergirem, o motor escreve num bloco e a planilha le outro, em silencio.
+    [int]$NLV = 3
 )
 
 # constantes espelhadas de mEstatistica.bas
-$NLV = 3      # niveis
 $KC0 = 3      # primeira linha de dados (igual ao Calc)
 $NK = 180     # slots de RUN
 $EF0 = 3      # primeira coluna de bloco de nivel
@@ -64,7 +67,7 @@ $LINHA_STAT = 185
 #   linha 189 cabecalho, linhas 190..309 = 40 analitos x 3 niveis
 #   colunas C..M == colunas 3..13 da aba Estatistica (bloco C7:M126)
 $LINHA_EST = 190
-$LINHAS_EST = 120
+$LINHAS_EST = 40 * $NLV      # 40 analitos x niveis
 
 $camposStat = @{
     2 = 'n'; 3 = 'media'; 4 = 'dp'; 5 = 'cv'; 6 = 'etp'; 7 = 'bias'; 8 = 'et'

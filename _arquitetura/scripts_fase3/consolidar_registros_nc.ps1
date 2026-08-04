@@ -38,7 +38,10 @@
 #   .\consolidar_registros_nc.ps1 -Workbook <build.xlsm>
 
 param(
-    [Parameter(Mandatory = $true)][string]$Workbook
+    [Parameter(Mandatory = $true)][string]$Workbook,
+    # Niveis do produto: Hematologia 3, Bioquimica e Imunologia 2. Tem de
+    # casar com a constante NLV de mEstatistica.bas.
+    [int]$NLV = 3
 )
 
 $ErrorActionPreference = 'Stop'
@@ -51,8 +54,16 @@ $TXT_NAOCONF = 'N' + [char]0x00E3 + 'o conforme'
 $REG_R0 = 4; $REG_RN = 203
 $CALC_R0 = 3; $CALC_RN = 182
 
-# colunas do Calc que espelham regRep2 e regRep3, por nivel
-$COLS_REMOVER = @(25, 26, 47, 48, 69, 70)     # Y,Z  AU,AV  BQ,BR
+# Colunas do Calc que espelham regRep2 e regRep3, DERIVADAS da geometria em vez
+# de escritas na mao: o bloco do nivel t comeca em CF0 + t*NFD, e regRep1/2/3
+# sao os campos 19, 20 e 21 do bloco. Com NLV=3 isso da Y,Z / AU,AV / BQ,BR --
+# os mesmos valores de antes, agora corretos tambem para um produto de 2 niveis.
+$CF0 = 6; $NFD = 22
+$COLS_REMOVER = @()
+for ($t = 0; $t -lt $NLV; $t++) {
+    $COLS_REMOVER += ($CF0 + $t * $NFD + 19)     # regRep2
+    $COLS_REMOVER += ($CF0 + $t * $NFD + 20)     # regRep3
+}
 # indice da serie de repeticao em cada grafico (as tres sao consecutivas)
 $SERIE_BASE = 11
 

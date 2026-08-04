@@ -21,7 +21,10 @@
 #   .\build_all.ps1 -PularMotor      (nao executa o motor ao final)
 
 param(
-    [switch]$PularMotor
+    [switch]$PularMotor,
+    # Produto alvo. Remove a amarracao a Hematologia em nome de arquivo,
+    # snapshot e pasta de build.
+    [string]$Produto = 'Hematologia'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,6 +33,30 @@ $s = Split-Path -Parent $MyInvocation.MyCommand.Path
 $arq = Split-Path -Parent $s
 $raiz = Split-Path -Parent $arq
 $h = Join-Path $arq 'src_hardening1'
+
+# Niveis de controle por produto.
+#
+# NAO e so um numero de script: define a GEOMETRIA da pasta de trabalho --
+# quantos blocos de coluna o Calc tem, quantas linhas de nivel o Painel usa,
+# quantas linhas a Estatistica ocupa e quantos graficos existem. Parametrizar os
+# scripts e condicao necessaria para propagar, nao suficiente: Bioquimica e
+# Imunologia ainda NAO tem motor (falta mEstatistica, mWestgardKnowledge,
+# Cfg_Status e Eventos_Westgard) e suas planilhas tem geometria propria.
+$NIVEIS_POR_PRODUTO = @{
+    'Hematologia' = 3
+    'Bioquimica'  = 2
+    'Imunologia'  = 2
+}
+if (-not $NIVEIS_POR_PRODUTO.ContainsKey($Produto)) {
+    throw "Produto desconhecido: $Produto. Conhecidos: $($NIVEIS_POR_PRODUTO.Keys -join ', ')"
+}
+$NLV = $NIVEIS_POR_PRODUTO[$Produto]
+"produto: $Produto   niveis: $NLV"
+
+$snapProduto = Join-Path $arq "snapshot_producao\$Produto"
+if (-not (Test-Path $snapProduto)) {
+    throw "Snapshot de producao ausente para $Produto : $snapProduto. Gere com snapshot_projeto.ps1 antes de construir."
+}
 
 # A pasta de build fica FORA do OneDrive.
 #
@@ -45,9 +72,9 @@ $h = Join-Path $arq 'src_hardening1'
 # O NOME PRECISA CONTER "build_hardening": rodar_motor.ps1 recusa executar
 # fora de uma copia de build, justamente para o motor nunca rodar sobre a
 # producao. A trava e boa -- o nome se adapta a ela, nao o contrario.
-$bd = Join-Path $env:USERPROFILE 'QCINI_build_hardening1'
-$prod = Join-Path $raiz 'QC_Hematologia.xlsm'
-$alvo = Join-Path $bd 'QC_Hematologia.xlsm'
+$bd = Join-Path $env:USERPROFILE "QCINI_build_hardening1_$Produto"
+$prod = Join-Path $raiz "QC_$Produto.xlsm"
+$alvo = Join-Path $bd "QC_$Produto.xlsm"
 
 if (-not (Test-Path $prod)) { throw "Producao nao encontrada: $prod" }
 New-Item -ItemType Directory -Force -Path $bd | Out-Null
@@ -146,14 +173,14 @@ Copy-Item $prod $alvo -Force
 Encerrar-Excel
 "== 1. gera os modulos VBA a partir dos patches"
 Mostrar (& (Join-Path $s 'gerar_mEstatistica.ps1') `
-    -Producao (Join-Path $arq 'snapshot_producao\Hematologia\vba\mEstatistica.bas') `
+    -Producao (Join-Path $snapProduto 'vba\mEstatistica.bas') `
     -NovoSub (Join-Path $h 'AtualizarCalc.txt') `
     -NovoPainel (Join-Path $h 'AtualizarPainelEng.txt') `
     -NovoEstat (Join-Path $h 'AtualizarEstatisticaAba.txt') `
     -Saida (Join-Path $h 'mEstatistica.bas')) -Ultimas 2
 
 Mostrar (& (Join-Path $s 'gerar_mDados.ps1') `
-    -Producao (Join-Path $arq 'snapshot_producao\Hematologia\vba\mDados.bas') `
+    -Producao (Join-Path $snapProduto 'vba\mDados.bas') `
     -NovoRun (Join-Path $h 'mDados_RUN.txt') `
     -Saida (Join-Path $h 'mDados.bas')) -Ultimas 2
 
@@ -164,7 +191,7 @@ Mostrar (& (Join-Path $s 'gerar_mDados_audit.ps1') `
 
 Encerrar-Excel
 "== 2. Eng_Saida (camada de saida do motor)"
-Etapa 'criar_eng_saida.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 1
+Etapa 'criar_eng_saida.ps1' -Argumentos @('-Workbook', $alvo, '-NLV', $NLV) -Ultimas 1
 
 Encerrar-Excel
 "== 3. Corridas (identidade do RUN) + migracao"
@@ -209,15 +236,15 @@ Etapa 'criar_botoes_nc.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
 
 Encerrar-Excel
 "== 6. redireciona as abas de interface para Eng_Saida"
-Etapa 'redirecionar_calc.ps1' -Argumentos @('-Workbook', $alvo, '-OutCsv', (Join-Path $h 'marco2_celulas_redirecionadas.csv')) -Primeiras 1
+Etapa 'redirecionar_calc.ps1' -Argumentos @('-Workbook', $alvo, '-NLV', $NLV, '-OutCsv', (Join-Path $h 'marco2_celulas_redirecionadas.csv')) -Primeiras 1
 Encerrar-Excel
-Etapa 'redirecionar_painel.ps1' -Argumentos @('-Workbook', $alvo, '-OutCsv', (Join-Path $h 'marco3_celulas_redirecionadas.csv')) -Primeiras 1
+Etapa 'redirecionar_painel.ps1' -Argumentos @('-Workbook', $alvo, '-NLV', $NLV, '-OutCsv', (Join-Path $h 'marco3_celulas_redirecionadas.csv')) -Primeiras 1
 Encerrar-Excel
-Etapa 'redirecionar_estatistica.ps1' -Argumentos @('-Workbook', $alvo, '-OutCsv', (Join-Path $h 'marco4_celulas_redirecionadas.csv')) -Primeiras 1
+Etapa 'redirecionar_estatistica.ps1' -Argumentos @('-Workbook', $alvo, '-NLV', $NLV, '-OutCsv', (Join-Path $h 'marco4_celulas_redirecionadas.csv')) -Primeiras 1
 
 Encerrar-Excel
 "== 6b. Rep 1/2/3 viram uma coluna unica de nao conformidade"
-Etapa 'consolidar_registros_nc.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 6
+Etapa 'consolidar_registros_nc.ps1' -Argumentos @('-Workbook', $alvo, '-NLV', $NLV) -Ultimas 6
 
 Encerrar-Excel
 if (-not $PularMotor) {
@@ -232,6 +259,6 @@ if (-not $PularMotor) {
 "BUILD PRONTO: $alvo"
 "Conferir com:"
 "  .\snapshot_formulas.ps1 -Workbook '$alvo' -OutCsv `$env:TEMP\build.csv"
-"  .\diff_formulas.ps1 -Referencia '$(Join-Path $arq 'snapshot_producao\Hematologia\formulas.csv')' -Candidato `$env:TEMP\build.csv"
+"  .\diff_formulas.ps1 -Referencia '$(Join-Path $snapProduto 'formulas.csv')' -Candidato `$env:TEMP\build.csv"
 "Aceite esperado: AUSENTE 1080 - ALTERADA 4362 - VALOR 0 - EXTRA 9"
 "  as 1.080 AUSENTE sao regRep2 e regRep3, removidas de proposito na etapa 6b"

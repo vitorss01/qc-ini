@@ -20,10 +20,12 @@
 
 param(
     [Parameter(Mandatory = $true)][string]$Workbook,
-    [string]$OutCsv
+    [string]$OutCsv,
+    # Niveis do produto: Hematologia 3, Bioquimica e Imunologia 2. Tem de
+    # casar com a constante NLV de mEstatistica.bas.
+    [int]$NLV = 3
 )
 
-$NLV = 3
 $LINHA_PAINEL = 7      # Painel: 1a linha de nivel
 
 # G(7), H(8) e I(9) ficam DE FORA do redirecionamento, por decisao do gestor:
