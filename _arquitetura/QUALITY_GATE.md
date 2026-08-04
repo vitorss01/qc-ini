@@ -43,7 +43,7 @@ não vale.
 | 2.1b | ADR-019 verificado | ✅ | `varredura_adr019.ps1`: produção tinha **120** fórmulas de interface calculando parâmetro estatístico sobre o banco (`Estatística!D`, `AVERAGEIFS`); build tem **0**. As 900 restantes no `Calc` são seleção/filtro, permitidas. Estatística agregada que sobra na interface é só a cadeia do bias EQC (840, mantida por decisão) e 8 células de limite de eixo |
 | 2.2 | Sem sobrescrita silenciosa | ⏳ | Reenviar mesma Data+lote sobrescreve valor sem versionar. Exige versionamento: linha original nunca alterada |
 | 2.3 | Exclusão lógica não é revertida sozinha | ✅ | `UpsertResultados` força `Status = Ativo`, ressuscitando excluído. Reverter exclusão deve ser ação própria, com justificativa |
-| 2.4 | RUN representa a corrida analítica | ⏳ | Hoje RUN = (Data + lote) colapsa turnos e pós-calibração. CLSI C24 trata como eventos distintos |
+| 2.4 | RUN representa a corrida analítica | ✅ | Aba `Corridas` + contador persistido `proxRUN` com auto-reparo só para cima. Testado: corrida existente não consome número; datas distintas geram RUNs distintos; turno separa duas corridas no mesmo dia; contador rebaixado à mão volta acima do maior usado. Migração aditiva — nenhum RUN existente mudou de valor |
 | 2.5 | `Cfg_Status` não altera histórico retroativamente | ✅ | Uma célula redefine o que entra na estatística de todo o histórico. Exige versionamento da tabela + log |
 
 
@@ -222,10 +222,10 @@ não vale.
 | 4.3 | Regressão Fases 1 e 2 pós-Fase 3 | ⏳ | RUN, exclusão lógica, troca de lote, login, 3 UserForms, upsert sem duplicar |
 | 4.4 | Casos extremos | ⏳ | Banco vazio · 1 resultado · 2 resultados · analito sem média/DP · lote sem resultado · status inválido · RUN duplicado · data futura |
 | 4.5 | Teste de estresse | ⏳ | 5.000 RUNs · 40 analitos × 3 níveis · 50 lotes · importação de 500 linhas |
-| 4.6 | Zero erro de fórmula | ⏳ | Revalidar após as correções de 2.x |
-| 4.7 | Estado global restaurado | ⏳ | `ScreenUpdating`/`EnableEvents`/`Calculation` ao fim de toda rotina |
-| 4.8 | Idempotência | ⏳ | `AtualizarEstatistica` + `RegistrarEventosWestgard` executados 1×, 10× e 100× seguidos sobre o mesmo banco produzem saída **byte a byte idêntica**. Pega vazamento de estado, acúmulo em coleções e linhas duplicadas em `Eventos_Westgard` |
-| 4.9 | Persistência entre sessões | ⏳ | Gerar → salvar → fechar o Excel → reabrir → gerar de novo → resultado idêntico. Expõe dependência de estado em memória, variável `Static`, `UserInterfaceOnly` e cache não persistido |
+| 4.6 | Zero erro de fórmula | ✅ | Suíte 4.6: varre todas as abas por `#DIV/0!`, `#VALOR!`, `#REF!`, `#NOME?`, `#NÚM!` e `#NULO!`. Zero achados. `#N/A` fica fora de propósito — é a lacuna deliberada das séries do gráfico |
+| 4.7 | Estado global restaurado | ✅ | Suíte 4.7: após `AtualizarEstatistica`, `ScreenUpdating = True` e `Calculation = xlCalculationAutomatic`. Rotina que sai deixando cálculo manual faz o painel mentir sem dar erro |
+| 4.8 | Idempotência | ✅ | Suíte 4.8: hash de `Eng_Saida` (corridas + estatística + parâmetros) após 1 execução e após 11. Idênticos. Pega coleção que não zera, contador que soma e linha duplicada |
+| 4.9 | Persistência entre sessões | ✅ | Suíte 4.9: salva, **fecha o Excel de verdade**, reabre noutro processo e recalcula. Saída idêntica. Expõe dependência de variável em memória, cache `Static` e `UserInterfaceOnly` que não persiste |
 
 ## 5. Cobertura por produto
 

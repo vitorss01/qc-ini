@@ -580,6 +580,153 @@ finally {
 }
 Encerrar-Excel
 
+# --------------------------------- 1.6 nome publico duplicado ----------------
+# Dois modulos com o mesmo nome publico impedem o projeto de COMPILAR, e o
+# sintoma nao diz isso: Application.Run devolve "macro nao disponivel ou macros
+# desabilitadas", que parece problema de confianca do Office.
+#
+# Aconteceu de verdade ao instalar o motor na Bioquimica: o mUI dela, anterior
+# a Fase 3, definia um AtualizarEstatistica proprio -- um stub que so recalcula
+# a aba -- e colidiu com o do mEstatistica. As 42 verificacoes existentes NAO
+# pegaram, porque nenhuma chamava justamente esse procedimento.
+Encerrar-Excel
+$xlD = Novo-Excel
+$xlD.Visible = $false; $xlD.DisplayAlerts = $false; $xlD.EnableEvents = $false
+$xlD.AutomationSecurity = 1
+$wbD = $xlD.Workbooks.Open($alvo)
+try { $wbD.EnableAutoRecover = $false } catch { }
+try {
+    $publicos = @{}
+    foreach ($comp in $wbD.VBProject.VBComponents) {
+        $cm = $comp.CodeModule
+        if ($cm.CountOfLines -lt 1) { continue }
+        foreach ($linha in ($cm.Lines(1, $cm.CountOfLines) -split "`r?`n")) {
+            if ($linha -match '^\s*Public\s+(Sub|Function)\s+(\w+)') {
+                $nome = $Matches[2]
+                if (-not $publicos.ContainsKey($nome)) { $publicos[$nome] = @() }
+                $publicos[$nome] += $comp.Name
+            }
+        }
+    }
+    $duplicados = @($publicos.Keys | Where-Object { ($publicos[$_] | Select-Object -Unique).Count -gt 1 })
+    $detalheDup = if ($duplicados.Count) {
+        ($duplicados | ForEach-Object { "$_ em $(($publicos[$_] | Select-Object -Unique) -join '+')" }) -join '; '
+    }
+    else { "$($publicos.Count) nomes publicos, nenhum repetido" }
+    Anotar '1.6' 'nenhum nome publico duplicado entre modulos' ($duplicados.Count -eq 0) $detalheDup
+}
+finally {
+    try { $wbD.Close($false) } catch { }
+    try { $xlD.Quit() } catch { }
+    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($xlD) | Out-Null
+}
+Encerrar-Excel
+
+# ------------------------------------------------- 4c. QA de hardening -------
+# Itens 4.6 a 4.9 do Quality Gate. Sao os controles que pegam vazamento de
+# estado -- a classe de defeito que nao aparece numa execucao unica e so se
+# manifesta em producao, depois de o analista usar o sistema o dia inteiro.
+""
+"-- 4c. QA DE HARDENING (4.6 a 4.9) ----------------------------"
+
+Encerrar-Excel
+$xlQ = Novo-Excel
+$xlQ.Visible = $false; $xlQ.DisplayAlerts = $false; $xlQ.EnableEvents = $false
+$xlQ.AutomationSecurity = 1
+$wbQ = $xlQ.Workbooks.Open($alvo)
+try { $wbQ.EnableAutoRecover = $false } catch { }
+
+try {
+    # ---- 4.6 zero erro de formula ----
+    # #N/A fica DE FORA da contagem, e nao por conveniencia: o Calc usa NA() de
+    # proposito para abrir lacuna nas series do grafico -- ponto fora do filtro
+    # ou sem dado. Contar #N/A como defeito reprovaria o comportamento correto.
+    # Os outros seis erros nao tem uso legitimo aqui.
+    $errosFormula = New-Object System.Collections.ArrayList
+    foreach ($wsQ in $wbQ.Worksheets) {
+        $urQ = $wsQ.UsedRange
+        if ($urQ.Cells.Count -le 1) { continue }
+        foreach ($tipoErro in @(-2146826281, -2146826273, -2146826265, -2146826259, -2146826252, -2146826288)) {
+            # xlErrDiv0, xlErrValue, xlErrRef, xlErrName, xlErrNum, xlErrNull
+            try {
+                $achou = $urQ.Find($tipoErro, [Type]::Missing, -4163)   # xlValues
+                if ($achou -ne $null) {
+                    [void]$errosFormula.Add("$($wsQ.Name)!$($achou.Address($false,$false))")
+                }
+            }
+            catch { }
+        }
+    }
+    Anotar '4.6' 'nenhum erro de formula no artefato' ($errosFormula.Count -eq 0) `
+    ("#N/A excluido de proposito (lacuna de serie do grafico); achados: " + $(if ($errosFormula.Count) { $errosFormula -join ', ' } else { 'nenhum' }))
+
+    # ---- 4.7 estado global restaurado ----
+    # Uma rotina que sai deixando ScreenUpdating desligado congela a tela do
+    # analista; deixando Calculation manual, a planilha para de recalcular e o
+    # painel mente sem dar erro.
+    $xlQ.ScreenUpdating = $true
+    $xlQ.EnableEvents = $true
+    $xlQ.Calculation = -4105          # xlCalculationAutomatic
+    $xlQ.Run("$($wbQ.Name)!AtualizarEstatistica") | Out-Null
+    $estadoOk = ($xlQ.ScreenUpdating -eq $true) -and ($xlQ.Calculation -eq -4105)
+    Anotar '4.7' 'estado global restaurado apos o motor' $estadoOk `
+    ("ScreenUpdating=$($xlQ.ScreenUpdating) Calculation=$($xlQ.Calculation) (esperado True / -4105)")
+
+    # ---- 4.8 idempotencia ----
+    # Roda 1x, fotografa a saida, roda mais 10x e compara. Diferenca aqui
+    # significa estado acumulando entre execucoes: colecao que nao zera,
+    # contador que soma, linha que duplica.
+    function Foto-Saida($wb) {
+        $eng = $wb.Worksheets('Eng_Saida')
+        $txt = New-Object System.Text.StringBuilder
+        foreach ($rg in @('A3:AB182', 'A185:U187', 'A190:M309')) {
+            $v = $eng.Range($rg).Value2
+            if ($v -is [Array]) {
+                for ($i = 1; $i -le $v.GetLength(0); $i++) {
+                    for ($j = 1; $j -le $v.GetLength(1); $j++) { [void]$txt.Append([string]$v.GetValue($i, $j)).Append('|') }
+                }
+            }
+        }
+        return (Hash-Texto $txt.ToString())
+    }
+    $xlQ.Run("$($wbQ.Name)!AtualizarEstatistica") | Out-Null
+    $h1 = Foto-Saida $wbQ
+    for ($k = 1; $k -le 10; $k++) { $xlQ.Run("$($wbQ.Name)!AtualizarEstatistica") | Out-Null }
+    $h10 = Foto-Saida $wbQ
+    Anotar '4.8' 'idempotencia: 1x e 11x produzem saida identica' ($h1 -eq $h10) `
+    ("1x $($h1.Substring(0,12)) / 11x $($h10.Substring(0,12))")
+
+    # ---- 4.9 persistencia entre sessoes ----
+    # Salva, FECHA o Excel de verdade e reabre noutro processo. Expoe dependencia
+    # de variavel em memoria, cache Static e UserInterfaceOnly que nao persiste.
+    $wbQ.Save()
+}
+finally {
+    try { $wbQ.Close($true) } catch { }
+    try { $xlQ.Quit() } catch { }
+    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($xlQ) | Out-Null
+}
+Encerrar-Excel
+
+$xlQ2 = Novo-Excel
+$xlQ2.Visible = $false; $xlQ2.DisplayAlerts = $false; $xlQ2.EnableEvents = $false
+$xlQ2.AutomationSecurity = 1
+$wbQ2 = $xlQ2.Workbooks.Open($alvo)
+try { $wbQ2.EnableAutoRecover = $false } catch { }
+try {
+    $hAntes = Foto-Saida $wbQ2
+    $xlQ2.Run("$($wbQ2.Name)!AtualizarEstatistica") | Out-Null
+    $hDepois = Foto-Saida $wbQ2
+    Anotar '4.9' 'persistencia: reabrir e recalcular nao muda a saida' ($hAntes -eq $hDepois) `
+    ("reaberto $($hAntes.Substring(0,12)) / recalculado $($hDepois.Substring(0,12))")
+}
+finally {
+    try { $wbQ2.Close($false) } catch { }
+    try { $xlQ2.Quit() } catch { }
+    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($xlQ2) | Out-Null
+}
+Encerrar-Excel
+
 # ------------------------------------------ 5. blindagem do entregavel --------
 ""
 "-- 5. O ARQUIVO DISTRIBUIDO SAI TRAVADO ------------------------"

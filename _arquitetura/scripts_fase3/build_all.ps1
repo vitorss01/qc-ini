@@ -232,6 +232,13 @@ Encerrar-Excel
     (Join-Path $hp 'mEstatistica.bas'),
     (Join-Path $hp 'mDados.bas'),
     (Join-Path $snapMotor 'vba\mWestgardKnowledge.bas'),
+    # mUI do motor tambem: a versao pre-Fase-3 da Bioquimica define um
+    # AtualizarEstatistica proprio (stub que so recalcula a aba), e nome publico
+    # duplicado entre modulos IMPEDE O PROJETO DE COMPILAR. O sintoma e
+    # "macro nao disponivel" no Application.Run -- a mesma familia do aS.
+    # AtualizarEixos e HookCharts sao identicos nos dois e ja iteram sobre
+    # ChartObjects.Count, entao a troca e segura e no-op na Hematologia.
+    (Join-Path $snapMotor 'vba\mUI.bas'),
     (Join-Path $h 'mAuditoria.bas'),
     (Join-Path $h 'mConfig.bas'),
     (Join-Path $h 'mLogDB.bas'),
