@@ -115,13 +115,46 @@ $alvo = $copia
 "   (o controle que faltava: comparar o VBA DENTRO do .xlsm com o versionado)"
 
 Encerrar-Excel
-$xl = New-Object -ComObject Excel.Application
+# Criar o Excel COM RESILIENCIA.
+#
+# O build sobe e derruba o Excel cerca de dez vezes. Sob esse ritmo o servidor
+# COM as vezes recusa a proxima instancia com 0x80080005
+# (CO_E_SERVER_EXEC_FAILURE) -- estado transitorio, nao defeito do script.
+# Falhar na primeira tentativa jogava fora um build inteiro de varios minutos.
+function Novo-Excel {
+    $ultimo = $null
+    for ($tentativa = 1; $tentativa -le 6; $tentativa++) {
+        try {
+            $app = New-Object -ComObject Excel.Application
+            return $app
+        }
+        catch {
+            $ultimo = $_
+            Start-Sleep -Seconds ($tentativa * 2)
+        }
+    }
+    throw "Excel COM nao subiu apos 6 tentativas: $($ultimo.Exception.Message)"
+}
+
+$xl = Novo-Excel
 $xl.Visible = $false; $xl.DisplayAlerts = $false; $xl.EnableEvents = $false
 # 1 = msoAutomationSecurityLow. NAO usar 3 (msoAutomationSecurityForceDisable):
 # ele DESABILITA as macros, e todo Application.Run falha com "as macros foram
 # desabilitadas" -- que parece problema de confianca do Office e e so este valor.
 $xl.AutomationSecurity = 1
 $wb = $xl.Workbooks.Open($alvo)
+
+# AutoRecuperacao DESLIGADA nesta copia de trabalho.
+#
+# O build encerra o Excel a forca varias vezes. Cada encerramento deixa um
+# arquivo de recuperacao pendente; acumulados, o Excel passa a tentar exibir o
+# painel "Recuperacao de Documento" ao iniciar e MORRE antes de responder --
+# ate o excel.exe puro para de abrir, e a automacao falha com 0x80080005
+# (CO_E_SERVER_EXEC_FAILURE), que parece defeito de COM e nao e.
+#
+# O artefato e reproduzivel por comando: nao ha o que recuperar aqui.
+try { $wb.EnableAutoRecover = $false } catch { }
+
 if ($wb.ReadOnly) { $wb.Close($false); $xl.Quit(); throw "Artefato aberto em somente leitura" }
 
 try {
@@ -194,7 +227,8 @@ try {
     # 3.2 grava tres eventos
     $antes = $xl.Run('UltimaLinhaAudit')
     for ($i = 1; $i -le 3; $i++) {
-        $xl.Run('Auditar', 'TESTE_SUITE', 'Resultados', $i, (Get-Date), 1, 'WBC', 'QC-52261101', 3.01, 'Ativo', 'Excluido',
+        $xl.Run('Auditar', 'DADO', 'TESTE_SUITE', 'suite', $i, (Get-Date), '', 'QC-52261101', 1, 'WBC',
+            3.01, 3.5, 'Ativo', 'Excluido', 'Teste automatizado',
             'Registro de teste automatizado da suite de verificacao') | Out-Null
     }
     $depois = $xl.Run('UltimaLinhaAudit')
@@ -206,15 +240,15 @@ try {
 
     # 3.4 ADULTERACAO E DETECTADA -- o teste que da sentido ao resto
     $linhaAlvo = $depois - 1
-    $original = $au.Cells.Item($linhaAlvo, 13).Value2       # Parecer Tecnico
+    $original = $au.Cells.Item($linhaAlvo, 24).Value2       # ParecerTecnico (schema 2)
     $au.Unprotect('qcini2025')
-    $au.Cells.Item($linhaAlvo, 13).Value2 = 'Parecer adulterado fora do sistema'
+    $au.Cells.Item($linhaAlvo, 24).Value2 = 'Parecer adulterado fora do sistema'
     $v2 = [string]$xl.Run('VerificarIntegridadeLog')
     $detectou = ($v2 -like "QUEBRADO|$linhaAlvo|*")
     Anotar '3.4' 'ADULTERACAO DETECTADA na linha certa' $detectou "retorno: $v2"
 
     # restaura e confirma que volta a fechar
-    $au.Cells.Item($linhaAlvo, 13).Value2 = $original
+    $au.Cells.Item($linhaAlvo, 24).Value2 = $original
     $v3 = [string]$xl.Run('VerificarIntegridadeLog')
     Anotar '3.5' 'cadeia volta a fechar apos restaurar' ($v3 -like 'OK|*') "retorno: $v3"
 
@@ -258,8 +292,8 @@ End Function
         "status antes=Excluido depois=$statusDepois | UpsertResultados devolveu '$ret' (novos|atualizados|bloqueados)"
 
     $acao = ''
-    if ($depoisLog -gt $antesLog) { $acao = [string]$au.Cells.Item($depoisLog, 3).Value2 }
-    Anotar '3.7' 'tentativa de reenvio fica registrada no log' ($acao -eq 'UPSERT_BLOQUEADO') `
+    if ($depoisLog -gt $antesLog) { $acao = [string]$au.Cells.Item($depoisLog, 7).Value2 }
+    Anotar '3.7' 'tentativa de reenvio fica registrada no log' ($acao -eq 'REENVIO_BLOQUEADO') `
         "acao registrada: '$acao'"
 
     # ---- 3.8/3.9 item 2.5: alterar a elegibilidade fica registrado ----
@@ -282,7 +316,7 @@ End Function
     $versaoDepois = $xl.Run('VersaoCfg')
     $depoisLog2 = $xl.Run('UltimaLinhaAudit')
     $acaoCfg = ''
-    if ($depoisLog2 -gt $antesLog2) { $acaoCfg = [string]$au.Cells.Item($depoisLog2, 3).Value2 }
+    if ($depoisLog2 -gt $antesLog2) { $acaoCfg = [string]$au.Cells.Item($depoisLog2, 7).Value2 }
 
     Anotar '3.8' 'alterar elegibilidade sobe a versao da configuracao' ($versaoDepois -gt $versaoAntes) `
         "versao $versaoAntes -> $versaoDepois"
@@ -368,8 +402,16 @@ try {
     $wbXml = Ler-Entrada $zip 'xl/workbook.xml'
     $totalAbas = ([regex]::Matches($wbXml, '<sheet ')).Count
     $veryHidden = ([regex]::Matches($wbXml, 'state="veryHidden"')).Count
-    Anotar '5.1' 'abas de dado ocultas no arquivo salvo' ($veryHidden -ge ($totalAbas - 1)) `
-        "veryHidden $veryHidden de $totalAbas abas (so Login visivel)"
+    # 3 visiveis por desenho: Login, Audit_Log e Audit_Legenda. A trilha PRECISA
+    # ser legivel com macros desabilitadas -- e assim que um auditor cauteloso
+    # abre um arquivo desconhecido.
+    Anotar '5.1' 'so Login e a trilha ficam visiveis no arquivo salvo' ($veryHidden -eq ($totalAbas - 3)) `
+        "veryHidden $veryHidden de $totalAbas (visiveis: Login, Audit_Log, Audit_Legenda)"
+
+    $wsXml = Ler-Entrada $zip 'xl/workbook.xml'
+    $trilhaVisivel = ($wsXml -match 'name="Audit_Log"(?![^>]*veryHidden)')
+    Anotar '5.5' 'trilha de auditoria legivel com macros desabilitadas' $trilhaVisivel `
+        'Audit_Log nao esta oculta: e material de auditoria, feito para ser lido'
 
     Anotar '5.2' 'estrutura da pasta protegida' ($wbXml -match '<workbookProtection') ''
 

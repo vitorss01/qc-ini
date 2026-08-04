@@ -26,13 +26,46 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$xl = New-Object -ComObject Excel.Application
+# Criar o Excel COM RESILIENCIA.
+#
+# O build sobe e derruba o Excel cerca de dez vezes. Sob esse ritmo o servidor
+# COM as vezes recusa a proxima instancia com 0x80080005
+# (CO_E_SERVER_EXEC_FAILURE) -- estado transitorio, nao defeito do script.
+# Falhar na primeira tentativa jogava fora um build inteiro de varios minutos.
+function Novo-Excel {
+    $ultimo = $null
+    for ($tentativa = 1; $tentativa -le 6; $tentativa++) {
+        try {
+            $app = New-Object -ComObject Excel.Application
+            return $app
+        }
+        catch {
+            $ultimo = $_
+            Start-Sleep -Seconds ($tentativa * 2)
+        }
+    }
+    throw "Excel COM nao subiu apos 6 tentativas: $($ultimo.Exception.Message)"
+}
+
+$xl = Novo-Excel
 $xl.Visible = $false
 $xl.DisplayAlerts = $false
 $xl.EnableEvents = $false
 $xl.AutomationSecurity = 3          # msoAutomationSecurityForceDisable: nao roda macro
 
 $wb = $xl.Workbooks.Open($Workbook, 0, $true)
+
+# AutoRecuperacao DESLIGADA nesta copia de trabalho.
+#
+# O build encerra o Excel a forca varias vezes. Cada encerramento deixa um
+# arquivo de recuperacao pendente; acumulados, o Excel passa a tentar exibir o
+# painel "Recuperacao de Documento" ao iniciar e MORRE antes de responder --
+# ate o excel.exe puro para de abrir, e a automacao falha com 0x80080005
+# (CO_E_SERVER_EXEC_FAILURE), que parece defeito de COM e nao e.
+#
+# O artefato e reproduzivel por comando: nao ha o que recuperar aqui.
+try { $wb.EnableAutoRecover = $false } catch { }
+
 
    # UpdateLinks=0, ReadOnly=$true
 $xl.Calculation = -4135                          # xlCalculationManual (so vale com wb aberto)

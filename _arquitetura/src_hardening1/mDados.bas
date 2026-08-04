@@ -238,10 +238,12 @@ Public Function UpsertResultados(ByRef regs As Variant) As String
             stAntes = Trim$(CStr(ws.Cells(lin, COL_STATUS).Value))
             If stAntes <> "" And stAntes <> ST_ATIVO Then
                 ' Nao ressuscita. Registra a tentativa e segue.
-                Auditar "UPSERT_BLOQUEADO", VIEW, CLng(regs(i, COL_RUN)), regs(i, COL_DATA), _
-                        CLng(regs(i, COL_NIVEL)), CStr(regs(i, COL_ANALITO)), CStr(regs(i, COL_LOTE)), _
-                        regs(i, COL_RESULT), stAntes, stAntes, _
-                        "Reenvio recusado: registro nao esta Ativo. Reverter exclusao exige acao propria."
+                Auditar CAT_DADO, AC_BLOQUEIO, "mDados", _
+                        CLng(regs(i, COL_RUN)), regs(i, COL_DATA), "", CStr(regs(i, COL_LOTE)), _
+                        CLng(regs(i, COL_NIVEL)), CStr(regs(i, COL_ANALITO)), _
+                        ws.Cells(lin, COL_RESULT).Value, regs(i, COL_RESULT), _
+                        stAntes, stAntes, "Reenvio de registro nao ativo", _
+                        "Reenvio recusado: o registro nao esta Ativo. Reverter exclusao exige acao propria e justificada."
                 bloq = bloq + 1
             Else
                 antes = ws.Cells(lin, COL_RESULT).Value
@@ -249,10 +251,18 @@ Public Function UpsertResultados(ByRef regs As Variant) As String
                 ws.Cells(lin, COL_STATUS).Value = ST_ATIVO
                 ws.Cells(lin, COL_DATA).Value = regs(i, COL_DATA)
                 ws.Cells(lin, COL_LOTE).Value = regs(i, COL_LOTE)
-                Auditar "ATUALIZACAO", VIEW, CLng(regs(i, COL_RUN)), regs(i, COL_DATA), _
-                        CLng(regs(i, COL_NIVEL)), CStr(regs(i, COL_ANALITO)), CStr(regs(i, COL_LOTE)), _
-                        regs(i, COL_RESULT), stAntes, ST_ATIVO, _
-                        "Valor anterior: " & CStr(antes)
+                ' Apagar resultado e evento PROPRIO, nao "alteracao para nada": e
+                ' justamente o que a auditoria mais quer enxergar.
+                Dim acaoUp As String
+                If Trim$(CStr(regs(i, COL_RESULT))) = "" Then
+                    acaoUp = AC_APAGADO
+                Else
+                    acaoUp = AC_ALTERACAO
+                End If
+                Auditar CAT_DADO, acaoUp, "mDados", _
+                        CLng(regs(i, COL_RUN)), regs(i, COL_DATA), "", CStr(regs(i, COL_LOTE)), _
+                        CLng(regs(i, COL_NIVEL)), CStr(regs(i, COL_ANALITO)), _
+                        antes, regs(i, COL_RESULT), stAntes, ST_ATIVO, "", ""
                 atual = atual + 1
             End If
         Else
@@ -276,9 +286,10 @@ Public Function UpsertResultados(ByRef regs As Variant) As String
         Next i
         ws.Range(ws.Cells(lastRow + 1, COL_RUN), ws.Cells(lastRow + nAdd, COL_STATUS)).Value = outp
         For i = 1 To nAdd
-            Auditar "INCLUSAO", VIEW, CLng(addBuf(i, COL_RUN)), addBuf(i, COL_DATA), _
-                    CLng(addBuf(i, COL_NIVEL)), CStr(addBuf(i, COL_ANALITO)), CStr(addBuf(i, COL_LOTE)), _
-                    addBuf(i, COL_RESULT), "", CStr(addBuf(i, COL_STATUS)), ""
+            Auditar CAT_DADO, AC_INCLUSAO, "mDados", _
+                    CLng(addBuf(i, COL_RUN)), addBuf(i, COL_DATA), "", CStr(addBuf(i, COL_LOTE)), _
+                    CLng(addBuf(i, COL_NIVEL)), CStr(addBuf(i, COL_ANALITO)), _
+                    Empty, addBuf(i, COL_RESULT), "", CStr(addBuf(i, COL_STATUS)), "", ""
         Next i
     End If
     Application.ScreenUpdating = True
@@ -291,7 +302,8 @@ End Function
 ' da camada de dados - nenhum caminho de gravacao escapa (item 3.2).
 Public Function ExcluirLogico(ByVal run As Long, ByVal nivel As Long, ByRef alvoS As Object, _
                               Optional ByVal parecer As String = "", _
-                              Optional ByVal novoStatus As String = "") As Long
+                              Optional ByVal novoStatus As String = "", _
+                              Optional ByVal motivo As String = "") As Long
     Dim ws As Worksheet, dados As Variant, i As Long, n As Long, lin As Long
     Dim stAntes As String, stNovo As String
     Set ws = ThisWorkbook.Sheets(BANCO)
@@ -307,9 +319,11 @@ Public Function ExcluirLogico(ByVal run As Long, ByVal nivel As Long, ByRef alvo
                     lin = BANCO_R0 + i - 1
                     stAntes = Trim$(CStr(ws.Cells(lin, COL_STATUS).Value))
                     ws.Cells(lin, COL_STATUS).Value = stNovo
-                    Auditar "EXCLUSAO_LOGICA", VIEW, run, dados(i, COL_DATA), nivel, _
-                            CStr(dados(i, COL_ANALITO)), CStr(dados(i, COL_LOTE)), _
-                            dados(i, COL_RESULT), stAntes, stNovo, parecer
+                    Auditar CAT_DADO, AC_EXCLUSAO, "mDados", _
+                            run, dados(i, COL_DATA), "", CStr(dados(i, COL_LOTE)), _
+                            nivel, CStr(dados(i, COL_ANALITO)), _
+                            dados(i, COL_RESULT), dados(i, COL_RESULT), _
+                            stAntes, stNovo, motivo, parecer
                     n = n + 1
                 End If
             End If
@@ -368,8 +382,10 @@ Public Sub AtualizarBanco()
     Application.Calculate
 End Sub
 
-' Compatibilidade: a assinatura antiga continua valida e agora grava de verdade.
-Public Sub RegistrarLog(ByVal acao As String, ByVal detalhe As String)
-    Auditar acao, "", 0, Empty, 0, "", "", Empty, "", "", detalhe
-End Sub
+' RegistrarLog SAIU DAQUI e vive em mAuditoria.bas.
+'
+' Dois procedimentos Public com o mesmo nome em modulos diferentes produzem
+' "nome ambiguo" e derrubam a compilacao do PROJETO INTEIRO -- a mesma classe de
+' falha do identificador aS, com o mesmo sintoma enganoso: o erro aparece na
+' primeira rotina chamada, longe da causa. A trilha de auditoria tem um dono so.
 

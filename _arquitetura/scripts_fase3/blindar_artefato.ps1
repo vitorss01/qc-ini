@@ -47,15 +47,57 @@ $ErrorActionPreference = 'Stop'
 $SENHA = 'qcini2025'
 $LOGIN = 'Login'
 
+# A TRILHA DE AUDITORIA FICA VISIVEL DE PROPOSITO.
+#
+# O objetivo do Audit_Log e ser lido por quem audita -- inclusive com as
+# macros desabilitadas, que e como um auditor cauteloso abre um arquivo
+# desconhecido. Esconder a trilha derrotaria o proposito dela.
+# Continua PROTEGIDA (nao editavel) e a integridade nao depende de estar
+# oculta: depende da cadeia de hash.
+$VISIVEIS = @($LOGIN, 'Audit_Log', 'Audit_Legenda')
+
 $Workbook = (Resolve-Path -LiteralPath $Workbook).ProviderPath
 
-$xl = New-Object -ComObject Excel.Application
+# Criar o Excel COM RESILIENCIA.
+#
+# O build sobe e derruba o Excel cerca de dez vezes. Sob esse ritmo o servidor
+# COM as vezes recusa a proxima instancia com 0x80080005
+# (CO_E_SERVER_EXEC_FAILURE) -- estado transitorio, nao defeito do script.
+# Falhar na primeira tentativa jogava fora um build inteiro de varios minutos.
+function Novo-Excel {
+    $ultimo = $null
+    for ($tentativa = 1; $tentativa -le 6; $tentativa++) {
+        try {
+            $app = New-Object -ComObject Excel.Application
+            return $app
+        }
+        catch {
+            $ultimo = $_
+            Start-Sleep -Seconds ($tentativa * 2)
+        }
+    }
+    throw "Excel COM nao subiu apos 6 tentativas: $($ultimo.Exception.Message)"
+}
+
+$xl = Novo-Excel
 $xl.Visible = $false
 $xl.DisplayAlerts = $false
 $xl.EnableEvents = $false
 $xl.AutomationSecurity = 1
 
 $wb = $xl.Workbooks.Open($Workbook)
+
+# AutoRecuperacao DESLIGADA nesta copia de trabalho.
+#
+# O build encerra o Excel a forca varias vezes. Cada encerramento deixa um
+# arquivo de recuperacao pendente; acumulados, o Excel passa a tentar exibir o
+# painel "Recuperacao de Documento" ao iniciar e MORRE antes de responder --
+# ate o excel.exe puro para de abrir, e a automacao falha com 0x80080005
+# (CO_E_SERVER_EXEC_FAILURE), que parece defeito de COM e nao e.
+#
+# O artefato e reproduzivel por comando: nao ha o que recuperar aqui.
+try { $wb.EnableAutoRecover = $false } catch { }
+
 if ($wb.ReadOnly) {
     $wb.Close($false); $xl.Quit()
     throw "Arquivo aberto em SOMENTE LEITURA (outra instancia do Excel o mantem travado): $Workbook"
@@ -75,10 +117,16 @@ try {
     foreach ($ws in $wb.Worksheets) {
         # Protecao SEM UserInterfaceOnly: e esta que fica gravada no arquivo.
         try { $ws.Unprotect($SENHA) } catch { }
-        $ws.Protect($SENHA, $true, $true, $true)     # estrutura, conteudo, objetos, cenarios
+        if ($ws.Name -like 'Audit_*') {
+            # Aba protegida SEM AllowFiltering vira bloco morto: o auditor
+            # nao consegue filtrar, e a tabela perde a razao de existir.
+            $ws.Protect($SENHA, $true, $true, $true, $true, $true, $true, $true, $true, $false, $false, $false, $true, $true)
+        } else {
+            $ws.Protect($SENHA, $true, $true, $true)
+        }
         $protegidas++
 
-        if ($ws.Name -ne $LOGIN) {
+        if ($VISIVEIS -notcontains $ws.Name) {
             $ws.Visible = 2      # xlSheetVeryHidden
             $escondidas++
         }
@@ -91,7 +139,7 @@ try {
     $wb.Save()
 
     "abas protegidas   : $protegidas"
-    "abas ocultas      : $escondidas (todas menos $LOGIN)"
+    "abas ocultas      : $escondidas (visiveis: $($VISIVEIS -join ', '))"
     "estrutura         : protegida"
     "estado distribuido: TRAVADO (protecao gravada no arquivo, nao so em tempo de execucao)"
     "ATENCAO item 3.4  : a senha do projeto VBA e passo MANUAL no VBE"

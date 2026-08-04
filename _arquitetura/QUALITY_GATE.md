@@ -159,6 +159,35 @@ não vale.
 > Testes 3.8 e 3.9 da suíte: alteram a elegibilidade de verdade, exigem que a
 > versão suba (1 → 2) e que a ação apareça na trilha; depois restauram.
 
+
+> **Audit_Log v2 — de arquivo técnico a base de auditoria (03/08/2026).**
+> A trilha passou de 21 para **33 colunas**, formatada como **tabela do Excel**
+> (`tblAuditoria`). O objetivo mudou: o auditor abre a aba e responde tudo com os
+> filtros nativos — só o WBC, só um RUN, só um lote, só o que fulano alterou, só
+> entre duas datas, só entre duas horas, só exclusões — **sem nenhuma tela em VBA**
+> e sem conhecer a estrutura interna. Power Query e Power BI consomem pelo nome.
+>
+> Acrescentados: `Data` e `Hora` em colunas próprias (o filtro sobre data-hora não
+> resolve "entre 8h e 12h em qualquer dia"); `ResultadoAnterior`/`ResultadoNovo`/
+> `Delta`/`Delta%` — o valor antigo saiu de dentro do texto do parecer e virou dado;
+> `ChaveRegistro` e `SeqAlteracao`, que isolam toda a vida de um resultado num
+> filtro só (o valor original é sempre `Seq = 1`); `Categoria` + `Ação` + `Módulo`;
+> `Motivo` codificado ao lado do `Parecer` livre — motivo em lista fechada **conta**,
+> texto livre não. `RESULTADO_APAGADO` virou ação própria, com `<VAZIO>` explícito.
+> Mais a aba **`Audit_Legenda`**, que explica cada ação e cada coluna.
+>
+> **O arquivo distribuído deixa a trilha visível**, protegida e filtrável
+> (`AllowFiltering`). Um auditor cauteloso abre com macros desligadas — se nesse
+> estado ele não enxerga a trilha, a trilha não serve. A integridade não vem de
+> esconder: vem da cadeia de hash.
+>
+> **Correção de princípio no encadeamento:** o hash passou a cobrir **o valor
+> gravado**, não o valor pretendido. Calcular sobre o array em memória e verificar
+> lendo as células compara coisas diferentes — o Excel converte na viagem (hora
+> vira fração de dia, número vira texto, ponto flutuante perde bit). Isso produzia
+> falso positivo, e um verificador que dá alarme falso é pior que nenhum: ninguém
+> confia nele no dia em que importa.
+
 ## 4. Qualidade e testes
 
 | # | Item | Status | O que fecha |

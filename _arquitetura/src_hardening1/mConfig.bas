@@ -88,11 +88,13 @@ Public Function AuditarMudancaCfg() As Long
                 acao = "CFG_ELEGIBILIDADE_ALTERADA"
             End If
 
-            Auditar acao, CFG, versaoNova, Date, 0, _
-                    IIf(stAtual <> "", stAtual, stAnt), "", Empty, _
+            Auditar CAT_CONFIG, acao, "mConfig", _
+                    versaoNova, Date, "", "", 0, "", _
+                    elAnt, elAtual, _
                     stAnt & "=" & elAnt, stAtual & "=" & elAtual, _
-                    "Alteracao na tabela de elegibilidade (linha " & i & "). " & _
-                    "Muda RETROATIVAMENTE o que compoe a estatistica de todo o historico."
+                    "Alteracao de elegibilidade", _
+                    "Estado """ & IIf(stAtual <> "", stAtual, stAnt) & """ na linha " & i & _
+                    ". Muda RETROATIVAMENTE o que compoe media, DP, CV, Bias, Sigma e Westgard de todo o historico."
             n = n + 1
         End If
     Next i

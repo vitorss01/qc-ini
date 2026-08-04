@@ -28,7 +28,28 @@ $colsVeredicto = @{ 1 = 16; 2 = 38; 3 = 60 }    # P, AL, BH
 function Abrir($caminho) {
     $ErrorActionPreference = 'Stop'
 
-$xl = New-Object -ComObject Excel.Application
+# Criar o Excel COM RESILIENCIA.
+#
+# O build sobe e derruba o Excel cerca de dez vezes. Sob esse ritmo o servidor
+# COM as vezes recusa a proxima instancia com 0x80080005
+# (CO_E_SERVER_EXEC_FAILURE) -- estado transitorio, nao defeito do script.
+# Falhar na primeira tentativa jogava fora um build inteiro de varios minutos.
+function Novo-Excel {
+    $ultimo = $null
+    for ($tentativa = 1; $tentativa -le 6; $tentativa++) {
+        try {
+            $app = New-Object -ComObject Excel.Application
+            return $app
+        }
+        catch {
+            $ultimo = $_
+            Start-Sleep -Seconds ($tentativa * 2)
+        }
+    }
+    throw "Excel COM nao subiu apos 6 tentativas: $($ultimo.Exception.Message)"
+}
+
+$xl = Novo-Excel
     $xl.Visible = $false; $xl.DisplayAlerts = $false; $xl.EnableEvents = $false
     $xl.AutomationSecurity = 1      # precisa rodar o motor no build
     return @{ App = $xl; Wb = $xl.Workbooks.Open($caminho) }
