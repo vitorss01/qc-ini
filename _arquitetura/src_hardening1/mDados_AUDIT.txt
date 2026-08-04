@@ -101,7 +101,8 @@ End Function
 Public Function ExcluirLogico(ByVal run As Long, ByVal nivel As Long, ByRef alvoS As Object, _
                               Optional ByVal parecer As String = "", _
                               Optional ByVal novoStatus As String = "", _
-                              Optional ByVal motivo As String = "") As Long
+                              Optional ByVal motivo As String = "", _
+                              Optional ByVal origemLog As String = "Resultados") As Long
     Dim ws As Worksheet, dados As Variant, i As Long, n As Long, lin As Long
     Dim stAntes As String, stNovo As String
     Set ws = ThisWorkbook.Sheets(BANCO)
@@ -117,11 +118,20 @@ Public Function ExcluirLogico(ByVal run As Long, ByVal nivel As Long, ByRef alvo
                     lin = BANCO_R0 + i - 1
                     stAntes = Trim$(CStr(ws.Cells(lin, COL_STATUS).Value))
                     ws.Cells(lin, COL_STATUS).Value = stNovo
-                    Auditar CAT_DADO, AC_EXCLUSAO, "mDados", _
+                    ' Duas camadas, um identificador so: o Event Store prova a
+                    ' integridade, a tabela do banco preserva a estrutura por
+                    ' origem. Compartilham o ID para que divergencia entre elas
+                    ' seja detectavel.
+                    Dim idEv As String
+                    idEv = Auditar(CAT_DADO, AC_EXCLUSAO, "mDados", _
                             run, dados(i, COL_DATA), "", CStr(dados(i, COL_LOTE)), _
                             nivel, CStr(dados(i, COL_ANALITO)), _
                             dados(i, COL_RESULT), dados(i, COL_RESULT), _
-                            stAntes, stNovo, motivo, parecer
+                            stAntes, stNovo, motivo, parecer)
+                    RegistrarLogDB origemLog, idEv, AC_EXCLUSAO, _
+                            run, dados(i, COL_DATA), nivel, CStr(dados(i, COL_ANALITO)), _
+                            CStr(dados(i, COL_LOTE)), dados(i, COL_RESULT), _
+                            stAntes, stNovo, parecer
                     n = n + 1
                 End If
             End If

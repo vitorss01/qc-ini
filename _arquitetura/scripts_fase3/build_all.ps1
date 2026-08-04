@@ -83,6 +83,41 @@ function Mostrar {
     $x | ForEach-Object { $_ }
 }
 
+# Cada etapa roda em SEU PROPRIO PROCESSO do PowerShell.
+#
+# POR QUE. Invocadas com "&", as etapas compartilham o processo -- e o runspace
+# mantem vivas as referencias COM (RCW) mesmo depois do $xl.Quit(). O Excel
+# sobrevivia segurando o .xlsm, e a etapa seguinte o abria em SOMENTE LEITURA
+# sem avisar. A solucao de antes era matar o Excel entre as etapas, e ela criou
+# um problema pior: dez Kill() por build desestabilizam a ativacao DCOM, e o
+# COM passa a recusar novas instancias com 0x80080005 -- a ponto de nem o
+# excel.exe puro abrir.
+#
+# Com um processo por etapa, o encerramento do processo libera TODAS as
+# referencias e o Excel sai sozinho, do jeito certo. Sem Kill, sem lock, sem
+# DCOM instavel. Custa ~1s de inicializacao por etapa e paga com folga.
+function Etapa {
+    param(
+        [Parameter(Mandatory = $true)][string]$Script,
+        [string[]]$Argumentos = @(),
+        [int]$Primeiras = 0,
+        [int]$Ultimas = 0,
+        [int]$Pular = 0
+    )
+    $caminho = Join-Path $s $Script
+    $saida = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $caminho @Argumentos 2>&1
+    $codigo = $LASTEXITCODE
+
+    $linhas = @($saida | ForEach-Object { $_.ToString() })
+    $erros = @($linhas | Where-Object { $_ -match 'Exce(p|ç)|Error|throw|CategoryInfo' })
+
+    if ($codigo -ne 0 -or $erros.Count -gt 0) {
+        $linhas | ForEach-Object { "     $_" }
+        throw "Etapa $Script falhou (codigo $codigo)"
+    }
+    Mostrar $linhas -Primeiras $Primeiras -Ultimas $Ultimas -Pular $Pular
+}
+
 function Encerrar-Excel {
     [System.GC]::Collect()
     [System.GC]::WaitForPendingFinalizers()
@@ -122,46 +157,53 @@ Mostrar (& (Join-Path $s 'gerar_mDados_audit.ps1') `
 
 Encerrar-Excel
 "== 2. Eng_Saida (camada de saida do motor)"
-Mostrar (& (Join-Path $s 'criar_eng_saida.ps1') -Workbook $alvo) -Ultimas 1
+Etapa 'criar_eng_saida.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 1
 
 Encerrar-Excel
 "== 3. Corridas (identidade do RUN) + migracao"
-Mostrar (& (Join-Path $s 'criar_corridas.ps1') -Workbook $alvo) -Pular 1 -Primeiras 3
+Etapa 'criar_corridas.ps1' -Argumentos @('-Workbook', $alvo) -Pular 1 -Primeiras 3
 
 Encerrar-Excel
 "== 3b. Audit_Log (trilha de auditoria encadeada por hash)"
-Mostrar (& (Join-Path $s 'criar_audit_log.ps1') -Workbook $alvo) -Primeiras 1
+Etapa 'criar_audit_log.ps1' -Argumentos @('-Workbook', $alvo) -Primeiras 1
+
+Encerrar-Excel
+"== 3c. tabelas de log dentro do DB_Resultados"
+Etapa 'criar_logs_db.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
 
 Encerrar-Excel
 "== 4. aplica o VBA"
+# aplicar_vba recebe um ARRAY de modulos: continua no processo atual,
+# seguido de Encerrar-Excel como rede de seguranca.
 & (Join-Path $s 'aplicar_vba.ps1') -Workbook $alvo -Modulos @(
     (Join-Path $h 'mEstatistica.bas'),
     (Join-Path $h 'mDados.bas'),
     (Join-Path $h 'mAuditoria.bas'),
     (Join-Path $h 'mConfig.bas'),
+    (Join-Path $h 'mLogDB.bas'),
     (Join-Path $h 'Planilha7.cls')
 )
 
 Encerrar-Excel
 "== 4b. vigia da tabela de elegibilidade (item 2.5)"
-Mostrar (& (Join-Path $s 'instalar_cfg_watch.ps1') -Workbook $alvo) -Ultimas 3
+Etapa 'instalar_cfg_watch.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
 
 Encerrar-Excel
 "== 5. migra os formularios para a nova API do RUN"
-Mostrar (& (Join-Path $s 'patch_forms_run.ps1') -Workbook $alvo) -Ultimas 2
+Etapa 'patch_forms_run.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 2
 
 Encerrar-Excel
 "== 6. redireciona as abas de interface para Eng_Saida"
-Mostrar (& (Join-Path $s 'redirecionar_calc.ps1') -Workbook $alvo -OutCsv (Join-Path $h 'marco2_celulas_redirecionadas.csv')) -Primeiras 1
+Etapa 'redirecionar_calc.ps1' -Argumentos @('-Workbook', $alvo, '-OutCsv', (Join-Path $h 'marco2_celulas_redirecionadas.csv')) -Primeiras 1
 Encerrar-Excel
-Mostrar (& (Join-Path $s 'redirecionar_painel.ps1') -Workbook $alvo -OutCsv (Join-Path $h 'marco3_celulas_redirecionadas.csv')) -Primeiras 1
+Etapa 'redirecionar_painel.ps1' -Argumentos @('-Workbook', $alvo, '-OutCsv', (Join-Path $h 'marco3_celulas_redirecionadas.csv')) -Primeiras 1
 Encerrar-Excel
-Mostrar (& (Join-Path $s 'redirecionar_estatistica.ps1') -Workbook $alvo -OutCsv (Join-Path $h 'marco4_celulas_redirecionadas.csv')) -Primeiras 1
+Etapa 'redirecionar_estatistica.ps1' -Argumentos @('-Workbook', $alvo, '-OutCsv', (Join-Path $h 'marco4_celulas_redirecionadas.csv')) -Primeiras 1
 
 Encerrar-Excel
 if (-not $PularMotor) {
     "== 7. executa o motor"
-    Mostrar (& (Join-Path $s 'rodar_motor.ps1') -Workbook $alvo -Rotinas AtualizarCalc, AtualizarPainelEng, AtualizarEstatisticaAba) -Ultimas 4
+    Etapa 'rodar_motor.ps1' -Argumentos @('-Workbook', $alvo, '-Rotinas', 'AtualizarCalc', 'AtualizarPainelEng', 'AtualizarEstatisticaAba') -Ultimas 4
 }
 
 ""

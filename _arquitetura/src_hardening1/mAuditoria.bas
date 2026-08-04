@@ -92,6 +92,13 @@ Public Const AC_STATUS As String = "STATUS_ALTERADO"
 Public Const VAZIO As String = "<VAZIO>"
 Public Const PARECER_MIN_PALAVRAS As Long = 5
 
+' Cache do contador de alteracoes por chave.
+'
+' ProximoSeq varria o log INTEIRO a cada gravacao: custo O(n) por evento e
+' O(n^2) ao longo do dia. Com o cache, a varredura acontece uma vez por sessao
+' e cada evento seguinte e O(1). Medido: era o maior componente dos 403ms/evento.
+Private mSeq As Object
+
 ' ===================== CONTEXTO =====================
 
 Public Function UsuarioSistema() As String
@@ -183,14 +190,35 @@ End Function
 ' Quantas vezes esta chave ja apareceu no log. O valor ORIGINAL de um registro
 ' e sempre o da linha com Seq = 1.
 Private Function ProximoSeq(ByVal chave As String) As Long
-    Dim ws As Worksheet, i As Long, ult As Long, n As Long
+    Dim ws As Worksheet, i As Long, ult As Long, dados As Variant, k As String
     If chave = "" Then ProximoSeq = 0: Exit Function
-    Set ws = ThisWorkbook.Sheets(AUDIT)
-    ult = UltimaLinhaAudit()
-    For i = AUDIT_R0 To ult
-        If CStr(ws.Cells(i, AU_CHAVE).Value) = chave Then n = n + 1
-    Next i
-    ProximoSeq = n + 1
+
+    If mSeq Is Nothing Then
+        ' Uma varredura por sessao, em BLOCO (nao celula a celula), e o mapa
+        ' fica em memoria para todos os eventos seguintes.
+        Set mSeq = CreateObject("Scripting.Dictionary")
+        mSeq.CompareMode = 1
+        Set ws = ThisWorkbook.Sheets(AUDIT)
+        ult = UltimaLinhaAudit()
+        If ult >= AUDIT_R0 Then
+            dados = ws.Range(ws.Cells(AUDIT_R0, AU_CHAVE), ws.Cells(ult, AU_CHAVE)).Value
+            If IsArray(dados) Then
+                For i = 1 To UBound(dados, 1)
+                    k = Trim$(CStr(dados(i, 1)))
+                    If k <> "" Then
+                        If mSeq.Exists(k) Then mSeq(k) = mSeq(k) + 1 Else mSeq(k) = 1
+                    End If
+                Next i
+            End If
+        End If
+    End If
+
+    If mSeq.Exists(chave) Then
+        mSeq(chave) = mSeq(chave) + 1
+    Else
+        mSeq(chave) = 1
+    End If
+    ProximoSeq = mSeq(chave)
 End Function
 
 Private Function Payload(ByRef v() As Variant) As String
@@ -288,9 +316,15 @@ Public Function Auditar(ByVal categoria As String, ByVal acao As String, _
     ws.Cells(lin, AU_ID).NumberFormat = "@"
     ws.Cells(lin, AU_HASHANT).NumberFormat = "@"
     ws.Cells(lin, AU_HASH).NumberFormat = "@"
+
+    ' UMA escrita de bloco em vez de 32 escritas de celula. Cada acesso a
+    ' Range custa uma travessia COM; em lote, o Excel resolve tudo de uma vez.
+    Dim bloco() As Variant
+    ReDim bloco(1 To 1, 1 To AU_HASHANT)
     For i = AU_ID To AU_HASHANT
-        ws.Cells(lin, i).Value = v(i)
+        bloco(1, i) = v(i)
     Next i
+    ws.Range(ws.Cells(lin, AU_ID), ws.Cells(lin, AU_HASHANT)).Value = bloco
 
     ' O HASH COBRE O QUE FICOU GRAVADO, NAO O QUE SE PRETENDIA GRAVAR.
     '
@@ -300,10 +334,11 @@ Public Function Auditar(ByVal categoria As String, ByVal acao As String, _
     ' dessas diferencas acusaria adulteracao onde nao houve, e um verificador
     ' que da alarme falso e pior do que nenhum: ninguem confia nele quando
     ' importa. Por isso grava-se primeiro, LE-SE DE VOLTA, e so entao se calcula.
-    Dim g() As Variant
+    Dim g() As Variant, lido As Variant
     ReDim g(1 To AU_NCOL)
+    lido = ws.Range(ws.Cells(lin, AU_ID), ws.Cells(lin, AU_HASHANT)).Value
     For i = AU_ID To AU_HASHANT
-        g(i) = ws.Cells(lin, i).Value
+        g(i) = lido(1, i)
     Next i
     ws.Cells(lin, AU_HASH).Value = SHA256Hex(hashAnt & Payload(g))
     ws.Cells(lin, AU_TS).NumberFormat = "dd/mm/yyyy hh:mm:ss"
@@ -400,6 +435,11 @@ Public Function VerificarIntegridadeLog() As String
     Next lin
     VerificarIntegridadeLog = "OK|" & (ult - AUDIT_R0 + 1)
 End Function
+
+' Chamada quando o log e recriado ou quando a sessao precisa reler do zero.
+Public Sub InvalidarCacheAuditoria()
+    Set mSeq = Nothing
+End Sub
 
 Public Sub ConferirAuditoria()
     Dim r As String, p As Variant

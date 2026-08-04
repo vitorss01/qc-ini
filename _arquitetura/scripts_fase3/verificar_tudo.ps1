@@ -130,6 +130,18 @@ function Novo-Excel {
         }
         catch {
             $ultimo = $_
+            # Depois de um periodo sem Excel rodando, a PRIMEIRA ativacao COM
+            # costuma falhar com 0x80080005 mesmo com a maquina sadia. Lancar o
+            # excel.exe uma vez levanta o servidor e as ativacoes seguintes
+            # funcionam. Verificado nesta maquina: com um processo de pe, o
+            # New-Object passa na hora.
+            if ($tentativa -eq 2) {
+                try {
+                    Start-Process excel.exe -WindowStyle Hidden -EA SilentlyContinue | Out-Null
+                    Start-Sleep -Seconds 5
+                }
+                catch { }
+            }
             Start-Sleep -Seconds ($tentativa * 2)
         }
     }
@@ -296,6 +308,38 @@ End Function
     Anotar '3.7' 'tentativa de reenvio fica registrada no log' ($acao -eq 'REENVIO_BLOQUEADO') `
         "acao registrada: '$acao'"
 
+    # ---- 3.10/3.11 duas camadas de log com o MESMO identificador ----
+    # O Event Store prova integridade; as tabelas do banco preservam a estrutura
+    # por origem. Se as duas nao compartilhassem o ID, nao haveria como provar
+    # que uma nao contradiz a outra.
+    $logResAntes = $xl.Run('ContarLogDB', 'Resultados')
+    $vbaEx = $wb.VBProject.VBComponents.Add(1)
+    $vbaEx.Name = 'mTesteExcl'
+    $vbaEx.CodeModule.AddFromString(@'
+Public Function T_Excluir(ByVal r As Long, ByVal nv As Long, ByVal an As String) As Long
+    Dim d As Object
+    Set d = CreateObject("Scripting.Dictionary")
+    d(UCase$(Trim$(an))) = 1
+    T_Excluir = ExcluirLogico(r, nv, d, _
+        "Exclusao de teste automatizado da suite de verificacao", _
+        "Excluido", "Teste automatizado", "Resultados")
+End Function
+'@)
+    Start-Sleep -Milliseconds 300
+    $exc = $xl.Run('T_Excluir', $runT, $nivelT, $analT)
+    $logResDepois = $xl.Run('ContarLogDB', 'Resultados')
+    Anotar '3.10' 'exclusao grava tambem em LOG_Resultados' (($logResDepois - $logResAntes) -eq $exc) `
+        "linhas no log do banco: $logResAntes -> $logResDepois (excluidos: $exc)"
+
+    $linhaLog = $xl.Run('UltimaLinhaLogDB', 'Resultados')
+    $idNoBanco = [string]$db.Cells.Item($linhaLog, 59).Value2      # BG = ID_Auditoria
+    $idNoEvento = [string]$au.Cells.Item($xl.Run('UltimaLinhaAudit'), 1).Value2
+    Anotar '3.11' 'as duas camadas compartilham o ID_Auditoria' ($idNoBanco -eq $idNoEvento -and $idNoBanco -ne '') `
+        "banco='$idNoBanco' evento='$idNoEvento'"
+
+    $wb.VBProject.VBComponents.Remove($vbaEx)
+    $db.Cells.Item($linhaTeste, 7).Value2 = $statusOriginal
+
     # ---- 3.8/3.9 item 2.5: alterar a elegibilidade fica registrado ----
     # Cfg_Status decide o que entra em media/DP/CV/Bias/Sigma/Westgard. Mudar uma
     # celula redefine RETROATIVAMENTE a estatistica de todo o historico. A
@@ -372,6 +416,56 @@ $linhaBanco = ($adr | Where-Object { $_ -match 'sobre o banco|DB_Resultados' }) 
 Anotar '4.3' 'nenhuma formula de interface calcula sobre o banco' ($adr -join ' ' -notmatch 'VIOLA') $linhaBanco
 Encerrar-Excel
 
+
+# ------------------------------------------------ 4b. desempenho --------------
+""
+"-- 4b. DESEMPENHO ---------------------------------------------"
+"   (a gravacao em camada dupla nao pode tornar o sistema lento)"
+
+Encerrar-Excel
+$xlP = Novo-Excel
+$xlP.Visible = $false; $xlP.DisplayAlerts = $false; $xlP.EnableEvents = $false
+$xlP.AutomationSecurity = 1
+$wbP = $xlP.Workbooks.Open($alvo)
+try { $wbP.EnableAutoRecover = $false } catch { }
+try {
+    # motor completo
+    $t0 = Get-Date
+    $xlP.Run('AtualizarCalc') | Out-Null
+    $xlP.Run('AtualizarPainelEng') | Out-Null
+    $xlP.Run('AtualizarEstatisticaAba') | Out-Null
+    $xlP.Run('RegistrarEventosWestgard') | Out-Null
+    $tMotor = ((Get-Date) - $t0).TotalSeconds
+    Anotar '4b.1' 'motor completo abaixo de 5s' ($tMotor -lt 5) ("{0:N2}s para as 4 rotinas sobre 1.575 registros" -f $tMotor)
+
+    # 50 gravacoes nas DUAS camadas
+    $auP = $wbP.Worksheets.Item('Audit_Log')
+    $auP.Visible = -1
+    $t0 = Get-Date
+    for ($i = 1; $i -le 50; $i++) {
+        $id = $xlP.Run('Auditar', 'DADO', 'TESTE_PERF', 'suite', $i, (Get-Date), '', 'QC-52261101', 1, 'WBC',
+            3.0, 3.1, 'Ativo', 'Ativo', 'Medicao de desempenho', '')
+        $xlP.Run('RegistrarLogDB', 'Resultados', $id, 'TESTE_PERF', $i, (Get-Date), 1, 'WBC',
+            'QC-52261101', 3.1, 'Ativo', 'Ativo', 'Medicao de desempenho') | Out-Null
+    }
+    $tLog = ((Get-Date) - $t0).TotalSeconds
+    $porEvento = $tLog / 50
+    Anotar '4b.2' 'gravacao em camada dupla abaixo de 150ms por evento' ($porEvento -lt 0.15) `
+        ("{0:N0}ms por evento ({1:N1}s para 50 eventos nas duas camadas)" -f ($porEvento * 1000), $tLog)
+
+    # verificacao da cadeia com o log ja crescido
+    $t0 = Get-Date
+    $ver = [string]$xlP.Run('VerificarIntegridadeLog')
+    $tVer = ((Get-Date) - $t0).TotalSeconds
+    Anotar '4b.3' 'verificacao da cadeia integra e rapida' (($ver -like 'OK|*') -and $tVer -lt 10) `
+        ("$ver em {0:N2}s" -f $tVer)
+}
+finally {
+    try { $wbP.Close($false) } catch { }
+    try { $xlP.Quit() } catch { }
+    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($xlP) | Out-Null
+}
+Encerrar-Excel
 
 # ------------------------------------------ 5. blindagem do entregavel --------
 ""

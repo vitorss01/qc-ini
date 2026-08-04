@@ -48,6 +48,18 @@ function Novo-Excel {
         }
         catch {
             $ultimo = $_
+            # Depois de um periodo sem Excel rodando, a PRIMEIRA ativacao COM
+            # costuma falhar com 0x80080005 mesmo com a maquina sadia. Lancar o
+            # excel.exe uma vez levanta o servidor e as ativacoes seguintes
+            # funcionam. Verificado nesta maquina: com um processo de pe, o
+            # New-Object passa na hora.
+            if ($tentativa -eq 2) {
+                try {
+                    Start-Process excel.exe -WindowStyle Hidden -EA SilentlyContinue | Out-Null
+                    Start-Sleep -Seconds 5
+                }
+                catch { }
+            }
             Start-Sleep -Seconds ($tentativa * 2)
         }
     }
