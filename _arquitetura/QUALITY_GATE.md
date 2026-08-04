@@ -188,6 +188,31 @@ não vale.
 > falso positivo, e um verificador que dá alarme falso é pior que nenhum: ninguém
 > confia nele no dia em que importa.
 
+
+> **Sprint NC entregue (04/08/2026) — 42 de 43 verificações.**
+> `frmResultadoNaoConforme` e `frmExcluirRegistroNC`, com botões nas abas
+> `Resultados` e `Registros`. O analista informa o RUN e o sistema preenche data,
+> lote e os resultados da corrida com o valor de cada analito; ele marca os
+> errados, escolhe o tipo (lido do `Cfg_Status`) e escreve o parecer técnico.
+>
+> **Zero fórmulas alteradas.** A especificação pedia trocar `Rep 1/2/3` por uma
+> coluna única, o que quebraria 3.240 fórmulas do `Calc` e o marcador do gráfico.
+> A aba `Registros` já tinha as colunas certas — `E` era a corrida e passa a
+> receber o RUN; `F` era `Rep 1` e é exatamente a coluna que o gráfico plota.
+> `G` e `H` ficam livres para as repetições posteriores.
+>
+> Testes 3.12 a 3.15: parecer curto **impede** marcar como não conforme mesmo
+> chamando a camada de dados direto — a exigência é propriedade do sistema, não
+> cortesia da interface; o resultado sai dos cálculos e o **valor original fica**;
+> a ocorrência aparece em `Registros`; as três camadas registram com o mesmo
+> `ID_Auditoria`.
+>
+> **Desempenho na máquina limpa:** motor completo 0,46 s · gravação em camada
+> dupla 165 ms/evento · verificação da cadeia (59 eventos) 0,31 s.
+>
+> **Única falha da suíte: 5.4**, a senha do projeto VBA — passo manual do gestor,
+> adiado por decisão dele para o fim do projeto.
+
 ## 4. Qualidade e testes
 
 | # | Item | Status | O que fecha |
