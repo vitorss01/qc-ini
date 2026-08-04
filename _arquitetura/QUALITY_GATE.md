@@ -42,7 +42,7 @@ não vale.
 | 2.1 | Fórmulas preservadas | ✅ | Marcos 1–5. Motor escreve só em `Eng_Saida`. Diff célula a célula contra a produção: `AUSENTE 0 · ALTERADA 4362 · VALOR 0 · EXTRA 9`, 61.425 fórmulas. As 4362 são lista fechada e versionada (`src_hardening1/marco*_celulas_redirecionadas.csv`): 3240 Calc + 42 Painel + 1080 Estatística. As 9 EXTRA são `Painel!S:U`, onde o motor gravava valor direto |
 | 2.1b | ADR-019 verificado | ✅ | `varredura_adr019.ps1`: produção tinha **120** fórmulas de interface calculando parâmetro estatístico sobre o banco (`Estatística!D`, `AVERAGEIFS`); build tem **0**. As 900 restantes no `Calc` são seleção/filtro, permitidas. Estatística agregada que sobra na interface é só a cadeia do bias EQC (840, mantida por decisão) e 8 células de limite de eixo |
 | 2.2 | Sem sobrescrita silenciosa | ⏳ | Reenviar mesma Data+lote sobrescreve valor sem versionar. Exige versionamento: linha original nunca alterada |
-| 2.3 | Exclusão lógica não é revertida sozinha | 🔄 | `UpsertResultados` força `Status = Ativo`, ressuscitando excluído. Reverter exclusão deve ser ação própria, com justificativa |
+| 2.3 | Exclusão lógica não é revertida sozinha | ✅ | `UpsertResultados` força `Status = Ativo`, ressuscitando excluído. Reverter exclusão deve ser ação própria, com justificativa |
 | 2.4 | RUN representa a corrida analítica | ⏳ | Hoje RUN = (Data + lote) colapsa turnos e pós-calibração. CLSI C24 trata como eventos distintos |
 | 2.5 | `Cfg_Status` não altera histórico retroativamente | ⏳ | Uma célula redefine o que entra na estatística de todo o histórico. Exige versionamento da tabela + log |
 
@@ -100,10 +100,11 @@ não vale.
 > valor é restaurado. "Append-only" deixou de ser promessa e virou propriedade
 > demonstrável diante de um auditor.
 >
-> **2.3 fica 🔄:** o código está no `UpsertResultados` (linha não ativa é
-> preservada e a tentativa é auditada como `UPSERT_BLOQUEADO`), mas **ainda não há
-> teste automatizado** cobrindo esse caminho. Marcar ✅ sem teste seria repetir
-> exatamente o erro que acabamos de corrigir.
+> **2.3 fecha com teste, não com leitura de código.** Os itens 3.6 e 3.7 da suíte
+> percorrem o vetor de fraude inteiro: marcam um registro real como `Excluído`,
+> **reenviam a mesma chave pela camada de dados** — como um formulário faria — e
+> exigem que o status continue `Excluído` e que a tentativa apareça no log como
+> `UPSERT_BLOQUEADO`. Depois restauram o estado original.
 >
 > **Como reproduzir tudo isto:** `.\_arquitetura\scripts_fase3erificar_tudo.ps1`
 > — um comando, 21 verificações, relatório em `VERIFICACAO.md` e código de saída
@@ -147,7 +148,7 @@ não vale.
 > **Regra de merge:** nada entra na `main` enquanto houver ⏳ ou ❌.
 > A branch `fase3a-motor-cqi` é de trabalho; se um PR for aberto, deve ser **draft**.
 
-**19 ✅ · 22 ⏳ · 1 🔄 · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
+**20 ✅ · 22 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
 
 O **motor** está pronto e validado. O **sistema** ainda não é auditável nem confiável.
 

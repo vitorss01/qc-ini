@@ -217,7 +217,53 @@ try {
     $v3 = [string]$xl.Run('VerificarIntegridadeLog')
     Anotar '3.5' 'cadeia volta a fechar apos restaurar' ($v3 -like 'OK|*') "retorno: $v3"
 
-    # 3.6 exclusao nao pode ser revertida por reenvio (item 2.3 do gate)
+    # ---- 3.6/3.7 item 2.3: reenvio NAO ressuscita registro excluido ----
+    # O UpsertResultados antigo forcava Status = Ativo em toda atualizacao:
+    # reenviar a mesma chave trazia de volta uma linha excluida, sem rastro.
+    # Era vetor de fraude. Aqui a suite exclui um registro real e reenvia o
+    # mesmo valor, exigindo que o Status continue Excluido e que a tentativa
+    # apareca no log como UPSERT_BLOQUEADO.
+    $db = $wb.Worksheets.Item('DB_Resultados')
+    $linhaTeste = 4
+    $runT = [int]$db.Cells.Item($linhaTeste, 1).Value2
+    $nivelT = [int]$db.Cells.Item($linhaTeste, 3).Value2
+    $loteT = [string]$db.Cells.Item($linhaTeste, 4).Value2
+    $analT = [string]$db.Cells.Item($linhaTeste, 5).Value2
+    $valorT = $db.Cells.Item($linhaTeste, 6).Value2
+    $dataT = $db.Cells.Item($linhaTeste, 2).Value2
+    $statusOriginal = [string]$db.Cells.Item($linhaTeste, 7).Value2
+
+    $db.Cells.Item($linhaTeste, 7).Value2 = 'Excluido'
+    $antesLog = $xl.Run('UltimaLinhaAudit')
+
+    # reenvio pela camada de dados, exatamente como um formulario faria
+    $vba = $wb.VBProject.VBComponents.Add(1)
+    $vba.Name = 'mTesteUpsert'
+    $vba.CodeModule.AddFromString(@'
+Public Function T_Reenvio(ByVal r As Long, ByVal dt As Variant, ByVal nv As Long, _
+                          ByVal lt As String, ByVal an As String, ByVal vl As Variant) As String
+    Dim regs(1 To 1, 1 To 7) As Variant
+    regs(1, 1) = r: regs(1, 2) = dt: regs(1, 3) = nv
+    regs(1, 4) = lt: regs(1, 5) = an: regs(1, 6) = vl: regs(1, 7) = "Ativo"
+    T_Reenvio = UpsertResultados(regs)
+End Function
+'@)
+    Start-Sleep -Milliseconds 300
+    $ret = [string]$xl.Run('T_Reenvio', $runT, $dataT, $nivelT, $loteT, $analT, $valorT)
+    $statusDepois = [string]$db.Cells.Item($linhaTeste, 7).Value2
+    $depoisLog = $xl.Run('UltimaLinhaAudit')
+
+    Anotar '3.6' 'reenvio NAO ressuscita registro excluido' ($statusDepois -eq 'Excluido') `
+        "status antes=Excluido depois=$statusDepois | UpsertResultados devolveu '$ret' (novos|atualizados|bloqueados)"
+
+    $acao = ''
+    if ($depoisLog -gt $antesLog) { $acao = [string]$au.Cells.Item($depoisLog, 3).Value2 }
+    Anotar '3.7' 'tentativa de reenvio fica registrada no log' ($acao -eq 'UPSERT_BLOQUEADO') `
+        "acao registrada: '$acao'"
+
+    $wb.VBProject.VBComponents.Remove($vba)
+    $db.Cells.Item($linhaTeste, 7).Value2 = $statusOriginal
+
     $au.Visible = 2
     $wb.Save()
 }
