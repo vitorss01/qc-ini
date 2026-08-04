@@ -865,6 +865,8 @@ Public Sub RegistrarEventosWestgard()
     Set agg = CreateObject("Scripting.Dictionary")
     Set mAgg = agg          ' definido JA — AgregadoWestgard nunca re-dispara esta rotina
     ReDim ev(1 To 5000, 1 To 8)
+    Dim nDescartados As Long
+    nDescartados = 0
     nEv = 0
 
     Dim ch As Variant
@@ -927,7 +929,12 @@ Public Sub RegistrarEventosWestgard()
                     If Val(q22(0, j)) = 1 Then regs = IIf(regs = "", "22s", regs & "+22s")
                     If Val(q41(0, j)) = 1 Then regs = IIf(regs = "", "41s", regs & "+41s")
                     If Val(q10(0, j)) = 1 Then regs = IIf(regs = "", "10x", regs & "+10x")
-                    If regs <> "" And nEv < 5000 Then
+                                        ' Teto de eventos: descartar em silencio esconderia violacao
+                    ' de Westgard do analista e do auditor. Conta e denuncia.
+                    If regs <> "" And nEv >= UBound(ev, 1) Then
+                        nDescartados = nDescartados + 1
+                    End If
+                    If regs <> "" And nEv < UBound(ev, 1) Then
                         nEv = nEv + 1
                         ev(nEv, 1) = IIf(ds(j) > 0, CDate(ds(j)), "")
                         ev(nEv, 2) = rs(j)
@@ -959,6 +966,20 @@ Public Sub RegistrarEventosWestgard()
         ws.Range(ws.Cells(4, 1), ws.Cells(3 + nEv, 8)).Value = outp
     End If
     ws.Range("J2").Value = nEv
+
+    ' Falha ALTA quando o buffer estourou. Eventos_Westgard e DERIVADA -- pode
+    ' ser reconstruida --, entao interromper aqui e seguro e forca a decisao.
+    If nDescartados > 0 Then
+        Auditar CAT_SIS, "EVENTOS_WESTGARD_ESTOUROU", "mEstatistica", _
+                0, "", "", "", 0, "", nEv, nDescartados, "", "", _
+                "Buffer de " & UBound(ev, 1) & " eventos cheio; " & nDescartados & _
+                " violacao(oes) NAO registrada(s)", _
+                "Arquivar Eventos_Westgard e reexecutar para restaurar o historico completo"
+        Err.Raise vbObjectError + 513, "RegistrarEventosWestgard", _
+                  "Historico de Westgard incompleto: " & nDescartados & _
+                  " violacao(oes) descartada(s) por buffer cheio (" & UBound(ev, 1) & _
+                  "). O evento foi registrado no Audit_Log."
+    End If
     Set mAgg = agg
 End Sub
 
@@ -1045,5 +1066,4 @@ Public Sub RecalcularAnalitoAtual()
     AtualizarEixos
     Application.ScreenUpdating = True
 End Sub
-
 

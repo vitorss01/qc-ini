@@ -199,6 +199,13 @@ Mostrar (& (Join-Path $s 'gerar_mDados.ps1') `
     -NovoRun (Join-Path $h 'mDados_RUN.txt') `
     -Saida (Join-Path $hp 'mDados.bas')) -Ultimas 2
 
+# Limite atingido passa a falhar ALTO, nao em silencio (inspecao 04/08/2026).
+# mRegistros e copiado para a pasta do produto antes de ser corrigido: o
+# original em src_hardening1 e compartilhado e nao pode ser mutado.
+Copy-Item (Join-Path $h 'mRegistros.bas') (Join-Path $hp 'mRegistros.bas') -Force
+Mostrar (& (Join-Path $s 'corrigir_silenciamento.ps1') -Arquivo (Join-Path $hp 'mEstatistica.bas') -Alvo 'mEstatistica')
+Mostrar (& (Join-Path $s 'corrigir_silenciamento.ps1') -Arquivo (Join-Path $hp 'mRegistros.bas') -Alvo 'mRegistros')
+
 Mostrar (& (Join-Path $s 'gerar_mDados_audit.ps1') `
     -Entrada (Join-Path $hp 'mDados.bas') `
     -Patch (Join-Path $h 'mDados_AUDIT.txt') `
@@ -242,7 +249,7 @@ Encerrar-Excel
     (Join-Path $h 'mAuditoria.bas'),
     (Join-Path $h 'mConfig.bas'),
     (Join-Path $h 'mLogDB.bas'),
-    (Join-Path $h 'mRegistros.bas'),
+    (Join-Path $hp 'mRegistros.bas'),
     (Join-Path $h 'Planilha7.cls')
 )
 
@@ -260,6 +267,10 @@ Etapa 'criar_forms_nc.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
 
 Encerrar-Excel
 Etapa 'criar_botoes_nc.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
+
+Encerrar-Excel
+"== 5c. Option Explicit em todo componente com codigo"
+Etapa 'forcar_option_explicit.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 4
 
 Encerrar-Excel
 "== 6. redireciona as abas de interface para Eng_Saida"
