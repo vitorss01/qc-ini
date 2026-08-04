@@ -108,6 +108,13 @@ function Etapa {
     $saida = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $caminho @Argumentos 2>&1
     $codigo = $LASTEXITCODE
 
+    # Encerrar DEPOIS tambem. Um script que lanca excecao fecha a pasta mas
+    # deixa o PROCESSO vivo -- o Quit nao encerra enquanto o runspace segura
+    # referencias COM. A etapa seguinte encontrava o arquivo travado e
+    # abortava com "somente leitura". Limpar na saida torna cada etapa
+    # independente do estado deixado pela anterior.
+    Encerrar-Excel
+
     $linhas = @($saida | ForEach-Object { $_.ToString() })
     $erros = @($linhas | Where-Object { $_ -match 'Exce(p|ç)|Error|throw|CategoryInfo' })
 
@@ -181,6 +188,7 @@ Encerrar-Excel
     (Join-Path $h 'mAuditoria.bas'),
     (Join-Path $h 'mConfig.bas'),
     (Join-Path $h 'mLogDB.bas'),
+    (Join-Path $h 'mRegistros.bas'),
     (Join-Path $h 'Planilha7.cls')
 )
 
@@ -193,6 +201,13 @@ Encerrar-Excel
 Etapa 'patch_forms_run.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 2
 
 Encerrar-Excel
+"== 5b. formularios da Sprint NC"
+Etapa 'criar_forms_nc.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
+
+Encerrar-Excel
+Etapa 'criar_botoes_nc.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
+
+Encerrar-Excel
 "== 6. redireciona as abas de interface para Eng_Saida"
 Etapa 'redirecionar_calc.ps1' -Argumentos @('-Workbook', $alvo, '-OutCsv', (Join-Path $h 'marco2_celulas_redirecionadas.csv')) -Primeiras 1
 Encerrar-Excel
@@ -203,7 +218,10 @@ Etapa 'redirecionar_estatistica.ps1' -Argumentos @('-Workbook', $alvo, '-OutCsv'
 Encerrar-Excel
 if (-not $PularMotor) {
     "== 7. executa o motor"
-    Etapa 'rodar_motor.ps1' -Argumentos @('-Workbook', $alvo, '-Rotinas', 'AtualizarCalc', 'AtualizarPainelEng', 'AtualizarEstatisticaAba') -Ultimas 4
+        # Com powershell.exe -File, parametro de ARRAY vai como UM argumento
+    # separado por virgulas. Elementos soltos viram argumentos posicionais e
+    # a ligacao falha com 'nao e possivel processar a transformacao'.
+    Etapa 'rodar_motor.ps1' -Argumentos @('-Workbook', $alvo, '-Rotinas', 'AtualizarCalc,AtualizarPainelEng,AtualizarEstatisticaAba') -Ultimas 4
 }
 
 ""

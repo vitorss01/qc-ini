@@ -19,6 +19,16 @@ param(
     [string]$Analito
 )
 
+# Aceita as duas formas de passagem.
+#
+# Chamado dentro do mesmo processo, -Rotinas a,b,c chega como array de 3.
+# Chamado por powershell.exe -File com os argumentos vindos de variavel, a
+# virgula NAO e interpretada e tudo chega como UMA string -- e o Excel tenta
+# executar uma macro chamada 'a,b,c', com a mensagem enganosa de que a macro
+# nao existe ou as macros estao desabilitadas. Separar aqui cobre os dois casos
+# sem obrigar quem chama a saber da diferenca.
+$Rotinas = @($Rotinas | ForEach-Object { $_ -split ',' } | Where-Object { $_.Trim() -ne '' } | ForEach-Object { $_.Trim() })
+
 if ($Workbook -notmatch 'build_hardening') {
     throw "Recusado: este script so roda em copia de build (caminho deve conter build_hardening). Recebido: $Workbook"
 }

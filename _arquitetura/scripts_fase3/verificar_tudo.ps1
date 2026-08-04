@@ -189,6 +189,21 @@ try {
         Anotar '1.1' "$($m.Nome) identico a fonte" ($hA -eq $hX) "fonte $($hA.Substring(0,12)) / artefato $($hX.Substring(0,12))"
     }
 
+    # formularios e botoes da Sprint NC
+    $formsNC = @('frmResultadoNaoConforme', 'frmExcluirRegistroNC')
+    foreach ($fn in $formsNC) {
+        $achou = $false
+        foreach ($c in $wb.VBProject.VBComponents) { if ($c.Name -eq $fn) { $achou = $true } }
+        Anotar '1.4' "formulario $fn presente" $achou ''
+    }
+    foreach ($par in @(@('Resultados', 'btnNaoConforme'), @('Registros', 'btnExcluirNC'))) {
+        $wsB = $wb.Worksheets.Item($par[0])
+        $temBotao = $false
+        $acao = ''
+        foreach ($sh in $wsB.Shapes) { if ($sh.Name -eq $par[1]) { $temBotao = $true; $acao = $sh.OnAction } }
+        Anotar '1.5' "botao $($par[1]) na aba $($par[0])" ($temBotao -and $acao -ne '') "OnAction = '$acao'"
+    }
+
     # aS como identificador: a classe de erro que derrubava o projeto inteiro
     $comAS = 0
     foreach ($c in $wb.VBProject.VBComponents) {
@@ -339,6 +354,56 @@ End Function
 
     $wb.VBProject.VBComponents.Remove($vbaEx)
     $db.Cells.Item($linhaTeste, 7).Value2 = $statusOriginal
+
+    # ---- 3.12 a 3.15 Sprint NC: marcar nao conforme, de ponta a ponta ----
+    # O que precisa ser verdade: o resultado SAI DOS CALCULOS, o valor ORIGINAL
+    # permanece no banco, a ocorrencia aparece na aba Registros, e as tres
+    # camadas registram com o MESMO identificador.
+    $dbNC = $wb.Worksheets.Item('DB_Resultados')
+    $regNC = $wb.Worksheets.Item('Registros')
+    $regNC.Visible = -1
+    $linNC = 10
+    $runNC = [int]$dbNC.Cells.Item($linNC, 1).Value2
+    $nivNC = [int]$dbNC.Cells.Item($linNC, 3).Value2
+    $anaNC = [string]$dbNC.Cells.Item($linNC, 5).Value2
+    $valNC = $dbNC.Cells.Item($linNC, 6).Value2
+    $stNCantes = [string]$dbNC.Cells.Item($linNC, 7).Value2
+
+    $regAntes = $xl.Run('PrimeiraLinhaLivreReg')
+    $logAntes2 = $xl.Run('ContarLogDB', 'Resultados')
+
+    # parecer curto: a operacao TEM de ser recusada
+    $idVazio = [string]$xl.Run('MarcarNaoConforme', $runNC, $nivNC, $anaNC, 'Invalido', 'muito curto')
+    Anotar '3.12' 'parecer curto impede marcar nao conforme' ($idVazio -eq '') `
+        "retorno vazio, status permaneceu '$([string]$dbNC.Cells.Item($linNC,7).Value2)'"
+
+    $idNC = [string]$xl.Run('MarcarNaoConforme', $runNC, $nivNC, $anaNC, 'Invalido',
+        'Material hemolisado confirmado pela equipe tecnica')
+    $stNCdepois = [string]$dbNC.Cells.Item($linNC, 7).Value2
+    $valDepois = $dbNC.Cells.Item($linNC, 6).Value2
+
+    Anotar '3.13' 'resultado sai dos calculos e o valor ORIGINAL fica' `
+        (($stNCdepois -eq 'Invalido') -and ("$valDepois" -eq "$valNC")) `
+        "status $stNCantes -> $stNCdepois | valor preservado: $valDepois"
+
+    $regDepois = $xl.Run('PrimeiraLinhaLivreReg')
+    $okReg = ($regDepois -gt $regAntes)
+    $anaReg = ''
+    if ($okReg) { $anaReg = [string]$regNC.Cells.Item($regAntes, 3).Value2 }
+    Anotar '3.14' 'ocorrencia aparece na aba Registros' ($okReg -and $anaReg -eq $anaNC) `
+        "linha ${regAntes}: analito '$anaReg', RUN $([string]$regNC.Cells.Item($regAntes,5).Value2)"
+
+    $logDepois2 = $xl.Run('ContarLogDB', 'Resultados')
+    $idBanco2 = [string]$dbNC.Cells.Item($xl.Run('UltimaLinhaLogDB', 'Resultados'), 59).Value2
+    Anotar '3.15' 'as tres camadas registram com o mesmo ID' `
+        (($logDepois2 -gt $logAntes2) -and ($idBanco2 -eq $idNC) -and ($idNC -ne '')) `
+        "ID: '$idNC' | log do banco: $logAntes2 -> $logDepois2"
+
+    # desfaz: devolve o status e limpa a vitrine
+    $dbNC.Cells.Item($linNC, 7).Value2 = $stNCantes
+    try { $regNC.Unprotect('qcini2025') } catch { }
+    $regNC.Range($regNC.Cells.Item($regAntes, 2), $regNC.Cells.Item($regAntes, 13)).ClearContents()
+    $regNC.Visible = 2
 
     # ---- 3.8/3.9 item 2.5: alterar a elegibilidade fica registrado ----
     # Cfg_Status decide o que entra em media/DP/CV/Bias/Sigma/Westgard. Mudar uma
