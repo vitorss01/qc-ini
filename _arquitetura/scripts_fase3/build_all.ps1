@@ -116,7 +116,7 @@ function Etapa {
     Encerrar-Excel
 
     $linhas = @($saida | ForEach-Object { $_.ToString() })
-    $erros = @($linhas | Where-Object { $_ -match 'Exce(p|ç)|Error|throw|CategoryInfo' })
+    $erros = @($linhas | Where-Object { $_ -match 'Exce(p|ï¿½)|Error|throw|CategoryInfo' })
 
     if ($codigo -ne 0 -or $erros.Count -gt 0) {
         $linhas | ForEach-Object { "     $_" }
@@ -216,6 +216,10 @@ Encerrar-Excel
 Etapa 'redirecionar_estatistica.ps1' -Argumentos @('-Workbook', $alvo, '-OutCsv', (Join-Path $h 'marco4_celulas_redirecionadas.csv')) -Primeiras 1
 
 Encerrar-Excel
+"== 6b. Rep 1/2/3 viram uma coluna unica de nao conformidade"
+Etapa 'consolidar_registros_nc.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 6
+
+Encerrar-Excel
 if (-not $PularMotor) {
     "== 7. executa o motor"
         # Com powershell.exe -File, parametro de ARRAY vai como UM argumento
@@ -229,4 +233,5 @@ if (-not $PularMotor) {
 "Conferir com:"
 "  .\snapshot_formulas.ps1 -Workbook '$alvo' -OutCsv `$env:TEMP\build.csv"
 "  .\diff_formulas.ps1 -Referencia '$(Join-Path $arq 'snapshot_producao\Hematologia\formulas.csv')' -Candidato `$env:TEMP\build.csv"
-"Aceite esperado: AUSENTE 0 - ALTERADA 4362 - VALOR 0 - EXTRA 9"
+"Aceite esperado: AUSENTE 1080 - ALTERADA 4362 - VALOR 0 - EXTRA 9"
+"  as 1.080 AUSENTE sao regRep2 e regRep3, removidas de proposito na etapa 6b"

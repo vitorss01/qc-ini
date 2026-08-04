@@ -462,14 +462,37 @@ Encerrar-Excel
 # Out-String -Stream: diff_formulas usa Format-Table, que emite OBJETOS DE
 # FORMATACAO, nao texto. Sem converter, o log enche de
 # "Microsoft.PowerShell.Commands.Internal.Format.FormatEntryData".
-$diff = & (Join-Path $s 'diff_formulas.ps1') -Referencia (Join-Path $snap 'formulas.csv') -Candidato $csvBuild |
+$csvDiv = Join-Path $env:TEMP 'verif_div.csv'
+$diff = & (Join-Path $s 'diff_formulas.ps1') -Referencia (Join-Path $snap 'formulas.csv') -Candidato $csvBuild -OutCsv $csvDiv |
     Out-String -Stream
 $diff | Where-Object { $_ -match '\S' } | Select-Object -First 12 | ForEach-Object { "     $_" }
-$linhaAusente = ($diff | Where-Object { $_ -match 'AUSENTE' }) -join ' '
 $linhaValor = ($diff | Where-Object { $_ -match 'VALOR' }) -join ' '
-$semAusente = ($linhaAusente -match 'AUSENTE\D*0\b')
 $semValor = ($linhaValor -match 'VALOR\D*0\b')
-Anotar '4.1' 'nenhuma formula AUSENTE' $semAusente $linhaAusente
+
+# AUSENTE deixou de ser "tem de ser zero" e passou a ser LISTA FECHADA.
+#
+# A consolidacao da Sprint NC removeu de proposito regRep2 e regRep3: 1.080
+# formulas, nas colunas Y,Z (nivel 1), AU,AV (nivel 2) e BQ,BR (nivel 3) do
+# Calc. Exigir zero reprovaria uma mudanca aprovada; aceitar qualquer numero
+# deixaria passar destruicao acidental -- que foi exatamente o incidente da
+# Fase 3A. A checagem continua estrita: qualquer AUSENTE FORA dessas seis
+# colunas reprova.
+$COLS_NC = @('Y', 'Z', 'AU', 'AV', 'BQ', 'BR')
+$ausentes = @()
+if (Test-Path $csvDiv) {
+    $ausentes = @(Import-Csv $csvDiv -Delimiter ';' | Where-Object { $_.Tipo -eq 'AUSENTE' })
+}
+$foraDaLista = @($ausentes | Where-Object {
+        $aba = ($_.Chave -split '!')[0]
+        $col = ($_.Chave -split '!')[1] -replace '\d', ''
+        -not ($aba -eq 'Calc' -and $COLS_NC -contains $col)
+    })
+$okAusente = ($foraDaLista.Count -eq 0)
+$detalhe = "{0} AUSENTE, {1} fora da lista fechada (regRep2/regRep3 do Calc)" -f $ausentes.Count, $foraDaLista.Count
+if (-not $okAusente) {
+    $detalhe += ' -> ' + (($foraDaLista | Select-Object -First 5 | ForEach-Object { $_.Chave }) -join ', ')
+}
+Anotar '4.1' 'AUSENTE so na lista fechada da Sprint NC' $okAusente $detalhe
 Anotar '4.2' 'nenhuma formula virou VALOR' $semValor $linhaValor
 
 Encerrar-Excel
