@@ -138,8 +138,13 @@ Encerrar-Excel
     (Join-Path $h 'mEstatistica.bas'),
     (Join-Path $h 'mDados.bas'),
     (Join-Path $h 'mAuditoria.bas'),
+    (Join-Path $h 'mConfig.bas'),
     (Join-Path $h 'Planilha7.cls')
 )
+
+Encerrar-Excel
+"== 4b. vigia da tabela de elegibilidade (item 2.5)"
+Mostrar (& (Join-Path $s 'instalar_cfg_watch.ps1') -Workbook $alvo) -Ultimas 3
 
 Encerrar-Excel
 "== 5. migra os formularios para a nova API do RUN"

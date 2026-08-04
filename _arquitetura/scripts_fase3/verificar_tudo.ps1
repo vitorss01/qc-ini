@@ -262,6 +262,40 @@ End Function
     Anotar '3.7' 'tentativa de reenvio fica registrada no log' ($acao -eq 'UPSERT_BLOQUEADO') `
         "acao registrada: '$acao'"
 
+    # ---- 3.8/3.9 item 2.5: alterar a elegibilidade fica registrado ----
+    # Cfg_Status decide o que entra em media/DP/CV/Bias/Sigma/Westgard. Mudar uma
+    # celula redefine RETROATIVAMENTE a estatistica de todo o historico. A
+    # exigencia nao e impedir -- a tabela existe para ser extensivel (ADR-006) --
+    # e sim que toda mudanca fique versionada e registrada.
+    $cfg = $wb.Worksheets.Item('Cfg_Status')
+    $cfg.Visible = -1
+    $versaoAntes = $xl.Run('VersaoCfg')
+    $antesLog2 = $xl.Run('UltimaLinhaAudit')
+
+    try { $cfg.Unprotect('qcini2025') } catch { }
+    $elegOriginal = [string]$cfg.Cells.Item(11, 3).Value2      # Treinamento: NAO
+    $xl.EnableEvents = $true
+    $cfg.Cells.Item(11, 3).Value2 = 'SIM'
+    Start-Sleep -Milliseconds 400
+    $xl.EnableEvents = $false
+
+    $versaoDepois = $xl.Run('VersaoCfg')
+    $depoisLog2 = $xl.Run('UltimaLinhaAudit')
+    $acaoCfg = ''
+    if ($depoisLog2 -gt $antesLog2) { $acaoCfg = [string]$au.Cells.Item($depoisLog2, 3).Value2 }
+
+    Anotar '3.8' 'alterar elegibilidade sobe a versao da configuracao' ($versaoDepois -gt $versaoAntes) `
+        "versao $versaoAntes -> $versaoDepois"
+    Anotar '3.9' 'alteracao de elegibilidade vai para a auditoria' ($acaoCfg -like 'CFG_*') `
+        "acao registrada: '$acaoCfg'"
+
+    # restaura
+    $xl.EnableEvents = $true
+    $cfg.Cells.Item(11, 3).Value2 = $elegOriginal
+    Start-Sleep -Milliseconds 400
+    $xl.EnableEvents = $false
+    $cfg.Visible = 2
+
     $wb.VBProject.VBComponents.Remove($vba)
     $db.Cells.Item($linhaTeste, 7).Value2 = $statusOriginal
 

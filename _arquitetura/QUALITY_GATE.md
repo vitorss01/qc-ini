@@ -44,7 +44,7 @@ não vale.
 | 2.2 | Sem sobrescrita silenciosa | ⏳ | Reenviar mesma Data+lote sobrescreve valor sem versionar. Exige versionamento: linha original nunca alterada |
 | 2.3 | Exclusão lógica não é revertida sozinha | ✅ | `UpsertResultados` força `Status = Ativo`, ressuscitando excluído. Reverter exclusão deve ser ação própria, com justificativa |
 | 2.4 | RUN representa a corrida analítica | ⏳ | Hoje RUN = (Data + lote) colapsa turnos e pós-calibração. CLSI C24 trata como eventos distintos |
-| 2.5 | `Cfg_Status` não altera histórico retroativamente | ⏳ | Uma célula redefine o que entra na estatística de todo o histórico. Exige versionamento da tabela + log |
+| 2.5 | `Cfg_Status` não altera histórico retroativamente | ✅ | Uma célula redefine o que entra na estatística de todo o histórico. Exige versionamento da tabela + log |
 
 
 > **Por que 2.1 e 2.1b voltaram para ⏳ (03/08/2026).**
@@ -137,6 +137,28 @@ não vale.
 > e o curioso, não a fraude decidida. A garantia de integridade está na trilha
 > encadeada por hash.
 
+
+> **2.5 fecha (03/08/2026) — versionada e registrada, não bloqueada.**
+> `Cfg_Status` decide o que entra em média, DP, CV, Bias, Sigma e Westgard.
+> Trocar uma célula redefinia **retroativamente** o que compôs a estatística de
+> todo o histórico, sem erro e sem rastro. Numa auditoria, *"com que critério
+> este Sigma foi calculado em março?"* não tinha resposta.
+>
+> `mConfig.bas` acrescenta três coisas: **versão** em `Cfg_Status!F1` (inteiro que
+> só sobe), **sombra** nas colunas ocultas H/I com o par Status/Elegível da
+> versão anterior — sem ela não há como saber o valor antigo, porque
+> `Worksheet_Change` dispara *depois* da alteração — e **log** de cada diferença
+> no `Audit_Log`, distinguindo `CFG_ELEGIBILIDADE_ALTERADA`,
+> `CFG_ESTADO_INCLUIDO` e `CFG_ESTADO_REMOVIDO`. Ao final chama `InvalidarCache`,
+> senão a sessão corrente seguiria calculando com a regra antiga.
+>
+> **Não impede a mudança, de propósito.** A tabela existe para ser extensível sem
+> tocar em código (ADR-006). O que se exige é registro e data. O usuário recebe
+> aviso explícito de que a alteração é retroativa.
+>
+> Testes 3.8 e 3.9 da suíte: alteram a elegibilidade de verdade, exigem que a
+> versão suba (1 → 2) e que a ação apareça na trilha; depois restauram.
+
 ## 4. Qualidade e testes
 
 | # | Item | Status | O que fecha |
@@ -175,7 +197,7 @@ não vale.
 > **Regra de merge:** nada entra na `main` enquanto houver ⏳ ou ❌.
 > A branch `fase3a-motor-cqi` é de trabalho; se um PR for aberto, deve ser **draft**.
 
-**22 ✅ · 20 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
+**23 ✅ · 19 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
 
 O **motor** está pronto e validado. O **sistema** ainda não é auditável nem confiável.
 
