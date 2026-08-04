@@ -1,0 +1,28 @@
+' Rotulo NAO pode devolver String para valor numerico.
+'
+' Devolvendo String, um resultado 92,0028 virava "92,0028" e, gravado numa
+' celula de formato Geral, o Excel reinterpretava a virgula como separador de
+' MILHAR: a celula passava a conter 920028. O valor anterior e o novo ficavam
+' multiplicados por 10.000 no Audit_Log.
+'
+' Passava despercebido porque AU_DELTA e gravado como NUMERO e continuava
+' certo -- um delta correto ao lado de dois valores errados nao chama atencao.
+' Pior: o hash da cadeia e calculado sobre o que se RELE da celula, entao a
+' verificacao de integridade APROVAVA o registro corrompido. Trilha que prova
+' nao-adulteracao de dado errado e a pior combinacao possivel para auditoria.
+'
+' ISO 15189 8.4.2 exige o valor original recuperavel apos a emenda.
+Private Function Rotulo(ByVal v As Variant) As Variant
+    If IsEmpty(v) Or IsNull(v) Then
+        Rotulo = ""
+    ElseIf VarType(v) = vbDate Then
+        Rotulo = CStr(v)
+    ElseIf IsNumeric(v) Then
+        ' numero permanece NUMERO: sem CStr, sem reinterpretacao de separador
+        Rotulo = CDbl(v)
+    ElseIf Trim$(CStr(v)) = "" Then
+        Rotulo = VAZIO
+    Else
+        Rotulo = CStr(v)
+    End If
+End Function

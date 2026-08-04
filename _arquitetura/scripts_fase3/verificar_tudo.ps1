@@ -181,7 +181,7 @@ try {
     $modulos = @(
         @{ Nome = 'mEstatistica'; Arquivo = (Join-Path $hp 'mEstatistica.bas') },
         @{ Nome = 'mDados'; Arquivo = (Join-Path $hp 'mDados.bas') },
-        @{ Nome = 'mAuditoria'; Arquivo = (Join-Path $h 'mAuditoria.bas') }
+        @{ Nome = 'mAuditoria'; Arquivo = (Join-Path $hp 'mAuditoria.bas') }
     )
     foreach ($m in $modulos) {
         $comp = $null
@@ -577,6 +577,75 @@ finally {
     try { $wbP.Close($false) } catch { }
     try { $xlP.Quit() } catch { }
     [System.Runtime.InteropServices.Marshal]::ReleaseComObject($xlP) | Out-Null
+}
+Encerrar-Excel
+
+# ------------------- 2.2 o valor ORIGINAL fica recuperavel -------------------
+# ISO 15189 8.4.2: apos emendar um resultado, o valor original tem de continuar
+# recuperavel. Nao basta existir uma coluna "valor anterior" -- ela tem de
+# conter o numero CERTO.
+#
+# Este controle existe porque em 04/08/2026 ela nao continha. Rotulo() devolvia
+# String, e "92,0028" gravado numa celula Geral era relido pelo Excel como
+# 920028 (virgula tratada como separador de milhar). O delta ficava correto,
+# porque e gravado como numero -- e foi isso que escondeu o defeito.
+# Pior: o hash da cadeia e calculado sobre o que se rele da celula, entao a
+# verificacao de integridade APROVAVA o registro corrompido.
+Encerrar-Excel
+$xlV = Novo-Excel
+$xlV.Visible = $false; $xlV.DisplayAlerts = $false; $xlV.EnableEvents = $false
+$xlV.AutomationSecurity = 1
+$wbV = $xlV.Workbooks.Open($alvo)
+try { $wbV.EnableAutoRecover = $false } catch { }
+try {
+    $probe = @'
+Option Explicit
+Public Function ProvarValorOriginal() As String
+    Dim d As Variant, regs() As Variant, valAnt As Variant, valNovo As Double
+    Dim wsA As Worksheet, ult As Long, i As Long, lin As Long, gravado As Variant
+    Dim e As Long, ds As String
+    On Error GoTo f
+    d = CarregarDB()
+    valAnt = d(1, COL_RESULT)
+    valNovo = CDbl(valAnt) + 7.77
+    ReDim regs(1 To 1, 1 To 7)
+    regs(1, COL_RUN) = CLng(d(1, COL_RUN)): regs(1, COL_DATA) = d(1, COL_DATA)
+    regs(1, COL_NIVEL) = CLng(d(1, COL_NIVEL)): regs(1, COL_LOTE) = d(1, COL_LOTE)
+    regs(1, COL_ANALITO) = CStr(d(1, COL_ANALITO)): regs(1, COL_RESULT) = valNovo
+    regs(1, COL_STATUS) = ST_ATIVO
+    UpsertResultados regs
+    Set wsA = ThisWorkbook.Sheets(AUDIT)
+    ult = UltimaLinhaAudit()
+    For i = ult To AUDIT_R0 Step -1
+        If InStr(1, UCase$(CStr(wsA.Cells(i, AU_ACAO).Value)), "ALTERAD") > 0 Then lin = i: Exit For
+    Next i
+    If lin = 0 Then ProvarValorOriginal = "SEM_EVENTO": Exit Function
+    gravado = wsA.Cells(lin, AU_RESANT).Value
+    If Not IsNumeric(gravado) Then
+        ProvarValorOriginal = "NAO_NUMERICO|" & CStr(gravado)
+    ElseIf Abs(CDbl(gravado) - CDbl(valAnt)) < 0.000001 Then
+        ProvarValorOriginal = "OK|" & CStr(valAnt)
+    Else
+        ProvarValorOriginal = "DIVERGE|original=" & CStr(valAnt) & "|gravado=" & CStr(gravado)
+    End If
+    Exit Function
+f:
+    e = Err.Number: ds = Err.Description
+    ProvarValorOriginal = "ERRO " & e & ": " & ds
+End Function
+'@
+    $tmpP = Join-Path $env:TEMP 'mProva22.bas'
+    Set-Content $tmpP $probe -Encoding Default
+    foreach ($c in $wbV.VBProject.VBComponents) { if ($c.Name -eq 'mProva22') { $wbV.VBProject.VBComponents.Remove($c); break } }
+    $wbV.VBProject.VBComponents.Import($tmpP) | Out-Null
+    Remove-Item $tmpP -Force
+    $r22 = [string]$xlV.Run("$($wbV.Name)!ProvarValorOriginal")
+    Anotar '2.2' 'valor ORIGINAL recuperavel no Audit_Log' ($r22 -like 'OK|*') $r22
+}
+finally {
+    try { $wbV.Close($false) } catch { }
+    try { $xlV.Quit() } catch { }
+    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($xlV) | Out-Null
 }
 Encerrar-Excel
 

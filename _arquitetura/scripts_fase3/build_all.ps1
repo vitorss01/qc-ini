@@ -203,9 +203,11 @@ Mostrar (& (Join-Path $s 'gerar_mDados.ps1') `
 # mRegistros e copiado para a pasta do produto antes de ser corrigido: o
 # original em src_hardening1 e compartilhado e nao pode ser mutado.
 Copy-Item (Join-Path $h 'mRegistros.bas') (Join-Path $hp 'mRegistros.bas') -Force
+Copy-Item (Join-Path $h 'mAuditoria.bas') (Join-Path $hp 'mAuditoria.bas') -Force
 Mostrar (& (Join-Path $s 'corrigir_silenciamento.ps1') -Arquivo (Join-Path $hp 'mEstatistica.bas') -Alvo 'mEstatistica')
 Mostrar (& (Join-Path $s 'corrigir_silenciamento.ps1') -Arquivo (Join-Path $hp 'mRegistros.bas') -Alvo 'mRegistros')
 Mostrar (& (Join-Path $s 'buffer_dinamico.ps1') -Arquivo (Join-Path $hp 'mEstatistica.bas'))
+Mostrar (& (Join-Path $s 'corrigir_rotulo_audit.ps1') -Arquivo (Join-Path $hp 'mAuditoria.bas') -Novo (Join-Path $h 'Rotulo.txt'))
 
 Mostrar (& (Join-Path $s 'gerar_mDados_audit.ps1') `
     -Entrada (Join-Path $hp 'mDados.bas') `
@@ -247,7 +249,7 @@ Encerrar-Excel
     # AtualizarEixos e HookCharts sao identicos nos dois e ja iteram sobre
     # ChartObjects.Count, entao a troca e segura e no-op na Hematologia.
     (Join-Path $snapMotor 'vba\mUI.bas'),
-    (Join-Path $h 'mAuditoria.bas'),
+    (Join-Path $hp 'mAuditoria.bas'),
     (Join-Path $h 'mConfig.bas'),
     (Join-Path $h 'mLogDB.bas'),
     (Join-Path $hp 'mRegistros.bas'),
