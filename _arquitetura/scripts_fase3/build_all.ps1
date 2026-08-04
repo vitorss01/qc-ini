@@ -205,6 +205,7 @@ Mostrar (& (Join-Path $s 'gerar_mDados.ps1') `
 Copy-Item (Join-Path $h 'mRegistros.bas') (Join-Path $hp 'mRegistros.bas') -Force
 Mostrar (& (Join-Path $s 'corrigir_silenciamento.ps1') -Arquivo (Join-Path $hp 'mEstatistica.bas') -Alvo 'mEstatistica')
 Mostrar (& (Join-Path $s 'corrigir_silenciamento.ps1') -Arquivo (Join-Path $hp 'mRegistros.bas') -Alvo 'mRegistros')
+Mostrar (& (Join-Path $s 'buffer_dinamico.ps1') -Arquivo (Join-Path $hp 'mEstatistica.bas'))
 
 Mostrar (& (Join-Path $s 'gerar_mDados_audit.ps1') `
     -Entrada (Join-Path $hp 'mDados.bas') `

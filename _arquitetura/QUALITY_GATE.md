@@ -221,7 +221,7 @@ não vale.
 | 4.2 | QA integrado | ⏳ | **Nunca executou** — agente interrompido por limite de gastos |
 | 4.3 | Regressão Fases 1 e 2 pós-Fase 3 | ⏳ | RUN, exclusão lógica, troca de lote, login, 3 UserForms, upsert sem duplicar |
 | 4.4 | Casos extremos | ⏳ | Banco vazio · 1 resultado · 2 resultados · analito sem média/DP · lote sem resultado · status inválido · RUN duplicado · data futura |
-| 4.5 | Teste de estresse | ⏳ | 5.000 RUNs · 40 analitos × 3 níveis · 50 lotes · importação de 500 linhas |
+| 4.5 | Teste de estresse | ✅ | `teste_estresse.ps1`, curva ate o teto de 15.000 linhas (375 corridas, 20 analitos x 2 niveis): recalculo 1,15s → 4,61s e motor 0,63s → 2,28s. Total 6,88s no teto. Expoente 1,1–1,46 — **superlinear leve, nao quadratico**. As 30.000 `COUNTIFS` de intervalo expansivo do banco NAO sao gargalo: a suspeita levantada na inspecao foi refutada pela medicao. Achado real: buffer de eventos de Westgard estourava a partir de ~5.200 linhas (14.317 eventos a 15.000). Corrigido com dimensionamento dinamico |
 | 4.6 | Zero erro de fórmula | ✅ | Suíte 4.6: varre todas as abas por `#DIV/0!`, `#VALOR!`, `#REF!`, `#NOME?`, `#NÚM!` e `#NULO!`. Zero achados. `#N/A` fica fora de propósito — é a lacuna deliberada das séries do gráfico |
 | 4.7 | Estado global restaurado | ✅ | Suíte 4.7: após `AtualizarEstatistica`, `ScreenUpdating = True` e `Calculation = xlCalculationAutomatic`. Rotina que sai deixando cálculo manual faz o painel mentir sem dar erro |
 | 4.8 | Idempotência | ✅ | Suíte 4.8: hash de `Eng_Saida` (corridas + estatística + parâmetros) após 1 execução e após 11. Idênticos. Pega coleção que não zera, contador que soma e linha duplicada |

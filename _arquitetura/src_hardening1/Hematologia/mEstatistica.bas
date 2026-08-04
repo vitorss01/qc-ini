@@ -836,7 +836,14 @@ Public Sub RegistrarEventosWestgard()
 
     GarantirDB
     Set ws = ThisWorkbook.Sheets("Eventos_Westgard")
-    ws.Range("A4:H5003").ClearContents
+    ' Limpa ate a ultima linha REALMENTE usada, com piso na area antiga.
+    ' Fixar em 5003 deixava orfas embaixo quando o historico crescia; usar
+    ' ws.Rows.Count limparia 1 milhao de linhas em toda operacao do dia.
+    ' Linhas 1 a 3 (titulo e cabecalho) nunca sao tocadas.
+    Dim ultimaLinhaEv As Long
+    ultimaLinhaEv = ws.Cells(ws.rows.Count, 1).End(xlUp).Row
+    If ultimaLinhaEv < 5003 Then ultimaLinhaEv = 5003
+    ws.Range(ws.Cells(4, 1), ws.Cells(ultimaLinhaEv, 8)).ClearContents
     If mAgg Is Nothing Then Set mAgg = CreateObject("Scripting.Dictionary")
     If IsEmpty(mDB) Then Exit Sub
     lote = LoteAtivoCore()
@@ -864,7 +871,11 @@ Public Sub RegistrarEventosWestgard()
 
     Set agg = CreateObject("Scripting.Dictionary")
     Set mAgg = agg          ' definido JA — AgregadoWestgard nunca re-dispara esta rotina
-    ReDim ev(1 To 5000, 1 To 8)
+    ' Dimensionado pelo BANCO, nao por numero fixo: eventos nunca excedem
+    ' as linhas elegiveis, porque cada linha de evento e uma combinacao
+    ' (analito, nivel, corrida) com as regras concatenadas. IsEmpty(mDB) ja
+    ' foi testado acima, entao o UBound e seguro.
+    ReDim ev(1 To UBound(mDB, 1), 1 To 8)
     Dim nDescartados As Long
     nDescartados = 0
     nEv = 0
@@ -972,7 +983,7 @@ Public Sub RegistrarEventosWestgard()
     If nDescartados > 0 Then
         Auditar CAT_SIS, "EVENTOS_WESTGARD_ESTOUROU", "mEstatistica", _
                 0, "", "", "", 0, "", nEv, nDescartados, "", "", _
-                "Buffer de " & UBound(ev, 1) & " eventos cheio; " & nDescartados & _
+                "Buffer dinamico de " & UBound(ev, 1) & " eventos cheio (INVARIANTE VIOLADA); " & nDescartados & _
                 " violacao(oes) NAO registrada(s)", _
                 "Arquivar Eventos_Westgard e reexecutar para restaurar o historico completo"
         Err.Raise vbObjectError + 513, "RegistrarEventosWestgard", _
@@ -1066,4 +1077,3 @@ Public Sub RecalcularAnalitoAtual()
     AtualizarEixos
     Application.ScreenUpdating = True
 End Sub
-
