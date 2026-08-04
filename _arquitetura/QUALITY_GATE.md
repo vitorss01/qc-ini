@@ -81,9 +81,9 @@ não vale.
 |---|---|---|---|
 | 3.1 | Trilha de auditoria | ✅ | `RegistrarLog` é stub vazio. Aba `Audit_Log` append-only: data/hora, usuário, papel, ação, chave, valor ANTES, valor DEPOIS, justificativa |
 | 3.2 | Log em todo caminho de gravação | ✅ | Chamar de **dentro do `mDados`**, não dos formulários — senão algum caminho escapa |
-| 3.3 | Proteção persistida no arquivo salvo | ⏳ | Nenhuma das 18 abas tem `<sheetProtection>`. `UserInterfaceOnly:=True` **não persiste** entre sessões |
+| 3.3 | Proteção persistida no arquivo salvo | ✅ | Nenhuma das 18 abas tem `<sheetProtection>`. `UserInterfaceOnly:=True` **não persiste** entre sessões |
 | 3.4 | Projeto VBA com senha | ⏳ | DPB decodifica para payload vazio — sem senha |
-| 3.5 | Arquivo distribuído em estado bloqueado | ⏳ | Salvo em sessão autenticada: abrir com macros desabilitadas dá acesso total a `DB_Resultados` |
+| 3.5 | Arquivo distribuído em estado bloqueado | ✅ | Salvo em sessão autenticada: abrir com macros desabilitadas dá acesso total a `DB_Resultados` |
 
 
 > **Reabertos e agora fechados com evidência que se sustenta (03/08/2026).**
@@ -109,6 +109,33 @@ não vale.
 > **Como reproduzir tudo isto:** `.\_arquitetura\scripts_fase3erificar_tudo.ps1`
 > — um comando, 21 verificações, relatório em `VERIFICACAO.md` e código de saída
 > diferente de zero se algo falhar. Roda sem agente.
+
+
+> **3.3 e 3.5 fecham; 3.4 continua ⏳ de propósito (03/08/2026).**
+> A proteção era aplicada só em tempo de execução: `Workbook_Open` chama
+> `LockApp`, que usa `UserInterfaceOnly:=True`. Duas falhas somadas —
+> **`Workbook_Open` não roda com macros desabilitadas**, e `UserInterfaceOnly`
+> é atributo de sessão, não persiste. Como o arquivo era salvo em sessão de ADM
+> (que roda `UnprotectAll`), ele saía **distribuído destravado**.
+>
+> Agora `blindar_artefato.ps1` produz o entregável já travado: 21 abas
+> protegidas com senha **gravada no arquivo**, 20 em `veryHidden` (só `Login`
+> visível) e estrutura da pasta protegida. Com macros habilitadas nada muda para
+> o usuário — o login revela o que o papel permite.
+>
+> **A verificação lê o `.xlsm` como zip e inspeciona o XML**, em vez de perguntar
+> ao Excel. Se a pergunta é "o que o auditor vê com macros desligadas",
+> perguntar ao Excel com macros ligadas não responde.
+>
+> **3.4 é passo manual e vai continuar sendo.** Pôr senha no projeto VBA exige
+> escrever os campos `DPB`/`DPx` do `vbaProject.bin`, e errar corrompe o projeto.
+> Faça no VBE: *Ferramentas → Propriedades do VBAProject → Proteção*. A suíte
+> detecta e reporta enquanto não for feito.
+>
+> **Limite declarado:** proteção de planilha é barreira, não cofre — a senha está
+> em texto no VBA e a marcação sai descompactando o arquivo. Ela detém o acidente
+> e o curioso, não a fraude decidida. A garantia de integridade está na trilha
+> encadeada por hash.
 
 ## 4. Qualidade e testes
 
@@ -148,7 +175,7 @@ não vale.
 > **Regra de merge:** nada entra na `main` enquanto houver ⏳ ou ❌.
 > A branch `fase3a-motor-cqi` é de trabalho; se um PR for aberto, deve ser **draft**.
 
-**20 ✅ · 22 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
+**22 ✅ · 20 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
 
 O **motor** está pronto e validado. O **sistema** ainda não é auditável nem confiável.
 

@@ -104,6 +104,7 @@ if (-not (Test-Path $alvo)) { throw "Artefato nao encontrado: $alvo (rode sem -P
 # acontecer no artefato entregavel: a verificacao roda sobre uma copia, e o
 # artefato sai da suite exatamente como o build o deixou.
 Encerrar-Excel
+$alvoOriginal = $alvo
 $copia = Join-Path $bd "QC_Hematologia_verificacao.xlsm"
 Copy-Item $alvo $copia -Force
 $alvo = $copia
@@ -303,7 +304,69 @@ $linhaBanco = ($adr | Where-Object { $_ -match 'sobre o banco|DB_Resultados' }) 
 Anotar '4.3' 'nenhuma formula de interface calcula sobre o banco' ($adr -join ' ' -notmatch 'VIOLA') $linhaBanco
 Encerrar-Excel
 
-# ------------------------------------------------------- 5. relatorio ---------
+
+# ------------------------------------------ 5. blindagem do entregavel --------
+""
+"-- 5. O ARQUIVO DISTRIBUIDO SAI TRAVADO ------------------------"
+"   (cenario do auditor: abrir com macros DESABILITADAS)"
+
+Encerrar-Excel
+$dist = Join-Path $bd 'QC_Hematologia_distribuicao.xlsm'
+Copy-Item $alvoOriginal $dist -Force
+& (Join-Path $s 'blindar_artefato.ps1') -Workbook $dist | ForEach-Object { "     $_" }
+Encerrar-Excel
+
+# Conferencia NO ARQUIVO, nao pelo Excel. Se a pergunta e "o que o auditor ve
+# com macros desligadas", perguntar ao Excel com macros ligadas nao responde.
+# O .xlsm e um zip: le-se o XML direto.
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [System.IO.Compression.ZipFile]::OpenRead($dist)
+try {
+    function Ler-Entrada {
+        param($Zip, [string]$Nome)
+        $e = $Zip.Entries | Where-Object { $_.FullName -eq $Nome }
+        if ($e -eq $null) { return '' }
+        $sr = New-Object System.IO.StreamReader($e.Open())
+        $t = $sr.ReadToEnd(); $sr.Close()
+        return $t
+    }
+
+    $wbXml = Ler-Entrada $zip 'xl/workbook.xml'
+    $totalAbas = ([regex]::Matches($wbXml, '<sheet ')).Count
+    $veryHidden = ([regex]::Matches($wbXml, 'state="veryHidden"')).Count
+    Anotar '5.1' 'abas de dado ocultas no arquivo salvo' ($veryHidden -ge ($totalAbas - 1)) `
+        "veryHidden $veryHidden de $totalAbas abas (so Login visivel)"
+
+    Anotar '5.2' 'estrutura da pasta protegida' ($wbXml -match '<workbookProtection') ''
+
+    $planilhas = $zip.Entries | Where-Object { $_.FullName -match '^xl/worksheets/sheet\d+\.xml$' }
+    $comProt = 0
+    foreach ($pl in $planilhas) {
+        $t = Ler-Entrada $zip $pl.FullName
+        if ($t -match '<sheetProtection') { $comProt++ }
+    }
+    Anotar '5.3' 'toda aba tem <sheetProtection> GRAVADA no arquivo' ($comProt -eq $planilhas.Count) `
+        "$comProt de $($planilhas.Count) abas"
+
+    # item 3.4: senha do projeto VBA. DPB vazio = sem senha.
+    $vba = $zip.Entries | Where-Object { $_.FullName -eq 'xl/vbaProject.bin' }
+    $temVba = ($vba -ne $null)
+    $comSenha = $false
+    if ($temVba) {
+        $ms = New-Object System.IO.MemoryStream
+        $vba.Open().CopyTo($ms)
+        $bytes = $ms.ToArray(); $ms.Close()
+        $txt = [System.Text.Encoding]::ASCII.GetString($bytes)
+        # projeto sem senha grava DPB curto; com senha o blob passa de ~40 chars
+        $m = [regex]::Match($txt, 'DPB="([0-9A-Fa-f]*)"')
+        $comSenha = ($m.Success -and $m.Groups[1].Value.Length -gt 40)
+    }
+    Anotar '5.4' 'projeto VBA com senha (item 3.4)' $comSenha `
+        $(if ($comSenha) { 'DPB preenchido' } else { 'PASSO MANUAL PENDENTE: VBE > Ferramentas > Propriedades do VBAProject > Protecao' })
+}
+finally { $zip.Dispose() }
+
+# ------------------------------------------------------- 6. relatorio ---------
 $falhas = @($itens | Where-Object { -not $_.Ok })
 $md = New-Object System.Collections.ArrayList
 [void]$md.Add("# Verificacao do QC_INI - Hematologia")
