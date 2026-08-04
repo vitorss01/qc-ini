@@ -31,6 +31,8 @@ $ErrorActionPreference = 'Stop'
 $s = Split-Path -Parent $MyInvocation.MyCommand.Path
 $arq = Split-Path -Parent $s
 $h = Join-Path $arq 'src_hardening1'
+# Modulos gerados por produto (mEstatistica com o NLV do setor, mDados).
+$hp = Join-Path $h $Produto
 $snap = Join-Path $arq "snapshot_producao\$Produto"
 $bd = Join-Path $env:USERPROFILE "QCINI_build_hardening1_$Produto"
 $alvo = Join-Path $bd "QC_$Produto.xlsm"
@@ -173,9 +175,12 @@ try { $wb.EnableAutoRecover = $false } catch { }
 if ($wb.ReadOnly) { $wb.Close($false); $xl.Quit(); throw "Artefato aberto em somente leitura" }
 
 try {
+    # mEstatistica e mDados sao gerados POR PRODUTO (a Bioquimica tem NLV=2) e
+    # ficam em src_hardening1/<Produto>/. mAuditoria e compartilhado: nao
+    # depende de geometria.
     $modulos = @(
-        @{ Nome = 'mEstatistica'; Arquivo = (Join-Path $h 'mEstatistica.bas') },
-        @{ Nome = 'mDados'; Arquivo = (Join-Path $h 'mDados.bas') },
+        @{ Nome = 'mEstatistica'; Arquivo = (Join-Path $hp 'mEstatistica.bas') },
+        @{ Nome = 'mDados'; Arquivo = (Join-Path $hp 'mDados.bas') },
         @{ Nome = 'mAuditoria'; Arquivo = (Join-Path $h 'mAuditoria.bas') }
     )
     foreach ($m in $modulos) {

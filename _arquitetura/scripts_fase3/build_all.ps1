@@ -58,6 +58,20 @@ if (-not (Test-Path $snapProduto)) {
     throw "Snapshot de producao ausente para $Produto : $snapProduto. Gere com snapshot_projeto.ps1 antes de construir."
 }
 
+# O motor tem UMA fonte, sempre a Hematologia.
+#
+# Bioquimica e Imunologia nunca receberam a Fase 3 e nao possuem mEstatistica
+# nem mWestgardKnowledge -- nao ha o que "atualizar" nelas. O modulo da
+# Hematologia e a base para todos os produtos, e o que muda entre eles e o NLV,
+# reescrito por gerar_mEstatistica.ps1. Ter uma fonte so e o que impede os
+# produtos de divergirem em regra de Westgard, como Calc e motor divergiram.
+$snapMotor = Join-Path $arq 'snapshot_producao\Hematologia'
+
+# Modulos gerados ficam em pasta por produto: a Bioquimica tem NLV=2 e nao pode
+# sobrescrever o modulo da Hematologia.
+$hp = Join-Path $h $Produto
+New-Item -ItemType Directory -Force -Path $hp | Out-Null
+
 # A pasta de build fica FORA do OneDrive.
 #
 # Nao porque a sincronizacao tenha causado o problema -- essa hipotese foi
@@ -173,21 +187,22 @@ Copy-Item $prod $alvo -Force
 Encerrar-Excel
 "== 1. gera os modulos VBA a partir dos patches"
 Mostrar (& (Join-Path $s 'gerar_mEstatistica.ps1') `
-    -Producao (Join-Path $snapProduto 'vba\mEstatistica.bas') `
+    -Producao (Join-Path $snapMotor 'vba\mEstatistica.bas') `
     -NovoSub (Join-Path $h 'AtualizarCalc.txt') `
     -NovoPainel (Join-Path $h 'AtualizarPainelEng.txt') `
     -NovoEstat (Join-Path $h 'AtualizarEstatisticaAba.txt') `
-    -Saida (Join-Path $h 'mEstatistica.bas')) -Ultimas 2
+    -NLV $NLV `
+    -Saida (Join-Path $hp 'mEstatistica.bas')) -Ultimas 3
 
 Mostrar (& (Join-Path $s 'gerar_mDados.ps1') `
     -Producao (Join-Path $snapProduto 'vba\mDados.bas') `
     -NovoRun (Join-Path $h 'mDados_RUN.txt') `
-    -Saida (Join-Path $h 'mDados.bas')) -Ultimas 2
+    -Saida (Join-Path $hp 'mDados.bas')) -Ultimas 2
 
 Mostrar (& (Join-Path $s 'gerar_mDados_audit.ps1') `
-    -Entrada (Join-Path $h 'mDados.bas') `
+    -Entrada (Join-Path $hp 'mDados.bas') `
     -Patch (Join-Path $h 'mDados_AUDIT.txt') `
-    -Saida (Join-Path $h 'mDados.bas')) -Ultimas 2
+    -Saida (Join-Path $hp 'mDados.bas')) -Ultimas 2
 
 Encerrar-Excel
 "== 2. Eng_Saida (camada de saida do motor)"
@@ -206,12 +221,17 @@ Encerrar-Excel
 Etapa 'criar_logs_db.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
 
 Encerrar-Excel
+"== 3d. abas exigidas pelo motor (Cfg_Status, Eventos_Westgard)"
+Etapa 'criar_abas_motor.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
+
+Encerrar-Excel
 "== 4. aplica o VBA"
 # aplicar_vba recebe um ARRAY de modulos: continua no processo atual,
 # seguido de Encerrar-Excel como rede de seguranca.
 & (Join-Path $s 'aplicar_vba.ps1') -Workbook $alvo -Modulos @(
-    (Join-Path $h 'mEstatistica.bas'),
-    (Join-Path $h 'mDados.bas'),
+    (Join-Path $hp 'mEstatistica.bas'),
+    (Join-Path $hp 'mDados.bas'),
+    (Join-Path $snapMotor 'vba\mWestgardKnowledge.bas'),
     (Join-Path $h 'mAuditoria.bas'),
     (Join-Path $h 'mConfig.bas'),
     (Join-Path $h 'mLogDB.bas'),

@@ -17,7 +17,16 @@ param(
     [Parameter(Mandatory = $true)][string]$NovoSub,      # AtualizarCalc.txt
     [Parameter(Mandatory = $true)][string]$Saida,
     [string]$NovoPainel,                                 # AtualizarPainelEng.txt (Marco 3)
-    [string]$NovoEstat                                   # AtualizarEstatisticaAba.txt (Marco 4)
+    [string]$NovoEstat,                                  # AtualizarEstatisticaAba.txt (Marco 4)
+    # Niveis do produto alvo. O modulo de PRODUCAO usado como base e sempre o da
+    # Hematologia (NLV=3) -- e o unico que existe. Para Bioquimica e Imunologia,
+    # que tem 2 niveis, a constante e reescrita aqui.
+    #
+    # Isto NAO e um ajuste cosmetico: NLV governa quantos blocos de coluna o
+    # motor escreve no Calc, quantas linhas de nivel publica no Painel e quantas
+    # linhas ocupa na Estatistica. Se divergir da geometria da planilha, o motor
+    # escreve num lugar e a interface le outro, sem erro visivel.
+    [int]$NLV = 3
 )
 
 # Duas codificacoes de proposito, e trocar uma pela outra corrompe o modulo:
@@ -104,6 +113,24 @@ else {
 
 # 800..fim inalteradas
 for ($i = $i1; $i -lt $L.Count; $i++) { [void]$out.Add($L[$i]) }
+
+# --- niveis do produto ---
+$linhaNLV = -1
+for ($i = 0; $i -lt $out.Count; $i++) {
+    if ($out[$i] -match '^\s*Public Const NLV\s+As\s+Long\s*=\s*(\d+)') {
+        $linhaNLV = $i
+        $nlvOrigem = [int]$Matches[1]
+        break
+    }
+}
+if ($linhaNLV -lt 0) { throw 'Constante Public Const NLV nao encontrada no modulo.' }
+if ($nlvOrigem -ne $NLV) {
+    $out[$linhaNLV] = "Public Const NLV As Long = $NLV          ' niveis deste setor"
+    "NLV reescrito: $nlvOrigem -> $NLV (linha $($linhaNLV + 1))"
+}
+else {
+    "NLV: $NLV (sem alteracao)"
+}
 
 # --- correcao de compilacao: aS/aM como identificadores ---
 # VBA e insensivel a maiusculas, entao o identificador "aS" e o mesmo token que
