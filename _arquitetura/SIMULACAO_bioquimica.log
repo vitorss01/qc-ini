@@ -1,0 +1,63 @@
+
+================================================================
+  SIMULACAO DE USO - Bioquimica
+  04/08/2026 20:38:53
+================================================================
+  copia de trabalho: C:\Users\vitor\QCINI_sim_Bioquimica\QC_Bioquimica.xlsm
+  [OK   ] Login :: autenticacao inicial
+          currentUser = 'QCINI' (senha: HEMATO123)
+  [FALHA] Login :: produto usa credencial propria
+          entrou com 'HEMATO123' -- o produto Bioquimica esta sendo entregue com a senha de outro setor
+
+-- FORMULARIOS ------------------------------------------------
+  [OK   ] frmCorrida :: carrega e popula sem erro
+          OK: Initialize concluiu, 51 controles
+  [OK   ] frmCorrida :: combo de nivel com os niveis do produto
+          OK: 2 niveis, coerente com o produto
+  [OK   ] frmCorrida :: lote ativo vem pre-selecionado
+          OK: combo abriu no lote ativo '522611'
+  [OK   ] frmCorrida :: um campo por analito cadastrado
+          OK: 20 campos, um por analito
+  [OK   ] frmCorrida :: RUN previsto aparece ao escolher data e lote
+          OK: RUN 26
+  [OK   ] frmCorrida :: data invalida limpa o RUN em vez de travar
+          OK: RUN limpo, sem erro de execucao
+  [OK   ] frmExcluir :: carrega e popula sem erro
+          OK: Initialize concluiu, 12 controles
+  [OK   ] frmExcluir :: combo de RUN traz as corridas do lote
+          OK: 25 RUNs, ultimo pre-selecionado (25)
+  [OK   ] frmExcluir :: lista de analitos do nivel selecionado
+          OK: 20 analitos listados
+  [OK   ] frmExcluir :: botao Todos seleciona a lista inteira
+          OK: selecao multipla funciona (20 itens)
+  [OK   ] frmMassa :: carrega e popula sem erro
+          OK: Initialize concluiu, 11 controles
+  [OK   ] frmMassa :: colagem com nivel invalido e recusada
+          OK: colagem limitada a 1..2
+  [OK   ] frmNC :: carrega e popula sem erro
+          OK: Initialize concluiu, 15 controles
+  [OK   ] frmNC :: tipos vem do Cfg_Status, nenhum em codigo
+          OK: 8 tipos do Cfg_Status (1o: ExcluÖdo)
+  [OK   ] frmNC :: informar o RUN preenche data, lote e resultados
+          OK: RUN 1 -> Data: 06/01/2025     Lote: QC-52261101 | 20 resultados
+  [OK   ] frmNC :: RUN inexistente avisa em vez de travar
+          OK: avisa e limpa a lista, sem erro de execucao
+  [OK   ] frmNC :: contador de palavras reage ao que se digita
+          OK: 2 palavras -> aviso; 6 palavras -> 'Parecer tecnico (6 palavras) - ok'
+  [OK   ] frmNC :: botao Todos seleciona a lista inteira
+          OK: 20 itens selecionados
+  [OK   ] frmExcluirNC :: carrega e popula sem erro
+          OK: Initialize concluiu, 6 controles, 2 ocorrencia(s)
+  [OK   ] frmExcluirNC :: contador de palavras reage ao que se digita
+          OK: contador reage (Justificativa (6 palavras) - ok)
+  [OK   ] frmAssinar :: carrega sem erro e mascara a senha
+          OK: carrega e mascara a senha
+  [OK   ] frmDev :: carrega sem erro e mascara a senha
+          OK: carrega e mascara a senha
+
+================================================================
+  23 de 24 casos passaram
+  FALHAS:
+    - Login :: produto usa credencial propria
+        entrou com 'HEMATO123' -- o produto Bioquimica esta sendo entregue com a senha de outro setor
+================================================================

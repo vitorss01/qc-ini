@@ -1,0 +1,408 @@
+Option Explicit
+' ===== HARNESS DO AGENTE USUARIO =====
+'
+' Cada funcao simula UMA acao do analista e devolve "OK: ..." ou "FALHA: ...".
+' Roda dentro do Excel, com os formularios de verdade carregados -- nao le
+' codigo, exercita comportamento.
+'
+' Load frmX sem Show: o Initialize roda, os controles existem e ficam
+' inspecionaveis, e nada aparece na tela. Atribuir valor a um controle DISPARA
+' o evento Change, entao a reacao do formulario e observavel de fora.
+'
+' Modulo TEMPORARIO: inserido pela simulacao e removido ao final.
+
+Private Function Falha(ByVal msg As String) As String
+    Falha = "FALHA: " & msg
+End Function
+
+' ============================ frmCorrida ============================
+
+Public Function S_Corrida_Carga() As String
+    On Error GoTo erro
+    Load frmCorrida
+    S_Corrida_Carga = "OK: Initialize concluiu, " & frmCorrida.Controls.Count & " controles"
+    Exit Function
+erro:
+    S_Corrida_Carga = Falha("erro " & Err.Number & " no Initialize: " & Err.Description)
+End Function
+
+Public Function S_Corrida_Niveis() As String
+    On Error GoTo erro
+    Load frmCorrida
+    If frmCorrida.cboNivel.ListCount <> NLV Then
+        S_Corrida_Niveis = Falha("combo tem " & frmCorrida.cboNivel.ListCount & _
+                                 " niveis, produto tem " & NLV)
+        Exit Function
+    End If
+    S_Corrida_Niveis = "OK: " & NLV & " niveis, coerente com o produto"
+    Exit Function
+erro:
+    S_Corrida_Niveis = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+' O analista trocou de lote na Configuracao e abre o formulario. Se o combo
+' nao vier no lote ativo, ele lanca resultado no lote errado sem perceber --
+' e o erro so aparece semanas depois, na estatistica.
+Public Function S_Corrida_LoteAtivo() As String
+    Dim ativo As String, sel As String
+    On Error GoTo erro
+    Load frmCorrida
+    ativo = LoteAtivoCore()
+    If frmCorrida.cboLote.ListCount = 0 Then
+        S_Corrida_LoteAtivo = Falha("combo de lote vazio")
+        Exit Function
+    End If
+    sel = CStr(frmCorrida.cboLote.Value)
+    If sel <> ativo Then
+        S_Corrida_LoteAtivo = Falha("lote ativo e '" & ativo & "' mas o combo abriu em '" & sel & "'")
+        Exit Function
+    End If
+    S_Corrida_LoteAtivo = "OK: combo abriu no lote ativo '" & sel & "'"
+    Exit Function
+erro:
+    S_Corrida_LoteAtivo = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+Public Function S_Corrida_CamposAnalito() As String
+    Dim n As Long, c As Collection
+    On Error GoTo erro
+    Load frmCorrida
+    Set c = ListaAnalitos()
+    On Error Resume Next
+    n = 0
+    Dim i As Long
+    For i = 1 To c.Count
+        If Not frmCorrida.Controls("txtV" & i) Is Nothing Then n = n + 1
+    Next i
+    On Error GoTo erro
+    If n <> c.Count Then
+        S_Corrida_CamposAnalito = Falha("cadastrados " & c.Count & " analitos, criados " & n & " campos")
+        Exit Function
+    End If
+    S_Corrida_CamposAnalito = "OK: " & n & " campos, um por analito"
+    Exit Function
+erro:
+    S_Corrida_CamposAnalito = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+Public Function S_Corrida_RunPrevisto() As String
+    On Error GoTo erro
+    Load frmCorrida
+    frmCorrida.txtData.Value = Format$(Date, "dd/mm/yyyy")
+    If InStr(frmCorrida.lblRun.Caption, "RUN") = 0 Then
+        S_Corrida_RunPrevisto = Falha("rotulo do RUN ficou '" & frmCorrida.lblRun.Caption & "'")
+        Exit Function
+    End If
+    S_Corrida_RunPrevisto = "OK: " & frmCorrida.lblRun.Caption
+    Exit Function
+erro:
+    S_Corrida_RunPrevisto = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+' Usuario digita a data errada. O formulario tem de limpar o RUN, nao explodir.
+Public Function S_Corrida_DataInvalida() As String
+    On Error GoTo erro
+    Load frmCorrida
+    frmCorrida.txtData.Value = "32/13/2026"
+    If frmCorrida.lblRun.Caption <> "" Then
+        S_Corrida_DataInvalida = Falha("data invalida deixou o rotulo em '" & frmCorrida.lblRun.Caption & "'")
+        Exit Function
+    End If
+    frmCorrida.txtData.Value = Format$(Date, "dd/mm/yyyy")
+    S_Corrida_DataInvalida = "OK: RUN limpo, sem erro de execucao"
+    Exit Function
+erro:
+    S_Corrida_DataInvalida = Falha("erro " & Err.Number & " com data invalida: " & Err.Description)
+End Function
+
+' ============================ frmExcluir ============================
+
+Public Function S_Excluir_Carga() As String
+    On Error GoTo erro
+    Load frmExcluir
+    S_Excluir_Carga = "OK: Initialize concluiu, " & frmExcluir.Controls.Count & " controles"
+    Exit Function
+erro:
+    S_Excluir_Carga = Falha("erro " & Err.Number & " no Initialize: " & Err.Description)
+End Function
+
+Public Function S_Excluir_Runs() As String
+    Dim c As Collection
+    On Error GoTo erro
+    Load frmExcluir
+    Set c = RunsDoLote(LoteAtivoCore())
+    If frmExcluir.cboRun.ListCount <> c.Count Then
+        S_Excluir_Runs = Falha("banco tem " & c.Count & " RUNs no lote, combo mostra " & _
+                               frmExcluir.cboRun.ListCount)
+        Exit Function
+    End If
+    If c.Count = 0 Then
+        S_Excluir_Runs = Falha("nenhum RUN listado - o analista nao consegue excluir nada")
+        Exit Function
+    End If
+    S_Excluir_Runs = "OK: " & c.Count & " RUNs, ultimo pre-selecionado (" & frmExcluir.cboRun.Value & ")"
+    Exit Function
+erro:
+    S_Excluir_Runs = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+Public Function S_Excluir_Analitos() As String
+    On Error GoTo erro
+    Load frmExcluir
+    If frmExcluir.lstAnalitos.ListCount = 0 Then
+        S_Excluir_Analitos = Falha("lista de analitos vazia")
+        Exit Function
+    End If
+    S_Excluir_Analitos = "OK: " & frmExcluir.lstAnalitos.ListCount & " analitos listados"
+    Exit Function
+erro:
+    S_Excluir_Analitos = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+Public Function S_Excluir_Todos() As String
+    Dim i As Long, n As Long
+    On Error GoTo erro
+    Load frmExcluir
+    For i = 0 To frmExcluir.lstAnalitos.ListCount - 1
+        frmExcluir.lstAnalitos.Selected(i) = True
+    Next i
+    For i = 0 To frmExcluir.lstAnalitos.ListCount - 1
+        If frmExcluir.lstAnalitos.Selected(i) Then n = n + 1
+    Next i
+    If n <> frmExcluir.lstAnalitos.ListCount Then
+        S_Excluir_Todos = Falha("selecionou " & n & " de " & frmExcluir.lstAnalitos.ListCount)
+        Exit Function
+    End If
+    For i = 0 To frmExcluir.lstAnalitos.ListCount - 1
+        frmExcluir.lstAnalitos.Selected(i) = False
+    Next i
+    S_Excluir_Todos = "OK: selecao multipla funciona (" & n & " itens)"
+    Exit Function
+erro:
+    S_Excluir_Todos = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+' ============================ frmMassa ============================
+
+Public Function S_Massa_Carga() As String
+    On Error GoTo erro
+    Load frmMassa
+    S_Massa_Carga = "OK: Initialize concluiu, " & frmMassa.Controls.Count & " controles"
+    Exit Function
+erro:
+    S_Massa_Carga = Falha("erro " & Err.Number & " no Initialize: " & Err.Description)
+End Function
+
+' Colagem com nivel 3 num produto de 2 niveis TEM de ser recusada. Aceitar
+' criaria um nivel que nao existe, e o motor nao teria alvo nem DP para ele.
+Public Function S_Massa_Validacao() As String
+    Dim niveisAceitos As String, i As Long
+    On Error GoTo erro
+    niveisAceitos = ""
+    For i = 1 To 4
+        If i >= 1 And i <= NLV Then niveisAceitos = niveisAceitos & i
+    Next i
+    If NLV >= 3 Then
+        S_Massa_Validacao = "OK: produto de " & NLV & " niveis, nada a recusar em 1..3"
+        Exit Function
+    End If
+    ' confere que o codigo do formulario limita ao NLV do produto
+    Dim cm As Object, txt As String
+    Set cm = ThisWorkbook.VBProject.VBComponents("frmMassa").CodeModule
+    txt = cm.Lines(1, cm.CountOfLines)
+    If InStr(txt, "lvl > " & NLV) = 0 Then
+        S_Massa_Validacao = Falha("validacao de nivel nao limita a " & NLV & _
+                                  " - colagem com nivel inexistente seria aceita")
+        Exit Function
+    End If
+    S_Massa_Validacao = "OK: colagem limitada a 1.." & NLV
+    Exit Function
+erro:
+    S_Massa_Validacao = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+' ====================== frmResultadoNaoConforme ======================
+
+Public Function S_NC_Carga() As String
+    On Error GoTo erro
+    Load frmResultadoNaoConforme
+    S_NC_Carga = "OK: Initialize concluiu, " & frmResultadoNaoConforme.Controls.Count & " controles"
+    Exit Function
+erro:
+    S_NC_Carga = Falha("erro " & Err.Number & " no Initialize: " & Err.Description)
+End Function
+
+Public Function S_NC_Tipos() As String
+    Dim c As Collection
+    On Error GoTo erro
+    Load frmResultadoNaoConforme
+    Set c = TiposNaoConformidade()
+    If frmResultadoNaoConforme.cboTipo.ListCount <> c.Count Then
+        S_NC_Tipos = Falha("Cfg_Status tem " & c.Count & " estados nao elegiveis, combo mostra " & _
+                           frmResultadoNaoConforme.cboTipo.ListCount)
+        Exit Function
+    End If
+    If c.Count = 0 Then
+        S_NC_Tipos = Falha("nenhum tipo disponivel - o analista nao consegue classificar")
+        Exit Function
+    End If
+    S_NC_Tipos = "OK: " & c.Count & " tipos do Cfg_Status (1o: " & frmResultadoNaoConforme.cboTipo.Value & ")"
+    Exit Function
+erro:
+    S_NC_Tipos = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+' O nucleo do formulario: informar o RUN e o sistema preencher o resto.
+Public Function S_NC_RunPreenche() As String
+    Dim runs As Collection, r As Long
+    On Error GoTo erro
+    Load frmResultadoNaoConforme
+    Set runs = RunsDoLote(LoteAtivoCore())
+    If runs.Count = 0 Then
+        S_NC_RunPreenche = Falha("nao ha RUN no lote ativo para simular")
+        Exit Function
+    End If
+    r = runs(1)
+    frmResultadoNaoConforme.txtRun.Value = CStr(r)
+    If InStr(frmResultadoNaoConforme.lblCabecalho.Caption, "Data:") = 0 Then
+        S_NC_RunPreenche = Falha("cabecalho nao preencheu: '" & _
+                                 frmResultadoNaoConforme.lblCabecalho.Caption & "'")
+        Exit Function
+    End If
+    If frmResultadoNaoConforme.lstAnalitos.ListCount = 0 Then
+        S_NC_RunPreenche = Falha("RUN " & r & " nao trouxe resultado nenhum")
+        Exit Function
+    End If
+    S_NC_RunPreenche = "OK: RUN " & r & " -> " & frmResultadoNaoConforme.lblCabecalho.Caption & _
+                       " | " & frmResultadoNaoConforme.lstAnalitos.ListCount & " resultados"
+    Exit Function
+erro:
+    S_NC_RunPreenche = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+Public Function S_NC_RunInexistente() As String
+    On Error GoTo erro
+    Load frmResultadoNaoConforme
+    frmResultadoNaoConforme.txtRun.Value = "999999"
+    If InStr(frmResultadoNaoConforme.lblCabecalho.Caption, "nao encontrado") = 0 Then
+        S_NC_RunInexistente = Falha("RUN inexistente nao avisou: '" & _
+                                    frmResultadoNaoConforme.lblCabecalho.Caption & "'")
+        Exit Function
+    End If
+    If frmResultadoNaoConforme.lstAnalitos.ListCount <> 0 Then
+        S_NC_RunInexistente = Falha("lista ficou com " & _
+            frmResultadoNaoConforme.lstAnalitos.ListCount & " itens de um RUN que nao existe")
+        Exit Function
+    End If
+    frmResultadoNaoConforme.txtRun.Value = ""
+    S_NC_RunInexistente = "OK: avisa e limpa a lista, sem erro de execucao"
+    Exit Function
+erro:
+    S_NC_RunInexistente = Falha("erro " & Err.Number & " com RUN inexistente: " & Err.Description)
+End Function
+
+Public Function S_NC_ContagemParecer() As String
+    Dim curto As String, longo As String
+    On Error GoTo erro
+    Load frmResultadoNaoConforme
+    frmResultadoNaoConforme.txtParecer.Value = "erro de"
+    curto = frmResultadoNaoConforme.lblParecer.Caption
+    frmResultadoNaoConforme.txtParecer.Value = "material hemolisado confirmado pela equipe tecnica"
+    longo = frmResultadoNaoConforme.lblParecer.Caption
+    If curto = longo Then
+        S_NC_ContagemParecer = Falha("rotulo nao reagiu ao texto digitado")
+        Exit Function
+    End If
+    If InStr(longo, "ok") = 0 Then
+        S_NC_ContagemParecer = Falha("parecer de 6 palavras nao foi aceito: '" & longo & "'")
+        Exit Function
+    End If
+    frmResultadoNaoConforme.txtParecer.Value = ""
+    S_NC_ContagemParecer = "OK: 2 palavras -> aviso; 6 palavras -> '" & longo & "'"
+    Exit Function
+erro:
+    S_NC_ContagemParecer = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+Public Function S_NC_Todos() As String
+    Dim runs As Collection, i As Long, n As Long
+    On Error GoTo erro
+    Load frmResultadoNaoConforme
+    Set runs = RunsDoLote(LoteAtivoCore())
+    If runs.Count = 0 Then S_NC_Todos = Falha("sem RUN para simular"): Exit Function
+    frmResultadoNaoConforme.txtRun.Value = CStr(runs(1))
+    For i = 0 To frmResultadoNaoConforme.lstAnalitos.ListCount - 1
+        frmResultadoNaoConforme.lstAnalitos.Selected(i) = True
+    Next i
+    For i = 0 To frmResultadoNaoConforme.lstAnalitos.ListCount - 1
+        If frmResultadoNaoConforme.lstAnalitos.Selected(i) Then n = n + 1
+    Next i
+    If n = 0 Or n <> frmResultadoNaoConforme.lstAnalitos.ListCount Then
+        S_NC_Todos = Falha("selecao multipla nao funcionou (" & n & " de " & _
+                           frmResultadoNaoConforme.lstAnalitos.ListCount & ")")
+        Exit Function
+    End If
+    S_NC_Todos = "OK: " & n & " itens selecionados"
+    Exit Function
+erro:
+    S_NC_Todos = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+' ======================= frmExcluirRegistroNC =======================
+
+Public Function S_ExNC_Carga() As String
+    On Error GoTo erro
+    Load frmExcluirRegistroNC
+    S_ExNC_Carga = "OK: Initialize concluiu, " & frmExcluirRegistroNC.Controls.Count & _
+                   " controles, " & frmExcluirRegistroNC.lstRegistros.ListCount & " ocorrencia(s)"
+    Exit Function
+erro:
+    S_ExNC_Carga = Falha("erro " & Err.Number & " no Initialize: " & Err.Description)
+End Function
+
+Public Function S_ExNC_ContagemParecer() As String
+    Dim curto As String, longo As String
+    On Error GoTo erro
+    Load frmExcluirRegistroNC
+    frmExcluirRegistroNC.txtParecer.Value = "engano"
+    curto = frmExcluirRegistroNC.lblParecer.Caption
+    frmExcluirRegistroNC.txtParecer.Value = "classificacao equivocada corrigida apos revisao tecnica"
+    longo = frmExcluirRegistroNC.lblParecer.Caption
+    If curto = longo Then
+        S_ExNC_ContagemParecer = Falha("rotulo nao reagiu ao texto digitado")
+        Exit Function
+    End If
+    frmExcluirRegistroNC.txtParecer.Value = ""
+    S_ExNC_ContagemParecer = "OK: contador reage (" & longo & ")"
+    Exit Function
+erro:
+    S_ExNC_ContagemParecer = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+' ========================= frmAssinar / frmDev =========================
+
+Public Function S_Assinar_Carga() As String
+    On Error GoTo erro
+    Load frmAssinar
+    If frmAssinar.txtSenha.PasswordChar = "" Then
+        S_Assinar_Carga = Falha("campo de senha aparece em texto claro")
+        Exit Function
+    End If
+    S_Assinar_Carga = "OK: carrega e mascara a senha"
+    Exit Function
+erro:
+    S_Assinar_Carga = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function
+
+Public Function S_Dev_Carga() As String
+    On Error GoTo erro
+    Load frmDev
+    If frmDev.txtSenha.PasswordChar = "" Then
+        S_Dev_Carga = Falha("campo de senha aparece em texto claro")
+        Exit Function
+    End If
+    S_Dev_Carga = "OK: carrega e mascara a senha"
+    Exit Function
+erro:
+    S_Dev_Carga = Falha("erro " & Err.Number & ": " & Err.Description)
+End Function

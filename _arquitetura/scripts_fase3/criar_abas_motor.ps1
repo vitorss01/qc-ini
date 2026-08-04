@@ -37,22 +37,41 @@ $e_ = [string][char]0x00E9  # e agudo
 $i_ = [string][char]0x00ED  # i agudo
 $o_ = [string][char]0x00F3  # o agudo
 $I_ = [string][char]0x00CD  # I agudo
-$O_ = [string][char]0x00D5  # O til
+$A_ = [string][char]0x00C3  # A TIL -- e o que 'NAO' precisa.
+                            # Estava 0x00D5 (O til) e gravava 'NOO'.
 $ac = [string][char]0x00E7 + [string][char]0x00E3 + 'o'      # "cao"
 
+# CADA ELEMENTO ENTRE PARENTESES, e nao por estilo.
+#
+# Em PowerShell a VIRGULA liga MAIS FORTE que o '+'. Sem parenteses,
+#   @('Exclu' + $i_ + 'do', 'N' + $A_ + 'O', 'desc')
+# e lido como  'Exclu' + $i_ + ('do','N') + ...  -- soma de string com ARRAY --
+# e o resultado colapsa: a linha vira UM elemento com tudo junto, ou se parte em
+# cinco. Foi assim que a Cfg_Status da Bioquimica saiu com Status, Elegivel e
+# Descricao fundidos numa celula so, e o combo de tipo de nao conformidade
+# passou a mostrar "Excluido NAO Excluido logicamente pelo analista" ao usuario.
 $STATUS = @(
-    @('Ativo', 'SIM', 'Resultado valido, elegivel para media/DP/CV/Bias/Sigma/Westgard'),
-    @('Exclu' + $i_ + 'do', 'N' + $O_ + 'O', 'Excluido logicamente pelo analista'),
-    @('Inv' + $a_ + 'lido', 'N' + $O_ + 'O', 'Resultado invalido (erro analitico comprovado)'),
-    @('Rejeitado-Operacional', 'N' + $O_ + 'O', 'Falha operacional (pipetagem, amostra, operador)'),
-    @('Calibra' + $ac, 'N' + $O_ + 'O', 'Corrida associada a calibracao do equipamento'),
-    @('Manuten' + $ac, 'N' + $O_ + 'O', 'Corrida associada a manutencao preventiva/corretiva'),
-    @('Troca de Lote', 'N' + $O_ + 'O', 'Corrida de transicao entre lotes de controle'),
-    @('Treinamento', 'N' + $O_ + 'O', 'Execucao para treinamento - nao compoe desempenho')
+    @( 'Ativo', 'SIM', 'Resultado valido, elegivel para media/DP/CV/Bias/Sigma/Westgard' ),
+    @( ('Exclu' + $i_ + 'do'), ('N' + $A_ + 'O'), 'Excluido logicamente pelo analista' ),
+    @( ('Inv' + $a_ + 'lido'), ('N' + $A_ + 'O'), 'Resultado invalido (erro analitico comprovado)' ),
+    @( 'Rejeitado-Operacional', ('N' + $A_ + 'O'), 'Falha operacional (pipetagem, amostra, operador)' ),
+    @( ('Calibra' + $ac), ('N' + $A_ + 'O'), 'Corrida associada a calibracao do equipamento' ),
+    @( ('Manuten' + $ac), ('N' + $A_ + 'O'), 'Corrida associada a manutencao preventiva/corretiva' ),
+    @( 'Troca de Lote', ('N' + $A_ + 'O'), 'Corrida de transicao entre lotes de controle' ),
+    @( 'Treinamento', ('N' + $A_ + 'O'), 'Execucao para treinamento - nao compoe desempenho' )
 )
 
-$CAB_EVENTOS = @('Data', 'RUN', 'Analito', 'N' + $i_ + 'vel', 'Regra',
-    'Classifica' + $ac, 'Resultado', 'Z-Score')
+# Conferir a forma do array ANTES de escrever. Se a precedencia voltar a
+# quebrar, o build para aqui e nao entrega planilha corrompida ao laboratorio.
+for ($k = 0; $k -lt $STATUS.Count; $k++) {
+    if ($STATUS[$k].Count -ne 3) {
+        throw "STATUS[$k] tem $($STATUS[$k].Count) elementos, esperado 3. Precedencia de virgula quebrou de novo: parentetize cada elemento."
+    }
+}
+
+$CAB_EVENTOS = @( 'Data', 'RUN', 'Analito', ('N' + $i_ + 'vel'), 'Regra',
+    ('Classifica' + $ac), 'Resultado', 'Z-Score' )
+if ($CAB_EVENTOS.Count -ne 8) { throw "CAB_EVENTOS tem $($CAB_EVENTOS.Count) itens, esperado 8" }
 
 function Novo-Excel {
     $ultimo = $null
@@ -101,9 +120,10 @@ else {
     $cfg.Range('B3:D3').Font.Bold = $true
     for ($k = 0; $k -lt $STATUS.Count; $k++) {
         $lin = 4 + $k
-        $cfg.Cells($lin, 2).Formula = $STATUS[$k][0]
-        $cfg.Cells($lin, 3).Formula = $STATUS[$k][1]
-        $cfg.Cells($lin, 4).Formula = $STATUS[$k][2]
+        # .Value2 e nao .Formula: Formula faz o Excel INTERPRETAR o texto.
+        $cfg.Cells($lin, 2).Value2 = $STATUS[$k][0]
+        $cfg.Cells($lin, 3).Value2 = $STATUS[$k][1]
+        $cfg.Cells($lin, 4).Value2 = $STATUS[$k][2]
     }
     $cfg.Cells(4 + $STATUS.Count, 2).Formula = 'Acrescente novos estados nas linhas abaixo. O Motor Estat' + $i_ + 'stico l' + $e_ + ' esta tabela - nenhuma rotina precisa ser alterada. Estado desconhecido nunca entra no c' + $a_ + 'lculo.'
     $cfg.Columns('B:D').AutoFit() | Out-Null
