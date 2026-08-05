@@ -308,6 +308,13 @@ Encerrar-Excel
 Etapa 'criar_aba_importar.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
 
 Encerrar-Excel
+# Depois do motor: AtualizarPainelEng nao toca em titulo de eixo, mas a ordem
+# aqui garante que o rotulo final e o ultimo estado gravado. Antes da trava,
+# porque mexe em celula de aba protegida.
+"== 7c. o identificador da corrida chama-se RUN (itens 6.2 e 6.3)"
+Etapa 'padronizar_run.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 4
+
+Encerrar-Excel
 "== 8. trava a estrutura (abas so pelo Modo Desenvolvedor)"
 Etapa 'travar_estrutura.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
 

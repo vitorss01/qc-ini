@@ -1006,6 +1006,72 @@ try {
     }
     Anotar '5.4' 'projeto VBA com senha (item 3.4)' $comSenha `
         $(if ($comSenha) { 'DPB preenchido' } else { 'PASSO MANUAL PENDENTE: VBE > Ferramentas > Propriedades do VBAProject > Protecao' })
+
+    # ---------------- 6.2 / 6.3: o identificador chama-se RUN ----------------
+    #
+    # Le do ARQUIVO SALVO, nao do Excel: prova o que o usuario vai abrir.
+    #
+    # 6.2 nao e "a palavra corrida sumiu". A corrida e o EVENTO e o RUN e o
+    # IDENTIFICADOR dele -- "Lancar corrida" e "DataCorrida" estao certos.
+    # O que se verifica e que o identificador nao aparece mais como "Seq",
+    # nome que nao existe desde a Fase 1.
+    #
+    # E verifica-se TAMBEM o inverso: que Audit_Legenda!B22 continua dizendo
+    # "Seq", porque ali Seq e a sequencia de AUDITORIA (1a, 2a, 3a alteracao
+    # do resultado), outro conceito. Um replace global de Seq->RUN passaria
+    # em 6.2 e destruiria a explicacao da trilha para o auditor. Este item
+    # falha nos DOIS sentidos, de proposito.
+    $ssXml = Ler-Entrada $zip 'xl/sharedStrings.xml'
+    $textos = @()
+    foreach ($m in [regex]::Matches($ssXml, '<si>(.*?)</si>', 'Singleline')) {
+        $textos += ($m.Groups[1].Value -replace '<[^>]+>', '')
+    }
+    # indices ainda REFERENCIADOS por alguma celula (o Excel deixa orfaos)
+    $usados = @{}
+    foreach ($pl in ($zip.Entries | Where-Object { $_.FullName -match '^xl/worksheets/sheet\d+\.xml$' })) {
+        $t = Ler-Entrada $zip $pl.FullName
+        foreach ($m in [regex]::Matches($t, '<c [^>]*t="s"[^>]*>\s*<v>(\d+)</v>')) {
+            $usados[[int]$m.Groups[1].Value] = $true
+        }
+    }
+    $vivos = @()
+    foreach ($k in $usados.Keys) { if ($k -lt $textos.Count) { $vivos += $textos[$k] } }
+
+    $seqIdent = @($vivos | Where-Object { $_ -eq 'Seq' -or $_ -match 'Seq\s*=\s*n' })
+    $temRunDesc = @($vivos | Where-Object { $_ -match 'RUN = identificador da corrida' }).Count -gt 0
+    $legendaIntacta = @($vivos | Where-Object { $_ -match 'ORIGINAL.*Seq = 1' }).Count -gt 0
+
+    Anotar '6.2' 'identificador da corrida rotulado RUN (e Seq de auditoria preservado)' `
+        (($seqIdent.Count -eq 0) -and $temRunDesc -and $legendaIntacta) `
+        $(if ($seqIdent.Count -gt 0) { "ainda ha rotulo Seq como identificador: $($seqIdent -join ' / ')" }
+          elseif (-not $temRunDesc) { 'FALHA: DB_Resultados!A2 nao descreve o RUN' }
+          elseif (-not $legendaIntacta) { 'FALHA: Audit_Legenda perdeu o Seq de AUDITORIA (replace global?)' }
+          else { 'nenhum Seq como identificador; Audit_Legenda!B22 preservada' })
+
+    $graficos = @($zip.Entries | Where-Object { $_.FullName -match '^xl/charts/chart\d+\.xml$' })
+    $eixosOk = 0; $eixosRuins = @()
+    foreach ($g in $graficos) {
+        $t = Ler-Entrada $zip $g.FullName
+        # O eixo X identifica-se por axPos="b" (bottom), NAO pelo tipo do
+        # elemento. Estes graficos sao de DISPERSAO: o RUN e numerico, entao o
+        # eixo X e um <c:valAx>, nao um <c:catAx>. Procurar so em catAx nao
+        # acha nada e reprova um arquivo correto -- foi o que aconteceu na
+        # primeira versao deste item.
+        $tit = ''
+        foreach ($mc in [regex]::Matches($t, '<c:(catAx|valAx|dateAx)>.*?</c:\1>', 'Singleline')) {
+            if ([regex]::Match($mc.Value, '<c:axPos val="b"').Success) {
+                $mt = [regex]::Match($mc.Value, '<c:title>.*?</c:title>', 'Singleline')
+                if ($mt.Success) { $tit = (($mt.Value -replace '<[^>]+>', '') -replace '\s+', ' ').Trim() }
+                break
+            }
+        }
+        if ($tit -eq 'RUN') { $eixosOk++ } else { $eixosRuins += "$($g.FullName): '$tit'" }
+    }
+    Anotar '6.3' 'eixo X de todo grafico rotulado RUN' `
+        (($graficos.Count -gt 0) -and ($eixosRuins.Count -eq 0)) `
+        $(if ($graficos.Count -eq 0) { 'FALHA: nenhum grafico no arquivo' }
+          elseif ($eixosRuins.Count -gt 0) { "fora do padrao: $($eixosRuins -join ' / ')" }
+          else { "$eixosOk de $($graficos.Count) graficos com eixo X = RUN" })
 }
 finally { $zip.Dispose() }
 

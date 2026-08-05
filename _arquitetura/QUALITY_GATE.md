@@ -4,7 +4,7 @@ Documento oficial de liberação do projeto. Enquanto houver item ⏳ ou ❌ **n
 para a fase seguinte**. Cada ✅ exige evidência verificável — marcação sem evidência
 não vale.
 
-**Última atualização:** 03/08/2026
+**Última atualização:** 05/08/2026
 **Sprint corrente:** HARDENING (nenhuma funcionalidade nova)
 
 ---
@@ -240,8 +240,9 @@ não vale.
 | # | Item | Status | Observação |
 |---|---|---|---|
 | 6.1 | Fluxo diário validado com usuário | ⏳ | Simulação feita por agente; falta validação real |
-| 6.2 | Padronização "Corrida" → "RUN" | ⏳ | Pendente em gráficos, mensagens e cabeçalhos |
-| 6.3 | Eixo X alinhado ao RUN | ⏳ | Pendente |
+| 6.2 | Padronização "Corrida" → "RUN" | ✅ | Bioquímica e Hematologia. O identificador não se chama mais "Seq": `DB_Resultados!A2`, `Calc!B2`, `RegistrosStore!D1`. **"Corrida" permanece onde designa o evento** — `Lançar corrida`, `Registro de corridas`, `DataCorrida` estão corretos. Prova 6.2 |
+| 6.2a | `Audit_Legenda!B22` preservada | ✅ | Ali "Seq" é a sequência de **auditoria** (1ª, 2ª, 3ª alteração do resultado), outro conceito. A prova 6.2 falha nos dois sentidos: reprova se o Seq do identificador sobrar **e** se o Seq da auditoria for apagado por um replace global |
+| 6.3 | Eixo X alinhado ao RUN | ✅ | 2 gráficos na Bioquímica, 3 na Hematologia: `Corrida (RUN)` → `RUN`. Prova 6.3 |
 | 6.4 | 52 achados de UX/arquitetura triados | ⏳ | `FASE3A_achados_estaticos.md` |
 | 6.5 | Importação por aba substitui o `frmMassa` | ✅ | Bioquímica. Analitos na horizontal, colagem direta, botão **Registrar** migra para `DB_Resultados` e limpa a aba. Provas 1.7–1.10 (montagem) e 3.16–3.17 (execução) |
 
@@ -252,7 +253,12 @@ não vale.
 > **Regra de merge:** nada entra na `main` enquanto houver ⏳ ou ❌.
 > A branch `fase3a-motor-cqi` é de trabalho; se um PR for aberto, deve ser **draft**.
 
-**24 ✅ · 19 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
+**27 ✅ · 17 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
+
+> A **tabela de cobertura por produto** acima ainda diz "Fase 3 nunca aplicada" para
+> a Bioquímica, e isso está desatualizado — a Bioquímica passa 59 de 60 na suíte.
+> Corrigir a tabela é item próprio, ainda não feito; a contagem acima ainda a inclui
+> no estado antigo.
 
 O **motor** está pronto e validado. O **sistema** ainda não é auditável nem confiável.
 
