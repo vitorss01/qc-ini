@@ -1,0 +1,32 @@
+Ordem,Sigla,Nome,Unid,Casas
+1,ALA,Lactato,mg/dL,1
+2,AUR,Ácido úrico,mg/dL,1
+3,ALB,Albumina,g/dL,1
+4,BD,Bilirrubina direta,mg/dL,2
+5,BT,Bilirrubina total,mg/dL,2
+6,CAL,Cálcio,mg/dL,1
+7,CFF,Capacidade de fixação do ferro,µg/dL,0
+8,COL,Colesterol total,mg/dL,0
+9,HDL,HDL colesterol,mg/dL,0
+10,CRE,Creatinina,mg/dL,2
+11,FER,Ferro,µg/dL,0
+12,FOS,Fósforo,mg/dL,1
+13,GLI,Glicose,mg/dL,0
+14,HbA1c,Hemoglobina glicada,%,1
+15,MAG,Magnésio,mg/dL,2
+16,PTN T,Proteína total,g/dL,1
+17,TRI,Triglicerídeos,mg/dL,0
+18,URE,Ureia,mg/dL,0
+19,AMI,Amilase,U/L,0
+20,CPK,Creatina fosfoquinase,U/L,0
+21,FAL,Fosfatase alcalina,U/L,0
+22,GGT,GGT,U/L,0
+23,LDH,Lactato desidrogenase,U/L,0
+24,LPS,Lipase,U/L,0
+25,TGO,AST (TGO),U/L,0
+26,TGP,ALT (TGP),U/L,0
+27,PCR,Proteína C-reativa,mg/L,1
+28,ECO2,Bicarbonato,mmol/L,1
+29,NA,Sódio,mmol/L,0
+30,K,Potássio,mmol/L,1
+31,CL,Cloro,mmol/L,0
