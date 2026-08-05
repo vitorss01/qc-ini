@@ -296,6 +296,10 @@ if (-not $PularMotor) {
     Etapa 'rodar_motor.ps1' -Argumentos @('-Workbook', $alvo, '-Rotinas', 'AtualizarCalc,AtualizarPainelEng,AtualizarEstatisticaAba') -Ultimas 4
 }
 
+Encerrar-Excel
+"== 8. trava a estrutura (abas so pelo Modo Desenvolvedor)"
+Etapa 'travar_estrutura.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
+
 ""
 "BUILD PRONTO: $alvo"
 "Conferir com:"

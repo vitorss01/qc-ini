@@ -1,0 +1,101 @@
+'@@FUNC LockApp
+Public Sub LockApp()
+    Dim ws As Worksheet
+    Application.ScreenUpdating = False
+    On Error Resume Next
+    Sheets(SHEET_LOGIN).Visible = xlSheetVisible
+    For Each ws In ThisWorkbook.Worksheets
+        If ws.Name <> SHEET_LOGIN Then ws.Visible = xlSheetVeryHidden
+    Next ws
+    Sheets(SHEET_LOGIN).Activate
+    ReprotectAll
+    SystemLook True
+    On Error GoTo 0
+    ' Tela de login: nao se cria aba aqui. Estrutura travada.
+    ProtegerEstrutura
+    Application.ScreenUpdating = True
+End Sub
+'@@FUNC UnlockApp
+Public Sub UnlockApp()
+    Dim ws As Worksheet, isAdm As Boolean
+    Application.ScreenUpdating = False
+    On Error Resume Next
+    isAdm = (UCase$(Trim$(CStr(ThisWorkbook.Names("currentPapel").RefersToRange.Value))) = "ADM")
+    For Each ws In ThisWorkbook.Worksheets
+        Select Case ws.Name
+            Case SHEET_LOGIN
+                ws.Visible = xlSheetVeryHidden
+            Case "Calc", "LotesStore", "LiberStore", "RegistrosStore"
+                ws.Visible = IIf(isAdm, xlSheetVisible, xlSheetVeryHidden)
+            Case Else
+                ws.Visible = xlSheetVisible
+        End Select
+    Next ws
+    If isAdm Then
+        UnprotectAll
+    Else
+        ReprotectAll
+    End If
+    HookCharts
+    Sheets(SHEET_START).Activate
+    SystemLook True
+    On Error GoTo 0
+    ' Depois de logar - ADM ou analista - a estrutura CONTINUA travada. Criar,
+    ' mover, renomear ou excluir aba so pelo Modo Desenvolvedor (decisao do
+    ' gestor). UnprotectAll do ADM libera CONTEUDO de celula, nao a estrutura.
+    ProtegerEstrutura
+    Application.ScreenUpdating = True
+End Sub
+'@@FUNC ModoDesenvolvedor
+Public Sub ModoDesenvolvedor()
+    Dim s As String, ws As Worksheet
+    frmDev.Confirmado = False
+    frmDev.txtSenha.Value = ""
+    frmDev.Show
+    If Not frmDev.Confirmado Then
+        Unload frmDev
+        Exit Sub
+    End If
+    s = frmDev.txtSenha.Value
+    Unload frmDev
+    If LCase$(SHA256Hex(s)) <> LCase$(DEV_HASH) Then
+        MsgBox "Senha incorreta.", vbExclamation, "Modo Desenvolvedor"
+        Exit Sub
+    End If
+    Application.ScreenUpdating = False
+    On Error Resume Next
+    For Each ws In ThisWorkbook.Worksheets
+        ws.Unprotect Password:="qcini2025"
+        ws.Visible = xlSheetVisible
+    Next ws
+    On Error GoTo 0
+    ' A UNICA via que libera a estrutura: aqui o dev pode criar e mover abas
+    ' para manutencao. Sair (logout) chama LockApp, que trava de novo.
+    DesprotegerEstrutura
+    SystemLook False
+    Application.ScreenUpdating = True
+    MsgBox "Modo Desenvolvedor ATIVO." & vbCrLf & vbCrLf & _
+           "Todas as abas visiveis e desprotegidas, estrutura liberada." & vbCrLf & _
+           "Use Sair (logout) para voltar ao modo normal.", vbInformation, "Modo Desenvolvedor"
+End Sub
+'@@APPEND
+' ===================== PROTECAO DE ESTRUTURA =====================
+' Trava a criacao/movimentacao/renomeacao/exclusao de abas pela interface do
+' Excel. ProtectStructure PERSISTE no arquivo salvo, entao vale mesmo com macros
+' desabilitadas -- o cenario do auditor e o do curioso.
+'
+' Sem On Error Resume Next de conveniencia: o estado e checado antes de agir,
+' porque proteger uma pasta ja protegida (ou desproteger uma ja livre) levanta
+' erro 1004.
+
+Public Sub ProtegerEstrutura()
+    If Not ThisWorkbook.ProtectStructure Then
+        ThisWorkbook.Protect Password:="qcini2025", Structure:=True, Windows:=False
+    End If
+End Sub
+
+Public Sub DesprotegerEstrutura()
+    If ThisWorkbook.ProtectStructure Then
+        ThisWorkbook.Unprotect Password:="qcini2025"
+    End If
+End Sub

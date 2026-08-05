@@ -98,6 +98,10 @@ $xl.EnableEvents = $false
 $xl.AutomationSecurity = 1
 
 $wb = $xl.Workbooks.Open($Workbook)
+# A trava de estrutura impede reexibir/ocultar aba. Este script PRECISA fazer
+# isso (esconde as abas de dado), entao abre a estrutura primeiro; a protecao
+# final ($wb.Protect Structure) volta a fecha-la no arquivo distribuido.
+if ($wb.ProtectStructure) { $wb.Unprotect('qcini2025') }
 
 # AutoRecuperacao DESLIGADA nesta copia de trabalho.
 #

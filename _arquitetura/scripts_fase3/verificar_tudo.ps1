@@ -174,6 +174,12 @@ try { $wb.EnableAutoRecover = $false } catch { }
 
 if ($wb.ReadOnly) { $wb.Close($false); $xl.Quit(); throw "Artefato aberto em somente leitura" }
 
+# A trava de estrutura (abas so pelo Modo Desenvolvedor) impede reexibir aba
+# oculta, e varios testes precisam disso. Desprotege a estrutura da COPIA
+# de verificacao durante os testes; nao afeta o entregavel.
+$estruturaEstava = $wb.ProtectStructure
+if ($estruturaEstava) { $wb.Unprotect('qcini2025') }
+
 try {
     # mEstatistica e mDados sao gerados POR PRODUTO (a Bioquimica tem NLV=2) e
     # ficam em src_hardening1/<Produto>/. mAuditoria e compartilhado: nao
@@ -451,6 +457,7 @@ End Function
     $db.Cells.Item($linhaTeste, 7).Value2 = $statusOriginal
 
     $au.Visible = 2
+    if ($estruturaEstava -and -not $wb.ProtectStructure) { $wb.Protect('qcini2025', $true, $false) }
     $wb.Save()
 }
 finally {
@@ -523,6 +530,7 @@ $xlP = Novo-Excel
 $xlP.Visible = $false; $xlP.DisplayAlerts = $false; $xlP.EnableEvents = $false
 $xlP.AutomationSecurity = 1
 $wbP = $xlP.Workbooks.Open($alvo)
+    if ($wbP.ProtectStructure) { $wbP.Unprotect('qcini2025') }
 try { $wbP.EnableAutoRecover = $false } catch { }
 try {
     # motor completo
@@ -837,6 +845,22 @@ try {
         'Audit_Log nao esta oculta: e material de auditoria, feito para ser lido'
 
     Anotar '5.2' 'estrutura da pasta protegida' ($wbXml -match '<workbookProtection') ''
+
+    # 5.6 de RUNTIME: o usuario nao pode criar aba. Testado no arquivo de
+    # DISTRIBUICAO ($dist), que sai travado, numa instancia propria -- exige
+    # que Worksheets.Add seja RECUSADO. E o comportamento que o gestor pediu;
+    # o XML acima prova o estado, este prova o efeito.
+    Encerrar-Excel
+    $xlT = Novo-Excel; $xlT.Visible = $false; $xlT.DisplayAlerts = $false
+    $xlT.EnableEvents = $false; $xlT.AutomationSecurity = 1
+    $wbT = $xlT.Workbooks.Open($dist)
+    $recusou = $false
+    try { $wbT.Worksheets.Add() | Out-Null } catch { $recusou = $true }
+    $wbT.Close($false); $xlT.Quit()
+    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($xlT) | Out-Null
+    Encerrar-Excel
+    Anotar '5.6' 'usuario nao consegue criar aba (estrutura travada)' $recusou ``
+        $(if ($recusou) { 'Worksheets.Add recusado pelo Excel' } else { 'FALHA: aba criada com estrutura travada' })
 
     $planilhas = $zip.Entries | Where-Object { $_.FullName -match '^xl/worksheets/sheet\d+\.xml$' }
     $comProt = 0
