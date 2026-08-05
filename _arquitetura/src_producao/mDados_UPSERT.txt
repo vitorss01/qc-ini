@@ -1,0 +1,144 @@
+'@@FUNC UpsertResultados
+' ===== UPSERT EM LOTE =====
+' regs: array (1..n, 1..7) ja no schema do banco. Atualiza o que existir
+' (mesma chave RUN|Nivel|Analito) e acrescenta o resto - nunca duplica.
+' Devolve "novos|atualizados".
+'
+' DESEMPENHO -- por que a versao anterior levava MINUTOS
+'
+' Nao era o custo de chamar o COM. Era o RECALCULO. O DB_Resultados tem ~45.000
+' formulas (o bloco BA:BD desce ate a linha 15.003) e a pasta passa de 56.000.
+' Com o calculo em automatico, CADA escrita de celula dispara o recalculo das
+' formulas dependentes. Atualizar 1.200 resultados com quatro escritas cada da
+' ~4.800 recalculos de dezenas de milhares de formulas.
+'
+' As tres medidas, em ordem de impacto:
+'   1. Calculation = manual durante a gravacao, e UM Calculate no fim.
+'   2. Atualizacao na MATRIZ em memoria, com uma unica escrita no fim.
+'   3. Escrita so da FAIXA TOCADA (primeira..ultima linha alterada), nao do
+'      banco inteiro. Corrigir um resultado de ontem nao pode reescrever
+'      15.000 linhas.
+'
+' UM SO SISTEMA DE COORDENADAS NO DICIONARIO.
+'
+' O indice guarda SEMPRE a linha da PLANILHA. Misturar indice-de-matriz para os
+' existentes e linha-de-planilha para os novos -- como parece natural quando se
+' passa a trabalhar em memoria -- faz a chave repetida no mesmo lote cair no
+' ramo "existe" com um numero de linha de planilha e indexar a matriz fora dos
+' limites. Falha intermitente, dependente do dado, do tipo mais caro de achar.
+Public Function UpsertResultados(ByRef regs As Variant) As String
+    Dim ws As Worksheet, dados As Variant, idx As Object
+    Dim i As Long, c As Long, lastRow As Long, novos As Long, atual As Long
+    Dim k As String, lin As Long, linArr As Long
+    Dim addBuf() As Variant, nAdd As Long, idxNovo As Object
+    Dim minTocada As Long, maxTocada As Long
+    Dim calcAntes As Long, eventosAntes As Boolean, telaAntes As Boolean
+
+    If IsEmpty(regs) Then UpsertResultados = "0|0": Exit Function
+
+    Set ws = ThisWorkbook.Sheets(BANCO)
+    Set idx = CreateObject("Scripting.Dictionary")
+
+    ' Estado do Excel guardado ANTES de qualquer alteracao. Restaurar o que
+    ' havia, e nao um valor fixo: deixar o calculo em manual porque a rotina
+    ' assumiu que estava em automatico faria a planilha inteira parar de somar
+    ' sem que ninguem percebesse.
+    calcAntes = Application.Calculation
+    eventosAntes = Application.EnableEvents
+    telaAntes = Application.ScreenUpdating
+
+    On Error GoTo Limpeza
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    Application.Calculation = xlCalculationManual
+
+    dados = CarregarDB()
+    lastRow = UltimaLinhaBanco()
+
+    If Not IsEmpty(dados) Then
+        For i = 1 To UBound(dados, 1)
+            If Len(Trim$(CStr(dados(i, COL_ANALITO)))) > 0 Then
+                k = ChaveReg(CLng(dados(i, COL_RUN)), CLng(dados(i, COL_NIVEL)), CStr(dados(i, COL_ANALITO)))
+                If Not idx.Exists(k) Then idx.Add k, BANCO_R0 + i - 1
+            End If
+        Next i
+    End If
+
+    ReDim addBuf(1 To UBound(regs, 1), 1 To COL_STATUS)
+    Set idxNovo = CreateObject("Scripting.Dictionary")
+    nAdd = 0: novos = 0: atual = 0
+    minTocada = 0: maxTocada = 0
+
+    ' DOIS indices, cada um no seu dominio. A chave repetida DENTRO do mesmo
+    ' lote precisa atualizar a linha que ainda esta na fila de insercao -- ela
+    ' nao existe na matriz do banco, entao procurar so em 'idx' faria o
+    ' registro ser DESCARTADO EM SILENCIO. Um indice unico misturando linha de
+    ' planilha e indice de matriz e a origem desse tipo de perda.
+    For i = 1 To UBound(regs, 1)
+        k = ChaveReg(CLng(regs(i, COL_RUN)), CLng(regs(i, COL_NIVEL)), CStr(regs(i, COL_ANALITO)))
+        If idx.Exists(k) Then
+            lin = idx(k)                       ' linha da PLANILHA
+            linArr = lin - BANCO_R0 + 1        ' indice na matriz
+            dados(linArr, COL_RESULT) = regs(i, COL_RESULT)
+            dados(linArr, COL_STATUS) = ST_ATIVO
+            dados(linArr, COL_DATA) = regs(i, COL_DATA)
+            dados(linArr, COL_LOTE) = regs(i, COL_LOTE)
+            If minTocada = 0 Or linArr < minTocada Then minTocada = linArr
+            If linArr > maxTocada Then maxTocada = linArr
+            atual = atual + 1
+        ElseIf idxNovo.Exists(k) Then
+            ' ja esta na fila de insercao: sobrescreve a entrada pendente
+            Dim iB As Long: iB = idxNovo(k)
+            For c = 1 To COL_STATUS
+                addBuf(iB, c) = regs(i, c)
+            Next c
+            atual = atual + 1
+        Else
+            nAdd = nAdd + 1
+            For c = 1 To COL_STATUS
+                addBuf(nAdd, c) = regs(i, c)
+            Next c
+            idxNovo.Add k, nAdd
+            novos = novos + 1
+        End If
+    Next i
+
+    ' --- devolve so a faixa que mudou ---
+    If minTocada > 0 Then
+        Dim upd() As Variant
+        ReDim upd(1 To maxTocada - minTocada + 1, 1 To COL_STATUS)
+        For i = minTocada To maxTocada
+            For c = 1 To COL_STATUS
+                upd(i - minTocada + 1, c) = dados(i, c)
+            Next c
+        Next i
+        Dim r0 As Long
+        r0 = BANCO_R0 + minTocada - 1
+        ws.Range(ws.Cells(r0, COL_LOTE), ws.Cells(r0 + maxTocada - minTocada, COL_LOTE)).NumberFormat = "@"
+        ws.Range(ws.Cells(r0, COL_RUN), ws.Cells(r0 + maxTocada - minTocada, COL_STATUS)).Value = upd
+    End If
+
+    ' --- acrescenta os novos em um unico bloco ---
+    If nAdd > 0 Then
+        Dim outp() As Variant
+        ReDim outp(1 To nAdd, 1 To COL_STATUS)
+        For i = 1 To nAdd
+            For c = 1 To COL_STATUS
+                outp(i, c) = addBuf(i, c)
+            Next c
+        Next i
+        ws.Range(ws.Cells(lastRow + 1, COL_LOTE), ws.Cells(lastRow + nAdd, COL_LOTE)).NumberFormat = "@"
+        ws.Range(ws.Cells(lastRow + 1, COL_RUN), ws.Cells(lastRow + nAdd, COL_STATUS)).Value = outp
+    End If
+
+Limpeza:
+    Dim nErr As Long, sErr As String
+    nErr = Err.Number: sErr = Err.Description
+    On Error Resume Next
+    Application.Calculation = calcAntes
+    Application.EnableEvents = eventosAntes
+    Application.ScreenUpdating = telaAntes
+    On Error GoTo 0
+    If nErr <> 0 Then Err.Raise nErr, "UpsertResultados", sErr
+    UpsertResultados = CStr(novos) & "|" & CStr(atual)
+End Function

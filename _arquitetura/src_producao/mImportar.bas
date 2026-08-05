@@ -59,20 +59,38 @@ Private Function NColunasAnalito(ByVal ws As Worksheet) As Long
     NColunasAnalito = n
 End Function
 
+' Le a area de colagem INTEIRA de uma vez.
+'
+' Ler celula a celula custa uma travessia COM por celula: 200 linhas x 34
+' colunas sao 6.800 travessias so para descobrir onde os dados terminam. Em
+' bloco e UMA. Todo o resto da rotina passa a trabalhar sobre esta matriz.
+Private Function LerArea(ByVal ws As Worksheet, ByVal nC As Long) As Variant
+    LerArea = ws.Range(ws.Cells(IMP_R0, IMP_C_DATA), _
+                       ws.Cells(IMP_RN, IMP_C_AN0 + nC - 1)).Value
+End Function
+
+' Texto de uma celula da matriz da area (linha e coluna em coordenadas da aba).
+Private Function Cel(ByRef m As Variant, ByVal linha As Long, ByVal col As Long) As String
+    Cel = Trim$(CStr(m(linha - IMP_R0 + 1, col - IMP_C_DATA + 1)))
+End Function
+
 ' Ultima linha COM algum dado na faixa de importacao.
 Public Function UltimaLinhaImport() As Long
-    Dim ws As Worksheet, i As Long, ult As Long, c As Long, nC As Long
+    Dim ws As Worksheet
     Set ws = ThisWorkbook.Sheets(ABA_IMP)
-    nC = NColunasAnalito(ws)
+    Dim nC As Long: nC = NColunasAnalito(ws)
+    UltimaLinhaImport = UltimaLinhaDaArea(LerArea(ws, nC), nC)
+End Function
+
+Private Function UltimaLinhaDaArea(ByRef m As Variant, ByVal nC As Long) As Long
+    Dim i As Long, c As Long, ult As Long
     For i = IMP_R0 To IMP_RN
-        Dim temAlgo As Boolean: temAlgo = False
         For c = IMP_C_DATA To IMP_C_AN0 + nC - 1
-            If Trim$(CStr(ws.Cells(i, c).Value)) <> "" Then temAlgo = True: Exit For
+            If Cel(m, i, c) <> "" Then ult = i: Exit For
         Next c
-        If temAlgo Then ult = i
     Next i
     If ult < IMP_R0 Then ult = IMP_R0 - 1
-    UltimaLinhaImport = ult
+    UltimaLinhaDaArea = ult
 End Function
 
 ' Ponto de entrada do botao Registrar. So interface: chama o nucleo e traduz o
@@ -126,8 +144,20 @@ Public Function ExecutarImportacao(ByVal silencioso As Boolean) As String
         destino(j) = Trim$(CStr(ws.Cells(IMP_MAP, IMP_C_AN0 + j - 1).Value))
     Next j
 
-    ult = UltimaLinhaImport()
+    Dim area As Variant
+    area = LerArea(ws, nC)
+    ult = UltimaLinhaDaArea(area, nC)
     If ult < IMP_R0 Then ExecutarImportacao = "VAZIO": Exit Function
+
+    ' Lotes cadastrados em um dicionario, UMA vez. Antes, LoteExisteImp
+    ' percorria a lista de lotes a cada linha -- e era chamado duas vezes por
+    ' linha, relendo as mesmas celulas da Configuracao o tempo todo.
+    Dim lotesOK As Object, cl As Collection, iL As Long
+    Set lotesOK = CreateObject("Scripting.Dictionary")
+    Set cl = ListaLotes()
+    For iL = 1 To cl.Count
+        If Not lotesOK.Exists(Trim$(CStr(cl(iL)))) Then lotesOK.Add Trim$(CStr(cl(iL))), True
+    Next iL
 
     ' -------- validacao TUDO-OU-NADA, acumulando erros --------
     Set erros = New Collection
@@ -143,16 +173,15 @@ Public Function ExecutarImportacao(ByVal silencioso As Boolean) As String
 
     For i = IMP_R0 To ult
         Dim dt As Date, ok As Boolean, lvl As Long, lote As String, temLinha As Boolean
-        temLinha = (Trim$(CStr(ws.Cells(i, IMP_C_DATA).Value)) <> "" Or _
-                    Trim$(CStr(ws.Cells(i, IMP_C_LOTE).Value)) <> "")
+        temLinha = (Cel(area, i, IMP_C_DATA) <> "" Or Cel(area, i, IMP_C_LOTE) <> "")
         If Not temLinha Then GoTo proxima
 
         ' Data
-        dt = ParseData(CStr(ws.Cells(i, IMP_C_DATA).Value), ok)
-        If Not ok Then erros.Add "Linha " & i & " - Data invalida: """ & CStr(ws.Cells(i, IMP_C_DATA).Value) & """"
+        dt = ParseData(Cel(area, i, IMP_C_DATA), ok)
+        If Not ok Then erros.Add "Linha " & i & " - Data invalida: """ & Cel(area, i, IMP_C_DATA) & """"
 
         ' Nivel
-        Dim sN As String: sN = Trim$(CStr(ws.Cells(i, IMP_C_NIVEL).Value))
+        Dim sN As String: sN = Cel(area, i, IMP_C_NIVEL)
         If Not IsNumeric(sN) Then
             erros.Add "Linha " & i & " - Nivel invalido: """ & sN & """"
             lvl = 0
@@ -162,16 +191,16 @@ Public Function ExecutarImportacao(ByVal silencioso As Boolean) As String
         End If
 
         ' Lote
-        lote = Trim$(CStr(ws.Cells(i, IMP_C_LOTE).Value))
+        lote = Cel(area, i, IMP_C_LOTE)
         If lote = "" Then
             erros.Add "Linha " & i & " - Lote nao preenchido"
-        ElseIf Not LoteExisteImp(lote) Then
+        ElseIf Not lotesOK.Exists(lote) Then
             erros.Add "Linha " & i & " - Lote nao cadastrado: """ & lote & """"
         End If
 
         ' Corrida/nivel repetido na mesma colagem
         Dim cabOK As Boolean, chave As String
-        cabOK = (ok And lvl >= 1 And lvl <= IMP_NLV And lote <> "" And LoteExisteImp(lote))
+        cabOK = (ok And lvl >= 1 And lvl <= IMP_NLV And lote <> "" And lotesOK.Exists(lote))
         If cabOK Then
             chave = CStr(CLng(dt)) & "|" & lvl & "|" & lote
             If vistas.Exists(chave) Then
@@ -188,10 +217,18 @@ Public Function ExecutarImportacao(ByVal silencioso As Boolean) As String
         ' rodasse quando data/nivel/lote estao certos, um valor nao numerico
         ' ficaria escondido ate o usuario consertar a data e clicar de novo --
         ' e o tudo-ou-nada deixaria de mostrar tudo de uma vez.
+        ' RUN provisorio: 0. O numero definitivo so e atribuido depois da
+        ' confirmacao, em AtribuirRUNs.
+        '
+        ' NAO chamar NovoRUN aqui. Na producao ele devolve "maior RUN do banco
+        ' + 1" quando a data ainda nao existe -- e durante a validacao NADA foi
+        ' gravado, entao TODAS as datas novas recebem o MESMO numero. Colar
+        ' cinco dias de uma vez fundia os cinco numa corrida so. Defeito
+        ' herdado do frmMassa, invisivel enquanto se importava um dia por vez.
         Dim run As Long
-        If cabOK Then run = NovoRUN(dt, lote)
+        run = 0
         For j = 1 To nC
-            Dim s As String: s = Trim$(CStr(ws.Cells(i, IMP_C_AN0 + j - 1).Value))
+            Dim s As String: s = Cel(area, i, IMP_C_AN0 + j - 1)
             If s <> "" Then
                 If destino(j) = "" Then
                     ' Coluna existe no cabecalho mas o analito nao esta na aba
@@ -237,6 +274,8 @@ proxima:
         End If
     End If
 
+    AtribuirRUNs regs, nReg
+
     Dim final_() As Variant, c As Long
     ReDim final_(1 To nReg, 1 To 7)
     For i = 1 To nReg
@@ -257,6 +296,44 @@ proxima:
 
     ExecutarImportacao = "OK|" & nReg & "|" & Split(res, "|")(0) & "|" & Split(res, "|")(1)
 End Function
+
+' Da a cada CORRIDA distinta (data + nucleo do lote) o seu proprio RUN.
+'
+' Le o banco UMA vez: corrida que ja existe reaproveita o numero, corrida nova
+' recebe o proximo, e o proximo avanca a cada corrida nova do lote. E o que
+' impede cinco datas coladas juntas de virarem uma corrida so.
+Private Sub AtribuirRUNs(ByRef regs As Variant, ByVal nReg As Long)
+    Dim dados As Variant, i As Long, mx As Long, k As String
+    Dim mapa As Object, novo As Object
+    Set mapa = CreateObject("Scripting.Dictionary")
+    Set novo = CreateObject("Scripting.Dictionary")
+
+    dados = CarregarDB()
+    If Not IsEmpty(dados) Then
+        For i = 1 To UBound(dados, 1)
+            If Len(Trim$(CStr(dados(i, COL_RUN)))) > 0 And IsNumeric(dados(i, COL_RUN)) Then
+                If CLng(dados(i, COL_RUN)) > mx Then mx = CLng(dados(i, COL_RUN))
+                If IsDate(dados(i, COL_DATA)) Then
+                    k = CStr(CLng(CDate(dados(i, COL_DATA)))) & "|" & Mid$(CStr(dados(i, COL_LOTE)), 4, 6)
+                    If Not mapa.Exists(k) Then mapa.Add k, CLng(dados(i, COL_RUN))
+                End If
+            End If
+        Next i
+    End If
+
+    For i = 1 To nReg
+        k = CStr(CLng(CDate(regs(i, 2)))) & "|" & Mid$(CStr(regs(i, 4)), 4, 6)
+        If mapa.Exists(k) Then
+            regs(i, 1) = mapa(k)
+        ElseIf novo.Exists(k) Then
+            regs(i, 1) = novo(k)
+        Else
+            mx = mx + 1
+            novo.Add k, mx
+            regs(i, 1) = mx
+        End If
+    Next i
+End Sub
 
 Private Function LoteExisteImp(ByVal lote As String) As Boolean
     Dim c As Collection, i As Long
