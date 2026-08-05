@@ -243,22 +243,42 @@ try {
     if ($abas -contains 'Importar') {
         $wsI = $wb.Worksheets.Item('Importar')
 
-        # o cabecalho tem de bater com a lista de analitos do produto, senao a
-        # coluna colada vai parar no analito errado
-        $wsAn = $wb.Worksheets.Item('Analitos')
-        $analitos = @()
-        for ($i = 4; $i -le 43; $i++) {
-            $v = $wsAn.Cells.Item($i, 1).Value2
-            if ($v -ne $null -and "$v".Trim() -ne '') { $analitos += "$v" }
+        # O cabecalho vem do CSV de definicao (ordem fixa do gestor), e a linha
+        # 3 -- oculta -- diz para qual analito CADASTRADO cada coluna vai. Se o
+        # de/para apontar para nome que nao existe na aba Analitos, o resultado
+        # vira linha orfa que nenhum calculo encontra.
+        $csvDef = Join-Path $arq 'src_producao\analitos_bioquimica.csv'
+        $ld = [System.IO.File]::ReadAllLines($csvDef, [System.Text.Encoding]::UTF8)
+        $sig = @(); $nom = @()
+        for ($i = 1; $i -lt $ld.Count; $i++) {
+            if ($ld[$i].Trim() -eq '') { continue }
+            $p = $ld[$i].Split(','); $sig += $p[1]; $nom += $p[2]
         }
-        $esperado = @('Data', 'Nivel', 'Lote') + $analitos
+        $esperado = @('DATA', 'NIVEL', 'LOTE') + $sig
         $lido = @()
         for ($k = 0; $k -lt $esperado.Count; $k++) {
-            $lido += "$($wsI.Cells.Item(3, $k + 2).Value2)"
+            $lido += "$($wsI.Cells.Item(4, $k + 2).Value2)"
         }
         $bate = ($lido -join '|') -eq ($esperado -join '|')
-        Anotar '1.7' 'cabecalho da aba Importar bate com os analitos do produto' $bate `
-            "$($analitos.Count) analitos + Data/Nivel/Lote"
+        Anotar '1.7' 'cabecalho da aba Importar segue a ordem definida' $bate `
+            "$($sig.Count) siglas + DATA/NIVEL/LOTE"
+
+        # de/para: toda coluna aponta para analito que existe
+        $wsAn = $wb.Worksheets.Item('Analitos')
+        $cad = @{}
+        for ($i = 4; $i -le 43; $i++) {
+            $v = $wsAn.Cells.Item($i, 1).Value2
+            if ($v -ne $null -and "$v".Trim() -ne '') { $cad["$v".Trim()] = $true }
+        }
+        $orfas = @()
+        for ($k = 0; $k -lt $nom.Count; $k++) {
+            $d = "$($wsI.Cells.Item(3, 5 + $k).Value2)".Trim()
+            if ($d -eq '') { continue }             # coluna sem cadastro: recusada em runtime
+            if (-not $cad.ContainsKey($d)) { $orfas += "$($sig[$k]) -> '$d'" }
+        }
+        Anotar '1.11' 'de/para da aba Importar aponta so para analito cadastrado' `
+            ($orfas.Count -eq 0) "$($orfas.Count) orfa(s) $($orfas -join '; ')"
+        Anotar '1.12' 'linha de/para fica oculta' $wsI.Rows.Item(3).Hidden ''
 
         # o botao que dispara a migracao
         $acaoReg = ''
@@ -280,8 +300,8 @@ try {
 
         # area de entrada destravada dentro de aba protegida: o usuario digita
         # so onde deve
-        $entradaLivre = (-not $wsI.Cells.Item(4, 2).Locked)
-        $cabTravado = $wsI.Cells.Item(3, 2).Locked
+        $entradaLivre = (-not $wsI.Cells.Item(5, 2).Locked)
+        $cabTravado = $wsI.Cells.Item(4, 2).Locked
         Anotar '1.10' 'na aba Importar so a area de colagem e editavel' `
             ($entradaLivre -and $cabTravado -and $wsI.ProtectContents) `
             "entrada livre=$entradaLivre; cabecalho travado=$cabTravado; aba protegida=$($wsI.ProtectContents)"
@@ -501,25 +521,26 @@ End Function
     $ultDbAntes = $dbNC.Cells.Item($dbNC.Rows.Count, 1).End(-4162).Row
 
     # (a) colagem valida: 2 niveis x 3 analitos = 6 resultados
-    & $escreve $wsImp 4 '14/12/2029' 1 $loteImp @(90, 35, 2.6)
-    & $escreve $wsImp 5 '14/12/2029' 2 $loteImp @(250, 80, 5.2)
+    # Dados comecam na linha 5: a 3 e o de/para oculto e a 4 e o cabecalho.
+    & $escreve $wsImp 5 '14/12/2029' 1 $loteImp @(90, 35, 2.6)
+    & $escreve $wsImp 6 '14/12/2029' 2 $loteImp @(250, 80, 5.2)
     $retImp = [string]$xl.Run('ExecutarImportacao', $true)
     $ultDbOk = $dbNC.Cells.Item($dbNC.Rows.Count, 1).End(-4162).Row
-    $abaLimpa = ("$($wsImp.Cells.Item(4,2).Value2)" -eq '' -and "$($wsImp.Cells.Item(5,2).Value2)" -eq '')
+    $abaLimpa = ("$($wsImp.Cells.Item(5,2).Value2)" -eq '' -and "$($wsImp.Cells.Item(6,2).Value2)" -eq '')
     Anotar '3.16' 'colagem valida migra para o DB_Resultados e some da aba' `
         ($retImp -like 'OK|*' -and ($ultDbOk - $ultDbAntes) -eq 6 -and $abaLimpa) `
         "retorno '$retImp' | banco $ultDbAntes -> $ultDbOk | aba limpa: $abaLimpa"
 
     # (b) colagem com UM erro: nada pode ser gravado, nem a linha boa
-    & $escreve $wsImp 4 '21/12/2029' 1 $loteImp @(91, 36, 2.7)
-    & $escreve $wsImp 5 '21/12/2029' 2 'LOTE_INEXISTENTE' @(251, 81, 5.3)
+    & $escreve $wsImp 5 '21/12/2029' 1 $loteImp @(91, 36, 2.7)
+    & $escreve $wsImp 6 '21/12/2029' 2 'LOTE_INEXISTENTE' @(251, 81, 5.3)
     $retErr = [string]$xl.Run('ExecutarImportacao', $true)
     $ultDbErr = $dbNC.Cells.Item($dbNC.Rows.Count, 1).End(-4162).Row
     # Count de uma Collection do VBA e METODO, nao propriedade: sem os
     # parenteses a ligacao tardia devolve o objeto do metodo, nao o numero.
     $cErr = 5 + $analitosImp.Count() + 1
-    $temMsg = ("$($wsImp.Cells.Item(4, $cErr).Value2)" -ne '')
-    $preservou = ("$($wsImp.Cells.Item(4,2).Value2)" -ne '')
+    $temMsg = ("$($wsImp.Cells.Item(5, $cErr).Value2)" -ne '')
+    $preservou = ("$($wsImp.Cells.Item(5,2).Value2)" -ne '')
     Anotar '3.17' 'colagem com erro nao grava NADA (nem a linha valida)' `
         ($retErr -like 'ERRO|*' -and $ultDbErr -eq $ultDbOk -and $temMsg -and $preservou) `
         "retorno '$retErr' | banco intacto em $ultDbErr | erro apontado na aba: $temMsg"
@@ -536,7 +557,7 @@ End Function
         $dbNC.Range($dbNC.Cells.Item($ultDbAntes + 1, 1), $dbNC.Cells.Item($ultDbOk, 7)).ClearContents() | Out-Null
     }
     try { $wsImp.Unprotect('qcini2025') } catch { }
-    $wsImp.Range($wsImp.Cells.Item(4, 2), $wsImp.Cells.Item(203, $cErr)).ClearContents()
+    $wsImp.Range($wsImp.Cells.Item(5, 2), $wsImp.Cells.Item(204, $cErr)).ClearContents()
     $wsImp.Protect('qcini2025', $true, $true, $true, $true)
 
     # ---- 3.8/3.9 item 2.5: alterar a elegibilidade fica registrado ----

@@ -123,8 +123,14 @@ for ($i = 1; $i -le $cm.CountOfLines; $i++) {
 }
 
 # ---------- frmMassa ----------
+# O frmMassa foi SUBSTITUIDO pela aba Importar (ADR-020) e nao existe mais no
+# arquivo de producao. Ausencia aqui e o estado esperado, nao falha: o modulo
+# mImportar ja nasce com PreverRUN na validacao e ObterOuCriarRUN na gravacao,
+# que e exatamente o que este trecho fazia no formulario.
 $fm = Get-Comp $proj 'frmMassa'
-if ($fm -eq $null) { throw 'frmMassa nao encontrado' }
+$inserido = $true
+if ($fm -ne $null) {
+$inserido = $false
 $cm = $fm.CodeModule
 for ($i = 1; $i -le $cm.CountOfLines; $i++) {
     $t = $cm.Lines($i, 1)
@@ -180,6 +186,8 @@ for ($i = 1; $i -le $cm.CountOfLines; $i++) {
 }
 }
 if (-not $inserido) { throw 'Nao encontrei ReDim final_ em frmMassa para inserir o remapeamento' }
+}
+else { "  frmMassa   ausente - substituido pela aba Importar (ADR-020)" }
 
 "alteracoes: $alteracoes"
 

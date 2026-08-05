@@ -458,3 +458,55 @@ não uma cópia que poderia divergir dele.
 analitos do produto, botões ligados, só a área de colagem editável) e 3.16–3.17
 (colagem válida migra e some da aba; colagem com erro não grava nada, nem a
 linha válida).
+
+---
+
+## ADR-021 — Produção é a fonte; o build é o produto
+
+**Data:** 05/08/2026
+**Status:** aceito
+
+**Contexto.** O sistema passou a existir em dois arquivos que ninguém tinha
+declarado como linhas distintas:
+
+| | `QC_Bioquimica.xlsm` (raiz) | `_entregas/QC_Bioquimica_hardening1.xlsm` |
+|---|---|---|
+| Aba `Importar`, 31 analitos | ✅ | ❌ |
+| Trilha de auditoria, motor, trava | ❌ | ✅ |
+
+O gestor perguntou "você já fez a trilha de auditoria?" e a resposta honesta era
+"sim, mas não no arquivo que você usa". Pior: `RegistrarLog` na produção é um
+**stub vazio**, então a importação recém-entregue gravava no banco sem rastro —
+lacuna direta em ISO 15189 §8.4.
+
+**Decisão.** As duas não são linhas rivais. `build_all.ps1` **começa copiando a
+produção**, logo:
+
+- **produção = fonte.** É onde o laboratório trabalha e onde nascem dados de
+  configuração: analitos, lotes, especificações, usuários.
+- **`_entregas/` = produto.** Recebe o que só o build sabe aplicar: motor,
+  `Eng_Saida`, trilha de auditoria encadeada, trava de estrutura, Sprint NC.
+
+Tudo que for **configuração** entra pela produção e sobe no próximo build de
+graça. Tudo que for **engenharia** entra por script versionado e nunca é
+aplicado à mão na produção.
+
+**Consequência prática.** O que era conflito virou pipeline. Três ajustes
+bastaram, e nenhum foi reescrita:
+
+1. `criar_aba_importar.ps1` deixou de gerar o cabeçalho da aba `Analitos` e
+   passou a ler o mesmo CSV que a produção usa — os dois arquivos produzem a
+   aba **idêntica**.
+2. `mImportar` existe em duas versões, `src_producao/` e `src_hardening1/`, com
+   layout igual e só a API de RUN diferente (`NovoRUN` × `PreverRUN` +
+   `ObterOuCriarRUN`). Não é duplicação preguiçosa: VBA não tem compilação
+   condicional, e um módulo chamando rotina inexistente **derruba o projeto
+   inteiro**, não só a si mesmo.
+3. `patch_forms_run.ps1` passou a tratar a ausência do `frmMassa` como estado
+   esperado — ele foi substituído, não perdido.
+
+**O que isto impede de repetir.** O defeito de julho (motor validado que nunca
+entrou no `.xlsm`) e o de hoje (aba entregue no build e ausente na produção) são
+o mesmo erro: **confundir onde a mudança foi feita com onde ela precisa estar.**
+A regra de ouro passa a ser: se o gestor abre o arquivo e não vê, não está
+pronto — independentemente de quantos testes passaram noutro artefato.

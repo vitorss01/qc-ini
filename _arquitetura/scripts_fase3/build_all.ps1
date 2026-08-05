@@ -307,6 +307,12 @@ Encerrar-Excel
 "== 7b. importacao por aba (substitui o frmMassa)"
 Etapa 'criar_aba_importar.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
 
+# O Calc e a area de UM analito por vez. Sem fixar qual, o valor de ~660
+# celulas -- e o Eng_Saida inteiro -- depende de qual analito o spinner deixou
+# selecionado, e a conferencia de formulas vira ruido. Fixar por NOME, nao por
+# posicao: a posicao e justamente o que muda quando a lista e reordenada.
+Etapa 'fixar_analito_referencia.ps1' -Argumentos @('-Workbook', $alvo, '-Analito', 'Glicose') -Ultimas 1
+
 Encerrar-Excel
 # Depois do motor: AtualizarPainelEng nao toca em titulo de eixo, mas a ordem
 # aqui garante que o rotulo final e o ultimo estado gravado. Antes da trava,
