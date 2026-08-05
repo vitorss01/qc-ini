@@ -187,7 +187,8 @@ try {
     $modulos = @(
         @{ Nome = 'mEstatistica'; Arquivo = (Join-Path $hp 'mEstatistica.bas') },
         @{ Nome = 'mDados'; Arquivo = (Join-Path $hp 'mDados.bas') },
-        @{ Nome = 'mAuditoria'; Arquivo = (Join-Path $hp 'mAuditoria.bas') }
+        @{ Nome = 'mAuditoria'; Arquivo = (Join-Path $hp 'mAuditoria.bas') },
+        @{ Nome = 'mImportar'; Arquivo = (Join-Path $hp 'mImportar.bas') }
     )
     foreach ($m in $modulos) {
         $comp = $null
@@ -231,8 +232,59 @@ try {
     # abas obrigatorias
     $abas = @()
     foreach ($ws in $wb.Worksheets) { $abas += $ws.Name }
-    foreach ($n in @('Eng_Saida', 'Corridas', 'Audit_Log')) {
+    foreach ($n in @('Eng_Saida', 'Corridas', 'Audit_Log', 'Importar')) {
         Anotar '1.3' "aba $n existe" ($abas -contains $n) ''
+    }
+
+    # --- aba Importar: a substituta do frmMassa -------------------------------
+    # O usuario cola os dados na horizontal (uma corrida por linha) e clica em
+    # Registrar. Aqui so a MONTAGEM e conferida; que ela grava (e que recusa
+    # colagem invalida) e provado em 3.16, com o motor rodando.
+    if ($abas -contains 'Importar') {
+        $wsI = $wb.Worksheets.Item('Importar')
+
+        # o cabecalho tem de bater com a lista de analitos do produto, senao a
+        # coluna colada vai parar no analito errado
+        $wsAn = $wb.Worksheets.Item('Analitos')
+        $analitos = @()
+        for ($i = 4; $i -le 43; $i++) {
+            $v = $wsAn.Cells.Item($i, 1).Value2
+            if ($v -ne $null -and "$v".Trim() -ne '') { $analitos += "$v" }
+        }
+        $esperado = @('Data', 'Nivel', 'Lote') + $analitos
+        $lido = @()
+        for ($k = 0; $k -lt $esperado.Count; $k++) {
+            $lido += "$($wsI.Cells.Item(3, $k + 2).Value2)"
+        }
+        $bate = ($lido -join '|') -eq ($esperado -join '|')
+        Anotar '1.7' 'cabecalho da aba Importar bate com os analitos do produto' $bate `
+            "$($analitos.Count) analitos + Data/Nivel/Lote"
+
+        # o botao que dispara a migracao
+        $acaoReg = ''
+        foreach ($sh in $wsI.Shapes) { if ($sh.Name -eq 'btnRegistrar') { $acaoReg = $sh.OnAction } }
+        Anotar '1.8' 'botao Registrar na aba Importar' ($acaoReg -eq 'RegistrarImportacao') `
+            "OnAction = '$acaoReg'"
+
+        # o caminho de ida: o botao da aba Resultados nao pode mais abrir o
+        # frmMassa, que foi substituido
+        $acaoIda = ''
+        $aindaMassa = $false
+        foreach ($sh in $wb.Worksheets.Item('Resultados').Shapes) {
+            if ($sh.OnAction -eq 'IrParaImportar') { $acaoIda = $sh.OnAction }
+            if ($sh.OnAction -eq 'AbrirFormMassa') { $aindaMassa = $true }
+        }
+        Anotar '1.9' 'botao da aba Resultados leva para a aba Importar' `
+            ($acaoIda -eq 'IrParaImportar' -and -not $aindaMassa) `
+            "IrParaImportar=$($acaoIda -ne ''); AbrirFormMassa restante=$aindaMassa"
+
+        # area de entrada destravada dentro de aba protegida: o usuario digita
+        # so onde deve
+        $entradaLivre = (-not $wsI.Cells.Item(4, 2).Locked)
+        $cabTravado = $wsI.Cells.Item(3, 2).Locked
+        Anotar '1.10' 'na aba Importar so a area de colagem e editavel' `
+            ($entradaLivre -and $cabTravado -and $wsI.ProtectContents) `
+            "entrada livre=$entradaLivre; cabecalho travado=$cabTravado; aba protegida=$($wsI.ProtectContents)"
     }
 
     # ------------------------------------------------ 2. motor executa --------
@@ -418,6 +470,74 @@ End Function
     try { $regNC.Unprotect('qcini2025') } catch { }
     $regNC.Range($regNC.Cells.Item($regAntes, 2), $regNC.Cells.Item($regAntes, 13)).ClearContents()
     $regNC.Visible = 2
+
+    # ---- 3.16 e 3.17 importacao por aba, de ponta a ponta ----
+    # O pedido do gestor era simples: "esse botao faz com que os dados sumam
+    # dali e ja migrem para o DB_Resultados". As duas metades disso sao
+    # verificadas aqui -- migra o que esta valido, e NAO migra nada quando ha
+    # qualquer erro (tudo-ou-nada).
+    #
+    # Chama ExecutarImportacao, que e o mesmo nucleo do botao Registrar; o botao
+    # so acrescenta MsgBox, que travaria a execucao sem interface.
+    $wsImp = $wb.Worksheets.Item('Importar')
+    $wsImp.Visible = -1
+    $lotesImp = $xl.Run('ListaLotes')
+    $loteImp = [string]$lotesImp.Item(1)
+    $analitosImp = $xl.Run('ListaAnalitos')
+
+    # Escrita inline e com conversao explicita. Uma funcao auxiliar aqui esbarra
+    # na conversao do COM (o setter de Value2 e propriedade parametrizada e a
+    # ligacao tardia nao aceita o Int32 vindo de parametro nao tipado).
+    $escreve = {
+        param($Ws, $Linha, $Data, $Nivel, $Lote, $Valores)
+        $Ws.Cells.Item([int]$Linha, 2).Value2 = [string]$Data
+        $Ws.Cells.Item([int]$Linha, 3).Value2 = [double]$Nivel
+        $Ws.Cells.Item([int]$Linha, 4).Value2 = [string]$Lote
+        for ($k = 0; $k -lt $Valores.Count; $k++) {
+            $Ws.Cells.Item([int]$Linha, 5 + $k).Value2 = [double]$Valores[$k]
+        }
+    }
+
+    $ultDbAntes = $dbNC.Cells.Item($dbNC.Rows.Count, 1).End(-4162).Row
+
+    # (a) colagem valida: 2 niveis x 3 analitos = 6 resultados
+    & $escreve $wsImp 4 '14/12/2029' 1 $loteImp @(90, 35, 2.6)
+    & $escreve $wsImp 5 '14/12/2029' 2 $loteImp @(250, 80, 5.2)
+    $retImp = [string]$xl.Run('ExecutarImportacao', $true)
+    $ultDbOk = $dbNC.Cells.Item($dbNC.Rows.Count, 1).End(-4162).Row
+    $abaLimpa = ("$($wsImp.Cells.Item(4,2).Value2)" -eq '' -and "$($wsImp.Cells.Item(5,2).Value2)" -eq '')
+    Anotar '3.16' 'colagem valida migra para o DB_Resultados e some da aba' `
+        ($retImp -like 'OK|*' -and ($ultDbOk - $ultDbAntes) -eq 6 -and $abaLimpa) `
+        "retorno '$retImp' | banco $ultDbAntes -> $ultDbOk | aba limpa: $abaLimpa"
+
+    # (b) colagem com UM erro: nada pode ser gravado, nem a linha boa
+    & $escreve $wsImp 4 '21/12/2029' 1 $loteImp @(91, 36, 2.7)
+    & $escreve $wsImp 5 '21/12/2029' 2 'LOTE_INEXISTENTE' @(251, 81, 5.3)
+    $retErr = [string]$xl.Run('ExecutarImportacao', $true)
+    $ultDbErr = $dbNC.Cells.Item($dbNC.Rows.Count, 1).End(-4162).Row
+    # Count de uma Collection do VBA e METODO, nao propriedade: sem os
+    # parenteses a ligacao tardia devolve o objeto do metodo, nao o numero.
+    $cErr = 5 + $analitosImp.Count() + 1
+    $temMsg = ("$($wsImp.Cells.Item(4, $cErr).Value2)" -ne '')
+    $preservou = ("$($wsImp.Cells.Item(4,2).Value2)" -ne '')
+    Anotar '3.17' 'colagem com erro nao grava NADA (nem a linha valida)' `
+        ($retErr -like 'ERRO|*' -and $ultDbErr -eq $ultDbOk -and $temMsg -and $preservou) `
+        "retorno '$retErr' | banco intacto em $ultDbErr | erro apontado na aba: $temMsg"
+
+    # Desfaz: limpa SO as colunas do banco (A:G) nas linhas de teste.
+    #
+    # Nao usar Rows.Delete aqui. O DB_Resultados nao e so A:G: tem o bloco de
+    # formulas BA:BD ate a linha ~15000 e as duas tabelas de log em BG..BY e
+    # CB..CT. Apagar a linha inteira desloca tudo isso para cima e destroi
+    # formulas que nada tem a ver com o teste -- foi o que aconteceu em
+    # 05/08/2026 e derrubou o item 4.1 com 18 formulas AUSENTES.
+    try { $dbNC.Unprotect('qcini2025') } catch { }
+    if ($ultDbOk -gt $ultDbAntes) {
+        $dbNC.Range($dbNC.Cells.Item($ultDbAntes + 1, 1), $dbNC.Cells.Item($ultDbOk, 7)).ClearContents() | Out-Null
+    }
+    try { $wsImp.Unprotect('qcini2025') } catch { }
+    $wsImp.Range($wsImp.Cells.Item(4, 2), $wsImp.Cells.Item(203, $cErr)).ClearContents()
+    $wsImp.Protect('qcini2025', $true, $true, $true, $true)
 
     # ---- 3.8/3.9 item 2.5: alterar a elegibilidade fica registrado ----
     # Cfg_Status decide o que entra em media/DP/CV/Bias/Sigma/Westgard. Mudar uma

@@ -185,6 +185,11 @@ Start-Sleep -Seconds 2
 Copy-Item $prod $alvo -Force
 
 Encerrar-Excel
+# O arquivo de producao e onde o usuario trabalha: se ele logar (LockApp
+# protege todas as abas) e salvar, o arquivo fica gravado travado. O build nao
+# pode depender de como a ultima sessao terminou -- aqui o artefato volta a um
+# estado conhecido.
+Etapa 'normalizar_protecao.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
 "== 1. gera os modulos VBA a partir dos patches"
 Mostrar (& (Join-Path $s 'gerar_mEstatistica.ps1') `
     -Producao (Join-Path $snapMotor 'vba\mEstatistica.bas') `
@@ -203,6 +208,7 @@ Mostrar (& (Join-Path $s 'gerar_mDados.ps1') `
 # mRegistros e copiado para a pasta do produto antes de ser corrigido: o
 # original em src_hardening1 e compartilhado e nao pode ser mutado.
 Copy-Item (Join-Path $h 'mRegistros.bas') (Join-Path $hp 'mRegistros.bas') -Force
+Copy-Item (Join-Path $h 'mImportar.bas') (Join-Path $hp 'mImportar.bas') -Force
 Copy-Item (Join-Path $h 'mAuditoria.bas') (Join-Path $hp 'mAuditoria.bas') -Force
 Mostrar (& (Join-Path $s 'corrigir_silenciamento.ps1') -Arquivo (Join-Path $hp 'mEstatistica.bas') -Alvo 'mEstatistica')
 Mostrar (& (Join-Path $s 'corrigir_silenciamento.ps1') -Arquivo (Join-Path $hp 'mRegistros.bas') -Alvo 'mRegistros')
@@ -253,6 +259,7 @@ Encerrar-Excel
     (Join-Path $h 'mConfig.bas'),
     (Join-Path $h 'mLogDB.bas'),
     (Join-Path $hp 'mRegistros.bas'),
+    (Join-Path $hp 'mImportar.bas'),
     (Join-Path $h 'Planilha7.cls')
 )
 
@@ -295,6 +302,10 @@ if (-not $PularMotor) {
     # a ligacao falha com 'nao e possivel processar a transformacao'.
     Etapa 'rodar_motor.ps1' -Argumentos @('-Workbook', $alvo, '-Rotinas', 'AtualizarCalc,AtualizarPainelEng,AtualizarEstatisticaAba') -Ultimas 4
 }
+
+Encerrar-Excel
+"== 7b. importacao por aba (substitui o frmMassa)"
+Etapa 'criar_aba_importar.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
 
 Encerrar-Excel
 "== 8. trava a estrutura (abas so pelo Modo Desenvolvedor)"

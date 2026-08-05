@@ -403,3 +403,58 @@ do banco que o gerou.
 
 **Como se verifica.** Item 2.1 do Quality Gate: varredura de fórmulas nas abas de
 interface procurando referência direta a `DB_Resultados`. Esperado: zero.
+
+---
+
+## ADR-020 — A importação em massa é uma ABA, não um formulário
+
+**Data:** 05/08/2026
+**Status:** aceito
+**Substitui:** o `frmMassa` (F2-5)
+
+**Contexto.** O `frmMassa` pedia que o analista colasse dados numa caixa de texto.
+Isso inverte a forma como ele pensa: na bancada o dado nasce numa tabela com os
+analitos lado a lado, uma corrida por linha — que é exatamente o formato em que
+o equipamento exporta e a planilha de origem já vive. Colar isso num TextBox
+obrigava o usuário a conferir no escuro, sem ver colunas nem cabeçalho.
+
+**Decisão.** A entrada em massa passa a ser a aba `Importar`:
+
+- cabeçalho `Data | Nível | Lote | <analitos do produto>`, gerado **da aba
+  Analitos** do próprio produto (Bioquímica 20, Hematologia 28 — paramétrico por
+  construção, não por lista fixa);
+- só a área de colagem é destravada; cabeçalho e resto da aba ficam protegidos;
+- o botão **Registrar** migra os dados para o `DB_Resultados` e limpa a aba;
+- o botão da aba `Resultados` deixa de abrir o `frmMassa` e passa a navegar
+  para cá.
+
+**O que NÃO mudou.** A origem é outra; o pipeline é o mesmo do ADR-018. A aba
+não escreve no banco: ela alimenta a mesma sequência
+`ParseData → ParseNum → CodigoLote → ObterOuCriarRUN → UpsertResultados`.
+Nenhuma origem gera RUN, e nenhuma escrita escapa da trilha de auditoria.
+Reaproveitar essas rotinas em vez de reescrevê-las é o que garante que a
+importação por aba e o `frmCorrida` não possam divergir em regra.
+
+**Tudo-ou-nada.** Se qualquer linha tiver problema, **nada** é gravado: as
+inconsistências aparecem numa coluna à direita e o usuário corrige. O banco
+nunca recebe importação pela metade. Duas consequências que valeram correção
+depois do primeiro teste:
+
+1. Os valores dos analitos são validados **mesmo quando o cabeçalho da linha
+   está inválido**. Se o laço só rodasse com data/nível/lote corretos, um valor
+   não numérico ficaria escondido até o usuário consertar a data e clicar de
+   novo — e o tudo-ou-nada deixaria de mostrar tudo de uma vez.
+2. Duas linhas para a **mesma corrida e nível** são recusadas. O `Upsert`
+   obedeceria e a segunda sobrescreveria a primeira em silêncio; numa colagem
+   isso é erro de digitação, não intenção, e perda de dado sem aviso contradiz
+   a prioridade de integridade.
+
+**Interface separada da regra.** `RegistrarImportacao` (o botão) só traduz
+resultado em `MsgBox`; toda a regra vive em `ExecutarImportacao(silencioso)`.
+Assim o teste automatizado exercita o **mesmo** código que o botão executa, e
+não uma cópia que poderia divergir dele.
+
+**Como se verifica.** Itens 1.7–1.10 do Quality Gate (cabeçalho bate com os
+analitos do produto, botões ligados, só a área de colagem editável) e 3.16–3.17
+(colagem válida migra e some da aba; colagem com erro não grava nada, nem a
+linha válida).

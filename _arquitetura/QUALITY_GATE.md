@@ -243,6 +243,7 @@ não vale.
 | 6.2 | Padronização "Corrida" → "RUN" | ⏳ | Pendente em gráficos, mensagens e cabeçalhos |
 | 6.3 | Eixo X alinhado ao RUN | ⏳ | Pendente |
 | 6.4 | 52 achados de UX/arquitetura triados | ⏳ | `FASE3A_achados_estaticos.md` |
+| 6.5 | Importação por aba substitui o `frmMassa` | ✅ | Bioquímica. Analitos na horizontal, colagem direta, botão **Registrar** migra para `DB_Resultados` e limpa a aba. Provas 1.7–1.10 (montagem) e 3.16–3.17 (execução) |
 
 ---
 
@@ -251,7 +252,7 @@ não vale.
 > **Regra de merge:** nada entra na `main` enquanto houver ⏳ ou ❌.
 > A branch `fase3a-motor-cqi` é de trabalho; se um PR for aberto, deve ser **draft**.
 
-**23 ✅ · 19 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
+**24 ✅ · 19 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
 
 O **motor** está pronto e validado. O **sistema** ainda não é auditável nem confiável.
 

@@ -87,7 +87,8 @@ if ($primeiroProc -ge 0) {
 # lint: identificador colidindo com palavra reservada (a mesma classe do aS)
 $reservadas = @('As', 'If', 'Then', 'Else', 'For', 'Next', 'To', 'Do', 'Loop',
     'And', 'Or', 'Not', 'Is', 'New', 'Set', 'Let', 'Sub', 'Function', 'End',
-    'Dim', 'Type', 'Each', 'In', 'With', 'Call', 'Exit', 'Const', 'Byte')
+    'Dim', 'Type', 'Each', 'In', 'With', 'Call', 'Exit', 'Const', 'Byte',
+    'Imp', 'Eqv', 'Xor', 'Mod', 'Like', 'Step', 'Case', 'Erase', 'Stop')
 $achados = New-Object System.Collections.ArrayList
 for ($i = 0; $i -lt $out.Count; $i++) {
     $linha = $out[$i]
