@@ -510,3 +510,76 @@ entrou no `.xlsm`) e o de hoje (aba entregue no build e ausente na produção) s
 o mesmo erro: **confundir onde a mudança foi feita com onde ela precisa estar.**
 A regra de ouro passa a ser: se o gestor abre o arquivo e não vê, não está
 pronto — independentemente de quantos testes passaram noutro artefato.
+
+---
+
+## ADR-022 — Especificações de Qualidade como módulo, com histórico por ano
+
+**Data:** 05/08/2026
+**Status:** aceito
+**Relacionado:** ADR-018 (pipeline), ADR-019 (motor é a única camada de cálculo)
+
+**Contexto.** A meta analítica define *contra o que* o laboratório é julgado. Hoje
+ela existe na aba `Analitos`, colunas `K`–`W`, e a matemática está correta:
+`S = TEa/3`, `T = CVi × fi`, `R` resolvido por cascata, e a tabela de rigor
+`U:W` com ÓTI 0,25/0,125 · DES 0,5/0,25 · MIN 0,75/0,375. Três defeitos de
+**modelagem**, porém, a tornam inadequada para uso real:
+
+1. **Não há dimensão ANO.** O CLIA mudou em 2024; a variação biológica é
+   revisada periodicamente. Sem histórico, reabrir uma corrida de 2025 em 2030 a
+   julga pela meta de 2030 — o laudo deixa de ser reproduzível, o que é
+   inaceitável sob ISO 15189 §7.6.
+2. **A spec mora no armazém POR LOTE** (`aInput` = `E4:P43`, que inclui `K..P`).
+   TEa CLIA é constante regulatória e CVi/CVg são constantes biológicas: **não
+   são propriedades do lote**. Trocar o lote hoje troca o CLIA junto.
+3. **Não há escolha de fonte** — é cascata fixa `Config > CLIA > VB`. O
+   Fabricante sequer participa: existe `L = CV Fab %` que não alimenta nada, e
+   não existe BIAStp em lugar nenhum.
+
+**Decisão — camadas, iguais às do resto do sistema.**
+
+```
+DB_Especificacoes  (banco tabular, append)
+        ↓
+mEspecificacoes    (motor: resolve Ano+Analito+Fonte → CVtp, BIAStp, ETp)
+        ↓
+Eng_Saida / Painel / Estatística   (só leem)
+```
+
+Nenhuma aba de interface volta a calcular meta. Vale o ADR-019 sem exceção.
+
+**FONTE é dado; MODELO é um conjunto fechado.**
+
+Aqui divergimos de "cadastre qualquer fonte e nunca mexa no código". Cada fonte
+**informa grandezas diferentes**, e é isso que decide a conta:
+
+| Modelo | A fonte informa | O motor deriva |
+|---|---|---|
+| `ETP_DIRETO` | ETp | `CVtp = ETp/3`; BIAStp indefinido |
+| `VB` | CVi, CVg, rigor | `CVtp = CVi·fi` · `BIAStp = √(CVi²+CVg²)·fb` · `ETp = BIAStp + 1,65·CVtp` |
+| `CV_BIAS_DIRETO` | CVtp, BIAStp | `ETp = BIAStp + 1,65·CVtp` |
+
+CLIA usa `ETP_DIRETO`; Variação Biológica usa `VB`; Fabricante usa
+`CV_BIAS_DIRETO`. **Ricós, EFLM, CAP, RCPA, Rilibak entram como LINHA, escolhendo
+um dos três modelos — sem tocar em código.** Uma fonte com matemática realmente
+nova exige um modelo novo, e dizer isso é mais honesto do que prometer
+extensibilidade infinita.
+
+**A meta é resolvida pelo ANO DO RESULTADO, nunca pelo ano corrente.**
+
+Este é o requisito central. A regra é de vigência: vale a especificação de maior
+`Ano` que seja **≤ ano do resultado**. Assim um resultado de 2025 continua sendo
+julgado pela meta de 2025 em 2035, e cadastrar a meta de 2027 não reescreve o
+passado. Casar por ano exato seria pior: abriria buracos em todo ano sem
+cadastro.
+
+**Rastreabilidade.** O motor devolve, além dos três números, a `Fonte`, o `Ano`
+vigente, o `Rigor` e o **ID da especificação** aplicada. Esse ID é o que permite
+ao `Audit_Log` registrar *contra qual meta* uma corrida foi julgada — sem ele, a
+trilha diz o que foi decidido mas não com base em quê.
+
+**Migração, não convivência.** As colunas `K`–`W` da `Analitos` são a
+implementação anterior. Manter as duas seria criar duas fontes de verdade para o
+ETp — exatamente a divergência que o ADR-019 existe para impedir. Os valores
+atuais são migrados para `DB_Especificacoes` com o ano vigente, e a `Analitos`
+passa a **exibir** o que o motor resolveu.
