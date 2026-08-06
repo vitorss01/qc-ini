@@ -190,6 +190,14 @@ Encerrar-Excel
 # pode depender de como a ultima sessao terminou -- aqui o artefato volta a um
 # estado conhecido.
 Etapa 'normalizar_protecao.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
+
+# A FIXTURE PERTENCE AO BUILD, NAO A PRODUCAO.
+#
+# A suite sempre exercitou o sistema sobre os 1.000 resultados ficticios que
+# moravam no arquivo de producao. Quando a producao foi limpa para o uso real,
+# o artefato nasceu vazio e a suite travou lendo uma linha que nao existia.
+# Dado de teste e responsabilidade de quem testa.
+Etapa 'semear_dados_teste.ps1' -Argumentos @('-Workbook', $alvo, '-NLV', $NLV) -Ultimas 4
 "== 1. gera os modulos VBA a partir dos patches"
 Mostrar (& (Join-Path $s 'gerar_mEstatistica.ps1') `
     -Producao (Join-Path $snapMotor 'vba\mEstatistica.bas') `
