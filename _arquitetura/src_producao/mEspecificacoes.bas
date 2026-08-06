@@ -55,6 +55,13 @@ Public Const MOD_ETP As String = "ETP_DIRETO"
 Public Const MOD_VB As String = "VB"
 Public Const MOD_CVBIAS As String = "CV_BIAS_DIRETO"
 
+' Camada de saida. Const de MODULO tem de ficar ANTES da primeira rotina: em
+' VBA, declarada no meio do arquivo ela simplesmente nao existe para o
+' compilador, e o erro sai como "variavel nao definida" na rotina que a usa --
+' longe da causa. Mesmo lint que ja existe em gerar_mDados_audit.ps1.
+Public Const ENGE As String = "Eng_Especificacoes"
+Public Const ENGE_R0 As Long = 4
+
 ' Cache da resolucao. Sem ele, desenhar o Painel refaz a mesma varredura do
 ' banco para cada analito e cada nivel.
 Private mCache As Object
@@ -397,4 +404,87 @@ Public Function GravarEspec(ByVal ano As Long, ByVal fonte As String, ByVal anal
     InvalidarCacheEspec
     RegistrarLog "ESPEC_GRAVADA", novoID & " " & fonte & " " & ano & " " & analito
     GravarEspec = novoID
+End Function
+
+' ===========================================================================
+' CAMADA DE SAIDA: Eng_Especificacoes
+'
+' Mesmo padrao do Eng_Saida. O motor ESCREVE aqui; Painel e Estatistica apenas
+' REFERENCIAM. Nenhuma aba de interface chama o motor por UDF nem repete a
+' formula -- a interface seleciona e formata, nunca calcula (ADR-019).
+'
+' O ANO DE CONTEXTO e o do resultado mais recente do lote em uso, e fica
+' GRAVADO em B1 para o usuario ver contra qual ano a meta esta sendo aplicada.
+' Meta aplicada em silencio, sem dizer de que ano e, e meta que ninguem audita.
+
+Public Sub AtualizarEngEspec()
+    Dim ws As Worksheet, c As Collection, i As Long
+    Dim ano As Long, fonte As String, r As String, p() As String
+    Dim buf() As Variant, n As Long
+
+    On Error GoTo fim
+    Set ws = ThisWorkbook.Sheets(ENGE)
+    fonte = FontePadrao()
+    ano = AnoDeContexto()
+
+    ws.Range("B1").Value = ano
+    ws.Range("D1").Value = fonte
+
+    Set c = ListaAnalitos()
+    n = c.Count
+    If n = 0 Then Exit Sub
+    ReDim buf(1 To n, 1 To 8)
+
+    For i = 1 To n
+        buf(i, 1) = c(i)
+        r = ResolverEspec(CStr(c(i)), ano, fonte)
+        If Left$(r, 2) = "OK" Then
+            p = Split(r, "|")
+            buf(i, 2) = fonte
+            buf(i, 3) = Val(p(5))                         ' ano vigente
+            buf(i, 4) = IIf(Len(p(1)) > 0, Val(p(1)), "") ' CVtp
+            buf(i, 5) = IIf(Len(p(2)) > 0, Val(p(2)), "") ' BIAStp
+            buf(i, 6) = IIf(Len(p(3)) > 0, Val(p(3)), "") ' ETp
+            buf(i, 7) = p(6)                              ' rigor
+            buf(i, 8) = p(7)                              ' ID da especificacao
+        Else
+            buf(i, 2) = fonte
+            buf(i, 3) = "": buf(i, 4) = "": buf(i, 5) = ""
+            buf(i, 6) = "": buf(i, 7) = "": buf(i, 8) = ""
+        End If
+    Next i
+
+    ws.Range(ws.Cells(ENGE_R0, 1), ws.Cells(ENGE_R0 + 39, 8)).ClearContents
+    ws.Range(ws.Cells(ENGE_R0, 1), ws.Cells(ENGE_R0 + n - 1, 8)).Value = buf
+fim:
+End Sub
+
+' Ano contra o qual a meta e aplicada no Painel e na Estatistica.
+'
+' E o ano do resultado MAIS RECENTE do lote em uso -- nao Year(Date). O sistema
+' precisa poder reabrir um lote de 2025 daqui a cinco anos e reproduzir a meta
+' vigente naquela epoca; usar o ano corrente destruiria isso em silencio.
+'
+' Cfg_Especificacoes!B4 > 0 forca um ano, para conferencia e reprocessamento.
+Public Function AnoDeContexto() As Long
+    Dim ws As Worksheet, forcado As Long
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets("Cfg_Especificacoes")
+    If Not ws Is Nothing Then forcado = CLng(Val(CStr(ws.Range("B4").Value)))
+    On Error GoTo 0
+    If forcado > 0 Then AnoDeContexto = forcado: Exit Function
+
+    Dim dados As Variant, i As Long, mx As Date, lote As String
+    lote = LoteAtivoCore()
+    dados = CarregarDB()
+    If Not IsEmpty(dados) Then
+        For i = 1 To UBound(dados, 1)
+            If IsDate(dados(i, COL_DATA)) Then
+                If lote = "" Or Mid$(CStr(dados(i, COL_LOTE)), 4, 6) = lote Then
+                    If CDate(dados(i, COL_DATA)) > mx Then mx = CDate(dados(i, COL_DATA))
+                End If
+            End If
+        Next i
+    End If
+    If mx = 0 Then AnoDeContexto = Year(Date) Else AnoDeContexto = Year(mx)
 End Function
