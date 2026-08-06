@@ -201,6 +201,11 @@ try {
     $esperaEspec = ($Produto -eq 'Bioquimica')
     if ($esperaEspec) {
         $modulos += @{ Nome = 'mEspecificacoes'; Arquivo = (Join-Path $arq 'src_producao\mEspecificacoes.bas') }
+        # mEstatPeriodo chega pelo mesmo caminho (copia da producao) e e a
+        # camada que decide n, CV, Bias e ET de cada analito. Sem esta prova, a
+        # fonte versionada e o que roda dentro do arquivo podem divergir sem que
+        # nada acuse -- o defeito que o ADR-021 existe para impedir.
+        $modulos += @{ Nome = 'mEstatPeriodo'; Arquivo = (Join-Path $arq 'src_producao\mEstatPeriodo.bas') }
     }
     foreach ($m in $modulos) {
         $comp = $null

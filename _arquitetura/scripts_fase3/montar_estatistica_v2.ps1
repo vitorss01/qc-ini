@@ -83,13 +83,29 @@ try {
     $RN = 86
 
     # ---------- 1. realoca o bloco de bias do EQC (P:U -> AA:AF) ----------
-    $jaMoveu = ("$($est.Cells(6,27).Value2)".Trim() -ne '')
-    if (-not $jaMoveu) {
+    # A GUARDA OLHA A ORIGEM, NAO O DESTINO.
+    #
+    # A versao anterior perguntava "AA6 tem conteudo? entao ja mudei" -- decidia
+    # sobre a ORIGEM olhando o DESTINO. Entre execucoes sucessivas (umas salvando,
+    # outras recusadas pela conferencia) houve uma passagem com AA6 vazio e P:U JA
+    # CONTENDO AS COLUNAS NOVAS: a copia levou as colunas novas para AA:AF e
+    # limpou P:U. O bloco do EQC deixou de existir -- 480 formulas.
+    #
+    # Quem pegou foi a prova 4.1, apontando Estatistica!T e Estatistica!U. Sem
+    # ela o bloco teria sumido calado, e so faria falta no dia do primeiro ensaio
+    # de proficiencia.
+    #
+    # A pergunta certa e sobre a ORIGEM: "P:U ainda e o bloco antigo?". Se P6 ja
+    # diz "ETP VB %", a origem e o layout NOVO e nao ha nada para mover.
+    $origemEhAntiga = ("$($est.Cells(6,16).Value2)" -notlike '*ETP VB*' -and "$($est.Cells(6,17).Value2)" -notlike '*Status ETP*')
+    $destinoOcupado = ("$($est.Cells(7,27).Formula)" -like '=*')
+    if ($origemEhAntiga -and -not $destinoOcupado) {
         $est.Range($est.Cells(6, 16), $est.Cells($RN, 21)).Copy($est.Cells(6, 27)) | Out-Null
         $est.Range($est.Cells(6, 16), $est.Cells($RN, 21)).ClearContents() | Out-Null
         "bloco de bias do EQC realocado: P:U -> AA:AF"
     }
-    else { "bloco AA:AF ja existe, preservado" }
+    elseif ($destinoOcupado) { "bloco AA:AF ja preenchido, preservado (nada movido)" }
+    else { "P:U ja esta no layout novo, nada a mover" }
 
     # ---------- 2. painel de filtros (linhas 1..5) ----------
     #
