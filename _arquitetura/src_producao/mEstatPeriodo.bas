@@ -60,11 +60,59 @@ Private mCarimbo As String
 ' CStr de data numa maquina pt-BR devolve "05/01/2026"; noutra devolve outra
 ' coisa. O carimbo do cache precisa ser estavel, entao usa o serial numerico.
 Private Function Carimbo(ByVal dtIni As Double, ByVal dtFim As Double, _
-                         ByVal exIni As Double, ByVal exFim As Double, _
+                         ByRef ex() As Double, ByVal nEx As Long, _
                          ByVal lote As String, ByVal ultima As Long) As String
-    Carimbo = Trim$(Str$(dtIni)) & "|" & Trim$(Str$(dtFim)) & "|" & _
-              Trim$(Str$(exIni)) & "|" & Trim$(Str$(exFim)) & "|" & _
-              UCase$(Trim$(lote)) & "|" & Trim$(Str$(ultima))
+    Dim s As String, i As Long
+    s = Trim$(Str$(dtIni)) & "|" & Trim$(Str$(dtFim))
+    For i = 1 To nEx
+        s = s & "|" & Trim$(Str$(ex(i, 1))) & "-" & Trim$(Str$(ex(i, 2)))
+    Next i
+    Carimbo = s & "|" & UCase$(Trim$(lote)) & "|" & Trim$(Str$(ultima))
+End Function
+
+' ---------------------------------------------------------------------------
+' Le o bloco de exclusoes (intervalo Nx2: inicio na coluna 1, fim na coluna 2).
+'
+' UM ARGUMENTO, NAO DEZ.
+'
+' Acrescentar exIni2..exFim5 a assinatura resolveria hoje e cobraria caro
+' depois: dez parametros para ler, uma formula ilegivel em 372 celulas, e uma
+' sexta exclusao exigindo mexer no codigo e reescrever a aba inteira. Um
+' intervalo e um argumento so -- e o Excel continua enxergando a dependencia,
+' que e o que faz a aba recalcular quando o usuario digita uma data.
+'
+' Par incompleto (uma ponta so) e IGNORADO, nao adivinhado: exclusao pela
+' metade descartaria historico por um preenchimento inacabado.
+' Par invertido (fim antes do inicio) tambem e ignorado.
+Private Function LerExclusoes(ByVal exclusoes As Variant, ByRef ex() As Double) As Long
+    Dim v As Variant, i As Long, n As Long, a As Double, b As Double
+    ReDim ex(1 To 50, 1 To 2)
+    n = 0
+    If IsMissing(exclusoes) Then LerExclusoes = 0: Exit Function
+    If IsEmpty(exclusoes) Then LerExclusoes = 0: Exit Function
+
+    On Error GoTo fim
+    v = exclusoes
+    If Not IsArray(v) Then
+        ' celula unica nao forma par: nao ha o que excluir
+        LerExclusoes = 0
+        Exit Function
+    End If
+
+    For i = LBound(v, 1) To UBound(v, 1)
+        If n >= 50 Then Exit For
+        a = ComoData(v(i, LBound(v, 2)))
+        b = ComoData(v(i, LBound(v, 2) + 1))
+        If a > 0 And b > 0 Then
+            If b >= a Then
+                n = n + 1
+                ex(n, 1) = a
+                ex(n, 2) = b
+            End If
+        End If
+    Next i
+fim:
+    LerExclusoes = n
 End Function
 
 Private Function UltimaLinhaEP() As Long
@@ -109,14 +157,14 @@ End Function
 ' ---------------------------------------------------------------------------
 ' Varre o banco UMA vez e agrega por analito+nivel.
 Private Sub Agregar(ByVal dtIni As Double, ByVal dtFim As Double, _
-                    ByVal exIni As Double, ByVal exFim As Double, _
+                    ByRef ex() As Double, ByVal nEx As Long, _
                     ByVal lote As String)
-    Dim ws As Worksheet, ult As Long, dados As Variant, i As Long
+    Dim ws As Worksheet, ult As Long, dados As Variant, i As Long, j As Long
     Dim c As String, k As String, d As Double, v As Double
     Dim reg As Variant
 
     ult = UltimaLinhaEP()
-    c = Carimbo(dtIni, dtFim, exIni, exFim, lote, ult)
+    c = Carimbo(dtIni, dtFim, ex, nEx, lote, ult)
     If Not mAgg Is Nothing Then
         If mCarimbo = c Then Exit Sub
     End If
@@ -143,11 +191,11 @@ Private Sub Agregar(ByVal dtIni As Double, ByVal dtFim As Double, _
         If dtIni > 0 Then If d < dtIni Then GoTo proxima
         If dtFim > 0 Then If d > dtFim Then GoTo proxima
 
-        ' janela de EXCLUSAO: so vale quando as DUAS pontas existem. Uma ponta
-        ' so descartaria metade do historico por um preenchimento incompleto.
-        If exIni > 0 And exFim > 0 Then
-            If d >= exIni And d <= exFim Then GoTo proxima
-        End If
+        ' janelas de EXCLUSAO: cair em QUALQUER uma tira o registro do calculo.
+        ' Pares incompletos ou invertidos ja foram descartados em LerExclusoes.
+        For j = 1 To nEx
+            If d >= ex(j, 1) And d <= ex(j, 2) Then GoTo proxima
+        Next j
 
         ' lote pelo NUCLEO (NucleoLote vive em mEntrada: uma conta, um lugar)
         If Len(Trim$(lote)) > 0 Then
@@ -181,7 +229,7 @@ End Sub
 Public Function EstatPeriodo(ByVal analito As String, ByVal nivel As Variant, _
                              ByVal metrica As String, _
                              ByVal dtIni As Variant, ByVal dtFim As Variant, _
-                             ByVal exIni As Variant, ByVal exFim As Variant, _
+                             ByVal exclusoes As Variant, _
                              Optional ByVal lote As Variant = "") As Variant
     Dim k As String, reg As Variant, n As Double, soma As Double, somaQ As Double
     Dim media As Double, dp As Double, cv As Double, bias As Variant
@@ -189,8 +237,9 @@ Public Function EstatPeriodo(ByVal analito As String, ByVal nivel As Variant, _
     If Trim$(analito) = "" Then EstatPeriodo = "": Exit Function
 
     On Error GoTo falhou
-    Agregar ComoData(dtIni), ComoData(dtFim), ComoData(exIni), ComoData(exFim), _
-            Trim$(CStr(lote))
+    Dim ex() As Double, nEx As Long
+    nEx = LerExclusoes(exclusoes, ex)
+    Agregar ComoData(dtIni), ComoData(dtFim), ex, nEx, Trim$(CStr(lote))
 
     k = UCase$(Trim$(analito)) & "|" & Trim$(CStr(nivel))
     If Not mAgg.Exists(k) Then
@@ -513,30 +562,29 @@ End Function
 ' aceita numero. Duas leituras diferentes da mesma celula e como se produz uma
 ' tela que se contradiz.
 Public Function PeriodoEfetivo(ByVal dtIni As Variant, ByVal dtFim As Variant, _
-                               ByVal exIni As Variant, ByVal exFim As Variant) As String
-    Dim s As String, i As Double, f As Double, xi As Double, xf As Double
-    i = ComoData(dtIni): f = ComoData(dtFim)
-    xi = ComoData(exIni): xf = ComoData(exFim)
+                               ByVal exclusoes As Variant) As String
+    Dim s As String, i As Double, f As Double, j As Long
+    Dim ex() As Double, nEx As Long, cobre As Boolean
 
+    i = ComoData(dtIni): f = ComoData(dtFim)
     If i = 0 Or f = 0 Then PeriodoEfetivo = "periodo nao definido": Exit Function
     If f < i Then PeriodoEfetivo = "FIM ANTES DO INICIO - corrija": Exit Function
 
     s = Format$(CDate(i), "dd/mm/yyyy") & " a " & Format$(CDate(f), "dd/mm/yyyy")
 
-    If xi > 0 And xf > 0 Then
-        If xf >= xi Then
-            s = s & "  |  EXCLUINDO " & Format$(CDate(xi), "dd/mm/yyyy") & _
-                " a " & Format$(CDate(xf), "dd/mm/yyyy")
-            If xi <= i And xf >= f Then
-                s = s & "  >>> A EXCLUSAO COBRE TODO O PERIODO: nao sobra dado"
-            End If
-        Else
-            s = s & "  |  EXCLUSAO IGNORADA (fim antes do inicio)"
-        End If
-    ElseIf xi > 0 Or xf > 0 Then
-        ' uma ponta so nao exclui nada, e o usuario precisa saber disso
-        s = s & "  |  EXCLUSAO INCOMPLETA (preencha as duas datas)"
+    nEx = LerExclusoes(exclusoes, ex)
+    If nEx = 0 Then
+        PeriodoEfetivo = s & "  |  sem exclusoes"
+        Exit Function
     End If
+
+    s = s & "  |  EXCLUINDO " & nEx & " periodo(s): "
+    For j = 1 To nEx
+        If j > 1 Then s = s & " ; "
+        s = s & Format$(CDate(ex(j, 1)), "dd/mm") & "-" & Format$(CDate(ex(j, 2)), "dd/mm/yy")
+        If ex(j, 1) <= i And ex(j, 2) >= f Then cobre = True
+    Next j
+    If cobre Then s = s & "   >>> UMA EXCLUSAO COBRE TODO O PERIODO: nao sobra dado"
 
     PeriodoEfetivo = s
 End Function
