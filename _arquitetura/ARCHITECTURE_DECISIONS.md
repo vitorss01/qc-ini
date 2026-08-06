@@ -583,3 +583,67 @@ implementação anterior. Manter as duas seria criar duas fontes de verdade para
 ETp — exatamente a divergência que o ADR-019 existe para impedir. Os valores
 atuais são migrados para `DB_Especificacoes` com o ano vigente, e a `Analitos`
 passa a **exibir** o que o motor resolveu.
+
+---
+
+## ADR-023 — Conformidade tem quatro estados, e ausência nunca é aprovação
+
+**Data:** 06/08/2026
+**Status:** aceito
+**Refina:** ADR-022
+
+**Contexto.** `AvaliarConformidade` tinha três estados: `CONFORME`,
+`NAO CONFORME` e `SEM META`. O terceiro fundia duas situações que só parecem a
+mesma:
+
+- **não existe meta cadastrada** para (analito, ano, fonte);
+- **existe meta, faltam medições** — nenhum resultado no período, ou n < 2.
+
+São causas opostas, com donos opostos. A primeira é falha de gestão da
+qualidade e quem resolve é quem cadastra a especificação; a segunda é lacuna
+operacional e quem resolve é a bancada. Numa auditoria ISO 15189 são achados
+diferentes, e fundir os dois esconde qual é.
+
+**Decisão.** Quatro estados:
+
+| Estado | Significa | Quem age |
+|---|---|---|
+| `CONFORME` | mediu e está dentro | ninguém |
+| `NAO CONFORME` | mediu e está fora | analista investiga a corrida |
+| `SEM ESPECIFICACAO` | não há meta cadastrada | gestor da qualidade cadastra |
+| `SEM DADOS` | há meta, faltam medições | bancada roda controles |
+
+Nomeados pelo **que falta**, não pelo que não aconteceu (`NAO_CADASTRADA` /
+`NAO_AVALIADA`): o nome sozinho diz qual é a ação.
+
+**Nenhum dos dois últimos é aprovação.** Tratar ausência — de meta ou de dado —
+como conformidade é o jeito mais silencioso de um laboratório se achar em dia.
+
+**Um quinto caso, resolvido noutra camada.** Linha cadastrada mas **inválida**
+(ETp textual, modelo inexistente) não é o mesmo que ausência de cadastro:
+alguém *tentou* e o dado está ruim, o que é problema de qualidade de dado.
+Para a *avaliação* não há critério utilizável, então cai em
+`SEM ESPECIFICACAO`; o diagnóstico não se perde:
+
+- `ResolverEspec` devolve `ESPEC_INVALIDA|<ID>|<motivo>`;
+- `SituacaoEspec` devolve `INVALIDA: <motivo>`;
+- `Eng_Especificacoes` publica a coluna **Situação** por analito.
+
+Assim o veredito fica com quatro estados limpos e o motor continua sabendo
+mais do que o veredito mostra — que é a divisão certa entre as duas perguntas:
+*"o laboratório está dentro da meta"* e *"existe meta utilizável, e se não, por
+quê"*.
+
+**Correção de contrato junto.** `ResolverEspec` só devolve prefixo `OK` quando
+há **pelo menos uma grandeza derivada**. Antes, achar a linha bastava — mesmo
+com as três metas vazias. Nenhum consumidor se enganava, porque todos conferem
+se o valor existe antes de usar; mas contrato que só funciona porque quem chama
+é cuidadoso é contrato quebrado esperando a hora.
+
+**Nota sobre a origem desta mudança.** A revisão externa que a motivou descrevia
+o sistema aprovando analito sem especificação (`sem especificação → OK`). Não
+era o caso: `AvaliarConformidade` já devolvia `SEM META`, e havia teste para
+isso. O `OK` estava no *protocolo interno* de `ResolverEspec`, não no veredito.
+A recomendação estava certa; o diagnóstico, não — e a diferença importa, porque
+uma leva a corrigir um contrato e a outra levaria a procurar um defeito que não
+existe.

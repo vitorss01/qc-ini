@@ -208,7 +208,26 @@ Public Function ResolverEspec(ByVal analito As String, ByVal ano As Long, _
                      dados(melhorLin, ES_BIASTP))
     p = Split(m, "|")
 
+    ' "OK" SO QUANDO HA META UTILIZAVEL.
+    '
+    ' Antes, linha encontrada bastava para o prefixo ser OK -- mesmo com as
+    ' tres grandezas vazias, por ETp textual ou modelo inexistente. Nenhum
+    ' consumidor atual se enganava (todos conferem se o valor existe antes de
+    ' usar), mas um consumidor futuro que testasse so Left(r,2)="OK" concluiria
+    ' que ha meta. Contrato que so funciona porque quem chama e cuidadoso e
+    ' contrato quebrado esperando a hora.
+    '
+    ' ESPEC_INVALIDA e distinto de NAO_CADASTRADA de proposito: alguem TENTOU
+    ' cadastrar e o dado esta ruim. Tratar os dois como "nao existe" esconderia
+    ' um problema de qualidade de dado atras de uma lacuna de cadastro.
     Dim r As String
+    If Len(p(0)) = 0 And Len(p(1)) = 0 And Len(p(2)) = 0 Then
+        r = "ESPEC_INVALIDA|" & CStr(dados(melhorLin, ES_ID)) & "|" & _
+            MotivoInvalidez(CStr(dados(melhorLin, ES_MODELO)))
+        mCache.Add chave, r
+        ResolverEspec = r
+        Exit Function
+    End If
     r = "OK|" & p(0) & "|" & p(1) & "|" & p(2) & "|" & _
         CStr(dados(melhorLin, ES_FONTE)) & "|" & melhorAno & "|" & _
         NormRigor(CStr(dados(melhorLin, ES_RIGOR))) & "|" & _
@@ -238,39 +257,92 @@ Private Function CampoEspec(ByVal analito As String, ByVal ano As Long, _
     If Len(p(pos)) = 0 Then CampoEspec = Empty Else CampoEspec = Val(p(pos))
 End Function
 
+' Por que a linha cadastrada nao produziu meta.
+Private Function MotivoInvalidez(ByVal modelo As String) As String
+    Select Case UCase$(Trim$(modelo))
+        Case MOD_ETP:    MotivoInvalidez = "ETp ausente ou nao numerico"
+        Case MOD_VB:     MotivoInvalidez = "CVi/CVg ausentes ou nao numericos"
+        Case MOD_CVBIAS: MotivoInvalidez = "CVtp/BIAStp ausentes ou nao numericos"
+        Case "":         MotivoInvalidez = "modelo nao definido"
+        Case Else:       MotivoInvalidez = "modelo desconhecido: " & modelo
+    End Select
+End Function
+
 ' ---------------------------------------------------------------------------
-' Conformidade: o desempenho medido esta dentro da meta?
+' Conformidade: QUATRO estados.
 '
-' Devolve "CONFORME" | "NAO CONFORME" | "SEM META".
-' SEM META nao e aprovacao: e ausencia de criterio, e precisa aparecer como
-' tal. Tratar falta de especificacao como conformidade e o jeito mais silencioso
-' de um laboratorio se achar em dia.
+'   CONFORME           mediu e esta dentro        ninguem age
+'   NAO CONFORME       mediu e esta fora          analista investiga a corrida
+'   SEM ESPECIFICACAO  nao ha meta cadastrada     gestor da qualidade cadastra
+'   SEM DADOS          ha meta, faltam medicoes   bancada roda controles
+'
+' Os dois ultimos estavam fundidos em "SEM META", e sao CAUSAS OPOSTAS COM
+' DONOS OPOSTOS. Numa auditoria ISO 15189 "nao temos criterio" e "nao temos
+' dado" sao achados diferentes: o primeiro e falha de gestao da qualidade, o
+' segundo e lacuna operacional. Fundir os dois esconde qual e.
+'
+' Nenhum deles e aprovacao. Tratar ausencia -- de meta ou de dado -- como
+' conformidade e o jeito mais silencioso de um laboratorio se achar em dia.
+'
+' Especificacao cadastrada mas INVALIDA cai em SEM ESPECIFICACAO: para a
+' avaliacao nao ha criterio utilizavel. O motivo nao se perde -- fica visivel
+' em ResolverEspec (ESPEC_INVALIDA) e em SituacaoEspec, onde e acionavel.
 Public Function AvaliarConformidade(ByVal analito As String, ByVal ano As Long, _
                                     ByVal cvReal As Variant, ByVal biasReal As Variant, _
                                     Optional ByVal fonte As String = "") As String
     Dim r As String, p() As String
     r = ResolverEspec(analito, ano, fonte)
-    If Left$(r, 2) <> "OK" Then AvaliarConformidade = "SEM META": Exit Function
+    If Left$(r, 2) <> "OK" Then AvaliarConformidade = "SEM ESPECIFICACAO": Exit Function
     p = Split(r, "|")
 
-    Dim etReal As Variant, ruim As Boolean, avaliou As Boolean
+    ' Sem medicao nao ha o que comparar -- e isso NAO e falta de especificacao.
+    Dim temCV As Boolean, temBias As Boolean
+    temCV = Num(cvReal)
+    temBias = Num(biasReal)
+    If Not temCV And Not temBias Then AvaliarConformidade = "SEM DADOS": Exit Function
 
-    If Len(p(1)) > 0 And IsNumeric(cvReal) Then
-        avaliou = True
+    Dim ruim As Boolean, comparou As Boolean, etReal As Double
+
+    If Len(p(1)) > 0 And temCV Then
+        comparou = True
         If CDbl(cvReal) > Val(p(1)) Then ruim = True
     End If
-    If Len(p(2)) > 0 And IsNumeric(biasReal) Then
-        avaliou = True
+    If Len(p(2)) > 0 And temBias Then
+        comparou = True
         If Abs(CDbl(biasReal)) > Val(p(2)) Then ruim = True
     End If
-    If Len(p(3)) > 0 And IsNumeric(cvReal) And IsNumeric(biasReal) Then
-        avaliou = True
+    If Len(p(3)) > 0 And temCV And temBias Then
+        comparou = True
         etReal = Abs(CDbl(biasReal)) + 1.65 * CDbl(cvReal)
-        If CDbl(etReal) > Val(p(3)) Then ruim = True
+        If etReal > Val(p(3)) Then ruim = True
     End If
 
-    If Not avaliou Then AvaliarConformidade = "SEM META": Exit Function
+    ' Ha meta e ha medida, mas sem grandeza em comum entre as duas -- a meta so
+    ' define BIAStp e so temos CV, por exemplo. Nao da para afirmar nada.
+    If Not comparou Then AvaliarConformidade = "SEM DADOS": Exit Function
     AvaliarConformidade = IIf(ruim, "NAO CONFORME", "CONFORME")
+End Function
+
+' Numero utilizavel? String vazia e Empty passam por IsNumeric em alguns
+' caminhos; aqui a pergunta e "da para comparar com isto".
+Private Function Num(ByVal v As Variant) As Boolean
+    If IsEmpty(v) Or IsNull(v) Then Exit Function
+    If Len(Trim$(CStr(v))) = 0 Then Exit Function
+    Num = IsNumeric(v)
+End Function
+
+' Situacao do CADASTRO, para exibicao e auditoria. Responde uma pergunta
+' diferente da conformidade: nao "o laboratorio esta dentro da meta", e sim
+' "existe meta utilizavel, e se nao, por que".
+' "CADASTRADA" | "NAO CADASTRADA" | "INVALIDA: <motivo>"
+Public Function SituacaoEspec(ByVal analito As String, ByVal ano As Long, _
+                              Optional ByVal fonte As String = "") As String
+    Dim r As String, p() As String
+    r = ResolverEspec(analito, ano, fonte)
+    If Left$(r, 2) = "OK" Then SituacaoEspec = "CADASTRADA": Exit Function
+    If r = "NAO_CADASTRADA" Then SituacaoEspec = "NAO CADASTRADA": Exit Function
+    p = Split(r, "|")
+    SituacaoEspec = "INVALIDA: " & p(2)
 End Function
 
 ' ---------------------------------------------------------------------------
@@ -433,29 +505,42 @@ Public Sub AtualizarEngEspec()
     Set c = ListaAnalitos()
     n = c.Count
     If n = 0 Then Exit Sub
-    ReDim buf(1 To n, 1 To 8)
+    ReDim buf(1 To n, 1 To 9)
+
+    ' A coluna SITUACAO e o que torna a lacuna acionavel: sem ela, analito sem
+    ' meta e analito com cadastro invalido ficam igualmente em branco, e
+    ' ninguem sabe se falta cadastrar ou se ha um cadastro ruim.
+    ws.Cells(3, 9).Value = "Situacao"
+    ws.Cells(3, 9).Font.Bold = True
 
     For i = 1 To n
         buf(i, 1) = c(i)
+        buf(i, 2) = fonte
         r = ResolverEspec(CStr(c(i)), ano, fonte)
         If Left$(r, 2) = "OK" Then
             p = Split(r, "|")
-            buf(i, 2) = fonte
             buf(i, 3) = Val(p(5))                         ' ano vigente
             buf(i, 4) = IIf(Len(p(1)) > 0, Val(p(1)), "") ' CVtp
             buf(i, 5) = IIf(Len(p(2)) > 0, Val(p(2)), "") ' BIAStp
             buf(i, 6) = IIf(Len(p(3)) > 0, Val(p(3)), "") ' ETp
             buf(i, 7) = p(6)                              ' rigor
             buf(i, 8) = p(7)                              ' ID da especificacao
+            buf(i, 9) = "CADASTRADA"
         Else
-            buf(i, 2) = fonte
             buf(i, 3) = "": buf(i, 4) = "": buf(i, 5) = ""
             buf(i, 6) = "": buf(i, 7) = "": buf(i, 8) = ""
+            If r = "NAO_CADASTRADA" Then
+                buf(i, 9) = "NAO CADASTRADA"
+            Else
+                p = Split(r, "|")
+                buf(i, 8) = p(1)                          ' ID da linha ruim
+                buf(i, 9) = "INVALIDA: " & p(2)
+            End If
         End If
     Next i
 
-    ws.Range(ws.Cells(ENGE_R0, 1), ws.Cells(ENGE_R0 + 39, 8)).ClearContents
-    ws.Range(ws.Cells(ENGE_R0, 1), ws.Cells(ENGE_R0 + n - 1, 8)).Value = buf
+    ws.Range(ws.Cells(ENGE_R0, 1), ws.Cells(ENGE_R0 + 39, 9)).ClearContents
+    ws.Range(ws.Cells(ENGE_R0, 1), ws.Cells(ENGE_R0 + n - 1, 9)).Value = buf
 fim:
 End Sub
 
