@@ -600,7 +600,7 @@ Public Function AnoDeContexto() As Long
     If Not IsEmpty(dados) Then
         For i = 1 To UBound(dados, 1)
             If IsDate(dados(i, COL_DATA)) Then
-                If lote = "" Or Mid$(CStr(dados(i, COL_LOTE)), 4, 6) = lote Then
+                If lote = "" Or NucleoLote(CStr(dados(i, COL_LOTE))) = lote Then
                     If CDate(dados(i, COL_DATA)) > mx Then mx = CDate(dados(i, COL_DATA))
                 End If
             End If

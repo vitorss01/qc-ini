@@ -194,7 +194,7 @@ Public Function EstatBasica(ByVal analito As String, ByVal nivel As Long, ByVal 
     For i = 1 To UBound(mDB, 1)
         If StrComp(Trim$(CStr(mDB(i, COL_ANALITO))), analito, 1) = 0 Then
             If CLng(Val(mDB(i, COL_NIVEL))) = nivel Then
-                If loteCore = "" Or Mid$(CStr(mDB(i, COL_LOTE)), 4, 6) = loteCore Then
+                If loteCore = "" Or NucleoLote(CStr(mDB(i, COL_LOTE))) = loteCore Then
                     If EhElegivel(mDB(i, COL_STATUS)) Then
                         If IsNumeric(mDB(i, COL_RESULT)) Then
                             If anoDe = 0 Or (IsDate(mDB(i, COL_DATA)) And _
@@ -346,7 +346,7 @@ Public Sub AtualizarCalc()
     ReDim runs(1 To NK): ReDim dts(1 To NK)
     For i = 1 To UBound(mDB, 1)
         If StrComp(Trim$(CStr(mDB(i, COL_ANALITO))), analito, 1) = 0 Then
-            If Mid$(CStr(mDB(i, COL_LOTE)), 4, 6) = lote Then
+            If NucleoLote(CStr(mDB(i, COL_LOTE))) = lote Then
                 If EhElegivel(mDB(i, COL_STATUS)) Then
                     If Not seen.Exists(CStr(mDB(i, COL_RUN))) Then
                         If nRun < NK Then
@@ -383,7 +383,7 @@ Public Sub AtualizarCalc()
     ReDim z(0 To NLV - 1, 1 To nRun)
     For i = 1 To UBound(mDB, 1)
         If StrComp(Trim$(CStr(mDB(i, COL_ANALITO))), analito, 1) = 0 Then
-            If Mid$(CStr(mDB(i, COL_LOTE)), 4, 6) = lote Then
+            If NucleoLote(CStr(mDB(i, COL_LOTE))) = lote Then
                 If EhElegivel(mDB(i, COL_STATUS)) And IsNumeric(mDB(i, COL_RESULT)) Then
                     If ordem.Exists(CStr(mDB(i, COL_RUN))) Then
                         t = CLng(Val(mDB(i, COL_NIVEL))) - 1
@@ -546,7 +546,7 @@ Public Function AnalisarViolacoes(ByVal analito As String, ByVal nivel As Long, 
     For i = 1 To UBound(mDB, 1)
         If StrComp(Trim$(CStr(mDB(i, COL_ANALITO))), analito, 1) = 0 Then
             If CLng(Val(mDB(i, COL_NIVEL))) = nivel Then
-                If loteCore = "" Or Mid$(CStr(mDB(i, COL_LOTE)), 4, 6) = loteCore Then
+                If loteCore = "" Or NucleoLote(CStr(mDB(i, COL_LOTE))) = loteCore Then
                     If EhElegivel(mDB(i, COL_STATUS)) And IsNumeric(mDB(i, COL_RESULT)) Then
                         If Not seen.Exists(CStr(mDB(i, COL_RUN))) Then
                             seen.Add CStr(mDB(i, COL_RUN)), 1
@@ -853,7 +853,7 @@ Public Sub RegistrarEventosWestgard()
     Set listaCh = CreateObject("Scripting.Dictionary")
     For i = 1 To UBound(mDB, 1)
         If Len(Trim$(CStr(mDB(i, COL_ANALITO)))) > 0 Then
-            If Mid$(CStr(mDB(i, COL_LOTE)), 4, 6) = lote Then
+            If NucleoLote(CStr(mDB(i, COL_LOTE))) = lote Then
                 If EhElegivel(mDB(i, COL_STATUS)) And IsNumeric(mDB(i, COL_RESULT)) Then
                     chave = UCase$(Trim$(CStr(mDB(i, COL_ANALITO)))) & "|" & CLng(Val(mDB(i, COL_NIVEL)))
                     If Not grupos.Exists(chave) Then

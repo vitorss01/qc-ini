@@ -34,7 +34,7 @@ Public Sub AtualizarViewResultados()
 
     For i = 1 To UBound(dados, 1)
         If Len(Trim$(CStr(dados(i, COL_ANALITO)))) > 0 Then
-            If Mid$(CStr(dados(i, COL_LOTE)), 4, 6) = lote Then
+            If NucleoLote(CStr(dados(i, COL_LOTE))) = lote Then
                 t = CLng(dados(i, COL_NIVEL)) - 1
                 If t >= 0 And t <= VIEW_NLV - 1 Then
                     If cont(t) < VIEW_ROWS Then

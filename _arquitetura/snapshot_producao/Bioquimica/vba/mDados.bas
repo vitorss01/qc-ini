@@ -56,7 +56,7 @@ Public Function NovoRUN(ByVal dt As Date, ByVal loteCore As String) As Long
         If Len(Trim$(CStr(dados(i, COL_RUN)))) > 0 And IsNumeric(dados(i, COL_RUN)) Then
             If CLng(dados(i, COL_RUN)) > mx Then mx = CLng(dados(i, COL_RUN))
             If IsDate(dados(i, COL_DATA)) Then
-                If CDate(dados(i, COL_DATA)) = dt And Mid$(CStr(dados(i, COL_LOTE)), 4, 6) = loteCore Then
+                If CDate(dados(i, COL_DATA)) = dt And NucleoLote(CStr(dados(i, COL_LOTE))) = loteCore Then
                     NovoRUN = CLng(dados(i, COL_RUN)): Exit Function
                 End If
             End If
@@ -152,7 +152,7 @@ Public Function RunsDoLote(ByVal loteCore As String) As Collection
     If IsEmpty(dados) Then Set RunsDoLote = c: Exit Function
     For i = 1 To UBound(dados, 1)
         If Len(Trim$(CStr(dados(i, COL_RUN)))) > 0 Then
-            If Mid$(CStr(dados(i, COL_LOTE)), 4, 6) = loteCore Then
+            If NucleoLote(CStr(dados(i, COL_LOTE))) = loteCore Then
                 If Not seen.Exists(CStr(dados(i, COL_RUN))) Then
                     seen.Add CStr(dados(i, COL_RUN)), 1
                     c.Add CLng(dados(i, COL_RUN))

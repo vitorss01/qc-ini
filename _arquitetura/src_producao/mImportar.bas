@@ -314,7 +314,7 @@ Private Sub AtribuirRUNs(ByRef regs As Variant, ByVal nReg As Long)
             If Len(Trim$(CStr(dados(i, COL_RUN)))) > 0 And IsNumeric(dados(i, COL_RUN)) Then
                 If CLng(dados(i, COL_RUN)) > mx Then mx = CLng(dados(i, COL_RUN))
                 If IsDate(dados(i, COL_DATA)) Then
-                    k = CStr(CLng(CDate(dados(i, COL_DATA)))) & "|" & Mid$(CStr(dados(i, COL_LOTE)), 4, 6)
+                    k = CStr(CLng(CDate(dados(i, COL_DATA)))) & "|" & NucleoLote(CStr(dados(i, COL_LOTE)))
                     If Not mapa.Exists(k) Then mapa.Add k, CLng(dados(i, COL_RUN))
                 End If
             End If
@@ -322,7 +322,7 @@ Private Sub AtribuirRUNs(ByRef regs As Variant, ByVal nReg As Long)
     End If
 
     For i = 1 To nReg
-        k = CStr(CLng(CDate(regs(i, 2)))) & "|" & Mid$(CStr(regs(i, 4)), 4, 6)
+        k = CStr(CLng(CDate(regs(i, 2)))) & "|" & NucleoLote(CStr(regs(i, 4)))
         If mapa.Exists(k) Then
             regs(i, 1) = mapa(k)
         ElseIf novo.Exists(k) Then

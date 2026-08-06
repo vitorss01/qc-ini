@@ -586,6 +586,63 @@ passa a **exibir** o que o motor resolveu.
 
 ---
 
+## ADR-024 — O núcleo do lote é derivado por comprimento, não por posição fixa
+
+**Data:** 06/08/2026
+**Status:** aceito
+**Relaciona-se a:** ADR-004 e ADR-011 (RUN), ADR-009 e ADR-019 (conhecimento em um lugar só)
+
+**Contexto.** O laboratório colou 555 resultados pela aba `Importar`, o banco
+gravou tudo corretamente — e o `Calc`, o `Painel` e a aba `Resultados` ficaram
+**em branco**. Nenhum erro, nenhuma mensagem. O dado entrava e não saía.
+
+A causa era uma conta de duas linhas:
+
+```
+CodigoLote("8974", 1)  ->  "QC-897401"      (monta)
+Mid(codigo, 4, 6)      ->  "897401"          (desmonta)
+loteAtivo                  "8974"
+```
+
+`CodigoLote` monta `"QC-" & núcleo & nível(2 dígitos)`. O inverso correto é
+portanto `Mid(codigo, 4, Len(codigo) - 5)` — tira os 3 do prefixo e os 2 do
+nível, **seja qual for o tamanho do núcleo**. O sistema usava `6` fixo, que só
+acerta quando o núcleo tem exatamente 6 dígitos. O lote real do laboratório tem
+4, então a extração engolia os dígitos do nível e o filtro do `Calc`
+(`(""&rLote)=(""&loteAtivo)`) nunca casava.
+
+**Por que sobreviveu a tantas revisões.** `mEntrada.NucleoLote` já existia e já
+fazia exatamente essa conta. **Nenhum chamador a usava:** os 13 pontos que
+precisavam do núcleo reescreveram o `Mid` inline. Conhecimento duplicado em 13
+cópias é a falha que o ADR-009 e o ADR-019 tratam noutro domínio — e aqui ela
+teve a consequência clássica: corrigir um lugar não corrigia nada, e o rótulo
+"Lote (6 díg.)" na `Configuração` fazia a suposição parecer razoável.
+
+**Decisão.**
+
+1. A derivação do núcleo vive em **uma** função, `NucleoLote`, e é
+   `Mid(codigo, 4, Len(codigo) - 5)`. Todo consumidor chama a função.
+2. A mesma conta na camada de fórmula: `DB_Resultados!BA` passa a
+   `MID($D4,4,LEN($D4)-5)`.
+3. O sistema **não exige** núcleo de 6 dígitos. Aceitar um lote de qualquer
+   comprimento e depois não encontrá-lo é pior do que recusá-lo na entrada.
+
+**Consequência sobre o RUN, que é o achado maior.** Como o *código* do lote
+embute o nível, montar a chave da corrida com ele fazia `QC-897401` e
+`QC-897402` — Nível 1 e Nível 2 da **mesma** corrida — virarem chaves
+diferentes. Cada nível ganhava o seu próprio RUN, e 18 corridas viravam 36, com
+os níveis plotados em faixas separadas do eixo X. Isso contradiz o ADR-011
+diretamente. Com o núcleo (que não tem nível), a chave volta a ser
+`data + lote` e os níveis compartilham o RUN, como a chave lógica
+`RUN + Analito + Nível` sempre pressupôs.
+
+**Nota de método.** O defeito do RUN só apareceu porque a conferência contou
+**36 corridas para 18 datas** — um número que não fechava. A correção do lote
+já tinha feito os gráficos plotarem, e parar ali teria deixado o modelo de RUN
+quebrado sob uma tela que parecia certa.
+
+---
+
 ## ADR-023 — Conformidade tem quatro estados, e ausência nunca é aprovação
 
 **Data:** 06/08/2026

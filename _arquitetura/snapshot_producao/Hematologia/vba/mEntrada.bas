@@ -38,6 +38,6 @@ Public Function CodigoLote(ByVal loteCore As String, ByVal nivel As Long) As Str
 End Function
 
 Public Function NucleoLote(ByVal codigo As String) As String
-    NucleoLote = Mid$(Trim$(codigo), 4, 6)
+    NucleoLote = Mid$(Trim$(codigo), 4, Len(Trim$(codigo)) - 5)
 End Function
 

@@ -283,18 +283,50 @@ aparecia na Bioquímica — só na Hematologia, que ninguém tinha reexecutado.
 > conferiam a aba contra ela mesma; a única que discriminou foi a que exercita o
 > comportamento (3.16).
 
+## 9. O dado entrava e não saía — núcleo do lote (06/08/2026)
+
+Relatado pelo gestor: colou o Nível 1, registrou com sucesso, e `Calc`, `Painel`
+e `Resultados` ficaram **em branco**. Sem erro, sem mensagem. Ver **ADR-024**.
+
+| # | Item | Status | Observação |
+|---|---|---|---|
+| 9.1 | Núcleo do lote derivado por comprimento | ✅ | `Mid(codigo, 4, 6)` → `Mid(codigo, 4, Len(codigo)-5)`. O `6` fixo só acerta com núcleo de 6 dígitos; o lote do laboratório tem 4, então a extração engolia os dígitos do nível e o filtro do `Calc` nunca casava (`"897401"` vs `"8974"`) |
+| 9.2 | A conta vive em um lugar só | ✅ | `mEntrada.NucleoLote` **já existia e ninguém chamava** — os 13 pontos reescreveram o `Mid` inline. Agora todos chamam a função. `DB_Resultados!BA` idem, na camada de fórmula |
+| 9.3 | Correção propagada às fontes versionadas | ✅ | 29 linhas em 14 arquivos. Corrigir só o `.xlsm` faria o próximo build reverter em silêncio (ADR-021). Lint no script impede sobrar extração fixa |
+| 9.4 | RUN volta a identificar a corrida | ✅ | O **código** do lote embute o nível, então `QC-897401` e `QC-897402` viravam chaves distintas: cada nível ganhava RUN próprio, 18 corridas viravam 36, níveis plotados em faixas separadas do eixo X. Contradizia o ADR-011. 555 registros remapeados; conferido: 18 RUNs para 18 datas, nenhuma chave `RUN+Analito+Nível` duplicada |
+| 9.5 | Data do banco mostra o ano | ✅ | Exibia `05/01/yyyy`. O código do ano depende do **idioma de formatos** da instalação: em pt-BR (1046, o desta máquina) é `aaaa`, e `yyyy` virava texto literal. O script tenta candidatos e só aceita o que **renderiza o ano** — não fixa localidade |
+| 9.6 | Plotagem confirmada nos dois níveis | ✅ | Nível 1 e Nível 2 com **18 pontos cada** no `Painel`, sobre as mesmas 18 corridas |
+
+> **Achado de qualidade, não de software.** Com tudo funcionando, o Lactato
+> Nível 1 acusa 15 violações de Westgard em 18 pontos. Os dados estão
+> centrados (z médio entre −1,3 e +1,6), então são regras de **tendência**
+> disparando com a média consistentemente abaixo do alvo — que é precisamente o
+> que o sistema existe para detectar. Cabe investigação analítica.
+
 ### Pendência que não é minha de decidir
 
-**Linha de base de fórmulas da Hematologia está velha.** Foi tirada em 03/08
-(`9ad7e65`); a da Bioquímica foi regerada em 05/08 (`2b11f3b`) porque o pipeline
-mudou. A suíte acusa `VALOR 4965` na Hematologia, e a leitura das divergências
-mostra que **não são fórmulas destruídas**: são dados de teste que o próprio
-build semeia (`DB_Resultados!BA1940` vazio → `999999`) e valores do `Calc` que
-mudaram por fixar a referência em `WBC`.
+**A linha de base de fórmulas está velha nos dois produtos.** A da Hematologia é
+de 03/08 (`9ad7e65`); a da Bioquímica foi regerada em 05/08 (`2b11f3b`) e ficou
+para trás em 06/08, quando o laboratório lançou **1.110 resultados reais** e o
+núcleo do lote foi corrigido.
 
-Regerar a linha de base faria o item passar — e é exatamente assim que um gate
-morre, redefinindo a verdade para caber no resultado. Fica registrado para
-decisão sua, junto da retomada da Hematologia.
+Em ambos os casos a leitura das divergências mostra que **não são fórmulas
+destruídas**:
+
+- Hematologia — `VALOR 4965`: dados de teste que o próprio build semeia e
+  valores do `Calc` que mudaram por fixar a referência em `WBC`.
+- Bioquímica — `VALOR 807`: todos em `Calc` (558), `Analitos` (248) e
+  `Configuração` (1), ou seja, **células calculadas** que mudaram porque o banco
+  dobrou de tamanho. Ex.: `Calc!R25` de `113` para `85,04`.
+
+O que a linha de base existe para pegar — fórmula que virou valor, fórmula
+perdida — continua coberto e passando: **4.1** (`AUSENTE` só na lista fechada) e
+**4.3** (nenhuma fórmula de interface calcula sobre o banco).
+
+Regerar a linha de base faria o item passar. Quando a mudança é intencional e
+verificada, como aqui, isso é legítimo — mas é decisão de processo sua, não
+minha, porque a mesma ação feita sem verificar é exatamente como um gate morre:
+redefinindo a verdade para caber no resultado.
 
 ---
 
