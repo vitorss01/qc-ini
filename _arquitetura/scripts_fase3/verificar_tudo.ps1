@@ -190,6 +190,18 @@ try {
         @{ Nome = 'mAuditoria'; Arquivo = (Join-Path $hp 'mAuditoria.bas') },
         @{ Nome = 'mImportar'; Arquivo = (Join-Path $hp 'mImportar.bas') }
     )
+
+    # mEspecificacoes entra por OUTRO caminho: vem de src_producao e chega ao
+    # artefato pela copia da producao (ADR-021), nao pelo aplicar_vba. Ficava
+    # portanto FORA desta prova -- e era o unico modulo de calculo cuja deriva
+    # entre a fonte versionada e o que roda dentro do arquivo ninguem media.
+    #
+    # So a Bioquimica tem o motor de especificacoes. Cobrar isso da Hematologia
+    # reprovaria um produto por nao ter algo que ainda nao lhe foi entregue.
+    $esperaEspec = ($Produto -eq 'Bioquimica')
+    if ($esperaEspec) {
+        $modulos += @{ Nome = 'mEspecificacoes'; Arquivo = (Join-Path $arq 'src_producao\mEspecificacoes.bas') }
+    }
     foreach ($m in $modulos) {
         $comp = $null
         foreach ($c in $wb.VBProject.VBComponents) { if ($c.Name -eq $m.Nome) { $comp = $c; break } }
@@ -247,7 +259,12 @@ try {
         # 3 -- oculta -- diz para qual analito CADASTRADO cada coluna vai. Se o
         # de/para apontar para nome que nao existe na aba Analitos, o resultado
         # vira linha orfa que nenhum calculo encontra.
-        $csvDef = Join-Path $arq 'src_producao\analitos_bioquimica.csv'
+        # O CSV E O DO PRODUTO. Estava fixo em analitos_bioquimica.csv, e por
+        # isso esta prova CONFIRMAVA o defeito em vez de pega-lo: a aba da
+        # Hematologia era montada com os 31 analitos da Bioquimica e comparada
+        # contra a mesma lista errada -- batia, e passava.
+        $csvDef = Join-Path $arq "src_producao\analitos_$($Produto.ToLowerInvariant()).csv"
+        if (-not (Test-Path $csvDef)) { throw "CSV de analitos ausente para $Produto : $csvDef" }
         $ld = [System.IO.File]::ReadAllLines($csvDef, [System.Text.Encoding]::UTF8)
         $sig = @(); $nom = @()
         for ($i = 1; $i -lt $ld.Count; $i++) {
@@ -270,14 +287,26 @@ try {
             $v = $wsAn.Cells.Item($i, 1).Value2
             if ($v -ne $null -and "$v".Trim() -ne '') { $cad["$v".Trim()] = $true }
         }
+        # COLUNA SEM DE/PARA E DEFEITO, NAO CASO PREVISTO.
+        #
+        # Aqui havia um "continue" para o de/para vazio, com a justificativa de
+        # que o runtime recusaria. Recusa mesmo -- e esse era o problema: a aba
+        # da Hematologia saiu com as 31 colunas da Bioquimica e NENHUMA mapeada,
+        # e esta prova relatou "0 orfas" com ar de aprovacao. Uma coluna que nao
+        # aponta para lugar nenhum nunca vai importar; que o runtime a recuse
+        # depois nao torna a montagem correta.
         $orfas = @()
+        $vazias = @()
         for ($k = 0; $k -lt $nom.Count; $k++) {
             $d = "$($wsI.Cells.Item(3, 5 + $k).Value2)".Trim()
-            if ($d -eq '') { continue }             # coluna sem cadastro: recusada em runtime
+            if ($d -eq '') { $vazias += $sig[$k]; continue }
             if (-not $cad.ContainsKey($d)) { $orfas += "$($sig[$k]) -> '$d'" }
         }
-        Anotar '1.11' 'de/para da aba Importar aponta so para analito cadastrado' `
-            ($orfas.Count -eq 0) "$($orfas.Count) orfa(s) $($orfas -join '; ')"
+        $detalheMapa = "$($orfas.Count) orfa(s), $($vazias.Count) sem de/para"
+        if ($orfas.Count) { $detalheMapa += " | orfas: $($orfas -join '; ')" }
+        if ($vazias.Count) { $detalheMapa += " | vazias: $(($vazias | Select-Object -First 6) -join ', ')" }
+        Anotar '1.11' 'toda coluna da aba Importar aponta para analito cadastrado' `
+            (($orfas.Count -eq 0) -and ($vazias.Count -eq 0)) $detalheMapa
         Anotar '1.12' 'linha de/para fica oculta' $wsI.Rows.Item(3).Hidden ''
 
         # o botao que dispara a migracao
@@ -519,6 +548,7 @@ End Function
     }
 
     $ultDbAntes = $dbNC.Cells.Item($dbNC.Rows.Count, 1).End(-4162).Row
+    $auditAntesImp = [int]$xl.Run('UltimaLinhaAudit')
 
     # (a) colagem valida: 2 niveis x 3 analitos = 6 resultados
     # Dados comecam na linha 5: a 3 e o de/para oculto e a 4 e o cabecalho.
@@ -530,6 +560,24 @@ End Function
     Anotar '3.16' 'colagem valida migra para o DB_Resultados e some da aba' `
         ($retImp -like 'OK|*' -and ($ultDbOk - $ultDbAntes) -eq 6 -and $abaLimpa) `
         "retorno '$retImp' | banco $ultDbAntes -> $ultDbOk | aba limpa: $abaLimpa"
+
+    # ---- 3.18 a importacao em massa deixa rastro ----
+    #
+    # A importacao e o caminho de entrada de MAIOR volume do sistema: uma
+    # colagem grava dezenas de resultados de uma vez. ISO 15189 8.4 nao admite
+    # entrada de dado sem registro de quem, quando e o que.
+    #
+    # A prova existe porque a lacuna existiu: na PRODUCAO, RegistrarLog e um
+    # stub vazio, e a chamada em ExecutarImportacao nao gravava nada. Quem faz
+    # dela um registro real e a camada de hardening, aplicada pelo build -- e
+    # ate aqui ninguem media se ela de fato chegava ate a importacao. 3.16 e
+    # 3.17 provavam que o dado migra; nenhum provava que o ato fica registrado.
+    $auditDepoisImp = [int]$xl.Run('UltimaLinhaAudit')
+    $acaoImp = ''
+    if ($auditDepoisImp -gt $auditAntesImp) { $acaoImp = [string]$au.Cells.Item($auditDepoisImp, 7).Value2 }
+    Anotar '3.18' 'importacao em massa deixa rastro na trilha de auditoria' `
+        ($auditDepoisImp -gt $auditAntesImp) `
+        "Audit_Log $auditAntesImp -> $auditDepoisImp, ultima acao '$acaoImp'"
 
     # (b) colagem com UM erro: nada pode ser gravado, nem a linha boa
     & $escreve $wsImp 5 '21/12/2029' 1 $loteImp @(91, 36, 2.7)
@@ -593,6 +641,158 @@ End Function
     Start-Sleep -Milliseconds 400
     $xl.EnableEvents = $false
     $cfg.Visible = 2
+
+    # ================= 7. MOTOR DE ESPECIFICACOES (ADR-022 / ADR-023) =========
+    #
+    # 575 linhas que decidem CONFORME / NAO CONFORME e que, ate aqui, nao tinham
+    # UMA prova. E a camada mais nova e a de maior consequencia: Painel e
+    # Estatistica passaram a ler dela, entao um erro aqui muda veredito de
+    # qualidade sem mudar nada visivel no resto do sistema.
+    #
+    # Ausencia do modulo NAO e motivo para pular: e o achado. mEspecificacoes nao
+    # tem instalador versionado e chegou ao arquivo pela VBE -- exatamente o que
+    # o ADR-021 proibe. Se ele sumir num rebuild, estes itens reprovam.
+    $ESP_ANALITO = 'ZZ_PROVA_ESPEC'
+    $espOk = $true
+    $espMsg = ''
+    $wsEsp = $null
+    foreach ($w in $wb.Worksheets) { if ($w.Name -eq 'DB_Especificacoes') { $wsEsp = $w; break } }
+    $temModulo = $false
+    foreach ($c in $wb.VBProject.VBComponents) { if ($c.Name -eq 'mEspecificacoes') { $temModulo = $true; break } }
+
+    if (-not $esperaEspec) {
+        # Produto que ainda nao recebeu o motor de especificacoes. Nao anotar
+        # nada e o certo: um item que nao se aplica nao e uma prova que passou.
+        "     (grupo 7 nao se aplica a $Produto - motor de especificacoes e da Bioquimica)"
+    }
+    elseif ($wsEsp -eq $null -or -not $temModulo) {
+        $falta = @()
+        if ($wsEsp -eq $null) { $falta += 'aba DB_Especificacoes' }
+        if (-not $temModulo) { $falta += 'modulo mEspecificacoes' }
+        foreach ($id in @('7.1', '7.2', '7.3', '7.4', '7.5')) {
+            Anotar $id 'motor de especificacoes presente no artefato' $false "ausente: $($falta -join ' e ')"
+        }
+    }
+    else {
+        try { $wsEsp.Unprotect('qcini2025') } catch { }
+        $espVisAntes = $wsEsp.Visible
+        $wsEsp.Visible = -1
+        $linEspAntes = [int]$xl.Run('UltimaLinhaEspec')
+
+        # escreve uma linha do banco de especificacoes
+        $gravaEsp = {
+            param($Ws, $Lin, $Ano, $Fonte, $Modelo, $Analito, $Etp, $Cvi, $Cvg, $Rigor, $Cvtp, $Biastp, $Ativo)
+            $Ws.Cells.Item([int]$Lin, 1).Value2 = [string]("ZZP-" + $Lin)
+            $Ws.Cells.Item([int]$Lin, 2).Value2 = [double]$Ano
+            $Ws.Cells.Item([int]$Lin, 3).Value2 = [string]$Fonte
+            $Ws.Cells.Item([int]$Lin, 4).Value2 = [string]$Modelo
+            $Ws.Cells.Item([int]$Lin, 5).Value2 = [string]$Analito
+            if ($Etp -ne $null) { $Ws.Cells.Item([int]$Lin, 6).Value2 = [double]$Etp }
+            if ($Cvi -ne $null) { $Ws.Cells.Item([int]$Lin, 7).Value2 = [double]$Cvi }
+            if ($Cvg -ne $null) { $Ws.Cells.Item([int]$Lin, 8).Value2 = [double]$Cvg }
+            $Ws.Cells.Item([int]$Lin, 9).Value2 = [string]$Rigor
+            if ($Cvtp -ne $null) { $Ws.Cells.Item([int]$Lin, 10).Value2 = [double]$Cvtp }
+            if ($Biastp -ne $null) { $Ws.Cells.Item([int]$Lin, 11).Value2 = [double]$Biastp }
+            $Ws.Cells.Item([int]$Lin, 12).Value2 = [string]$Ativo
+            $Ws.Cells.Item([int]$Lin, 13).Value2 = 'prova'
+        }
+
+        $l1 = $linEspAntes + 1
+        $l2 = $linEspAntes + 2
+        & $gravaEsp $wsEsp $l1 2020 'CLIA' 'ETP_DIRETO' $ESP_ANALITO 30 $null $null '' $null $null 'Sim'
+        & $gravaEsp $wsEsp $l2 2026 'CLIA' 'ETP_DIRETO' $ESP_ANALITO 60 $null $null '' $null $null 'Sim'
+        $xl.Run('InvalidarCacheEspec') | Out-Null
+
+        # ---- 7.1 a meta e a do ANO DO RESULTADO, nunca a do ano corrente ----
+        # Requisito central do ADR-022: reabrir uma corrida de 2023 em 2030 tem
+        # de julga-la pela meta de 2023. A regra e de VIGENCIA -- maior Ano <=
+        # ano do resultado -- e nao casamento exato, que abriria buraco em todo
+        # ano sem cadastro.
+        $r2023 = [string]$xl.Run('ResolverEspec', $ESP_ANALITO, 2023, 'CLIA')
+        $r2026 = [string]$xl.Run('ResolverEspec', $ESP_ANALITO, 2026, 'CLIA')
+        $r2019 = [string]$xl.Run('ResolverEspec', $ESP_ANALITO, 2019, 'CLIA')
+        $p2023 = $r2023 -split '\|'
+        $p2026 = $r2026 -split '\|'
+        $vig2023 = ($p2023.Count -gt 5 -and $p2023[5] -eq '2020' -and [double]$p2023[3] -eq 30)
+        $vig2026 = ($p2026.Count -gt 5 -and $p2026[5] -eq '2026' -and [double]$p2026[3] -eq 60)
+        $antesDeTudo = ($r2019 -eq 'NAO_CADASTRADA')
+        Anotar '7.1' 'meta resolvida pelo ano do resultado, com regra de vigencia' `
+            ($vig2023 -and $vig2026 -and $antesDeTudo) `
+            "2023->ano $($p2023[5]) ETp $($p2023[3]) | 2026->ano $($p2026[5]) ETp $($p2026[3]) | 2019->$r2019"
+
+        # ---- 7.2 cada modelo deriva o que o ADR-022 manda ----
+        $mEtp = [string]$xl.Run('MetasDaLinha', 'ETP_DIRETO', 30, '', '', '', '', '')
+        $mVb = [string]$xl.Run('MetasDaLinha', 'VB', '', 4, 6, 'DES', '', '')
+        $mCb = [string]$xl.Run('MetasDaLinha', 'CV_BIAS_DIRETO', '', '', '', '', 3, 2)
+        $pE = $mEtp -split '\|'; $pV = $mVb -split '\|'; $pC = $mCb -split '\|'
+        # ETP_DIRETO: CVtp = ETp/3, BIAStp indefinido
+        $okE = ([Math]::Abs([double]$pE[0] - 10) -lt 0.0001 -and $pE[1] -eq '' -and [Math]::Abs([double]$pE[2] - 30) -lt 0.0001)
+        # VB: CVtp = CVi*fi ; BIAStp = raiz(CVi^2+CVg^2)*fb ; ETp = BIAStp + 1,65*CVtp
+        $cvVb = 4 * 0.5
+        $biasVb = [Math]::Sqrt(16 + 36) * 0.25
+        $etVb = $biasVb + 1.65 * $cvVb
+        $okV = ([Math]::Abs([double]$pV[0] - $cvVb) -lt 0.0001 -and [Math]::Abs([double]$pV[1] - $biasVb) -lt 0.0001 -and [Math]::Abs([double]$pV[2] - $etVb) -lt 0.0001)
+        # CV_BIAS_DIRETO: ETp = BIAStp + 1,65*CVtp
+        $okC = ([Math]::Abs([double]$pC[2] - (2 + 1.65 * 3)) -lt 0.0001)
+        Anotar '7.2' 'os tres modelos derivam CVtp/BIAStp/ETp conforme o ADR-022' `
+            ($okE -and $okV -and $okC) `
+            "ETP_DIRETO '$mEtp' | VB '$mVb' (esperado $cvVb/$([Math]::Round($biasVb,4))/$([Math]::Round($etVb,4))) | CV_BIAS '$mCb'"
+
+        # ---- 7.3 quatro estados, e nenhuma ausencia vira aprovacao ----
+        # O ponto do ADR-023: "sem meta" e "sem dado" tem donos opostos numa
+        # auditoria, e fundir os dois esconde qual e. O que NAO pode acontecer,
+        # em nenhum dos dois, e sair CONFORME.
+        $semEspec = [string]$xl.Run('AvaliarConformidade', 'ZZ_INEXISTENTE_XYZ', 2026, 1, 1, 'CLIA')
+        $semDados = [string]$xl.Run('AvaliarConformidade', $ESP_ANALITO, 2026, '', '', 'CLIA')
+        # ETp 60 => CVtp 20. CV 5 e bias 1 passam; CV 40 estoura.
+        $conf = [string]$xl.Run('AvaliarConformidade', $ESP_ANALITO, 2026, 5, 1, 'CLIA')
+        $naoConf = [string]$xl.Run('AvaliarConformidade', $ESP_ANALITO, 2026, 40, 1, 'CLIA')
+        $quatro = ($semEspec -eq 'SEM ESPECIFICACAO' -and $semDados -eq 'SEM DADOS' -and `
+                   $conf -eq 'CONFORME' -and $naoConf -eq 'NAO CONFORME')
+        $ausenciaNaoAprova = ($semEspec -ne 'CONFORME' -and $semDados -ne 'CONFORME')
+        Anotar '7.3' 'conformidade tem quatro estados e ausencia nunca e aprovacao' `
+            ($quatro -and $ausenciaNaoAprova) `
+            "sem meta '$semEspec' | sem dado '$semDados' | dentro '$conf' | fora '$naoConf'"
+
+        # ---- 7.4 especificacao desativada sai de vigencia, COM ACENTO ----
+        # Regressao de defeito real: a comparacao era contra "NAO" cru, e o
+        # gestor desativa digitando "Nao" com til -- que e como o proprio sistema
+        # grava a Cfg_Status. UCase de "Nao" com til nao e "NAO", entao a linha
+        # recem-desativada continuava valendo e seguia mudando veredito.
+        # A prova usa DE PROPOSITO a grafia acentuada: com "NAO" cru ela passaria
+        # mesmo com o defeito de volta.
+        $naoAcentuado = [string][char]0x004E + [string][char]0x00E3 + 'o'   # "Nao" com til
+        $wsEsp.Cells.Item($l2, 12).Value2 = $naoAcentuado
+        $wsEsp.Cells.Item($l1, 12).Value2 = $naoAcentuado
+        $xl.Run('InvalidarCacheEspec') | Out-Null
+        $rDesativada = [string]$xl.Run('ResolverEspec', $ESP_ANALITO, 2026, 'CLIA')
+        $sitDesativada = [string]$xl.Run('SituacaoEspec', $ESP_ANALITO, 2026, 'CLIA')
+        $confDesativada = [string]$xl.Run('AvaliarConformidade', $ESP_ANALITO, 2026, 5, 1, 'CLIA')
+        Anotar '7.4' 'especificacao desativada sai de vigencia (grafia acentuada)' `
+            ($rDesativada -eq 'NAO_CADASTRADA' -and $confDesativada -eq 'SEM ESPECIFICACAO') `
+            "desativada com '$naoAcentuado': resolve '$rDesativada', situacao '$sitDesativada', conformidade '$confDesativada'"
+
+        # ---- 7.5 o protocolo do motor nao depende de localidade ----
+        # Mesma familia do defeito que gravava "92,0028" e o Excel relia 920028
+        # (item 2.2). Aqui o risco e CStr no protocolo interno: numa maquina
+        # pt-BR a virgula viraria separador de campo do proprio retorno.
+        $comDecimal = [string]$xl.Run('MetasDaLinha', 'CV_BIAS_DIRETO', '', '', '', '', 2.5, 1.25)
+        $pD = $comDecimal -split '\|'
+        $semVirgula = ($comDecimal -notmatch ',')
+        $reversivel = ($pD.Count -eq 3 -and [Math]::Abs([double]$pD[2] - (1.25 + 1.65 * 2.5)) -lt 0.0001)
+        Anotar '7.5' 'protocolo do motor de especificacoes e invariante de localidade' `
+            ($semVirgula -and $reversivel) `
+            "retorno '$comDecimal' (sem virgula: $semVirgula, reversivel: $reversivel)"
+
+        # ---- limpeza: o banco de especificacoes volta ao que era ----
+        $wsEsp.Range($wsEsp.Cells.Item($l1, 1), $wsEsp.Cells.Item($l2, 14)).ClearContents() | Out-Null
+        $xl.Run('InvalidarCacheEspec') | Out-Null
+        $linEspDepois = [int]$xl.Run('UltimaLinhaEspec')
+        if ($linEspDepois -ne $linEspAntes) {
+            "     AVISO: DB_Especificacoes ficou com $linEspDepois linhas (antes $linEspAntes)"
+        }
+        $wsEsp.Visible = $espVisAntes
+    }
 
     $wb.VBProject.VBComponents.Remove($vba)
     $db.Cells.Item($linhaTeste, 7).Value2 = $statusOriginal

@@ -99,6 +99,41 @@ Public Function NormRigor(ByVal s As String) As String
 End Function
 
 ' ---------------------------------------------------------------------------
+' A linha do banco ainda esta em vigencia?
+'
+' O ACENTO IMPORTA, E ESTA E A RAZAO DESTA FUNCAO EXISTIR.
+'
+' Quem desativa uma especificacao e o gestor, digitando na propria aba. E "nao"
+' se escreve "Nao" com til -- que e inclusive como o proprio sistema grava a
+' coluna Elegivel da Cfg_Status. A comparacao anterior era contra "NAO" cru:
+' UCase$("Nao" com til) devolve "NAO" com til, que NAO e igual a "NAO", entao a
+' especificacao recem-desativada continuava valendo. Sem erro, sem aviso, e
+' mudando veredito de conformidade -- o gestor via "Nao" na tela e o motor
+' seguia aplicando a meta.
+'
+' POLARIDADE, e por que ela e o INVERSO da de EhElegivel (mEstatistica).
+'
+' La, estado desconhecido NUNCA entra no calculo: elegibilidade decide se um
+' DADO entra na conta, e no escuro o certo e excluir o dado. Aqui, valor
+' desconhecido CONTINUA valendo: vigencia decide se existe CRITERIO, e no
+' escuro o certo e manter o criterio. Perder a meta em silencio jogaria o
+' analito em "SEM ESPECIFICACAO" e o tiraria da avaliacao -- exatamente o que o
+' ADR-023 existe para impedir. Em branco tambem vale, porque todo escritor do
+' pipeline grava "Sim" e uma linha acrescentada a mao nao pode sumir calada.
+Public Function EspecAtiva(ByVal v As Variant) As Boolean
+    Dim t As String
+    t = UCase$(Trim$(CStr(v)))
+    t = Replace(t, ChrW(195), "A")      ' A com til (maiusculo, apos UCase)
+    t = Replace(t, ChrW(227), "A")      ' a com til (minusculo, por seguranca)
+    Select Case t
+        Case "NAO", "N", "INATIVO", "INATIVA", "FALSO", "FALSE", "0"
+            EspecAtiva = False
+        Case Else
+            EspecAtiva = True
+    End Select
+End Function
+
+' ---------------------------------------------------------------------------
 ' Calcula as tres metas de UMA linha do banco, conforme o modelo dela.
 ' Devolve "CVtp|BIAStp|ETp", com "" onde a grandeza nao e definida pelo modelo.
 Public Function MetasDaLinha(ByVal modelo As String, ByVal etp As Variant, _
@@ -178,7 +213,7 @@ Public Function ResolverEspec(ByVal analito As String, ByVal ano As Long, _
             If Trim$(CStr(dados(i, ES_ANALITO))) <> "" Then
                 If UCase$(Trim$(CStr(dados(i, ES_ANALITO)))) = UCase$(Trim$(analito)) Then
                     If UCase$(Trim$(CStr(dados(i, ES_FONTE)))) = UCase$(Trim$(fonte)) Then
-                        If UCase$(Trim$(CStr(dados(i, ES_ATIVO)))) <> "NAO" Then
+                        If EspecAtiva(dados(i, ES_ATIVO)) Then
                             If IsNumeric(dados(i, ES_ANO)) Then
                                 Dim a As Long: a = CLng(dados(i, ES_ANO))
                                 ' VIGENCIA: maior ano que nao ultrapassa o ano

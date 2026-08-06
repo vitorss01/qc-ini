@@ -229,11 +229,16 @@ não vale.
 
 ## 5. Cobertura por produto
 
-| Produto | Fase 1 | Fase 2 | Fase 3 | Observação |
-|---|---|---|---|---|
-| Hematologia | ✅ | ✅ | ⏳ | Motor instalado; correção validada **não promovida** |
-| Bioquímica | ✅ | ✅ | ❌ | Fase 3 nunca aplicada |
-| Imunologia | ✅ | ✅ | ❌ | Fase 3 nunca aplicada |
+| Produto | Fase 1 | Fase 2 | Fase 3 | Especificações | Observação |
+|---|---|---|---|---|---|
+| Hematologia | ✅ | ✅ | ✅ | ❌ | Motor instalado e verificado pela suíte. Sem `mEspecificacoes` — o subsistema é da Bioquímica |
+| Bioquímica | ✅ | ✅ | ✅ | ✅ | Produto de referência. Aba `Importar` com 31 analitos, motor de especificações (ADR-022/023) |
+| Imunologia | ✅ | ✅ | ❌ | ❌ | Fase 3 nunca aplicada. Adiado por decisão do gestor |
+
+> Esta tabela dizia "Fase 3 nunca aplicada" para a Bioquímica até 06/08/2026,
+> quando ela já passava a suíte inteira. A escrituração ficou para trás do
+> trabalho — anotado aqui porque um gate que descreve errado o próprio estado
+> é pior do que um gate sem tabela.
 
 ## 6. UX
 
@@ -244,7 +249,52 @@ não vale.
 | 6.2a | `Audit_Legenda!B22` preservada | ✅ | Ali "Seq" é a sequência de **auditoria** (1ª, 2ª, 3ª alteração do resultado), outro conceito. A prova 6.2 falha nos dois sentidos: reprova se o Seq do identificador sobrar **e** se o Seq da auditoria for apagado por um replace global |
 | 6.3 | Eixo X alinhado ao RUN | ✅ | 2 gráficos na Bioquímica, 3 na Hematologia: `Corrida (RUN)` → `RUN`. Prova 6.3 |
 | 6.4 | 52 achados de UX/arquitetura triados | ⏳ | `FASE3A_achados_estaticos.md` |
-| 6.5 | Importação por aba substitui o `frmMassa` | ✅ | Bioquímica. Analitos na horizontal, colagem direta, botão **Registrar** migra para `DB_Resultados` e limpa a aba. Provas 1.7–1.10 (montagem) e 3.16–3.17 (execução) |
+| 6.5 | Importação por aba substitui o `frmMassa` | ✅ | Bioquímica. Analitos na horizontal, colagem direta, botão **Registrar** migra para `DB_Resultados` e limpa a aba. Provas 1.7–1.10 (montagem), 3.16–3.17 (execução) e 3.18 (rastro) |
+
+## 7. Motor de Especificações (ADR-022 / ADR-023)
+
+Entrou em 05–06/08/2026 com **575 linhas que decidem CONFORME / NÃO CONFORME**, e
+`Painel` e `Estatística` passaram a ler dele. Chegou sem nenhuma prova na suíte —
+era a camada mais nova, a de maior consequência e a única de cálculo sem cobertura.
+
+| # | Item | Status | Observação |
+|---|---|---|---|
+| 7.1 | Meta resolvida pelo ano do resultado | ✅ | Regra de **vigência**: maior `Ano` ≤ ano do resultado. Prova cadastra 2020 e 2026 e exige que 2023 resolva pela de 2020, 2026 pela de 2026 e 2019 devolva `NAO_CADASTRADA` |
+| 7.2 | Os três modelos derivam o que o ADR manda | ✅ | `ETP_DIRETO` (CVtp = ETp/3), `VB` (CVtp = CVi·fi, BIAStp = √(CVi²+CVg²)·fb), `CV_BIAS_DIRETO` (ETp = BIAStp + 1,65·CVtp) |
+| 7.3 | Quatro estados, e ausência nunca é aprovação | ✅ | `CONFORME`, `NAO CONFORME`, `SEM ESPECIFICACAO`, `SEM DADOS`. A prova exige explicitamente que nenhum dos dois de ausência saia `CONFORME` |
+| 7.4 | Especificação desativada sai de vigência | ✅ | **Regressão de defeito real.** A comparação era contra `"NAO"` cru e o gestor desativa digitando `"Não"`. `UCase$("Não")` = `"NÃO"` ≠ `"NAO"`, então a especificação recém-desativada seguia valendo e mudando veredito, sem aviso. A prova usa de propósito a grafia acentuada — com `"NAO"` cru ela passaria mesmo com o defeito de volta |
+| 7.5 | Protocolo invariante de localidade | ✅ | `Str$`/`Val`, nunca `CStr`. Mesma família do defeito que gravava `92,0028` e o Excel relia `920028` (item 2.2) |
+| 7.6 | `mEspecificacoes` tem instalador versionado | ✅ | `instalar_especificacoes_producao.ps1`. O módulo tinha entrado pela VBE — `criar_form_especificacoes.ps1` apenas **exigia** que ele já estivesse lá. Sem instalador, corrigir a fonte versionada não mudava nada em lugar nenhum. Coberto também pela prova 1.1 (idêntico à fonte) |
+
+## 8. Defeitos do pipeline multi-produto, achados em 06/08/2026
+
+Os três vieram da mesma causa: passos criados para a Bioquímica passaram a rodar
+para **todos** os produtos com valores da Bioquímica embutidos. Nenhum deles
+aparecia na Bioquímica — só na Hematologia, que ninguém tinha reexecutado.
+
+| # | Defeito | Status | Como se manifestava |
+|---|---|---|---|
+| 8.1 | Analito de referência fixo em `Glicose` | ✅ corrigido | `build_all.ps1` passava `-Analito 'Glicose'` para todo produto. O build **inteiro** da Hematologia morria: *"analito de referencia 'Glicose' nao esta cadastrado"*. Agora vem de `$REFERENCIA_POR_PRODUTO` (Hematologia = `WBC`, verificado com 75 resultados no banco) |
+| 8.2 | Aba `Importar` montada com os analitos da Bioquímica | ✅ corrigido | `criar_aba_importar.ps1` tem `analitos_bioquimica.csv` como padrão e o build nunca passava `-Csv`. A Hematologia recebia 31 siglas de outro setor. **A aba montava, ficava bonita e passava em todas as provas estruturais** — só a prova de ponta a ponta pegava, com `ERRO\|6`. Criado `analitos_hematologia.csv` (28 analitos, extraídos da própria aba `Analitos`) e o build passa o CSV do produto |
+| 8.3 | A prova 1.7 confirmava o defeito em vez de pegá-lo | ✅ corrigido | Comparava a aba contra `analitos_bioquimica.csv` **para qualquer produto** — a mesma lista errada dos dois lados, então batia. E a 1.11 fazia `continue` no de/para vazio: relatou **"0 órfãs"** com a aba inteira desmapeada. Coluna sem de/para agora é defeito, não caso previsto |
+
+> A lição das três é a mesma, e é a do ADR-021 noutra forma: **uma prova que lê a
+> mesma fonte que o passo escreveu não é uma prova.** As de estrutura (1.7–1.12)
+> conferiam a aba contra ela mesma; a única que discriminou foi a que exercita o
+> comportamento (3.16).
+
+### Pendência que não é minha de decidir
+
+**Linha de base de fórmulas da Hematologia está velha.** Foi tirada em 03/08
+(`9ad7e65`); a da Bioquímica foi regerada em 05/08 (`2b11f3b`) porque o pipeline
+mudou. A suíte acusa `VALOR 4965` na Hematologia, e a leitura das divergências
+mostra que **não são fórmulas destruídas**: são dados de teste que o próprio
+build semeia (`DB_Resultados!BA1940` vazio → `999999`) e valores do `Calc` que
+mudaram por fixar a referência em `WBC`.
+
+Regerar a linha de base faria o item passar — e é exatamente assim que um gate
+morre, redefinindo a verdade para caber no resultado. Fica registrado para
+decisão sua, junto da retomada da Hematologia.
 
 ---
 
@@ -253,12 +303,12 @@ não vale.
 > **Regra de merge:** nada entra na `main` enquanto houver ⏳ ou ❌.
 > A branch `fase3a-motor-cqi` é de trabalho; se um PR for aberto, deve ser **draft**.
 
-**27 ✅ · 17 ⏳ · 4 ❌**  (contagem inclui a tabela de cobertura por produto)
+**40 ✅ · 6 ⏳ · 2 ❌**  (contagem inclui a tabela de cobertura por produto)
 
-> A **tabela de cobertura por produto** acima ainda diz "Fase 3 nunca aplicada" para
-> a Bioquímica, e isso está desatualizado — a Bioquímica passa 59 de 60 na suíte.
-> Corrigir a tabela é item próprio, ainda não feito; a contagem acima ainda a inclui
-> no estado antigo.
+**Suíte, 06/08/2026:** Bioquímica **68 de 69** · Hematologia **61 de 63**.
+Na Bioquímica a única falha é a `5.4` (senha do VBA, passo manual seu). Na
+Hematologia somam-se a `5.4` e a `4.2`, que é a linha de base velha descrita
+na seção 8 — não é defeito de produto.
 
 O **motor** está pronto e validado. O **sistema** ainda não é auditável nem confiável.
 

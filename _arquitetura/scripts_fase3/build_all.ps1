@@ -51,7 +51,26 @@ if (-not $NIVEIS_POR_PRODUTO.ContainsKey($Produto)) {
     throw "Produto desconhecido: $Produto. Conhecidos: $($NIVEIS_POR_PRODUTO.Keys -join ', ')"
 }
 $NLV = $NIVEIS_POR_PRODUTO[$Produto]
-"produto: $Produto   niveis: $NLV"
+
+# Analito de referencia do Painel, POR PRODUTO.
+#
+# Estava fixo em 'Glicose' na chamada da etapa 7d, o que derrubava o build
+# INTEIRO da Hematologia -- que nao tem Glicose -- com "analito de referencia
+# 'Glicose' nao esta cadastrado na aba Analitos". O passo esta certo e a
+# amarracao e que nao estava: e um dado do produto, igual ao NLV, e pertence
+# a este mapa e nao ao meio do script.
+#
+# O analito escolhido precisa TER RESULTADOS: a linha de base de formulas
+# guarda valores calculados, e um analito sem dado produz Calc divergente e
+# Eng_Saida vazio -- o ruido que a propria etapa 7d existe para eliminar.
+# Verificado no banco: Glicose e WBC tem resultado nos respectivos produtos.
+$REFERENCIA_POR_PRODUTO = @{
+    'Hematologia' = 'WBC'
+    'Bioquimica'  = 'Glicose'
+    'Imunologia'  = ''
+}
+$ANALITO_REF = $REFERENCIA_POR_PRODUTO[$Produto]
+"produto: $Produto   niveis: $NLV   analito de referencia: $(if ($ANALITO_REF) { $ANALITO_REF } else { '(nenhum)' })"
 
 $snapProduto = Join-Path $arq "snapshot_producao\$Produto"
 if (-not (Test-Path $snapProduto)) {
@@ -313,13 +332,36 @@ if (-not $PularMotor) {
 
 Encerrar-Excel
 "== 7b. importacao por aba (substitui o frmMassa)"
-Etapa 'criar_aba_importar.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
+# O CSV DE ANALITOS E POR PRODUTO, E PRECISA SER PASSADO EXPLICITAMENTE.
+#
+# criar_aba_importar.ps1 tem 'analitos_bioquimica.csv' como valor padrao do
+# parametro -Csv. Como a chamada nao passava nada, TODO produto recebia a aba
+# Importar com os 31 analitos da Bioquimica -- inclusive a Hematologia, que tem
+# 28 e outros nomes.
+#
+# O sintoma era mudo, e por isso perigoso: a aba montava, ficava bonita e
+# passava em TODAS as provas estruturais (1.7 a 1.12), porque elas conferem a
+# forma da aba contra ela mesma. So a prova de ponta a ponta pegava -- 3.16
+# devolvia "ERRO|6", com as seis colunas rejeitadas por nao existirem no
+# produto. Uma aba de importacao que nao importa nada.
+$csvAnalitos = Join-Path $arq "src_producao\analitos_$($Produto.ToLowerInvariant()).csv"
+if (-not (Test-Path $csvAnalitos)) {
+    throw "CSV de analitos ausente para $Produto : $csvAnalitos. Sem ele a aba Importar sairia com os analitos de outro setor."
+}
+Etapa 'criar_aba_importar.ps1' -Argumentos @('-Workbook', $alvo, '-Csv', $csvAnalitos) -Ultimas 3
 
 # O Calc e a area de UM analito por vez. Sem fixar qual, o valor de ~660
 # celulas -- e o Eng_Saida inteiro -- depende de qual analito o spinner deixou
 # selecionado, e a conferencia de formulas vira ruido. Fixar por NOME, nao por
 # posicao: a posicao e justamente o que muda quando a lista e reordenada.
-Etapa 'fixar_analito_referencia.ps1' -Argumentos @('-Workbook', $alvo, '-Analito', 'Glicose') -Ultimas 1
+# O analito vem de $REFERENCIA_POR_PRODUTO. Produto sem referencia definida
+# pula a etapa em vez de derrubar o build com o analito de outro setor.
+if ($ANALITO_REF) {
+    Etapa 'fixar_analito_referencia.ps1' -Argumentos @('-Workbook', $alvo, '-Analito', $ANALITO_REF) -Ultimas 1
+}
+else {
+    "  (sem analito de referencia definido para $Produto - etapa pulada)"
+}
 
 Encerrar-Excel
 # Depois do motor: AtualizarPainelEng nao toca em titulo de eixo, mas a ordem
