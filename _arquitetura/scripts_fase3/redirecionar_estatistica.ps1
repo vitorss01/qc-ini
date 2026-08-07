@@ -125,6 +125,44 @@ if ($E0 -eq 0) { throw "bloco da Estatistica nao localizado (nenhuma celula da c
 
 if ($est -eq $null) { throw "Aba Estatistica nao encontrada" }
 
+# ---------------------------------------------------------------------------
+# A ESTATISTICA v2 NAO TEM O QUE REDIRECIONAR.
+#
+# Este script nasceu para a Estatistica que CALCULAVA na propria aba: ele
+# apontava C..I para o Eng_Saida e ainda reescrevia as colunas 11 e 12 com as
+# formulas de ET e Sigma -- por POSICAO, assumindo J=bias, K=ET, L=Sigma.
+#
+# A v2 mudou o conjunto de colunas (J=Status CV, K=Bias, N=ET, R=Sigma,
+# S=Classificacao) e passou a calcular tudo pelo motor: EstatPeriodo, LimEspec,
+# StatusCV e StatusETP sao UDFs de mEstatPeriodo. Nao ha calculo de interface
+# sobrando para redirecionar -- o ADR-019 ja esta satisfeito na origem.
+#
+# Rodar mesmo assim gravava ET em cima do BIAS e fazia o bias virar referencia
+# a um texto; Status CV, ET, Sigma e Classificacao vinham VAZIOS no artefato
+# (145 celulas, item 4.2 da suite). O script nao estava errado quando foi
+# escrito: a aba mudou embaixo dele.
+#
+# Detectar pela PRESENCA DO MOTOR, e nao por versao ou data: se a aba ja chama
+# EstatPeriodo, ela e engine-driven, ponto.
+$ehV2 = $false
+for ($i = 1; $i -le 200; $i++) {
+    for ($c = 1; $c -le 20; $c++) {
+        $f = $est.Cells.Item($i, $c).Formula
+        if ("$f" -like '*EstatPeriodo(*') { $ehV2 = $true; break }
+    }
+    if ($ehV2) { break }
+}
+if ($ehV2) {
+    "Estatistica v2 detectada (usa EstatPeriodo): nada a redirecionar"
+    "A aba ja calcula pelo motor -- redirecionar por posicao corromperia as colunas."
+    if ($OutCsv) { "Tipo;Aba;Celula;De;Para" | Out-File -FilePath $OutCsv -Encoding UTF8 }
+    $wb.Save()
+    $wb.Close($true)
+    $xl.Quit()
+    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($xl) | Out-Null
+    exit 0
+}
+
 $lista = New-Object System.Collections.ArrayList
 
 for ($c = $C0; $c -le $CN; $c++) {
