@@ -25,7 +25,14 @@ param(
     [int]$NLV = 3
 )
 
-$E0 = 7          # Estatistica: 1a linha do bloco
+# 1a linha do bloco da Estatistica.
+#
+# NAO PODE SER FIXA. O cabecalho de filtros cresceu em 06/08/2026 e a tabela
+# desceu da linha 7 para a 14; com o numero cravado aqui, o build passou a
+# escrever os redirecionamentos DENTRO do cabecalho -- 60 formulas em cima dos
+# campos de filtro e a tabela real intocada. Localizar pela coluna A (que traz
+# =Analitos!$A$n) amarra o script ao CONTEUDO e nao a uma coordenada.
+$E0 = 0          # localizado apos abrir a pasta (ver abaixo)
 $LINHAS = 40 * $NLV    # 40 analitos x niveis
 $C0 = 3          # coluna C
 $CN = 9          # coluna I -- para em I de proposito, ver abaixo
@@ -108,6 +115,14 @@ $xl.Calculation = -4135
 
 $est = $null
 foreach ($ws in $wb.Worksheets) { if ($ws.Name -like 'Estat*') { $est = $ws; break } }
+# Agora que a aba existe, localiza a 1a linha do bloco PELO CONTEUDO.
+for ($i = 3; $i -le 60; $i++) {
+    $f = $est.Cells.Item($i, 1).Formula
+    if ("$f" -like '=Analitos!*') { $E0 = $i; break }
+}
+if ($E0 -eq 0) { throw "bloco da Estatistica nao localizado (nenhuma celula da coluna A com =Analitos!)" }
+"Estatistica: bloco comeca na linha $E0"
+
 if ($est -eq $null) { throw "Aba Estatistica nao encontrada" }
 
 $lista = New-Object System.Collections.ArrayList

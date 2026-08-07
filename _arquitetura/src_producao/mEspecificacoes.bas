@@ -608,3 +608,15 @@ Public Function AnoDeContexto() As Long
     End If
     If mx = 0 Then AnoDeContexto = Year(Date) Else AnoDeContexto = Year(mx)
 End Function
+
+' Ponto de entrada do botao da aba Analitos.
+'
+' JA SUMIU UMA VEZ. Reinstalar este modulo por script apaga o que foi
+' anexado ao fim dele -- e o botao fica apontando para um nome que nao
+' existe mais, com cara de codigo orfao. Ele mora AQUI, na fonte
+' versionada, e nao so no arquivo: foi a verificacao 1.1 (modulo
+' identico a fonte) que acusou a divergencia quando eu restaurei so no
+' artefato.
+Public Sub AbrirFormEspecificacoes()
+    frmEspecificacoes.Show
+End Sub
