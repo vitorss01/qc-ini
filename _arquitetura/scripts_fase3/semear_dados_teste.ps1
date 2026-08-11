@@ -98,9 +98,10 @@ try {
         if ("$($an.Cells.Item($i,5).Value2)".Trim() -eq '') {
             $an.Cells.Item($i, 5).Value2 = [double](80 + ($nAn * 3) % 40)    # media N1
             $an.Cells.Item($i, 6).Value2 = [double](2 + ($nAn % 3))          # DP N1
-            if ($NLV -ge 2) {
-                $an.Cells.Item($i, 7).Value2 = [double](200 + ($nAn * 5) % 90)
-                $an.Cells.Item($i, 8).Value2 = [double](5 + ($nAn % 4))
+            for ($nv2 = 2; $nv2 -le $NLV; $nv2++) {
+                $cM = 5 + ($nv2 - 1) * 2
+                $an.Cells.Item($i, $cM).Value2 = [double](100 * $nv2 + ($nAn * 5) % 90)
+                $an.Cells.Item($i, $cM + 1).Value2 = [double](2 * $nv2 + ($nAn % 4))
             }
         }
         if ("$($an.Cells.Item($i,11).Value2)".Trim() -eq '') { $an.Cells.Item($i, 11).Value2 = [double]15 }
@@ -134,8 +135,17 @@ try {
         for ($nv = 1; $nv -le $NLV; $nv++) {
             for ($a = 0; $a -lt $analitos.Count; $a++) {
                 $lin = $an.Cells.Item(4 + $a, 1)
-                $media = [double]$an.Cells.Item(4 + $a, ($(if ($nv -eq 1) { 5 } else { 7 }))).Value2
-                $dp = [double]$an.Cells.Item(4 + $a, ($(if ($nv -eq 1) { 6 } else { 8 }))).Value2
+                # Media/DP POR NIVEL: E=5/F=6 (N1), G=7/H=8 (N2), I=9/J=10 (N3).
+                #
+                # Antes era "5/6 se nivel 1, senao 7/8" -- e o nivel 3 nascia com
+                # a media do nivel 2. Na Hematologia (NLV=3, produto PADRAO do
+                # build) o WBC tem N2=6,8 e N3=16,5: os resultados do N3 caiam
+                # dezenas de desvios fora do alvo. A fixture inteira do nivel 3
+                # era lixo, e e sobre ela que a suite mede o aceite.
+                $cMed = 5 + ($nv - 1) * 2
+                $cDp = $cMed + 1
+                $media = [double]$an.Cells.Item(4 + $a, $cMed).Value2
+                $dp = [double]$an.Cells.Item(4 + $a, $cDp).Value2
                 if ($dp -le 0) { $dp = 1 }
                 # normal por Box-Muller: dado de teste tem de PARECER controle,
                 # senao Westgard nunca dispara e as regras nao sao exercitadas.
