@@ -3,35 +3,48 @@ Option Explicit
 '
 ' CAMADA DE APRESENTACAO, E SO ISSO.
 '
-' Este formulario nao calcula nada. Ele le e escreve as MESMAS celulas que a aba
-' Estatistica ja usa, e o motor (mEstatPeriodo) continua sendo o unico que
-' calcula. Duplicar a regra aqui criaria duas verdades para a mesma pergunta --
-' a falha que este projeto ja pagou caro (ADR-009, ADR-019).
+' A cadeia continua sendo:
+'   formulario -> celulas existentes -> formulas existentes -> motor -> resultado
 '
-' MAPA DAS CELULAS (a geometria real, medida na Fase 0):
+' Este form nao calcula nenhuma estatistica. Ele escreve nas celulas que a aba ja
+' usa e deixa o motor (mEstatPeriodo) trabalhar. Para PREVER o periodo antes de
+' aplicar ele chama as PROPRIAS funcoes do motor -- JanelaInicio, JanelaFim e
+' PeriodoEfetivo. Reimplementar a conta aqui criaria a segunda fonte de verdade
+' que o ADR-019 existe para impedir.
 '
-'   B4  Visao          MENSAL | TRIMESTRAL | SEMESTRAL | ANUAL | PERSONALIZADO
-'   D4  Ano
-'   F4  Parte          mes 1..12, trimestre 1..4, semestre 1..2
-'   H4  Lote           vazio = todos
-'   B5  Personalizado inicio     D5  Personalizado fim
-'   B8:C8   exclusao 1     E8:F8  exclusao 4
-'   B9:C9   exclusao 2     E9:F9  exclusao 5
-'   B10:C10 exclusao 3
+' MAPA DAS CELULAS
+'   B4  Visao      MENSAL | TRIMESTRAL | SEMESTRAL | ANUAL | PERSONALIZADO
+'   D4  Ano        F4  Parte        H4  Lote
+'   B5  Personalizado inicio        D5  Personalizado fim
+'   B8:C8 exclusao 1    B9:C9 exclusao 2    B10:C10 exclusao 3
+'   E8:F8 exclusao 4    E9:F9 exclusao 5
+'   H5/J5 janela efetiva e B11 periodo por extenso sao FORMULA: nunca escrever.
 '
-'   H5 e J5 (janela efetiva) sao FORMULA -- nunca escrever nelas.
+' TRADUCAO DOS TRIMESTRES -- e por que ela existe
 '
-' O QUE ESTE FORMULARIO RESOLVE DE UX
+' O Painel usa quatro booleanos independentes e aceita 1o e 3o trimestre juntos.
+' O motor da Estatistica NAO consegue representar isso: Janela() produz UMA
+' janela contigua a partir de um unico "parte". Entao o form aceita marcar varios
+' trimestres, exige que sejam CONSECUTIVOS e traduz para o vocabulario que o
+' motor ja entende:
 '
-' A aba pede "Parte" e espera um numero. O usuario tem de saber, de cabeca, que
-' com Visao=TRIMESTRAL o 2 significa abril-junho. Aqui a lista muda com a visao
-' e mostra "2o trimestre (abr-jun)" -- o numero continua sendo o que vai para a
-' celula, mas o usuario escolhe pelo nome.
+'   um trimestre        -> TRIMESTRAL, parte = o trimestre
+'   Q1+Q2 / Q3+Q4       -> SEMESTRAL, parte 1 ou 2
+'   os quatro           -> ANUAL
+'   qualquer outra faixa contigua (Q2+Q3, Q1..Q3, Q2..Q4) -> PERSONALIZADO com
+'                          as datas do primeiro dia do primeiro trimestre ao
+'                          ultimo dia do ultimo
 '
-' E a janela efetiva aparece ANTES de aplicar, para o usuario ver o periodo que
-' vai valer em vez de descobrir depois pelo resultado.
+' O usuario nao precisa saber nada disso. Ele pensa "quero estes trimestres".
 
 Private mCarregando As Boolean
+
+Private Const C_VISAO As String = "B4"
+Private Const C_ANO As String = "D4"
+Private Const C_PARTE As String = "F4"
+Private Const C_LOTE As String = "H4"
+Private Const C_PERS_INI As String = "B5"
+Private Const C_PERS_FIM As String = "D5"
 
 ' ---------------------------------------------------------------------------
 Private Function AbaEstat() As Worksheet
@@ -42,36 +55,41 @@ Private Function AbaEstat() As Worksheet
 End Function
 
 Private Sub UserForm_Initialize()
-    Dim ws As Worksheet, i As Long
+    Dim ws As Worksheet, v As String, p As Long
     mCarregando = True
     Set ws = AbaEstat()
 
-    Me.Caption = "Configuracao da analise estatistica"
+    Me.Caption = "Configuracao da analise"
 
-    ' --- visao ---
-    With cboVisao
-        .Clear
-        .AddItem "MENSAL"
-        .AddItem "TRIMESTRAL"
-        .AddItem "SEMESTRAL"
-        .AddItem "ANUAL"
-        .AddItem "PERSONALIZADO"
-    End With
-
-    ' --- ano: os anos que EXISTEM no banco, e nao um intervalo inventado ---
+    PreencherMeses
     PreencherAnos
-
-    ' --- lote: da mesma origem que a validacao da celula ---
     PreencherLotes
 
-    ' --- estado atual da aba ---
-    cboVisao.Value = CStr(ws.Range("B4").Value)
-    If cboVisao.ListIndex < 0 Then cboVisao.Value = "ANUAL"
-    If IsNumeric(ws.Range("D4").Value) Then cboAno.Value = CStr(CLng(ws.Range("D4").Value))
-    cboLote.Value = CStr(ws.Range("H4").Value)
+    ' --- le o estado atual e reconstitui o MODO ---
+    v = UCase$(Trim$(CStr(ws.Range(C_VISAO).Value)))
+    p = 0
+    If IsNumeric(ws.Range(C_PARTE).Value) Then p = CLng(ws.Range(C_PARTE).Value)
 
-    txtPersIni.Text = TextoData(ws.Range("B5").Value)
-    txtPersFim.Text = TextoData(ws.Range("D5").Value)
+    If IsNumeric(ws.Range(C_ANO).Value) Then SelecionarLista cboAno, CStr(CLng(ws.Range(C_ANO).Value))
+    cboLote.Value = CStr(ws.Range(C_LOTE).Value)
+
+    Select Case v
+        Case "MENSAL"
+            optMensal.Value = True
+            If p >= 1 And p <= 12 Then cboMes.ListIndex = p - 1
+        Case "TRIMESTRAL"
+            optTrimestral.Value = True
+            MarcarTrimestres p, p
+        Case "SEMESTRAL"
+            optTrimestral.Value = True
+            If p = 2 Then MarcarTrimestres 3, 4 Else MarcarTrimestres 1, 2
+        Case "PERSONALIZADO"
+            ' Nao da para saber se veio de trimestres ou de datas soltas.
+            ' Assume-se ANUAL como estado seguro e as datas ficam a vista.
+            optAnual.Value = True
+        Case Else
+            optAnual.Value = True
+    End Select
 
     txtEx1Ini.Text = TextoData(ws.Range("B8").Value): txtEx1Fim.Text = TextoData(ws.Range("C8").Value)
     txtEx2Ini.Text = TextoData(ws.Range("B9").Value): txtEx2Fim.Text = TextoData(ws.Range("C9").Value)
@@ -80,13 +98,44 @@ Private Sub UserForm_Initialize()
     txtEx5Ini.Text = TextoData(ws.Range("E9").Value): txtEx5Fim.Text = TextoData(ws.Range("F9").Value)
 
     mCarregando = False
-    AtualizarPartes
-    If IsNumeric(ws.Range("F4").Value) Then SelecionarParte CLng(ws.Range("F4").Value)
     AtualizarEstado
 End Sub
 
 ' ---------------------------------------------------------------------------
-' Anos presentes no banco. Oferecer 1900..2100 seria oferecer periodo vazio.
+' Meses: a MESMA nomenclatura do Painel (I4). Ler de la evita duas listas de
+' meses no mesmo arquivo divergindo com o tempo.
+Private Sub PreencherMeses()
+    Dim ws As Worksheet, f1 As String, itens() As String, i As Long, n As Long
+    cboMes.Clear
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets("Painel")
+    If Not ws Is Nothing Then f1 = CStr(ws.Range("I4").Validation.Formula1)
+    On Error GoTo 0
+
+    If f1 <> "" Then
+        If InStr(f1, ";") > 0 Then itens = Split(f1, ";") Else itens = Split(f1, ",")
+        n = 0
+        For i = LBound(itens) To UBound(itens)
+            ' o "(todos)" do Painel nao se aplica aqui: a Estatistica sempre tem
+            ' um periodo definido, e "todos os meses" e o modo ANUAL
+            If InStr(itens(i), "todos") = 0 Then
+                n = n + 1
+                cboMes.AddItem Format$(n, "00") & " - " & Trim$(itens(i))
+            End If
+        Next i
+        If cboMes.ListCount = 12 Then Exit Sub
+    End If
+
+    ' Painel indisponivel ou lista fora do esperado: monta pelo proprio Excel,
+    ' que respeita o idioma da instalacao.
+    cboMes.Clear
+    For i = 1 To 12
+        cboMes.AddItem Format$(i, "00") & " - " & Format$(DateSerial(2000, i, 1), "mmmm")
+    Next i
+End Sub
+
+' Anos que EXISTEM no banco. Oferecer 1900..2100 seria oferecer periodo vazio,
+' e digitacao livre aceitaria "abc" ou "202".
 Private Sub PreencherAnos()
     Dim ws As Worksheet, ult As Long, dados As Variant, i As Long
     Dim anos As Object, k As Variant, lista() As Long, n As Long, j As Long, tmp As Long
@@ -101,17 +150,12 @@ Private Sub PreencherAnos()
             End If
         Next i
     End If
-
     cboAno.Clear
-    If anos.Count = 0 Then
-        cboAno.AddItem CStr(Year(Date))
-        Exit Sub
-    End If
+    If anos.Count = 0 Then cboAno.AddItem CStr(Year(Date)): Exit Sub
     ReDim lista(1 To anos.Count)
     n = 0
     For Each k In anos.Keys
-        n = n + 1
-        lista(n) = CLng(k)
+        n = n + 1: lista(n) = CLng(k)
     Next k
     For i = 1 To n - 1
         For j = i + 1 To n
@@ -126,15 +170,10 @@ End Sub
 Private Sub PreencherLotes()
     Dim ws As Worksheet, i As Long, v As String
     cboLote.Clear
-    cboLote.AddItem ""                       ' vazio = todos os lotes
-    On Error Resume Next
-    Set ws = ThisWorkbook.Sheets("Configuracao")
-    If ws Is Nothing Then
-        For Each ws In ThisWorkbook.Worksheets
-            If Left$(ws.Name, 6) = "Config" Then Exit For
-        Next ws
-    End If
-    On Error GoTo 0
+    cboLote.AddItem ""
+    For Each ws In ThisWorkbook.Worksheets
+        If Left$(ws.Name, 6) = "Config" Then Exit For
+    Next ws
     If ws Is Nothing Then Exit Sub
     For i = 26 To 50
         v = Trim$(CStr(ws.Cells(i, 3).Value))
@@ -142,89 +181,115 @@ Private Sub PreencherLotes()
     Next i
 End Sub
 
-' ---------------------------------------------------------------------------
-' A LISTA DE PARTES MUDA COM A VISAO.
-'
-' E o principal ganho de usabilidade: na aba o campo pede um numero e cabe ao
-' usuario saber que, no trimestral, 2 e abril-junho. Aqui ele escolhe pelo nome
-' e o numero vai para a celula do mesmo jeito.
-Private Sub AtualizarPartes()
-    Dim v As String, i As Long
-    v = UCase$(Trim$(cboVisao.Value))
-    cboParte.Clear
-    Select Case v
-        Case "MENSAL"
-            For i = 1 To 12
-                cboParte.AddItem Format$(i, "00") & " - " & NomeMes(i)
-            Next i
-        Case "TRIMESTRAL"
-            cboParte.AddItem "1 - 1o trimestre (jan-mar)"
-            cboParte.AddItem "2 - 2o trimestre (abr-jun)"
-            cboParte.AddItem "3 - 3o trimestre (jul-set)"
-            cboParte.AddItem "4 - 4o trimestre (out-dez)"
-        Case "SEMESTRAL"
-            cboParte.AddItem "1 - 1o semestre (jan-jun)"
-            cboParte.AddItem "2 - 2o semestre (jul-dez)"
-        Case Else
-            ' ANUAL e PERSONALIZADO nao usam parte
-    End Select
-    If cboParte.ListCount > 0 And cboParte.ListIndex < 0 Then cboParte.ListIndex = 0
-End Sub
-
-Private Sub SelecionarParte(ByVal n As Long)
+Private Sub SelecionarLista(ByRef cbo As Object, ByVal valor As String)
     Dim i As Long
-    For i = 0 To cboParte.ListCount - 1
-        If CLng(Val(Left$(cboParte.List(i), 2))) = n Then cboParte.ListIndex = i: Exit Sub
+    For i = 0 To cbo.ListCount - 1
+        If Trim$(CStr(cbo.List(i))) = valor Then cbo.ListIndex = i: Exit Sub
     Next i
 End Sub
 
-Private Function ParteEscolhida() As Long
-    If cboParte.ListIndex < 0 Then ParteEscolhida = 1 Else ParteEscolhida = CLng(Val(Left$(cboParte.Value, 2)))
-End Function
+Private Sub MarcarTrimestres(ByVal de As Long, ByVal ate As Long)
+    chkQ1.Value = (1 >= de And 1 <= ate)
+    chkQ2.Value = (2 >= de And 2 <= ate)
+    chkQ3.Value = (3 >= de And 3 <= ate)
+    chkQ4.Value = (4 >= de And 4 <= ate)
+End Sub
 
-Private Function NomeMes(ByVal m As Long) As String
-    NomeMes = Format$(DateSerial(2000, m, 1), "mmmm")
+' ---------------------------------------------------------------------------
+' Traduz o que esta marcado na tela para o que o motor entende.
+' Devolve "" quando valido, ou a mensagem do problema.
+Private Function Traduzir(ByRef visao As String, ByRef parte As Long, _
+                          ByRef persIni As Variant, ByRef persFim As Variant) As String
+    Dim q(1 To 4) As Boolean, i As Long, primeiro As Long, ultimo As Long, n As Long
+    Dim ano As Long
+
+    visao = "": parte = 0: persIni = Empty: persFim = Empty
+
+    If optMensal.Value Then
+        If cboMes.ListIndex < 0 Then Traduzir = "Escolha o mes.": Exit Function
+        visao = "MENSAL": parte = cboMes.ListIndex + 1
+        Exit Function
+    End If
+
+    If optAnual.Value Then
+        visao = "ANUAL": parte = 1
+        Exit Function
+    End If
+
+    ' --- trimestral ---
+    q(1) = (chkQ1.Value = True): q(2) = (chkQ2.Value = True)
+    q(3) = (chkQ3.Value = True): q(4) = (chkQ4.Value = True)
+    primeiro = 0: ultimo = 0: n = 0
+    For i = 1 To 4
+        If q(i) Then
+            n = n + 1
+            If primeiro = 0 Then primeiro = i
+            ultimo = i
+        End If
+    Next i
+    If n = 0 Then Traduzir = "Marque pelo menos um trimestre.": Exit Function
+
+    ' consecutivos? entre o primeiro e o ultimo nao pode haver buraco
+    For i = primeiro To ultimo
+        If Not q(i) Then
+            Traduzir = "Selecione trimestres consecutivos. O periodo de analise precisa ser continuo."
+            Exit Function
+        End If
+    Next i
+
+    If n = 4 Then visao = "ANUAL": parte = 1: Exit Function
+    If n = 1 Then visao = "TRIMESTRAL": parte = primeiro: Exit Function
+    If n = 2 And primeiro = 1 Then visao = "SEMESTRAL": parte = 1: Exit Function
+    If n = 2 And primeiro = 3 Then visao = "SEMESTRAL": parte = 2: Exit Function
+
+    ' faixa contigua que nao cabe em trimestre/semestre/ano: o motor ja tem
+    ' PERSONALIZADO, que recebe as datas prontas. Nada de logica nova.
+    If Not IsNumeric(cboAno.Value) Then Traduzir = "Escolha o ano.": Exit Function
+    ano = CLng(cboAno.Value)
+    visao = "PERSONALIZADO": parte = primeiro
+    persIni = DateSerial(ano, (primeiro - 1) * 3 + 1, 1)
+    persFim = DateSerial(ano, ultimo * 3 + 1, 0)
 End Function
 
 ' ---------------------------------------------------------------------------
-' Habilita so o que faz sentido para a visao escolhida, e mostra a janela que
-' vai valer ANTES de aplicar.
-Private Sub AtualizarEstado()
-    Dim pers As Boolean, temParte As Boolean
-    If mCarregando Then Exit Sub
-    pers = (UCase$(Trim$(cboVisao.Value)) = "PERSONALIZADO")
-    temParte = (cboParte.ListCount > 0)
+' Previsao usando as FUNCOES DO MOTOR. As exclusoes vao como matriz 5x2, que e
+' exatamente o que LerExclusoes espera receber do intervalo Estat_Exclusoes.
+Private Function PreverTexto() As String
+    Dim visao As String, parte As Long, pi As Variant, pf As Variant, erro As String
+    Dim ini As Variant, fim As Variant, ex(1 To 5, 1 To 2) As Variant
 
-    txtPersIni.Enabled = pers
-    txtPersFim.Enabled = pers
-    lblPers.Enabled = pers
-    cboParte.Enabled = (Not pers) And temParte
-    lblParte.Enabled = cboParte.Enabled
-    cboAno.Enabled = Not pers
-    lblAno.Enabled = Not pers
+    erro = Traduzir(visao, parte, pi, pf)
+    If erro <> "" Then PreverTexto = erro: Exit Function
+    If Not IsNumeric(cboAno.Value) Then PreverTexto = "Escolha o ano.": Exit Function
 
-    lblJanela.Caption = "Periodo que vai valer:  " & PreverJanela()
-End Sub
-
-' Usa as MESMAS funcoes do motor (JanelaInicio/JanelaFim/PeriodoEfetivo) para
-' prever. Reimplementar a conta aqui seria criar a segunda verdade.
-Private Function PreverJanela() As String
-    Dim ini As Variant, fim As Variant, pi As Variant, pf As Variant
     On Error GoTo semPrevisao
-    pi = ComoDataForm(txtPersIni.Text)
-    pf = ComoDataForm(txtPersFim.Text)
-    ini = Application.Run("JanelaInicio", cboVisao.Value, Val(cboAno.Value), ParteEscolhida(), pi, pf)
-    fim = Application.Run("JanelaFim", cboVisao.Value, Val(cboAno.Value), ParteEscolhida(), pi, pf)
-    PreverJanela = Application.Run("PeriodoEfetivo", ini, fim, ComoDataForm(txtEx1Ini.Text), ComoDataForm(txtEx1Fim.Text))
+    ini = Application.Run("JanelaInicio", visao, CLng(cboAno.Value), parte, pi, pf)
+    fim = Application.Run("JanelaFim", visao, CLng(cboAno.Value), parte, pi, pf)
+
+    MontarExclusoes ex
+    PreverTexto = Application.Run("PeriodoEfetivo", ini, fim, ex)
     Exit Function
 semPrevisao:
-    PreverJanela = "(nao foi possivel prever)"
+    PreverTexto = "(nao foi possivel prever o periodo)"
 End Function
 
-Private Function ComoDataForm(ByVal s As String) As Variant
-    If Trim$(s) = "" Then ComoDataForm = Empty: Exit Function
-    If IsDate(s) Then ComoDataForm = CDate(s) Else ComoDataForm = Empty
-End Function
+Private Sub MontarExclusoes(ByRef ex() As Variant)
+    Dim i As Long
+    For i = 1 To 5
+        ex(i, 1) = Empty: ex(i, 2) = Empty
+    Next i
+    PorPar ex, 1, txtEx1Ini.Text, txtEx1Fim.Text
+    PorPar ex, 2, txtEx2Ini.Text, txtEx2Fim.Text
+    PorPar ex, 3, txtEx3Ini.Text, txtEx3Fim.Text
+    PorPar ex, 4, txtEx4Ini.Text, txtEx4Fim.Text
+    PorPar ex, 5, txtEx5Ini.Text, txtEx5Fim.Text
+End Sub
+
+Private Sub PorPar(ByRef ex() As Variant, ByVal i As Long, ByVal a As String, ByVal b As String)
+    If IsDate(a) And IsDate(b) Then
+        ex(i, 1) = CDate(a): ex(i, 2) = CDate(b)
+    End If
+End Sub
 
 Private Function TextoData(ByVal v As Variant) As String
     If IsEmpty(v) Or IsNull(v) Then Exit Function
@@ -233,54 +298,70 @@ Private Function TextoData(ByVal v As Variant) As String
 End Function
 
 ' ---------------------------------------------------------------------------
-Private Sub cboVisao_Change()
+' Mostra so o que faz sentido para o modo, e escreve a previsao.
+Private Sub AtualizarEstado()
     If mCarregando Then Exit Sub
-    AtualizarPartes
-    AtualizarEstado
+    cboMes.Enabled = optMensal.Value
+    lblMes.Enabled = optMensal.Value
+    chkQ1.Enabled = optTrimestral.Value
+    chkQ2.Enabled = optTrimestral.Value
+    chkQ3.Enabled = optTrimestral.Value
+    chkQ4.Enabled = optTrimestral.Value
+    lblPrev.Caption = PreverTexto()
 End Sub
-Private Sub cboParte_Change(): AtualizarEstado: End Sub
+
+Private Sub optMensal_Click(): AtualizarEstado: End Sub
+Private Sub optTrimestral_Click(): AtualizarEstado: End Sub
+Private Sub optAnual_Click(): AtualizarEstado: End Sub
+Private Sub cboMes_Change(): AtualizarEstado: End Sub
 Private Sub cboAno_Change(): AtualizarEstado: End Sub
-Private Sub txtPersIni_Change(): AtualizarEstado: End Sub
-Private Sub txtPersFim_Change(): AtualizarEstado: End Sub
+Private Sub chkQ1_Click(): AtualizarEstado: End Sub
+Private Sub chkQ2_Click(): AtualizarEstado: End Sub
+Private Sub chkQ3_Click(): AtualizarEstado: End Sub
+Private Sub chkQ4_Click(): AtualizarEstado: End Sub
+Private Sub txtEx1Ini_Change(): AtualizarEstado: End Sub
+Private Sub txtEx1Fim_Change(): AtualizarEstado: End Sub
+Private Sub txtEx2Ini_Change(): AtualizarEstado: End Sub
+Private Sub txtEx2Fim_Change(): AtualizarEstado: End Sub
+Private Sub txtEx3Ini_Change(): AtualizarEstado: End Sub
+Private Sub txtEx3Fim_Change(): AtualizarEstado: End Sub
+Private Sub txtEx4Ini_Change(): AtualizarEstado: End Sub
+Private Sub txtEx4Fim_Change(): AtualizarEstado: End Sub
+Private Sub txtEx5Ini_Change(): AtualizarEstado: End Sub
+Private Sub txtEx5Fim_Change(): AtualizarEstado: End Sub
 
 ' ---------------------------------------------------------------------------
-' APLICAR: valida, escreve nas celulas do sistema, deixa o Excel recalcular.
 Private Sub btnAplicar_Click()
-    Dim ws As Worksheet, erros As String, pers As Boolean
-    Set ws = AbaEstat()
-    pers = (UCase$(Trim$(cboVisao.Value)) = "PERSONALIZADO")
+    Dim ws As Worksheet, visao As String, parte As Long
+    Dim pi As Variant, pf As Variant, erro As String, msg As String
 
-    ' --- validacao, com mensagem que diz O QUE FAZER ---
-    erros = ""
-    If Trim$(cboVisao.Value) = "" Then erros = erros & "- escolha a visao" & vbLf
-    If Not pers Then
-        If Not IsNumeric(cboAno.Value) Then erros = erros & "- escolha o ano" & vbLf
-    Else
-        If Not IsDate(txtPersIni.Text) Then erros = erros & "- data inicial do periodo personalizado invalida" & vbLf
-        If Not IsDate(txtPersFim.Text) Then erros = erros & "- data final do periodo personalizado invalida" & vbLf
-        If IsDate(txtPersIni.Text) And IsDate(txtPersFim.Text) Then
-            If CDate(txtPersFim.Text) < CDate(txtPersIni.Text) Then erros = erros & "- o fim do periodo e anterior ao inicio" & vbLf
-        End If
-    End If
-    erros = erros & ChecarExclusao(txtEx1Ini, txtEx1Fim, 1)
-    erros = erros & ChecarExclusao(txtEx2Ini, txtEx2Fim, 2)
-    erros = erros & ChecarExclusao(txtEx3Ini, txtEx3Fim, 3)
-    erros = erros & ChecarExclusao(txtEx4Ini, txtEx4Fim, 4)
-    erros = erros & ChecarExclusao(txtEx5Ini, txtEx5Fim, 5)
+    erro = Traduzir(visao, parte, pi, pf)
+    If erro <> "" Then MsgBox erro, vbExclamation, "Configuracao": Exit Sub
+    If Not IsNumeric(cboAno.Value) Then MsgBox "Escolha o ano.", vbExclamation, "Configuracao": Exit Sub
 
-    If erros <> "" Then
-        MsgBox "Corrija antes de aplicar:" & vbLf & vbLf & erros, vbExclamation, "Configuracao"
+    msg = ChecarExclusoes()
+    If msg <> "" Then
+        MsgBox "Corrija antes de aplicar:" & vbLf & vbLf & msg, vbExclamation, "Configuracao"
         Exit Sub
     End If
 
+    Set ws = AbaEstat()
     Application.EnableEvents = False
-    ws.Range("B4").Value = cboVisao.Value
-    If IsNumeric(cboAno.Value) Then ws.Range("D4").Value = CLng(cboAno.Value)
-    If cboParte.ListCount > 0 Then ws.Range("F4").Value = ParteEscolhida()
-    ws.Range("H4").Value = cboLote.Value
+    ws.Range(C_VISAO).Value = visao
+    ws.Range(C_ANO).Value = CLng(cboAno.Value)
+    ws.Range(C_PARTE).Value = parte
+    ws.Range(C_LOTE).Value = cboLote.Value
 
-    EscreverData ws.Range("B5"), txtPersIni.Text
-    EscreverData ws.Range("D5"), txtPersFim.Text
+    ' PERSONALIZADO usa B5/D5; nos demais modos as celulas ficam limpas para
+    ' nao deixar data orfa sugerindo um filtro que nao esta valendo.
+    If visao = "PERSONALIZADO" Then
+        ws.Range(C_PERS_INI).Value = pi
+        ws.Range(C_PERS_FIM).Value = pf
+    Else
+        ws.Range(C_PERS_INI).ClearContents
+        ws.Range(C_PERS_FIM).ClearContents
+    End If
+
     EscreverData ws.Range("B8"), txtEx1Ini.Text: EscreverData ws.Range("C8"), txtEx1Fim.Text
     EscreverData ws.Range("B9"), txtEx2Ini.Text: EscreverData ws.Range("C9"), txtEx2Fim.Text
     EscreverData ws.Range("B10"), txtEx3Ini.Text: EscreverData ws.Range("C10"), txtEx3Fim.Text
@@ -288,24 +369,32 @@ Private Sub btnAplicar_Click()
     EscreverData ws.Range("E9"), txtEx5Ini.Text: EscreverData ws.Range("F9"), txtEx5Fim.Text
     Application.EnableEvents = True
 
+    ' O recalculo e o mecanismo que ja existe: as formulas leem as celulas.
+    ' Nao ha segunda rotina de atualizacao.
     Application.Calculate
-    MsgBox "Analise aplicada." & vbLf & vbLf & ws.Range("B11").Value, vbInformation, "Configuracao"
+
+    MsgBox "Analise aplicada." & vbLf & vbLf & CStr(ws.Range("B11").Value), _
+           vbInformation, "Configuracao"
     AtualizarEstado
 End Sub
 
-Private Function ChecarExclusao(ByRef tIni As Object, ByRef tFim As Object, ByVal n As Long) As String
-    Dim a As String, b As String
-    a = Trim$(tIni.Text): b = Trim$(tFim.Text)
+Private Function ChecarExclusoes() As String
+    ChecarExclusoes = Par(txtEx1Ini.Text, txtEx1Fim.Text, 1) & _
+                      Par(txtEx2Ini.Text, txtEx2Fim.Text, 2) & _
+                      Par(txtEx3Ini.Text, txtEx3Fim.Text, 3) & _
+                      Par(txtEx4Ini.Text, txtEx4Fim.Text, 4) & _
+                      Par(txtEx5Ini.Text, txtEx5Fim.Text, 5)
+End Function
+
+Private Function Par(ByVal a As String, ByVal b As String, ByVal n As Long) As String
+    a = Trim$(a): b = Trim$(b)
     If a = "" And b = "" Then Exit Function
     If a = "" Or b = "" Then
-        ChecarExclusao = "- exclusao " & n & ": preencha as DUAS datas (uma ponta so nao exclui nada)" & vbLf
+        Par = "- exclusao " & n & ": preencha as duas datas (uma ponta so nao exclui nada)" & vbLf
         Exit Function
     End If
-    If Not IsDate(a) Or Not IsDate(b) Then
-        ChecarExclusao = "- exclusao " & n & ": data invalida" & vbLf
-        Exit Function
-    End If
-    If CDate(b) < CDate(a) Then ChecarExclusao = "- exclusao " & n & ": o fim e anterior ao inicio" & vbLf
+    If Not IsDate(a) Or Not IsDate(b) Then Par = "- exclusao " & n & ": data invalida" & vbLf: Exit Function
+    If CDate(b) < CDate(a) Then Par = "- exclusao " & n & ": o fim e anterior ao inicio" & vbLf
 End Function
 
 Private Sub EscreverData(ByRef cel As Range, ByVal s As String)
@@ -313,25 +402,22 @@ Private Sub EscreverData(ByRef cel As Range, ByVal s As String)
 End Sub
 
 ' ---------------------------------------------------------------------------
-' LIMPAR: volta ao periodo mais amplo possivel e tira todas as exclusoes.
-' Nao apaga NADA do banco -- so os filtros desta tela.
 Private Sub btnLimpar_Click()
-    If MsgBox("Limpar os filtros e as exclusoes?" & vbLf & vbLf & _
-              "Nenhum resultado do banco e apagado: apenas esta tela volta a " & _
-              "mostrar o periodo inteiro.", vbYesNo + vbQuestion, "Limpar") <> vbYes Then Exit Sub
+    If MsgBox("Voltar ao periodo inteiro e remover as exclusoes?" & vbLf & vbLf & _
+              "Nenhum resultado do banco e apagado: apenas os filtros desta tela.", _
+              vbYesNo + vbQuestion, "Limpar") <> vbYes Then Exit Sub
     mCarregando = True
-    cboVisao.Value = "ANUAL"
-    txtPersIni.Text = "": txtPersFim.Text = ""
+    optAnual.Value = True
+    chkQ1.Value = False: chkQ2.Value = False: chkQ3.Value = False: chkQ4.Value = False
     txtEx1Ini.Text = "": txtEx1Fim.Text = ""
     txtEx2Ini.Text = "": txtEx2Fim.Text = ""
     txtEx3Ini.Text = "": txtEx3Fim.Text = ""
     txtEx4Ini.Text = "": txtEx4Fim.Text = ""
     txtEx5Ini.Text = "": txtEx5Fim.Text = ""
     mCarregando = False
-    AtualizarPartes
     AtualizarEstado
 End Sub
 
-Private Sub btnFechar_Click()
+Private Sub btnCancelar_Click()
     Unload Me
 End Sub
