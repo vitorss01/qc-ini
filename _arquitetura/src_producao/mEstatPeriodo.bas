@@ -589,6 +589,18 @@ Public Function PeriodoEfetivo(ByVal dtIni As Variant, ByVal dtFim As Variant, _
     PeriodoEfetivo = s
 End Function
 
+' ---------------------------------------------------------------------------
+' Abre a tela de configuracao da analise.
+'
+' Fica AQUI, e nao dentro do formulario, por dois motivos: o botao da aba
+' precisa de um destino estavel mesmo que o form seja reconstruido, e a fonte
+' versionada deste modulo tem de conter tudo que roda dentro do arquivo -- a
+' prova 1.1 compara os dois e acusa qualquer diferenca. Acrescentar esta rotina
+' no momento da instalacao, direto no .xlsm, e o que fez a 1.1 reprovar.
+Public Sub AbrirConfigEstatistica()
+    frmConfigEstatistica.Show
+End Sub
+
 ' Invalida o cache. Chamar apos importacao ou exclusao logica.
 Public Sub InvalidarCacheEstat()
     Set mAgg = Nothing
