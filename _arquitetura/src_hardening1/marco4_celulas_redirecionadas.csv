@@ -1,10 +1,1 @@
-﻿"Coluna";"Intervalo";"EramFormula";"EramConstante";"Formula"
-"3";"$C$7:$C$86";"80";"0";"=IF(INDEX(engEstat,ROW()-6,3)="""","""",INDEX(engEstat,ROW()-6,3))"
-"4";"$D$7:$D$86";"80";"0";"=IF(INDEX(engEstat,ROW()-6,4)="""","""",INDEX(engEstat,ROW()-6,4))"
-"5";"$E$7:$E$86";"80";"0";"=IF(INDEX(engEstat,ROW()-6,5)="""","""",INDEX(engEstat,ROW()-6,5))"
-"6";"$F$7:$F$86";"80";"0";"=IF(INDEX(engEstat,ROW()-6,6)="""","""",INDEX(engEstat,ROW()-6,6))"
-"7";"$G$7:$G$86";"80";"0";"=IF(INDEX(engEstat,ROW()-6,7)="""","""",INDEX(engEstat,ROW()-6,7))"
-"8";"$H$7:$H$86";"80";"0";"=IF(INDEX(engEstat,ROW()-6,8)="""","""",INDEX(engEstat,ROW()-6,8))"
-"9";"$I$7:$I$86";"80";"0";"=IF(INDEX(engEstat,ROW()-6,9)="""","""",INDEX(engEstat,ROW()-6,9))"
-"11";"$K$7:$K$86";"80";"0";"ABS no bias (Erro Total)"
-"12";"$L$7:$L$86";"80";"0";"ABS no bias (Sigma)"
+﻿Tipo;Aba;Celula;De;Para
