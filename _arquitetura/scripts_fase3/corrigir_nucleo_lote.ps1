@@ -147,16 +147,42 @@ try {
     if ($db -eq $null) { throw 'aba DB_Resultados ausente' }
     if ($db.ProtectContents) { try { $db.Unprotect($SENHA) } catch { } }
 
+    # ---- BA deixou de ser formula no ADR-025 ----
+    #
+    # Este bloco reescrevia a formula do nucleo do lote em BA4:BA15003. Depois do
+    # ADR-025, BA/BB/BC sao VALOR mantido por mBanco.AtualizarFlagsBanco, e o
+    # 15003 era o teto antigo de provisionamento (13,5 meses de dados).
+    #
+    # Rodar este script como estava DESFARIA o ADR-025: recriaria 15.000 formulas
+    # e o COUNTIFS expansivo voltaria junto na proxima manutencao das colunas
+    # vizinhas. Achado A3 da auditoria de 12/08/2026.
+    #
+    # A correcao do nucleo do lote continua necessaria -- e ela agora vive no
+    # VBA, em NucleoLote, que este mesmo script ja corrige acima. Aqui basta
+    # mandar o mBanco regravar os valores pela regra nova.
     $R0 = 4
-    $RN = 15003
-    $antes = $db.Cells($R0, 53).Formula
-    $nova = '=IF($D{0}="","",MID($D{0},4,LEN($D{0})-5))' -f $R0
-    if (-not $Simular) {
-        $db.Range($db.Cells($R0, 53), $db.Cells($RN, 53)).Formula = $nova
+    $temBanco = $false
+    foreach ($c in $wb.VBProject.VBComponents) { if ($c.Name -eq 'mBanco') { $temBanco = $true; break } }
+
+    if ($temBanco) {
+        $xl.Run('AtualizarFlagsBanco') | Out-Null
+        $ultReal = $db.Cells($db.Rows.Count, 1).End(-4162).Row
+        "coluna BA: regravada como VALOR por mBanco.AtualizarFlagsBanco (linhas 4..$ultReal)"
+        "   BA4 agora = '$($db.Cells(4,53).Value2)'"
     }
-    "formula: BA$R0`:BA$RN"
-    "   antes : $antes"
-    "   agora : $nova"
+    else {
+        # Arquivo anterior ao ADR-025: mantem o comportamento de formula, mas o
+        # limite vem da ULTIMA LINHA REAL, nao de um teto fixo.
+        $ultReal = [Math]::Max($db.Cells($db.Rows.Count, 1).End(-4162).Row, $R0)
+        $antes = $db.Cells($R0, 53).Formula
+        $nova = '=IF($D{0}="","",MID($D{0},4,LEN($D{0})-5))' -f $R0
+        if (-not $Simular) {
+            $db.Range($db.Cells($R0, 53), $db.Cells($ultReal, 53)).Formula = $nova
+        }
+        "formula: BA$R0`:BA$ultReal  (sem mBanco no arquivo -- modo compatibilidade)"
+        "   antes : $antes"
+        "   agora : $nova"
+    }
 
     if ($Simular) {
         "SIMULACAO -- nada foi gravado."

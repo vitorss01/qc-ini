@@ -206,6 +206,10 @@ try {
         # fonte versionada e o que roda dentro do arquivo podem divergir sem que
         # nada acuse -- o defeito que o ADR-021 existe para impedir.
         $modulos += @{ Nome = 'mEstatPeriodo'; Arquivo = (Join-Path $arq 'src_producao\mEstatPeriodo.bas') }
+        # mBanco (ADR-025) mantem BA/BB/BC como valor e redimensiona os
+        # intervalos r*. Ficava fora desta prova, e sem ela a deriva entre a
+        # fonte e o arquivo nao era medida -- achado A2 da auditoria de 12/08.
+        $modulos += @{ Nome = 'mBanco'; Arquivo = (Join-Path $arq 'src_producao\mBanco.bas') }
     }
     foreach ($m in $modulos) {
         $comp = $null
@@ -313,6 +317,63 @@ try {
         Anotar '1.11' 'toda coluna da aba Importar aponta para analito cadastrado' `
             (($orfas.Count -eq 0) -and ($vazias.Count -eq 0)) $detalheMapa
         Anotar '1.12' 'linha de/para fica oculta' $wsI.Rows.Item(3).Hidden ''
+
+        # ---- 1.13: o ARTEFATO tem o ADR-025 ligado, nao so a producao ----
+        #
+        # A auditoria de 12/08 achou o pior tipo de deriva: a producao tinha o
+        # ADR-025 e o artefato ENTREGUE nao. As chamadas viviam num patch do
+        # instalar_capacidade60m.py, aplicado so na producao; o build reimporta
+        # mDados da fonte e apagava tudo. E a prova 1.1 nao pegava, porque o
+        # mDados do artefato BATIA com a fonte -- justamente por nao ter as
+        # chamadas.
+        #
+        # Esta prova olha o comportamento ligado, nao a existencia do arquivo:
+        # se o build produzir artefato sem ADR-025, ela reprova.
+        $adr025 = @()
+        $temBanco = $false
+        foreach ($c in $wb.VBProject.VBComponents) { if ($c.Name -eq 'mBanco') { $temBanco = $true } }
+        if (-not $temBanco) { $adr025 += 'modulo mBanco ausente' }
+
+        $mdTxt = ''
+        foreach ($c in $wb.VBProject.VBComponents) {
+            if ($c.Name -eq 'mDados' -and $c.CodeModule.CountOfLines -gt 0) {
+                $mdTxt = $c.CodeModule.Lines(1, $c.CodeModule.CountOfLines)
+            }
+        }
+        if ($mdTxt -eq '') { $adr025 += 'mDados vazio ou ausente' }
+        else {
+            $ls = $mdTxt -split "`r?`n"
+            $rot = ''
+            $emUpsert = $false; $emExcluir = $false
+            $guardaUp = $false; $flagsUp = $false; $flagsEx = $false
+            for ($i = 0; $i -lt $ls.Count; $i++) {
+                if ($ls[$i] -match '^\s*(Public |Private )?(Sub|Function)\s+(\w+)') { $rot = $Matches[3] }
+                if ($ls[$i] -match '^\s*''') { continue }
+                if ($rot -eq 'UpsertResultados') {
+                    if ($ls[$i] -match '\bExigirCapacidade\b') { $guardaUp = $true }
+                    if ($ls[$i] -match '\bAtualizarFlagsBanco\b') { $flagsUp = $true }
+                }
+                if ($rot -eq 'ExcluirLogico' -and $ls[$i] -match '\bAtualizarFlagsBanco\b') { $flagsEx = $true }
+            }
+            if (-not $guardaUp) { $adr025 += 'UpsertResultados sem ExigirCapacidade' }
+            if (-not $flagsUp) { $adr025 += 'UpsertResultados sem AtualizarFlagsBanco' }
+            if (-not $flagsEx) { $adr025 += 'ExcluirLogico sem AtualizarFlagsBanco' }
+        }
+
+        # e o efeito: BA/BB/BC nao podem ser formula no artefato
+        $dbA = $null
+        foreach ($w2 in $wb.Worksheets) { if ($w2.Name -eq 'DB_Resultados') { $dbA = $w2; break } }
+        if ($dbA -ne $null) {
+            foreach ($cc in @(53, 54, 55)) {
+                if ("$($dbA.Cells(4, $cc).Formula)" -like '=*') {
+                    $adr025 += "$($dbA.Cells(4,$cc).Address(0,0)) ainda e formula (COUNTIFS expansivo de volta)"
+                }
+            }
+        }
+
+        Anotar '1.13' 'ADR-025 ligado no artefato (mBanco + chamadas + BA:BC valor)' `
+            ($adr025.Count -eq 0) `
+            $(if ($adr025.Count) { $adr025 -join ' ; ' } else { 'mBanco presente; Upsert com barreira e flags; ExcluirLogico com flags; BA:BC valor' })
 
         # o botao que dispara a migracao
         $acaoReg = ''

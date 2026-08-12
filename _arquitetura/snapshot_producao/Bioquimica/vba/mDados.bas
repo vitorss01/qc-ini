@@ -14,7 +14,7 @@ Public Const COL_ANALITO As Long = 5
 Public Const COL_RESULT As Long = 6
 Public Const COL_STATUS As Long = 7
 Public Const ST_ATIVO As String = "Ativo"
-Public Const ST_EXCLUIDO As String = "Excluído"
+Public Const ST_EXCLUIDO As String = "Excluï¿½do"
 
 Public Function UltimaLinhaBanco() As Long
     Dim ws As Worksheet
@@ -66,8 +66,8 @@ Public Function NovoRUN(ByVal dt As Date, ByVal loteCore As String) As Long
 End Function
 
 ' ===== UPSERT EM LOTE =====
-' regs: array (1..n, 1..7) já no schema do banco. Atualiza o que existir
-' (mesma chave RUN|Nivel|Analito) e acrescenta o resto — nunca duplica.
+' regs: array (1..n, 1..7) jï¿½ no schema do banco. Atualiza o que existir
+' (mesma chave RUN|Nivel|Analito) e acrescenta o resto ï¿½ nunca duplica.
 ' Devolve "novos|atualizados".
 Public Function UpsertResultados(ByRef regs As Variant) As String
     Dim ws As Worksheet, dados As Variant, idx As Object
@@ -109,6 +109,10 @@ Public Function UpsertResultados(ByRef regs As Variant) As String
         End If
     Next i
     If nAdd > 0 Then
+        ' Barreira de capacidade (ADR-025). ANTES de gravar, nao depois: aceitar o
+        ' registro e descobrir o estouro em seguida deixaria o banco pela metade.
+        ExigirCapacidade nAdd
+
         ws.Range(ws.Cells(lastRow + 1, COL_LOTE), ws.Cells(lastRow + nAdd, COL_LOTE)).NumberFormat = "@"
         Dim outp() As Variant
         ReDim outp(1 To nAdd, 1 To COL_STATUS)
@@ -119,6 +123,19 @@ Public Function UpsertResultados(ByRef regs As Variant) As String
         Next i
         ws.Range(ws.Cells(lastRow + 1, COL_RUN), ws.Cells(lastRow + nAdd, COL_STATUS)).Value = outp
     End If
+
+    ' As flags BA/BB/BC sao mantidas por mBanco desde o ADR-025. Recalcular o
+    ' banco inteiro, e nao so as linhas novas: uma linha inserida ou reativada
+    ' muda quem e a "primeira ativa" das linhas seguintes. Tambem redimensiona os
+    ' intervalos nomeados r* para a ultima linha real -- sem isso o dado entra,
+    ' fica salvo e some dos calculos.
+    '
+    ' ESTA CHAMADA VIVE NA FONTE, e nao num patch do instalador. Enquanto ela so
+    ' existia dentro do instalar_capacidade60m.py, todo build reimportava este
+    ' modulo e apagava a integracao: a producao tinha o ADR-025 e o ARTEFATO
+    ' ENTREGUE nao. Achado A1 da auditoria de 12/08/2026.
+    AtualizarFlagsBanco
+
     Application.ScreenUpdating = True
     UpsertResultados = CStr(novos) & "|" & CStr(atual)
 End Function
@@ -140,6 +157,11 @@ Public Function ExcluirLogico(ByVal run As Long, ByVal nivel As Long, ByRef alvo
             End If
         End If
     Next i
+
+    ' Excluir logicamente PROMOVE a proxima duplicata a "primeira ativa", entao a
+    ' flag muda para linhas que nao foram tocadas. Recalcular aqui tambem (ADR-025).
+    AtualizarFlagsBanco
+
     Application.ScreenUpdating = True
     ExcluirLogico = n
 End Function
@@ -193,7 +215,7 @@ Public Sub AtualizarBanco()
     Application.Calculate
 End Sub
 
-' Placeholder — trilha de auditoria e da Fase 5.
+' Placeholder ï¿½ trilha de auditoria e da Fase 5.
 Public Sub RegistrarLog(ByVal acao As String, ByVal detalhe As String)
 End Sub
 

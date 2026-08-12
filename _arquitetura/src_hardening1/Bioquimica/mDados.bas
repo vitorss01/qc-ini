@@ -14,7 +14,7 @@ Public Const COL_ANALITO As Long = 5
 Public Const COL_RESULT As Long = 6
 Public Const COL_STATUS As Long = 7
 Public Const ST_ATIVO As String = "Ativo"
-Public Const ST_EXCLUIDO As String = "Excluído"
+Public Const ST_EXCLUIDO As String = "Excluï¿½do"
 
 ' ===================== IDENTIDADE DA CORRIDA =====================
 ' O RUN identifica a CORRIDA, nao o resultado. Uma corrida cobre varios
@@ -276,6 +276,10 @@ Public Function UpsertResultados(ByRef regs As Variant) As String
         End If
     Next i
     If nAdd > 0 Then
+        ' Barreira de capacidade (ADR-025). ANTES de gravar, nao depois: aceitar o
+        ' registro e descobrir o estouro em seguida deixaria o banco pela metade.
+        ExigirCapacidade nAdd
+
         ws.Range(ws.Cells(lastRow + 1, COL_LOTE), ws.Cells(lastRow + nAdd, COL_LOTE)).NumberFormat = "@"
         Dim outp() As Variant
         ReDim outp(1 To nAdd, 1 To COL_STATUS)
@@ -292,6 +296,19 @@ Public Function UpsertResultados(ByRef regs As Variant) As String
                     Empty, addBuf(i, COL_RESULT), "", CStr(addBuf(i, COL_STATUS)), "", ""
         Next i
     End If
+
+    ' As flags BA/BB/BC sao mantidas por mBanco desde o ADR-025. Recalcular o
+    ' banco inteiro, e nao so as linhas novas: uma linha inserida ou reativada
+    ' muda quem e a "primeira ativa" das linhas seguintes. A rotina tambem
+    ' redimensiona os intervalos r* -- sem isso o dado entra, fica salvo e some
+    ' dos calculos.
+    '
+    ' ESTA E A FONTE QUE O BUILD USA. gerar_mDados_audit.ps1 substitui os blocos
+    ' UpsertResultados e ExcluirLogico inteiros por estes; enquanto a chamada so
+    ' existia no patch do instalar_capacidade60m.py, todo build a apagava e o
+    ' ARTEFATO ENTREGUE saia sem o ADR-025. Achado A1 da auditoria de 12/08/2026.
+    AtualizarFlagsBanco
+
     Application.ScreenUpdating = True
     UpsertResultados = CStr(novos) & "|" & CStr(atual) & "|" & CStr(bloq)
 End Function
@@ -339,6 +356,11 @@ Public Function ExcluirLogico(ByVal run As Long, ByVal nivel As Long, ByRef alvo
             End If
         End If
     Next i
+
+    ' Excluir logicamente PROMOVE a proxima duplicata a "primeira ativa", entao a
+    ' flag muda para linhas que nao foram tocadas. Recalcular aqui tambem (ADR-025).
+    AtualizarFlagsBanco
+
     Application.ScreenUpdating = True
     ExcluirLogico = n
 End Function

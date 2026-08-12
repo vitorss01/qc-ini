@@ -94,10 +94,28 @@ try {
     }
     if ($vencedor -eq $null) { throw "nenhum formato de data renderizou o ano $anoEsperado -- nada foi alterado" }
 
-    # aplica na coluna inteira de dados
-    $faixa = $db.Range($db.Cells(4, 2), $db.Cells([Math]::Max($ult, 15003), 2))
+    # Aplica na coluna de datas ate a CAPACIDADE declarada, nao ate um teto fixo.
+    #
+    # Era Max($ult, 15003) -- o 15003 era o provisionamento antigo, equivalente a
+    # 13,5 meses. Com o ADR-025 a capacidade e CAP_LINHAS (120.000) e quem a
+    # declara e o mBanco; formatar so ate 15003 deixaria toda linha alem disso
+    # sem formato de data, exibindo serial cru para o usuario. Achado A5 da
+    # auditoria de 12/08/2026.
+    #
+    # Sem mBanco no arquivo (versao anterior ao ADR-025), formata ate a ultima
+    # linha real -- que e o que existe para formatar.
+    $limite = $ult
+    try {
+        $cap = [int]$xl.Run('UltimaLinhaCapacidade')
+        if ($cap -gt $limite) { $limite = $cap }
+        "capacidade declarada por mBanco: linha $cap"
+    }
+    catch {
+        "mBanco ausente -- formatando ate a ultima linha real ($ult)"
+    }
+    $faixa = $db.Range($db.Cells(4, 2), $db.Cells($limite, 2))
     if ($vencedor.Prop -eq 'NumberFormat') { $faixa.NumberFormat = $vencedor.Valor } else { $faixa.NumberFormatLocal = $vencedor.Valor }
-    "aplicado: $($vencedor.Prop) = '$($vencedor.Valor)' em B4:B$([Math]::Max($ult,15003))"
+    "aplicado: $($vencedor.Prop) = '$($vencedor.Valor)' em B4:B$limite"
 
     # ---- confere, nao confia ----
     $erros = @()
