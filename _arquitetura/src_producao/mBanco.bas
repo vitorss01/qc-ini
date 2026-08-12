@@ -76,6 +76,11 @@ Option Explicit
 ' RECUSADO com mensagem, em vez de aceito e ignorado.
 Public Const CAP_LINHAS As Long = 120000
 
+' A mesma senha de mSeguranca.ReprotectAll. Literal aqui, como ja e literal la:
+' centraliza-la agora criaria dependencia nova entre modulos por um ganho
+' estetico, e o ADR-025 nao e lugar para isso.
+Private Const SENHA_ABAS As String = "qcini2025"
+
 ' Colunas derivadas do banco. Ficam aqui, e nao em mDados, porque agora sao
 ' MANTIDAS aqui: quem escreve a coluna e quem define onde ela fica.
 Public Const COL_LOTE_NUC As Long = 53        ' BA - nucleo do lote      (rLote)
@@ -138,6 +143,7 @@ Public Sub AtualizarFlagsBanco()
     Dim vistoAR As Object, vistoR As Object
     Dim analito As String, status As String, lote As String
     Dim chaveAR As String, chaveR As String, run As String
+    Dim prot As Boolean
 
     Set ws = ThisWorkbook.Sheets(BANCO)
     ult = UltimaLinhaBanco()
@@ -194,10 +200,46 @@ Public Sub AtualizarFlagsBanco()
         End If
     Next i
 
+    ' ---- escrita, com a protecao tratada -------------------------------
+    '
+    ' POR QUE ISTO EXISTE (e por que so apareceu depois)
+    '
+    ' As abas do produto sao protegidas por ReprotectAll com UserInterfaceOnly,
+    ' que libera a escrita por VBA. Só que o Excel NAO PERSISTE o
+    ' UserInterfaceOnly ao salvar: no artefato salvo e reaberto a aba volta a
+    ' ficar protegida por inteiro ate o login rodar ReprotectAll de novo.
+    '
+    ' Nesse estado as duas instrucoes abaixo falham com 1004 -- a primeira antes
+    ' da segunda, porque formatar celula ainda exige AllowFormattingCells, que e
+    ' False. Foi o erro relatado: na producao a aba estava destravada e passava;
+    ' no artefato, nao. Diagnostico completo em ANALISE_ESCALABILIDADE.md.
+    '
+    ' O padrao aqui e o mesmo ja usado em mImportar.MostrarErros e
+    ' mImportar.LimparAreaImport: guardar o estado, destravar, escrever,
+    ' RESTAURAR o que havia. Restaurar, e nao impor -- se a aba chegou
+    ' destravada, ela sai destravada.
+    prot = ws.ProtectContents
+    On Error GoTo restaura
+    If prot Then ws.Unprotect Password:=SENHA_ABAS
+
     ' Coluna BA como TEXTO: o nucleo pode ter zero a esquerda, e virar numero
     ' faria "0897" <> "897" nas comparacoes de lote.
     ws.Range(ws.Cells(BANCO_R0, COL_LOTE_NUC), ws.Cells(ult, COL_LOTE_NUC)).NumberFormat = "@"
     ws.Range(ws.Cells(BANCO_R0, COL_LOTE_NUC), ws.Cells(ult, COL_RUNUNICO)).Value = flags
+
+restaura:
+    ' A protecao volta SEMPRE, inclusive se a escrita levantou erro. Deixar a
+    ' aba destravada por causa de uma excecao seria trocar um defeito visivel
+    ' por um buraco de seguranca silencioso.
+    Dim nErr As Long, sErr As String
+    nErr = Err.Number: sErr = Err.Description
+    On Error Resume Next
+    If prot Then
+        ws.Protect Password:=SENHA_ABAS, UserInterfaceOnly:=True, _
+                   DrawingObjects:=False, Contents:=True, Scenarios:=True
+    End If
+    On Error GoTo 0
+    If nErr <> 0 Then Err.Raise nErr, "mBanco.AtualizarFlagsBanco", sErr
 End Sub
 
 ' Os intervalos nomeados passam a ter a altura do DADO, nao a de um

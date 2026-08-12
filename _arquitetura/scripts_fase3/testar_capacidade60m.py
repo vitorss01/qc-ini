@@ -163,7 +163,15 @@ def main(caminho, meses=60):
         t_est = time.time() - t
         print('   EstatPeriodo(%s, N1, sem janela) = %r em %.2fs'
               % (base[0][4], nreg, t_est))
-        esperado = meses * 18
+        # A cadencia sai do BLOCO BASE, nao de um 18 fixo.
+        #
+        # 18 era o numero de corridas de janeiro/2026 na producao. O artefato do
+        # build usa a fixture de semear_dados_teste (25 corridas), e o teste
+        # acusou "1500 obtido, ~1080 esperado" -- 1500 e exatamente 60 x 25, ou
+        # seja, o motor estava certo e a expectativa e que estava errada.
+        # Expectativa hardcoded transforma diferenca de fixture em falha falsa.
+        corridas_base = len(set(int(r[0]) for r in base))
+        esperado = meses * corridas_base
         ck('Estatistica conta as corridas dos %d meses' % meses,
            isinstance(nreg, (int, float)) and abs(nreg - esperado) <= esperado * 0.02,
            'obteve %r, esperado ~%d' % (nreg, esperado))

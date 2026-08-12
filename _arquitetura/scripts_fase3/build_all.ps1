@@ -287,8 +287,24 @@ Encerrar-Excel
     (Join-Path $h 'mLogDB.bas'),
     (Join-Path $hp 'mRegistros.bas'),
     (Join-Path $hp 'mImportar.bas'),
+    # mBanco (ADR-025). Sem ele o artefato nao compila: mDados chama
+    # ExigirCapacidade e AtualizarFlagsBanco, que vivem aqui. Ficou de fora na
+    # primeira entrega do ADR-025 e o resultado foi um artefato sem a capacidade
+    # de 60 meses, enquanto a producao -- remendada a mao pelo instalador -- a
+    # tinha. As provas passavam porque olhavam para o arquivo errado.
+    (Join-Path $arq 'src_producao\mBanco.bas'),
     (Join-Path $h 'Planilha7.cls')
 )
+
+Encerrar-Excel
+"== 4a. ADR-025: BA:BC viram VALOR e os nomes r* acompanham o dado"
+# Depois do aplicar_vba (precisa do mBanco ja importado) e antes de qualquer
+# etapa que leia o banco pelos nomes.
+Etapa 'aplicar_adr025.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 6
+
+Encerrar-Excel
+"== 4a2. ADR-025: vigia de Status (BA:BC voltam a ser auto-corretivas)"
+Mostrar (& python (Join-Path $s 'instalar_watch_status.py') $alvo) -Ultimas 3
 
 Encerrar-Excel
 "== 4b. vigia da tabela de elegibilidade (item 2.5)"
