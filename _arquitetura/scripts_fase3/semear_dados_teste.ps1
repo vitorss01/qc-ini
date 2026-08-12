@@ -167,8 +167,61 @@ try {
     $db.Range($db.Cells.Item(4, 1), $db.Cells.Item(3 + $nLin, 7)).Value = $dados
     "resultados semeados: $nLin ($Corridas corridas x $NLV niveis x $($analitos.Count) analitos)"
 
+    # ---- flags derivadas (ADR-025) ---------------------------------------
+    #
+    # Desde o ADR-025 as colunas BA/BB/BC nao sao mais formula: sao valor
+    # mantido por mBanco. Escrever direto em A:G, como esta rotina faz, deixaria
+    # o nucleo do lote e as flags rFirst/rRunUnico VAZIOS -- e a fixture nasceria
+    # invisivel para o Calc, o Painel e os graficos. Rapido e errado.
+    #
+    # AtualizarFlagsBanco tambem redimensiona os intervalos nomeados r* para a
+    # ultima linha real, o que esta rotina precisa igualmente.
+    try {
+        $xl.Run('AtualizarFlagsBanco') | Out-Null
+        "flags BA/BB/BC e intervalos nomeados atualizados por mBanco"
+    }
+    catch {
+        throw "AtualizarFlagsBanco falhou -- fixture ficaria fora dos calculos: $($_.Exception.Message)"
+    }
+
+    # ---- alinhar os FILTROS ao dado semeado ------------------------------
+    #
+    # Semear o dado nao basta: as telas tem estado de filtro PERSISTIDO, herdado
+    # da producao, e ele nao conhece a fixture.
+    #
+    # Era o que estava acontecendo: o artefato nascia com loteAtivo = 999999 (o
+    # lote de teste) mas com Estat_Lote = 8974 (o lote REAL da producao), e a
+    # Estatistica devolvia n=0 para os 31 analitos. O Painel, pela mesma razao,
+    # ficava presa no mes 'Jan' enquanto a fixture vai de janeiro a junho -- as
+    # linhas de limite do grafico viravam #N/A da corrida 5 em diante.
+    #
+    # Nenhum dos dois e defeito do produto: e a bancada medindo com o filtro
+    # fechado. Mas o diff acusava dezenas de divergencias de VALOR e o ruido
+    # escondia o que a suite existe para ver.
+    $nucleo = $LOTE
+    $est = Aba $wb 'Estatistica'
+    $est.Range('H4').Value2 = $nucleo              # Estat_Lote
+    $est.Range('B4').Value2 = 'ANUAL'
+    $est.Range('D4').Value2 = 2026
+    "Estatistica alinhada: lote $nucleo, visao ANUAL de 2026"
+
+    $pai = Aba $wb 'Painel'
+    $pai.Range('I3').Value2 = 2026
+    $pai.Range('I4').Value2 = '(todos)'
+    # De/Ate VAZIOS, e nao um ano inteiro.
+    #
+    # A primeira versao escrevia 01/01/2026 a 31/12/2026 em G3/G4. Funcionava e
+    # era pior: o Painel passava a exibir "FILTRO ATIVO: 01/01/26 a 31/12/26", e
+    # a fixture ficava dependendo de a janela cobrir as datas semeadas. Sem
+    # filtro nenhum o Calc enxerga tudo, que e o que a bancada quer, e o rotulo
+    # continua igual ao da referencia.
+    $pai.Range('G3').ClearContents() | Out-Null
+    $pai.Range('G4').ClearContents() | Out-Null
+    "Painel alinhado: sem filtro de data (a fixture vai de jan a jun de 2026)"
+
     # ---- conferencia -----------------------------------------------------
     $ult = $db.Cells.Item($db.Rows.Count, 1).End(-4162).Row
+    if ("$($db.Cells.Item(4,54).Value2)".Trim() -eq '') { throw "linha 4 sem flag rFirst -- mBanco nao rodou" }
     if ($ult -lt 4) { throw "nada foi gravado no DB_Resultados" }
     if ("$($db.Cells.Item(4,5).Value2)".Trim() -eq '') { throw "linha 4 sem analito -- a suite le exatamente essa linha" }
     if ("$($db.Cells.Item(4,7).Value2)" -ne 'Ativo') { throw "linha 4 sem status Ativo" }

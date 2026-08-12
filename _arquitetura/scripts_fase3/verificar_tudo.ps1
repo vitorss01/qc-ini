@@ -828,7 +828,6 @@ $diff = & (Join-Path $s 'diff_formulas.ps1') -Referencia (Join-Path $snap 'formu
     Out-String -Stream
 $diff | Where-Object { $_ -match '\S' } | Select-Object -First 12 | ForEach-Object { "     $_" }
 $linhaValor = ($diff | Where-Object { $_ -match 'VALOR' }) -join ' '
-$semValor = ($linhaValor -match 'VALOR\D*0\b')
 
 # AUSENTE deixou de ser "tem de ser zero" e passou a ser LISTA FECHADA.
 #
@@ -839,22 +838,60 @@ $semValor = ($linhaValor -match 'VALOR\D*0\b')
 # Fase 3A. A checagem continua estrita: qualquer AUSENTE FORA dessas seis
 # colunas reprova.
 $COLS_NC = @('Y', 'Z', 'AU', 'AV', 'BQ', 'BR')
-$ausentes = @()
-if (Test-Path $csvDiv) {
-    $ausentes = @(Import-Csv $csvDiv -Delimiter ';' | Where-Object { $_.Tipo -eq 'AUSENTE' })
+
+# Segunda entrada da lista fechada: ADR-025.
+#
+# As colunas BA/BB/BC do DB_Resultados deixaram de ser formula e passaram a ser
+# VALOR mantido por mBanco.AtualizarFlagsBanco. Sao ~45.000 celulas, e elas vao
+# aparecer no diff como AUSENTE (a formula sumiu) e como VALOR (virou numero) --
+# que e exatamente o que o item 4.2 existe para pegar.
+#
+# A tentacao seria regerar o snapshot de referencia. Nao: o snapshot e o que
+# detecta destruicao acidental, e regerar em bloco esconderia qualquer outra
+# coisa que tivesse mudado junto. O padrao deste projeto e a lista fechada --
+# mudanca aprovada entra nomeada, e o resto continua reprovando.
+$ADR025 = @{ Aba = 'DB_Resultados'; Cols = @('BA', 'BB', 'BC') }
+
+function Fora-DaListaFechada {
+    param($Linhas)
+    @($Linhas | Where-Object {
+            $aba = ($_.Chave -split '!')[0]
+            $col = ($_.Chave -split '!')[1] -replace '\d', ''
+            $ehNC = ($aba -eq 'Calc' -and $COLS_NC -contains $col)
+            $ehADR025 = ($aba -eq $ADR025.Aba -and $ADR025.Cols -contains $col)
+            -not ($ehNC -or $ehADR025)
+        })
 }
-$foraDaLista = @($ausentes | Where-Object {
-        $aba = ($_.Chave -split '!')[0]
-        $col = ($_.Chave -split '!')[1] -replace '\d', ''
-        -not ($aba -eq 'Calc' -and $COLS_NC -contains $col)
-    })
+
+$ausentes = @()
+$valores = @()
+if (Test-Path $csvDiv) {
+    $todas = @(Import-Csv $csvDiv -Delimiter ';')
+    $ausentes = @($todas | Where-Object { $_.Tipo -eq 'AUSENTE' })
+    $valores = @($todas | Where-Object { $_.Tipo -eq 'VALOR' })
+}
+
+$foraDaLista = Fora-DaListaFechada $ausentes
 $okAusente = ($foraDaLista.Count -eq 0)
-$detalhe = "{0} AUSENTE, {1} fora da lista fechada (regRep2/regRep3 do Calc)" -f $ausentes.Count, $foraDaLista.Count
+$detalhe = "{0} AUSENTE, {1} fora da lista fechada (regRep2/regRep3 do Calc; BA:BC do banco = ADR-025)" -f $ausentes.Count, $foraDaLista.Count
 if (-not $okAusente) {
     $detalhe += ' -> ' + (($foraDaLista | Select-Object -First 5 | ForEach-Object { $_.Chave }) -join ', ')
 }
-Anotar '4.1' 'AUSENTE so na lista fechada da Sprint NC' $okAusente $detalhe
-Anotar '4.2' 'nenhuma formula virou VALOR' $semValor $linhaValor
+
+# ATENCAO ao que 'VALOR' significa neste diff, porque o nome engana:
+# NAO e "a formula virou valor". E "a formula e a MESMA e o resultado CALCULADO
+# mudou". Diferenca numerica, nao estrutural -- e por isso este item e o mais
+# sensivel dos tres. A lista fechada nao se aplica aqui: BA:BC deixaram de ser
+# formula e por isso nem aparecem nesta categoria.
+$semValor = ($valores.Count -eq 0)
+$detValor = "{0} celulas com formula igual e resultado diferente" -f $valores.Count
+if (-not $semValor) {
+    $detValor += ' -> ' + (($valores | Select-Object -First 5 | ForEach-Object {
+                "$($_.Chave): $($_.Referencia) -> $($_.Candidato)" }) -join ' | ')
+}
+
+Anotar '4.1' 'AUSENTE so na lista fechada (Sprint NC + ADR-025)' $okAusente $detalhe
+Anotar '4.2' 'nenhuma formula mudou de RESULTADO' $semValor $detValor
 
 Encerrar-Excel
 # varredura_adr019 trabalha sobre o CSV de formulas ja extraido (-Formulas),

@@ -704,3 +704,60 @@ isso. O `OK` estava no *protocolo interno* de `ResolverEspec`, não no veredito.
 A recomendação estava certa; o diagnóstico, não — e a diferença importa, porque
 uma leva a corrigir um contrato e a outra levaria a procurar um defeito que não
 existe.
+
+---
+
+## ADR-025 — Capacidade de 60 meses: as flags do banco saem da fórmula e vão para o VBA
+
+**Contexto.** A análise de escalabilidade de 12/08/2026 mediu o arquivo real e
+achou dois problemas na mesma estrutura, o `DB_Resultados`.
+
+O primeiro é de **integridade**, e era o urgente. As colunas `BA`, `BB` e `BC`
+eram fórmula provisionada até a linha 15.003, e os intervalos nomeados `r*`
+tinham essa mesma altura fixa. Janeiro consome 1.110 registros; o teto chegava
+em **13,5 meses**. Passado ele, `UltimaLinhaBanco` continuava gravando — usa
+`End(xlUp)`, que não tem limite — mas as linhas novas nasciam sem as fórmulas
+derivadas e fora dos intervalos. O dado entrava, ficava salvo, e desaparecia do
+Painel, do Calc, dos gráficos e da Estatística. Sem erro. É a falha que este
+projeto mais teme: não o erro visível, e sim o número plausível e errado.
+
+O segundo é de **custo**. `BB` e `BC` usavam `COUNTIFS` de faixa expansiva
+(`$E$4:$E4`): na linha 4 varrem uma célula, na linha 66.603 varrem 66.600. A
+soma é ~2,5n². Medido: recálculo completo de 5,7 s com um ano de dados e 221 s
+com cinco.
+
+**Decisão.** `BA`, `BB` e `BC` deixam de ser fórmula e passam a ser **valor
+gravado** por `AtualizarFlagsBanco`, em `mBanco.bas`: uma varredura, dois
+dicionários, uma escrita em bloco — O(n). E os intervalos nomeados deixam de ter
+altura fixa: `RedimensionarNomes` os ajusta à última linha real a cada gravação.
+
+**Por que redimensionar em vez de só provisionar mais alto.** A aba `Calc`
+avalia `AGGREGATE` sobre esses intervalos 180 vezes, e o custo é O(180 × altura)
+**sem curto-circuito em célula vazia**. Provisionar 120.000 linhas de intervalo
+com 1.110 preenchidas custaria cem vezes mais do que precisa. Com o nome
+acompanhando o dado, o custo acompanha o dado — e provisionamento alto deixa de
+ter preço.
+
+**A semântica que não podia mudar.** `BB` vale 1 quando a linha é a primeira
+**Ativa** do par (analito, RUN); `BC`, quando é a primeira Ativa do RUN. O
+detalhe que decide o desenho: *primeira entre as ativas*. A flag **não é estável
+no momento da inserção** — excluir logicamente uma linha promove a próxima
+duplicata a "primeira". Por isso `AtualizarFlagsBanco` recalcula o banco inteiro
+e é chamada tanto por `UpsertResultados` quanto por `ExcluirLogico`. Calcular a
+flag só na inserção seria mais rápido e estaria errado.
+
+**Capacidade explícita.** `CAP_LINHAS = 120000`, dimensionada pelo pior caso
+plausível (40 analitos × 2 níveis × 23 dias úteis = 1.840/mês × 60 meses =
+110.400, mais 8,7% de margem). `ExigirCapacidade` recusa a gravação **antes** de
+escrever, com mensagem. A regra: é preferível bloquear com mensagem clara a
+aceitar o dado e deixá-lo invisível para os cálculos.
+
+**Rastreabilidade preservada.** A conta continua explicável — é a mesma regra da
+fórmula, transcrita no cabeçalho de `mBanco.bas` junto com a fórmula de origem.
+`ConferirFlagsBanco` recalcula por um caminho independente (contagem direta, sem
+dicionário, deliberadamente O(n²)) e devolve o número de divergências. Serve de
+prova sob demanda, inclusive em auditoria.
+
+**Efeitos colaterais medidos.** O banco perdeu 45.000 fórmulas e o arquivo caiu
+de 1,71 MB para 1,15 MB. A suíte vai acusar variação grande no diff de fórmulas
+do `DB_Resultados` — é esperado e é o objetivo, não regressão.
