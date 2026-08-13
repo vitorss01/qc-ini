@@ -761,3 +761,40 @@ prova sob demanda, inclusive em auditoria.
 **Efeitos colaterais medidos.** O banco perdeu 45.000 fórmulas e o arquivo caiu
 de 1,71 MB para 1,15 MB. A suíte vai acusar variação grande no diff de fórmulas
 do `DB_Resultados` — é esperado e é o objetivo, não regressão.
+
+---
+
+## ADR-026 — Camada de dados para BI: uma tabela fato, não uma cópia da planilha
+
+**Contexto.** O QC_INI precisa alimentar um Power BI acessível por web e celular,
+sem que o Excel deixe de ser o núcleo operacional. O risco óbvio era exportar
+"a planilha" e criar uma segunda verdade sobre o mesmo controle.
+
+**Decisão.** A interface é a tabela estruturada `tblBI_Fato`, na aba oculta
+`BI_Data`, com **granularidade (Lote, RUN, Nível, Analito)** — a mesma chave
+natural que o `UpsertResultados` usa. Chaves textuais estáveis (`ID_Result`,
+`ID_Corrida`, `ID_Analito`, `ID_Lote`), nenhuma dependente de posição de célula.
+`ListObject` e não faixa: o Power Query referencia pelo nome e o banco cresce sem
+tocar na consulta.
+
+**Alvo por lote, não o da tela.** A aba `Analitos` mostra as metas do lote ativo;
+o histórico vive no `LotesStore`. Ler o alvo da tela para um resultado de outro
+lote daria um Z errado, plausível e silencioso. `mBI` lê sempre o bloco do lote a
+que o registro pertence.
+
+**O que não entrou.** `Equipamento` e `Setor`: a produção não tem as abas que os
+guardariam. `4_1s` e `10x`: `Calc!N3` e `Calc!O3` são `IF(OR(FALSE;FALSE);1;0)` —
+o motor não implementa essas regras. Coluna sem origem é coluna que alguém filtra
+e conclui errado; regra fabricada no painel do gestor é pior do que ausência.
+
+**Reconciliação como portão de build.** `mBI.ReconciliarComCalc` compara Z e
+veredito linha a linha contra o `Calc`, e o build **falha** com qualquer
+divergência. Não é cerimônia: na primeira execução acusou **45 divergências em
+50**, com o Z idêntico e o veredito grudado — `Dim` dentro de laço no VBA não
+cria variável nova a cada volta, e as flags de Westgard acumulavam da primeira
+violação em diante. O painel reprovaria corrida boa, com número plausível.
+
+**Sobre o `.pbix`.** Power BI Desktop está instalado, mas sem `pbi-tools`,
+Tabular Editor ou `MicrosoftPowerBIMgmt` não há caminho suportado para gerá-lo
+por script. **Nenhum `.pbix` foi fabricado.** Entregam-se as queries M, as
+medidas DAX, o desenho do modelo e o roteiro de montagem.

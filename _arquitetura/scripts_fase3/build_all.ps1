@@ -293,6 +293,8 @@ Encerrar-Excel
     # de 60 meses, enquanto a producao -- remendada a mao pelo instalador -- a
     # tinha. As provas passavam porque olhavam para o arquivo errado.
     (Join-Path $arq 'src_producao\mBanco.bas'),
+    # mBI (ADR-026): camada de dados para o Power BI.
+    (Join-Path $arq 'src_producao\mBI.bas'),
     (Join-Path $h 'Planilha7.cls')
 )
 
@@ -305,6 +307,10 @@ Etapa 'aplicar_adr025.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 6
 Encerrar-Excel
 "== 4a2. ADR-025: vigia de Status (BA:BC voltam a ser auto-corretivas)"
 Mostrar (& python (Join-Path $s 'instalar_watch_status.py') $alvo) -Ultimas 3
+
+Encerrar-Excel
+"== 4a3. ADR-026: camada de dados BI_Data + reconciliacao com o motor"
+Etapa 'aplicar_bi_data.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 6
 
 Encerrar-Excel
 "== 4b. vigia da tabela de elegibilidade (item 2.5)"
