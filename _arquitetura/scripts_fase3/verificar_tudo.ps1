@@ -669,6 +669,15 @@ End Function
     try { $dbNC.Unprotect('qcini2025') } catch { }
     if ($ultDbOk -gt $ultDbAntes) {
         $dbNC.Range($dbNC.Cells.Item($ultDbAntes + 1, 1), $dbNC.Cells.Item($ultDbOk, 7)).ClearContents() | Out-Null
+        # ADR-025: apagar A:G nao apaga as derivadas BA:BC, e a suite roda com
+        # EnableEvents=False, entao o vigia do Worksheet_Change nao dispara. Sem
+        # esta chamada as linhas ficam sem RUN mas com BC=1, e o AGREGAR da
+        # Liberacao passa a ver uma corrida ZERO antes de todas -- as 52
+        # divergencias que derrubavam a prova 4.2.
+        #
+        # Nao e afrouxar o teste: e devolver a fixture ao estado coerente que
+        # qualquer caminho suportado do produto teria deixado.
+        $xl.Run('AtualizarFlagsBanco') | Out-Null
     }
     try { $wsImp.Unprotect('qcini2025') } catch { }
     $wsImp.Range($wsImp.Cells.Item(5, 2), $wsImp.Cells.Item(204, $cErr)).ClearContents()

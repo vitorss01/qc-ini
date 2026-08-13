@@ -227,6 +227,27 @@ Public Sub AtualizarFlagsBanco()
     ws.Range(ws.Cells(BANCO_R0, COL_LOTE_NUC), ws.Cells(ult, COL_LOTE_NUC)).NumberFormat = "@"
     ws.Range(ws.Cells(BANCO_R0, COL_LOTE_NUC), ws.Cells(ult, COL_RUNUNICO)).Value = flags
 
+    ' ---- nada de coluna derivada sobrevivendo ao seu dado ----------------
+    '
+    ' Enquanto BA:BC eram formula, apagar A:G de uma linha zerava as derivadas
+    ' junto, automaticamente. Como VALOR elas SOBREVIVEM -- e uma linha sem RUN
+    ' com BC=1 ainda dentro dos intervalos nomeados faz
+    '     rRUN / ((rRunUnico=1) * ...)
+    ' devolver VAZIO/1 = ZERO. O AGREGAR passa a enxergar uma "corrida 0" antes
+    ' de todas, e a Liberacao inteira desce uma linha: A4 vira 0, A5 vira 1, e
+    ' assim por diante. Foi exatamente a divergencia de 52 celulas da prova 4.2.
+    '
+    ' A varredura vai ate a ULTIMA linha com qualquer coisa em BA:BC, nao ate um
+    ' numero fixo: o resto pode ter ficado de um estado anterior maior.
+    Dim ultDeriv As Long
+    ultDeriv = ws.Cells(ws.Rows.Count, COL_RUNUNICO).End(xlUp).Row
+    If ws.Cells(ws.Rows.Count, COL_LOTE_NUC).End(xlUp).Row > ultDeriv Then
+        ultDeriv = ws.Cells(ws.Rows.Count, COL_LOTE_NUC).End(xlUp).Row
+    End If
+    If ultDeriv > ult Then
+        ws.Range(ws.Cells(ult + 1, COL_LOTE_NUC), ws.Cells(ultDeriv, COL_RUNUNICO)).ClearContents
+    End If
+
 restaura:
     ' A protecao volta SEMPRE, inclusive se a escrita levantou erro. Deixar a
     ' aba destravada por causa de uma excecao seria trocar um defeito visivel
