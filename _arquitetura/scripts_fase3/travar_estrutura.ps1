@@ -76,15 +76,19 @@ try {
         # localiza a linha da declaracao
         $ini = 0
         for ($i = 1; $i -le $cm.CountOfLines; $i++) {
-            if ($cm.Lines($i, 1) -match "^\s*(Public|Private|Friend)?\s*Sub\s+$n\s*(\(|$)") { $ini = $i; break }
+        if ($cm.Lines($i, 1) -match "^\s*(Public|Private|Friend)?\s*(Sub|Function)\s+$n\s*(\(|$)") {
+            $tipo = $Matches[2]
+            $ini = $i
+            break
+        }
         }
         if ($ini -eq 0) { throw "rotina $n nao encontrada em mSeguranca" }
         # inclui comentarios imediatamente acima
         while ($ini -gt 1 -and $cm.Lines($ini - 1, 1) -match "^\s*'") { $ini-- }
-        # fim = primeiro 'End Sub' a partir da declaracao
+        # fim = primeiro 'End Sub/Function' a partir da declaracao
         $fim = 0
         for ($i = $ini; $i -le $cm.CountOfLines; $i++) {
-            if ($cm.Lines($i, 1).Trim() -eq 'End Sub') { $fim = $i; break }
+            if ($cm.Lines($i, 1).Trim() -eq "End $tipo") { $fim = $i; break }
         }
         if ($fim -eq 0) { throw "fim de $n nao encontrado" }
         $cm.DeleteLines($ini, $fim - $ini + 1)

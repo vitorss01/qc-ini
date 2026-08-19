@@ -134,9 +134,9 @@ Public Function AlocarRUN() As Long
 End Function
 
 ' RUN de uma corrida ja registrada. Devolve 0 se ela nao existe.
-' Turno entra na chave: e o que permite duas corridas no mesmo dia (item 2.4).
-' Enquanto a interface nao oferecer o campo, turno chega vazio e o
-' comportamento e identico ao de hoje -- uma corrida por (data, lote).
+' Mantida para consultas e compatibilidade. A gravacao nao usa mais
+' (data, lote, turno) como chave unica: isso colidia quando havia duas
+' corridas no mesmo dia e lote.
 Public Function RunDaCorrida(ByVal dt As Date, ByVal loteCore As String, _
                              Optional ByVal turno As String = "") As Long
     Dim ws As Worksheet, i As Long, lastRow As Long
@@ -156,12 +156,49 @@ Public Function RunDaCorrida(ByVal dt As Date, ByVal loteCore As String, _
     Next i
 End Function
 
+' Ultima corrida do mesmo dia/lote/turno que AINDA NAO recebeu resultados do
+' nivel informado. Assim, N1/N2/N3 gravados separadamente continuam compondo
+' uma mesma corrida; repetir um nivel ja gravado cria outro RUN.
+Private Function RunDisponivelParaNivel(ByVal dt As Date, ByVal loteCore As String, _
+                                        ByVal turno As String, ByVal nivel As Long) As Long
+    Dim ws As Worksheet, dados As Variant, usados As Object
+    Dim i As Long, lastRow As Long, r As Long
+    If nivel < 1 Then Exit Function
+
+    Set usados = CreateObject("Scripting.Dictionary")
+    dados = CarregarDB()
+    If Not IsEmpty(dados) Then
+        For i = 1 To UBound(dados, 1)
+            If CLng(Val(CStr(dados(i, COL_NIVEL)))) = nivel Then
+                usados(CStr(CLng(Val(CStr(dados(i, COL_RUN)))))) = True
+            End If
+        Next i
+    End If
+
+    Set ws = ThisWorkbook.Sheets(CORRIDAS)
+    lastRow = UltimaLinhaCorridas()
+    For i = lastRow To CORRIDAS_R0 Step -1
+        If IsDate(ws.Cells(i, CC_DATA).Value) Then
+            If CDate(ws.Cells(i, CC_DATA).Value) = dt And _
+               Trim$(CStr(ws.Cells(i, CC_LOTE).Value)) = Trim$(loteCore) And _
+               Trim$(CStr(ws.Cells(i, CC_TURNO).Value)) = Trim$(turno) Then
+                r = CLng(Val(CStr(ws.Cells(i, CC_RUN).Value)))
+                If r > 0 And Not usados.Exists(CStr(r)) Then
+                    RunDisponivelParaNivel = r
+                    Exit Function
+                End If
+            End If
+        End If
+    Next i
+End Function
+
 ' Previsao para exibir enquanto o usuario digita. NAO aloca e NAO registra.
 ' Usar em qualquer caminho que nao seja gravacao efetiva.
 Public Function PreverRUN(ByVal dt As Date, ByVal loteCore As String, _
-                          Optional ByVal turno As String = "") As Long
+                          Optional ByVal turno As String = "", _
+                          Optional ByVal nivel As Long = 0) As Long
     Dim r As Long
-    r = RunDaCorrida(dt, loteCore, turno)
+    If nivel > 0 Then r = RunDisponivelParaNivel(dt, loteCore, turno, nivel)
     If r > 0 Then
         PreverRUN = r
     Else
@@ -169,12 +206,15 @@ Public Function PreverRUN(ByVal dt As Date, ByVal loteCore As String, _
     End If
 End Function
 
-' Identidade definitiva da corrida. Cria e registra se ainda nao existir.
-' E o unico caminho que consome numero. Chamar SO na gravacao.
+' Identidade definitiva da corrida. Com nivel informado, reaproveita somente
+' uma corrida ainda sem esse nivel. Sem nivel (importacao em lote), sempre
+' cria uma corrida nova; o chamador agrupa as linhas do mesmo lote/data e
+' chama esta funcao uma vez por grupo.
 Public Function ObterOuCriarRUN(ByVal dt As Date, ByVal loteCore As String, _
-                                Optional ByVal turno As String = "") As Long
+                                Optional ByVal turno As String = "", _
+                                Optional ByVal nivel As Long = 0) As Long
     Dim ws As Worksheet, r As Long, lin As Long
-    r = RunDaCorrida(dt, loteCore, turno)
+    If nivel > 0 Then r = RunDisponivelParaNivel(dt, loteCore, turno, nivel)
     If r > 0 Then ObterOuCriarRUN = r: Exit Function
 
     r = AlocarRUN()
@@ -211,106 +251,172 @@ End Function
 ' deixar registro. Agora, linha nao ativa e PRESERVADA e a tentativa e
 ' auditada. Reverter uma exclusao passa a exigir acao propria, com parecer.
 Public Function UpsertResultados(ByRef regs As Variant) As String
-    Dim ws As Worksheet, dados As Variant, idx As Object
-    Dim i As Long, lastRow As Long, novos As Long, atual As Long, bloq As Long
-    Dim k As String, lin As Long, stAntes As String, antes As Variant
-    Dim addBuf() As Variant, nAdd As Long
+    Dim ws As Worksheet, dados As Variant, idx As Object, vistos As Object
+    Dim i As Long, c As Long, nRegs As Long, lastRow As Long
+    Dim novos As Long, atual As Long, bloq As Long, nAdd As Long
+    Dim k As String, lin As Long, stAntes As String, acaoUp As String
+    Dim acao() As Integer, linhaAlvo() As Long, antesRes() As Variant
+    Dim antesData() As Variant, antesLote() As Variant, antesStatus() As Variant
+    Dim addBuf() As Variant, outp() As Variant, dbAntes As Variant
+    Dim gravou As Boolean, screenAntes As Boolean, nErr As Long, sErr As String
+
     If IsEmpty(regs) Then UpsertResultados = "0|0|0": Exit Function
+    screenAntes = Application.ScreenUpdating
+    On Error GoTo rollback
+    nRegs = UBound(regs, 1)
     Set ws = ThisWorkbook.Sheets(BANCO)
     Set idx = CreateObject("Scripting.Dictionary")
+    Set vistos = CreateObject("Scripting.Dictionary")
+    idx.CompareMode = 1: vistos.CompareMode = 1
+
     dados = CarregarDB()
     If Not IsEmpty(dados) Then
         For i = 1 To UBound(dados, 1)
             If Len(Trim$(CStr(dados(i, COL_ANALITO)))) > 0 Then
                 k = ChaveReg(CLng(dados(i, COL_RUN)), CLng(dados(i, COL_NIVEL)), CStr(dados(i, COL_ANALITO)))
-                If Not idx.Exists(k) Then idx.Add k, BANCO_R0 + i - 1
+                If idx.Exists(k) Then
+                    Err.Raise vbObjectError + 531, "mDados.UpsertResultados", _
+                              "Banco inconsistente: chave duplicada " & k & ". Nenhum dado foi gravado."
+                End If
+                idx.Add k, BANCO_R0 + i - 1
             End If
         Next i
     End If
+
     lastRow = UltimaLinhaBanco()
-    ReDim addBuf(1 To UBound(regs, 1), 1 To COL_STATUS)
-    nAdd = 0: novos = 0: atual = 0: bloq = 0
-    Application.ScreenUpdating = False
-    For i = 1 To UBound(regs, 1)
+    ReDim acao(1 To nRegs)
+    ReDim linhaAlvo(1 To nRegs)
+    ReDim antesRes(1 To nRegs)
+    ReDim antesData(1 To nRegs)
+    ReDim antesLote(1 To nRegs)
+    ReDim antesStatus(1 To nRegs)
+    ReDim addBuf(1 To nRegs, 1 To COL_STATUS)
+
+    ' PRE-FLIGHT completo. Nao escreve em nenhuma planilha antes de validar o
+    ' lote inteiro, inclusive capacidade e duplicidade dentro da propria carga.
+    For i = 1 To nRegs
+        If Not IsNumeric(regs(i, COL_RUN)) Or CLng(Val(CStr(regs(i, COL_RUN)))) < 1 Then _
+            Err.Raise vbObjectError + 532, "mDados.UpsertResultados", "RUN invalido na linha " & i & "."
+        If Not IsDate(regs(i, COL_DATA)) Then _
+            Err.Raise vbObjectError + 533, "mDados.UpsertResultados", "Data invalida na linha " & i & "."
+        If Not IsNumeric(regs(i, COL_NIVEL)) Or CLng(Val(CStr(regs(i, COL_NIVEL)))) < 1 Then _
+            Err.Raise vbObjectError + 534, "mDados.UpsertResultados", "Nivel invalido na linha " & i & "."
+        If Len(Trim$(CStr(regs(i, COL_ANALITO)))) = 0 Then _
+            Err.Raise vbObjectError + 535, "mDados.UpsertResultados", "Analito vazio na linha " & i & "."
+
         k = ChaveReg(CLng(regs(i, COL_RUN)), CLng(regs(i, COL_NIVEL)), CStr(regs(i, COL_ANALITO)))
+        If vistos.Exists(k) Then
+            Err.Raise vbObjectError + 536, "mDados.UpsertResultados", _
+                      "Carga recusada: chave repetida " & k & ". Nenhum dado foi gravado."
+        End If
+        vistos.Add k, True
+
         If idx.Exists(k) Then
-            lin = idx(k)
+            lin = CLng(idx(k))
+            linhaAlvo(i) = lin
             stAntes = Trim$(CStr(ws.Cells(lin, COL_STATUS).Value))
+            antesRes(i) = ws.Cells(lin, COL_RESULT).Value
+            antesData(i) = ws.Cells(lin, COL_DATA).Value
+            antesLote(i) = ws.Cells(lin, COL_LOTE).Value
+            antesStatus(i) = ws.Cells(lin, COL_STATUS).Value
             If stAntes <> "" And stAntes <> ST_ATIVO Then
-                ' Nao ressuscita. Registra a tentativa e segue.
-                Auditar CAT_DADO, AC_BLOQUEIO, "mDados", _
-                        CLng(regs(i, COL_RUN)), regs(i, COL_DATA), "", CStr(regs(i, COL_LOTE)), _
-                        CLng(regs(i, COL_NIVEL)), CStr(regs(i, COL_ANALITO)), _
-                        ws.Cells(lin, COL_RESULT).Value, regs(i, COL_RESULT), _
-                        stAntes, stAntes, "Reenvio de registro nao ativo", _
-                        "Reenvio recusado: o registro nao esta Ativo. Reverter exclusao exige acao propria e justificada."
-                bloq = bloq + 1
+                acao(i) = 2: bloq = bloq + 1
             Else
-                antes = ws.Cells(lin, COL_RESULT).Value
-                ws.Cells(lin, COL_RESULT).Value = regs(i, COL_RESULT)
-                ws.Cells(lin, COL_STATUS).Value = ST_ATIVO
-                ws.Cells(lin, COL_DATA).Value = regs(i, COL_DATA)
-                ws.Cells(lin, COL_LOTE).Value = regs(i, COL_LOTE)
-                ' Apagar resultado e evento PROPRIO, nao "alteracao para nada": e
-                ' justamente o que a auditoria mais quer enxergar.
-                Dim acaoUp As String
-                If Trim$(CStr(regs(i, COL_RESULT))) = "" Then
-                    acaoUp = AC_APAGADO
-                Else
-                    acaoUp = AC_ALTERACAO
-                End If
-                Auditar CAT_DADO, acaoUp, "mDados", _
-                        CLng(regs(i, COL_RUN)), regs(i, COL_DATA), "", CStr(regs(i, COL_LOTE)), _
-                        CLng(regs(i, COL_NIVEL)), CStr(regs(i, COL_ANALITO)), _
-                        antes, regs(i, COL_RESULT), stAntes, ST_ATIVO, "", ""
-                atual = atual + 1
+                acao(i) = 1: atual = atual + 1
             End If
         Else
-            nAdd = nAdd + 1
-            Dim c As Long
+            acao(i) = 0
+            nAdd = nAdd + 1: novos = novos + 1
             For c = 1 To COL_STATUS
                 addBuf(nAdd, c) = regs(i, c)
             Next c
-            idx.Add k, lastRow + nAdd
-            novos = novos + 1
         End If
     Next i
-    If nAdd > 0 Then
-        ' Barreira de capacidade (ADR-025). ANTES de gravar, nao depois: aceitar o
-        ' registro e descobrir o estouro em seguida deixaria o banco pela metade.
-        ExigirCapacidade nAdd
+    ExigirCapacidade nAdd
 
-        ws.Range(ws.Cells(lastRow + 1, COL_LOTE), ws.Cells(lastRow + nAdd, COL_LOTE)).NumberFormat = "@"
-        Dim outp() As Variant
+    Application.ScreenUpdating = False
+
+    ' Tentativas bloqueadas sao eventos reais, mas nao alteram DB_Resultados.
+    For i = 1 To nRegs
+        If acao(i) = 2 Then
+            Auditar CAT_DADO, AC_BLOQUEIO, "mDados", _
+                    CLng(regs(i, COL_RUN)), regs(i, COL_DATA), "", CStr(regs(i, COL_LOTE)), _
+                    CLng(regs(i, COL_NIVEL)), CStr(regs(i, COL_ANALITO)), _
+                    antesRes(i), regs(i, COL_RESULT), CStr(antesStatus(i)), CStr(antesStatus(i)), _
+                    "Reenvio de registro nao ativo", _
+                    "Reenvio recusado: reverter exclusao exige acao propria e justificada."
+        End If
+    Next i
+
+    ' Snapshot transacional do banco. Se qualquer escrita, auditoria ou ajuste
+    ' derivado falhar, o bloco original e restaurado antes de propagar o erro.
+    If lastRow >= BANCO_R0 Then
+        dbAntes = ws.Range(ws.Cells(BANCO_R0, COL_RUN), ws.Cells(lastRow, COL_STATUS)).Value
+    End If
+    gravou = True
+
+    For i = 1 To nRegs
+        If acao(i) = 1 Then
+            lin = linhaAlvo(i)
+            ws.Cells(lin, COL_DATA).Value = regs(i, COL_DATA)
+            ws.Cells(lin, COL_LOTE).NumberFormat = "@"
+            ws.Cells(lin, COL_LOTE).Value = regs(i, COL_LOTE)
+            ws.Cells(lin, COL_RESULT).Value = regs(i, COL_RESULT)
+            ws.Cells(lin, COL_STATUS).Value = ST_ATIVO
+        End If
+    Next i
+
+    If nAdd > 0 Then
         ReDim outp(1 To nAdd, 1 To COL_STATUS)
         For i = 1 To nAdd
             For c = 1 To COL_STATUS
                 outp(i, c) = addBuf(i, c)
             Next c
         Next i
+        ws.Range(ws.Cells(lastRow + 1, COL_LOTE), ws.Cells(lastRow + nAdd, COL_LOTE)).NumberFormat = "@"
+        ws.Range(ws.Cells(lastRow + 1, COL_DATA), ws.Cells(lastRow + nAdd, COL_DATA)).NumberFormatLocal = "dd/mm/aaaa;@"
         ws.Range(ws.Cells(lastRow + 1, COL_RUN), ws.Cells(lastRow + nAdd, COL_STATUS)).Value = outp
-        For i = 1 To nAdd
-            Auditar CAT_DADO, AC_INCLUSAO, "mDados", _
-                    CLng(addBuf(i, COL_RUN)), addBuf(i, COL_DATA), "", CStr(addBuf(i, COL_LOTE)), _
-                    CLng(addBuf(i, COL_NIVEL)), CStr(addBuf(i, COL_ANALITO)), _
-                    Empty, addBuf(i, COL_RESULT), "", CStr(addBuf(i, COL_STATUS)), "", ""
-        Next i
     End If
 
-    ' As flags BA/BB/BC sao mantidas por mBanco desde o ADR-025. Recalcular o
-    ' banco inteiro, e nao so as linhas novas: uma linha inserida ou reativada
-    ' muda quem e a "primeira ativa" das linhas seguintes. A rotina tambem
-    ' redimensiona os intervalos r* -- sem isso o dado entra, fica salvo e some
-    ' dos calculos.
-    '
-    ' ESTA E A FONTE QUE O BUILD USA. gerar_mDados_audit.ps1 substitui os blocos
-    ' UpsertResultados e ExcluirLogico inteiros por estes; enquanto a chamada so
-    ' existia no patch do instalar_capacidade60m.py, todo build a apagava e o
-    ' ARTEFATO ENTREGUE saia sem o ADR-025. Achado A1 da auditoria de 12/08/2026.
     AtualizarFlagsBanco
 
-    Application.ScreenUpdating = True
+    For i = 1 To nRegs
+        If acao(i) = 1 Then
+            If Trim$(CStr(regs(i, COL_RESULT))) = "" Then acaoUp = AC_APAGADO Else acaoUp = AC_ALTERACAO
+            Auditar CAT_DADO, acaoUp, "mDados", _
+                    CLng(regs(i, COL_RUN)), regs(i, COL_DATA), "", CStr(regs(i, COL_LOTE)), _
+                    CLng(regs(i, COL_NIVEL)), CStr(regs(i, COL_ANALITO)), _
+                    antesRes(i), regs(i, COL_RESULT), CStr(antesStatus(i)), ST_ATIVO, "", ""
+        End If
+    Next i
+    For i = 1 To nAdd
+        Auditar CAT_DADO, AC_INCLUSAO, "mDados", _
+                CLng(addBuf(i, COL_RUN)), addBuf(i, COL_DATA), "", CStr(addBuf(i, COL_LOTE)), _
+                CLng(addBuf(i, COL_NIVEL)), CStr(addBuf(i, COL_ANALITO)), _
+                Empty, addBuf(i, COL_RESULT), "", CStr(addBuf(i, COL_STATUS)), "", ""
+    Next i
+
+    Application.ScreenUpdating = screenAntes
     UpsertResultados = CStr(novos) & "|" & CStr(atual) & "|" & CStr(bloq)
+    Exit Function
+
+rollback:
+    nErr = Err.Number: sErr = Err.Description
+    On Error Resume Next
+    If gravou Then
+        If lastRow >= BANCO_R0 Then
+            ws.Range(ws.Cells(BANCO_R0, COL_RUN), ws.Cells(lastRow, COL_STATUS)).Value = dbAntes
+        End If
+        If nAdd > 0 Then
+            ws.Range(ws.Cells(lastRow + 1, COL_RUN), ws.Cells(lastRow + nAdd, COL_STATUS)).ClearContents
+        End If
+        AtualizarFlagsBanco
+        Auditar CAT_SIS, "TRANSACAO_REVERTIDA", "mDados", 0, Empty, "", "", 0, "", _
+                Empty, Empty, "", "", "Falha no lote", sErr
+    End If
+    Application.ScreenUpdating = screenAntes
+    On Error GoTo 0
+    Err.Raise nErr, "mDados.UpsertResultados", sErr
 End Function
 
 ' Exclusao LOGICA por RUN + Nivel + lista de analitos (Dictionary de nomes em UCase).

@@ -59,7 +59,7 @@ try {
     foreach ($t in $ws.ListObjects) { if ($t.Name -eq 'tblBI_Fato') { $lo = $t } }
     if ($lo -eq $null) { throw "ListObject tblBI_Fato nao foi criado" }
     "tabela estruturada tblBI_Fato: $($lo.Range.Address()) ($($lo.ListRows.Count) linhas x $($lo.ListColumns.Count) colunas)"
-    if ($lo.ListColumns.Count -ne 34) { throw "esperadas 34 colunas, encontradas $($lo.ListColumns.Count)" }
+    if ($lo.ListColumns.Count -ne 60) { throw "esperadas 60 colunas, encontradas $($lo.ListColumns.Count)" }
 
     # chaves: ID_Result tem de ser UNICO -- e a granularidade declarada
     $dup = $xl.WorksheetFunction.SumProduct(

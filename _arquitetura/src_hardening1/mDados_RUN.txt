@@ -87,9 +87,9 @@ Public Function AlocarRUN() As Long
 End Function
 
 ' RUN de uma corrida ja registrada. Devolve 0 se ela nao existe.
-' Turno entra na chave: e o que permite duas corridas no mesmo dia (item 2.4).
-' Enquanto a interface nao oferecer o campo, turno chega vazio e o
-' comportamento e identico ao de hoje -- uma corrida por (data, lote).
+' Mantida para consultas e compatibilidade. A gravacao nao usa mais
+' (data, lote, turno) como chave unica: isso colidia quando havia duas
+' corridas no mesmo dia e lote.
 Public Function RunDaCorrida(ByVal dt As Date, ByVal loteCore As String, _
                              Optional ByVal turno As String = "") As Long
     Dim ws As Worksheet, i As Long, lastRow As Long
@@ -109,12 +109,49 @@ Public Function RunDaCorrida(ByVal dt As Date, ByVal loteCore As String, _
     Next i
 End Function
 
+' Ultima corrida do mesmo dia/lote/turno que AINDA NAO recebeu resultados do
+' nivel informado. Assim, N1/N2/N3 gravados separadamente continuam compondo
+' uma mesma corrida; repetir um nivel ja gravado cria outro RUN.
+Private Function RunDisponivelParaNivel(ByVal dt As Date, ByVal loteCore As String, _
+                                        ByVal turno As String, ByVal nivel As Long) As Long
+    Dim ws As Worksheet, dados As Variant, usados As Object
+    Dim i As Long, lastRow As Long, r As Long
+    If nivel < 1 Then Exit Function
+
+    Set usados = CreateObject("Scripting.Dictionary")
+    dados = CarregarDB()
+    If Not IsEmpty(dados) Then
+        For i = 1 To UBound(dados, 1)
+            If CLng(Val(CStr(dados(i, COL_NIVEL)))) = nivel Then
+                usados(CStr(CLng(Val(CStr(dados(i, COL_RUN)))))) = True
+            End If
+        Next i
+    End If
+
+    Set ws = ThisWorkbook.Sheets(CORRIDAS)
+    lastRow = UltimaLinhaCorridas()
+    For i = lastRow To CORRIDAS_R0 Step -1
+        If IsDate(ws.Cells(i, CC_DATA).Value) Then
+            If CDate(ws.Cells(i, CC_DATA).Value) = dt And _
+               Trim$(CStr(ws.Cells(i, CC_LOTE).Value)) = Trim$(loteCore) And _
+               Trim$(CStr(ws.Cells(i, CC_TURNO).Value)) = Trim$(turno) Then
+                r = CLng(Val(CStr(ws.Cells(i, CC_RUN).Value)))
+                If r > 0 And Not usados.Exists(CStr(r)) Then
+                    RunDisponivelParaNivel = r
+                    Exit Function
+                End If
+            End If
+        End If
+    Next i
+End Function
+
 ' Previsao para exibir enquanto o usuario digita. NAO aloca e NAO registra.
 ' Usar em qualquer caminho que nao seja gravacao efetiva.
 Public Function PreverRUN(ByVal dt As Date, ByVal loteCore As String, _
-                          Optional ByVal turno As String = "") As Long
+                          Optional ByVal turno As String = "", _
+                          Optional ByVal nivel As Long = 0) As Long
     Dim r As Long
-    r = RunDaCorrida(dt, loteCore, turno)
+    If nivel > 0 Then r = RunDisponivelParaNivel(dt, loteCore, turno, nivel)
     If r > 0 Then
         PreverRUN = r
     Else
@@ -122,12 +159,15 @@ Public Function PreverRUN(ByVal dt As Date, ByVal loteCore As String, _
     End If
 End Function
 
-' Identidade definitiva da corrida. Cria e registra se ainda nao existir.
-' E o unico caminho que consome numero. Chamar SO na gravacao.
+' Identidade definitiva da corrida. Com nivel informado, reaproveita somente
+' uma corrida ainda sem esse nivel. Sem nivel (importacao em lote), sempre
+' cria uma corrida nova; o chamador agrupa as linhas do mesmo lote/data e
+' chama esta funcao uma vez por grupo.
 Public Function ObterOuCriarRUN(ByVal dt As Date, ByVal loteCore As String, _
-                                Optional ByVal turno As String = "") As Long
+                                Optional ByVal turno As String = "", _
+                                Optional ByVal nivel As Long = 0) As Long
     Dim ws As Worksheet, r As Long, lin As Long
-    r = RunDaCorrida(dt, loteCore, turno)
+    If nivel > 0 Then r = RunDisponivelParaNivel(dt, loteCore, turno, nivel)
     If r > 0 Then ObterOuCriarRUN = r: Exit Function
 
     r = AlocarRUN()

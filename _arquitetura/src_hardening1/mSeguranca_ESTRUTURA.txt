@@ -2,7 +2,8 @@
 Public Sub LockApp()
     Dim ws As Worksheet
     Application.ScreenUpdating = False
-    On Error Resume Next
+    On Error GoTo falha
+    DesprotegerEstrutura
     Sheets(SHEET_LOGIN).Visible = xlSheetVisible
     For Each ws In ThisWorkbook.Worksheets
         If ws.Name <> SHEET_LOGIN Then ws.Visible = xlSheetVeryHidden
@@ -10,41 +11,262 @@ Public Sub LockApp()
     Sheets(SHEET_LOGIN).Activate
     ReprotectAll
     SystemLook True
-    On Error GoTo 0
-    ' Tela de login: nao se cria aba aqui. Estrutura travada.
     ProtegerEstrutura
     Application.ScreenUpdating = True
+    Exit Sub
+falha:
+    On Error Resume Next
+    ProtegerEstrutura
+    Application.ScreenUpdating = True
+    On Error GoTo 0
+    Err.Raise vbObjectError + 560, "mSeguranca.LockApp", "Falha ao bloquear a pasta de trabalho."
 End Sub
 '@@FUNC UnlockApp
-Public Sub UnlockApp()
+Private Sub UnlockApp()
     Dim ws As Worksheet, isAdm As Boolean
+    Dim usuarioAtual As String, papelAtual As String
     Application.ScreenUpdating = False
-    On Error Resume Next
-    isAdm = (UCase$(Trim$(CStr(ThisWorkbook.Names("currentPapel").RefersToRange.Value))) = "ADM")
+    On Error GoTo falha
+    usuarioAtual = Trim$(CStr(ThisWorkbook.Names("currentUser").RefersToRange.Value))
+    papelAtual = UCase$(Trim$(CStr(ThisWorkbook.Names("currentPapel").RefersToRange.Value)))
+    If usuarioAtual = "" Or Not PapelValido(papelAtual) Then _
+        Err.Raise vbObjectError + 561, "mSeguranca.UnlockApp", "Sessao invalida."
+    isAdm = (papelAtual = "ADM")
+    DesprotegerEstrutura
     For Each ws In ThisWorkbook.Worksheets
         Select Case ws.Name
             Case SHEET_LOGIN
                 ws.Visible = xlSheetVeryHidden
-            Case "Calc", "LotesStore", "LiberStore", "RegistrosStore"
+            Case "Calc", "LotesStore", "LiberStore", "RegistrosStore", _
+                 "DB_Resultados", "Corridas", "Cfg_Status", "Eng_Saida", _
+                 "BI_Data", "DB_Especificacoes", "Eng_Especificacoes"
                 ws.Visible = IIf(isAdm, xlSheetVisible, xlSheetVeryHidden)
             Case Else
                 ws.Visible = xlSheetVisible
         End Select
     Next ws
-    If isAdm Then
-        UnprotectAll
-    Else
-        ReprotectAll
-    End If
+    ' Mesmo ADM opera com conteudo protegido. Edicao estrutural e exclusiva
+    ' do Modo Desenvolvedor autenticado.
+    ReprotectAll
     HookCharts
     Sheets(SHEET_START).Activate
     SystemLook True
-    On Error GoTo 0
-    ' Depois de logar - ADM ou analista - a estrutura CONTINUA travada. Criar,
-    ' mover, renomear ou excluir aba so pelo Modo Desenvolvedor (decisao do
-    ' gestor). UnprotectAll do ADM libera CONTEUDO de celula, nao a estrutura.
     ProtegerEstrutura
     Application.ScreenUpdating = True
+    Exit Sub
+falha:
+    On Error Resume Next
+    ProtegerEstrutura
+    Application.ScreenUpdating = True
+    On Error GoTo 0
+    Err.Raise vbObjectError + 562, "mSeguranca.UnlockApp", "Nao foi possivel abrir a sessao."
+End Sub
+'@@FUNC DoLogin
+Public Sub DoLogin()
+    Dim u As String, p As String, r As Long
+    On Error GoTo falha
+    u = Trim$(CStr(ThisWorkbook.Names("loginUser").RefersToRange.Value))
+    p = CStr(ThisWorkbook.Names("loginPass").RefersToRange.Value)
+    ThisWorkbook.Names("loginPass").RefersToRange.Value = ""
+    r = FindUserRow(u)
+    If r > 0 And p <> "" Then
+        If LCase$(CStr(ThisWorkbook.Sheets("Usuarios").Cells(r, 4).Value)) = SHA256Hex(p) Then
+            If Not PapelValido(CStr(ThisWorkbook.Sheets("Usuarios").Cells(r, 3).Value)) Then GoTo recusado
+            ThisWorkbook.Names("currentUser").RefersToRange.Value = ThisWorkbook.Sheets("Usuarios").Cells(r, 1).Value
+            ThisWorkbook.Names("currentPapel").RefersToRange.Value = UCase$(Trim$(CStr(ThisWorkbook.Sheets("Usuarios").Cells(r, 3).Value)))
+            ThisWorkbook.Names("loginMsg").RefersToRange.Value = ""
+            Auditar CAT_SEG, "LOGIN_OK", "mSeguranca", 0, Empty, "", "", 0, "", _
+                    Empty, Empty, "", "", "", ""
+            UnlockApp
+            Exit Sub
+        End If
+    End If
+recusado:
+    ThisWorkbook.Names("loginMsg").RefersToRange.Value = "Usuario ou senha invalidos."
+    Auditar CAT_SEG, "LOGIN_RECUSADO", "mSeguranca", 0, Empty, "", "", 0, u, _
+            Empty, Empty, "", "", "Credencial invalida", ""
+    Exit Sub
+falha:
+    On Error Resume Next
+    ThisWorkbook.Names("currentUser").RefersToRange.Value = ""
+    ThisWorkbook.Names("currentPapel").RefersToRange.Value = ""
+    ThisWorkbook.Names("loginMsg").RefersToRange.Value = "Falha segura no login. Tente novamente."
+    On Error GoTo 0
+End Sub
+'@@FUNC CadastrarUsuario
+Public Sub CadastrarUsuario()
+    Dim ws As Worksheet, lg As String, nm As String, sn As String, pp As String
+    Dim r As Long, ppAtual As String, acao As String, papelAntes As String
+    Dim linhaAntes As Variant, novo As Boolean, nErr As Long, sErr As String
+    On Error GoTo falha
+    Set ws = ThisWorkbook.Sheets("Usuarios")
+    ppAtual = UCase$(Trim$(CStr(ThisWorkbook.Names("currentPapel").RefersToRange.Value)))
+    If ppAtual <> "ADM" Then
+        ThisWorkbook.Names("cadMsg").RefersToRange.Value = "Apenas ADM pode cadastrar ou alterar usuarios."
+        Exit Sub
+    End If
+
+    lg = Trim$(CStr(ThisWorkbook.Names("cadLogin").RefersToRange.Value))
+    nm = Trim$(CStr(ThisWorkbook.Names("cadNome").RefersToRange.Value))
+    sn = CStr(ThisWorkbook.Names("cadSenha").RefersToRange.Value)
+    pp = UCase$(Trim$(CStr(ThisWorkbook.Names("cadPapel").RefersToRange.Value)))
+    If lg = "" Or sn = "" Or nm = "" Then
+        ThisWorkbook.Names("cadMsg").RefersToRange.Value = "Preencha login, nome e senha."
+        Exit Sub
+    End If
+    If Not PapelValido(pp) Then
+        ThisWorkbook.Names("cadMsg").RefersToRange.Value = "Perfil invalido. Use TECNICO, ANALISTA ou ADM."
+        Exit Sub
+    End If
+
+    r = FindUserRow(lg)
+    novo = (r = 0)
+    If novo Then
+        For r = 4 To 53
+            If Trim$(CStr(ws.Cells(r, 1).Value)) = "" Then Exit For
+        Next r
+        If r > 53 Then Err.Raise vbObjectError + 563, "mSeguranca.CadastrarUsuario", "Cadastro de usuarios sem espaco."
+        acao = "USUARIO_CADASTRADO"
+    Else
+        acao = "USUARIO_ALTERADO"
+    End If
+
+    linhaAntes = ws.Range(ws.Cells(r, 1), ws.Cells(r, 5)).Value
+    papelAntes = CStr(ws.Cells(r, 3).Value)
+    ws.Cells(r, 1).Value = lg
+    ws.Cells(r, 2).Value = nm
+    ws.Cells(r, 3).Value = pp
+    ws.Cells(r, 4).Value = SHA256Hex(sn)
+    Auditar CAT_SEG, acao, "mSeguranca", 0, Empty, "", "", 0, lg, _
+            Empty, Empty, papelAntes, pp, "Cadastro administrativo", "Credencial nao registrada no log."
+    ThisWorkbook.Names("cadSenha").RefersToRange.Value = ""
+    ThisWorkbook.Names("cadMsg").RefersToRange.Value = "Usuario '" & lg & "' salvo (" & pp & ")."
+    Exit Sub
+falha:
+    nErr = Err.Number: sErr = Err.Description
+    On Error Resume Next
+    If r >= 4 And r <= 53 And Not IsEmpty(linhaAntes) Then _
+        ws.Range(ws.Cells(r, 1), ws.Cells(r, 5)).Value = linhaAntes
+    ThisWorkbook.Names("cadSenha").RefersToRange.Value = ""
+    ThisWorkbook.Names("cadMsg").RefersToRange.Value = "Falha: nenhuma alteracao foi mantida."
+    On Error GoTo 0
+    Err.Raise nErr, "mSeguranca.CadastrarUsuario", sErr
+End Sub
+'@@FUNC AssinarCom
+Public Function AssinarCom(ByVal tcell As Range, ByVal login As String, ByVal senha As String, ByVal tipo As String) As String
+    Dim r As Long, papel As String, ws As Worksheet, run As Long
+    Dim tipoNorm As String, metaAntes As Variant, valorAntes As Variant
+    Dim statusCQI As String, statusIdentidade As String, idEv As String
+    On Error GoTo falha
+
+    If Trim$(CStr(ThisWorkbook.Names("currentUser").RefersToRange.Value)) = "" Then
+        AssinarCom = "Inicie uma sessao antes de assinar.": Exit Function
+    End If
+    If tcell Is Nothing Then AssinarCom = "Campo de assinatura invalido.": Exit Function
+    If Not tcell.Parent Is Planilha12 Then _
+        AssinarCom = "Campo de assinatura invalido.": Exit Function
+    If tcell.Row < 4 Or (tcell.Column <> 3 And tcell.Column <> 5) Then _
+        AssinarCom = "Campo de assinatura invalido.": Exit Function
+    If Not IsNumeric(tcell.Parent.Cells(tcell.Row, 1).Value) Then _
+        AssinarCom = "RUN ausente nesta linha.": Exit Function
+    run = CLng(tcell.Parent.Cells(tcell.Row, 1).Value)
+    If Len(Trim$(CStr(tcell.Offset(0, 1).Value))) > 0 Then _
+        AssinarCom = "Esta etapa ja possui assinatura e nao pode ser sobrescrita.": Exit Function
+
+    Set ws = ThisWorkbook.Sheets("Usuarios")
+    r = FindUserRow(login)
+    If r = 0 Then AssinarCom = "Usuario nao encontrado.": Exit Function
+    If senha = "" Or LCase$(CStr(ws.Cells(r, 4).Value)) <> SHA256Hex(senha) Then _
+        AssinarCom = "Senha invalida.": Exit Function
+    papel = UCase$(Trim$(CStr(ws.Cells(r, 3).Value)))
+    tipoNorm = UCase$(Trim$(tipo))
+    If Not PapelValido(papel) Then AssinarCom = "Perfil de usuario invalido.": Exit Function
+
+    If tipoNorm = "FINALIZADO" Then
+        If papel <> "ANALISTA" And papel <> "ADM" Then
+            AssinarCom = "Apenas ANALISTA/ADM pode finalizar a liberacao."
+            Exit Function
+        End If
+        If Len(Trim$(CStr(tcell.Parent.Cells(tcell.Row, 4).Value))) = 0 Then
+            AssinarCom = "Registre INICIADO antes de FINALIZADO."
+            Exit Function
+        End If
+        statusIdentidade = StatusIdentidadeOperacional()
+        If statusIdentidade <> "OK" Then
+            AssinarCom = "Liberacao bloqueada: " & statusIdentidade
+            Exit Function
+        End If
+        AtualizarBIData
+        statusCQI = StatusCQIRun(run)
+        If statusCQI <> "OK" Then
+            AssinarCom = "Liberacao bloqueada: " & statusCQI
+            Exit Function
+        End If
+    ElseIf tipoNorm <> "INICIADO" Then
+        AssinarCom = "Tipo de assinatura invalido.": Exit Function
+    End If
+
+    If Not RubricaDisponivel(ws, r) Then
+        AssinarCom = "Rubrica nao cadastrada ou invalida. Nenhuma assinatura foi gravada."
+        Exit Function
+    End If
+
+    valorAntes = tcell.Value
+    metaAntes = tcell.Offset(0, 1).Value
+    If Not CarimbarRubrica(ws, r, tcell) Then
+        AssinarCom = "Falha ao aplicar a rubrica. Nenhuma assinatura foi gravada."
+        Exit Function
+    End If
+    tcell.Offset(0, 1).Value = ws.Cells(r, 1).Value & " - " & Format(Now, "dd/mm/yyyy hh:mm")
+    tcell.Offset(0, 1).EntireColumn.AutoFit
+    idEv = Auditar(CAT_SEG, "LIBERACAO_" & tipoNorm, "mSeguranca", run, _
+                   tcell.Parent.Cells(tcell.Row, 2).Value, "", CStr(LoteAtivoCore()), _
+                   0, "", Empty, Empty, "", tipoNorm, "Assinatura eletronica", "")
+    If Len(idEv) = 0 Then Err.Raise vbObjectError + 564, "mSeguranca.AssinarCom", "Auditoria da assinatura falhou."
+    AssinarCom = "OK"
+    Exit Function
+falha:
+    On Error Resume Next
+    tcell.Value = valorAntes
+    tcell.Offset(0, 1).Value = metaAntes
+    On Error GoTo 0
+    AssinarCom = "Falha segura na assinatura: nenhuma liberacao foi concluida."
+End Function
+'@@FUNC CarimbarRubrica
+Private Function CarimbarRubrica(ByVal ws As Worksheet, ByVal userRow As Long, ByVal tcell As Range) As Boolean
+    Dim nShapes As Long
+    On Error GoTo falha
+    If Not RubricaDisponivel(ws, userRow) Then Exit Function
+    nShapes = tcell.Parent.Shapes.Count
+    Application.CutCopyMode = False
+    tcell.Parent.Activate
+    ws.Cells(userRow, 5).Copy
+    tcell.PasteSpecial -4104
+    Application.CutCopyMode = False
+    If Len(Trim$(CStr(tcell.Text))) = 0 And tcell.Parent.Shapes.Count <= nShapes Then Exit Function
+    tcell.Locked = True
+    CarimbarRubrica = True
+    Exit Function
+falha:
+    Application.CutCopyMode = False
+    CarimbarRubrica = False
+End Function
+'@@FUNC UnprotectAll
+Private Sub UnprotectAll()
+    Dim ws As Worksheet
+    For Each ws In ThisWorkbook.Worksheets
+        ws.Unprotect Password:="qcini2025"
+    Next ws
+End Sub
+'@@FUNC Logout
+Public Sub Logout()
+    On Error Resume Next
+    Auditar CAT_SEG, "LOGOUT", "mSeguranca", 0, Empty, "", "", 0, "", _
+            Empty, Empty, "", "", "", ""
+    ThisWorkbook.Names("currentUser").RefersToRange.Value = ""
+    ThisWorkbook.Names("currentPapel").RefersToRange.Value = ""
+    On Error GoTo 0
+    LockApp
 End Sub
 '@@FUNC ModoDesenvolvedor
 Public Sub ModoDesenvolvedor()
@@ -94,8 +316,304 @@ Public Sub ProtegerEstrutura()
     End If
 End Sub
 
-Public Sub DesprotegerEstrutura()
+Private Sub DesprotegerEstrutura()
     If ThisWorkbook.ProtectStructure Then
         ThisWorkbook.Unprotect Password:="qcini2025"
     End If
 End Sub
+
+Private Function PapelValido(ByVal papel As String) As Boolean
+    Dim p As String
+    p = UCase$(Trim$(papel))
+    PapelValido = (p = "TECNICO" Or p Like "T?CNICO" Or p = "ANALISTA" Or p = "ADM")
+End Function
+
+Private Function RubricaDisponivel(ByVal ws As Worksheet, ByVal userRow As Long) As Boolean
+    Dim c As Range, shp As Shape
+    Set c = ws.Cells(userRow, 5)
+    If Len(Trim$(CStr(c.Text))) > 0 Then RubricaDisponivel = True: Exit Function
+    For Each shp In ws.Shapes
+        If shp.TopLeftCell.Row = userRow And shp.TopLeftCell.Column = 5 Then
+            RubricaDisponivel = True
+            Exit Function
+        End If
+    Next shp
+End Function
+
+' Retorna OK somente quando a matriz cadastro x nivel esta completa. Para cada
+' analito nao vazio retornado pelo cadastro, deve existir exatamente uma linha
+' ativa, numerica e aprovada pelo motor em cada nivel do produto.
+Private Function StatusCQIRun(ByVal run As Long) As String
+    Dim ws As Worksheet, lo As ListObject, lr As ListRow
+    Dim cRun As Long, cAtivo As Long, cAnalito As Long, cNivel As Long
+    Dim cRes As Long, cVer As Long, nivel As Long, i As Long
+    Dim analitos As Collection, esperados As Object, contagens As Object
+    Dim resultados As Object, vereditos As Object
+    Dim chaveAnalito As String, chave As String, nome As String, v As String
+    Dim valorNivel As Variant, valorResultado As Variant, nlvProduto As Long
+    On Error GoTo falha
+    If run <= 0 Then StatusCQIRun = "RUN invalido para liberacao.": Exit Function
+
+    nlvProduto = mEstatistica.NLV
+    If nlvProduto < 1 Then StatusCQIRun = "quantidade de niveis do produto invalida.": Exit Function
+
+    Set analitos = ListaAnalitos()
+    Set esperados = CreateObject("Scripting.Dictionary")
+    esperados.CompareMode = vbTextCompare
+    For i = 1 To analitos.Count
+        nome = LimparTextoOperacional(CStr(analitos(i)))
+        If Len(nome) > 0 Then
+            chaveAnalito = UCase$(nome)
+            If esperados.Exists(chaveAnalito) Then
+                StatusCQIRun = "cadastro de analitos duplicado: '" & nome & "'."
+                Exit Function
+            End If
+            esperados.Add chaveAnalito, nome
+        End If
+    Next i
+    If esperados.Count = 0 Then StatusCQIRun = "nenhum analito ativo cadastrado.": Exit Function
+
+    Set ws = ThisWorkbook.Sheets("BI_Data")
+    Set lo = ws.ListObjects("tblBI_Fato")
+    cRun = IndiceColunaBI(lo, "RUN")
+    cAtivo = IndiceColunaBI(lo, "Ativo")
+    cAnalito = IndiceColunaBI(lo, "Analito")
+    cNivel = IndiceColunaBI(lo, "Nivel")
+    cRes = IndiceColunaBI(lo, "Resultado")
+    cVer = IndiceColunaBI(lo, "Veredito")
+    If cRun = 0 Or cAtivo = 0 Or cAnalito = 0 Or cNivel = 0 Or _
+       cRes = 0 Or cVer = 0 Then
+        StatusCQIRun = "estrutura BI_Data incompleta para validar o RUN."
+        Exit Function
+    End If
+
+    Set contagens = CreateObject("Scripting.Dictionary")
+    Set resultados = CreateObject("Scripting.Dictionary")
+    Set vereditos = CreateObject("Scripting.Dictionary")
+    contagens.CompareMode = vbTextCompare
+    resultados.CompareMode = vbTextCompare
+    vereditos.CompareMode = vbTextCompare
+
+    For Each lr In lo.ListRows
+        If CLng(Val(CStr(lr.Range.Cells(1, cRun).Value2))) = run And _
+           LinhaAtivaBI(lr.Range.Cells(1, cAtivo).Value2) Then
+            nome = LimparTextoOperacional(CStr(lr.Range.Cells(1, cAnalito).Value2))
+            chaveAnalito = UCase$(nome)
+            If esperados.Exists(chaveAnalito) Then
+                valorNivel = lr.Range.Cells(1, cNivel).Value2
+                If Not IsNumeric(valorNivel) Then
+                    StatusCQIRun = "nivel ausente ou nao numerico para '" & esperados(chaveAnalito) & "'."
+                    Exit Function
+                End If
+                If CDbl(valorNivel) <> Fix(CDbl(valorNivel)) Then
+                    StatusCQIRun = "nivel nao inteiro para '" & esperados(chaveAnalito) & "'."
+                    Exit Function
+                End If
+                nivel = CLng(valorNivel)
+                If nivel < 1 Or nivel > nlvProduto Then
+                    StatusCQIRun = "nivel " & nivel & " fora de 1.." & nlvProduto & _
+                                   " para '" & esperados(chaveAnalito) & "'."
+                    Exit Function
+                End If
+                chave = chaveAnalito & "|" & CStr(nivel)
+                If contagens.Exists(chave) Then
+                    contagens(chave) = CLng(contagens(chave)) + 1
+                Else
+                    contagens.Add chave, 1
+                    resultados.Add chave, lr.Range.Cells(1, cRes).Value2
+                    vereditos.Add chave, UCase$(Trim$(CStr(lr.Range.Cells(1, cVer).Value2)))
+                End If
+            End If
+        End If
+    Next lr
+
+    For Each valorNivel In esperados.Keys
+        nome = CStr(esperados(CStr(valorNivel)))
+        For nivel = 1 To nlvProduto
+            chave = CStr(valorNivel) & "|" & CStr(nivel)
+            If Not contagens.Exists(chave) Then
+                StatusCQIRun = "resultado ausente para '" & nome & "', nivel " & nivel & "."
+                Exit Function
+            End If
+            If CLng(contagens(chave)) <> 1 Then
+                StatusCQIRun = "duplicidade: " & contagens(chave) & _
+                               " resultados ativos para '" & nome & "', nivel " & nivel & "."
+                Exit Function
+            End If
+            valorResultado = resultados(chave)
+            If IsError(valorResultado) Then
+                StatusCQIRun = "resultado nao numerico para '" & nome & "', nivel " & nivel & "."
+                Exit Function
+            End If
+            If IsEmpty(valorResultado) Then
+                StatusCQIRun = "resultado nao numerico para '" & nome & "', nivel " & nivel & "."
+                Exit Function
+            End If
+            If Len(Trim$(CStr(valorResultado))) = 0 Or Not IsNumeric(valorResultado) Then
+                StatusCQIRun = "resultado nao numerico para '" & nome & "', nivel " & nivel & "."
+                Exit Function
+            End If
+            v = UCase$(Trim$(CStr(vereditos(chave))))
+            If v = "REJEITADO" Or InStr(1, v, "REJEIT", vbTextCompare) > 0 Then
+                StatusCQIRun = "CQI rejeitado para '" & nome & "', nivel " & nivel & "."
+                Exit Function
+            End If
+            If v <> "OK" Then
+                StatusCQIRun = "CQI nao avaliado para '" & nome & "', nivel " & nivel & "."
+                Exit Function
+            End If
+        Next nivel
+    Next valorNivel
+
+    StatusCQIRun = "OK"
+    Exit Function
+falha:
+    StatusCQIRun = "nao foi possivel validar a completude do CQI no motor."
+End Function
+
+Private Function IndiceColunaBI(ByVal lo As ListObject, ByVal cabecalho As String) As Long
+    Dim lc As ListColumn
+    For Each lc In lo.ListColumns
+        If StrComp(Trim$(CStr(lc.Name)), cabecalho, vbTextCompare) = 0 Then
+            IndiceColunaBI = lc.Index
+            Exit Function
+        End If
+    Next lc
+End Function
+
+Private Function LinhaAtivaBI(ByVal valor As Variant) As Boolean
+    Dim s As String
+    If IsError(valor) Or IsEmpty(valor) Then Exit Function
+    If VarType(valor) = vbBoolean Then LinhaAtivaBI = CBool(valor): Exit Function
+    If IsNumeric(valor) Then LinhaAtivaBI = (CDbl(valor) = 1): Exit Function
+    s = UCase$(Trim$(CStr(valor)))
+    LinhaAtivaBI = (s = "ATIVO" Or s = "TRUE" Or s = "VERDADEIRO" Or s = "SIM")
+End Function
+
+' Identidade e dado operacional do usuario. O codigo apenas exige o cadastro;
+' nunca preenche equipamento, serie ou material por conta propria.
+Private Function StatusIdentidadeOperacional() As String
+    Dim alvo As Range, valor As Variant
+
+    Set alvo = ResolverCampoIdentidade( _
+        Array("equipamento", "cfgEquipamento", "identEquipamento"), _
+        Array("EQUIPAMENTO"))
+    If alvo Is Nothing Then StatusIdentidadeOperacional = "campo Equipamento nao localizado na Configuracao.": Exit Function
+    valor = alvo.Value2
+    If Not ValorOperacionalValido(valor) Then _
+        StatusIdentidadeOperacional = "preencha Equipamento com o valor real na Configuracao.": Exit Function
+
+    Set alvo = ResolverCampoIdentidade( _
+        Array("numeroSerie", "cfgNumeroSerie", "identNumeroSerie"), _
+        Array("NUMERO DE SERIE", "N DE SERIE"))
+    If alvo Is Nothing Then StatusIdentidadeOperacional = "campo Numero de serie nao localizado na Configuracao.": Exit Function
+    valor = alvo.Value2
+    If Not ValorOperacionalValido(valor) Then _
+        StatusIdentidadeOperacional = "preencha Numero de serie com o valor real na Configuracao.": Exit Function
+
+    Set alvo = ResolverCampoIdentidade( _
+        Array("materialControle", "cfgMaterialControle", "identMaterialControle"), _
+        Array("CONTROLE MATERIAL", "MATERIAL DE CONTROLE", "MATERIAL CONTROLE"))
+    If alvo Is Nothing Then StatusIdentidadeOperacional = "campo Material de controle nao localizado na Configuracao.": Exit Function
+    valor = alvo.Value2
+    If Not ValorOperacionalValido(valor) Then _
+        StatusIdentidadeOperacional = "preencha Material de controle com o valor real na Configuracao.": Exit Function
+
+    StatusIdentidadeOperacional = "OK"
+End Function
+
+Private Function ResolverCampoIdentidade(ByVal nomes As Variant, ByVal rotulos As Variant) As Range
+    Dim nm As Name, ws As Worksheet, cel As Range
+    Dim i As Long, nomeLocal As String, alvo As String, rotulo As String
+
+    ' Preferencia: nome definido, caso o layout passe a oferece-lo.
+    For Each nm In ThisWorkbook.Names
+        nomeLocal = nm.Name
+        If InStrRev(nomeLocal, "!") > 0 Then nomeLocal = Mid$(nomeLocal, InStrRev(nomeLocal, "!") + 1)
+        nomeLocal = Replace(nomeLocal, "'", "")
+        For i = LBound(nomes) To UBound(nomes)
+            alvo = NormalizarIdentificador(CStr(nomes(i)))
+            If NormalizarIdentificador(nomeLocal) = alvo Then
+                On Error Resume Next
+                Set ResolverCampoIdentidade = nm.RefersToRange.Cells(1, 1)
+                On Error GoTo 0
+                If Not ResolverCampoIdentidade Is Nothing Then Exit Function
+            End If
+        Next i
+    Next nm
+
+    ' Layout atual: rotulo em Configuracao e valor na celula imediatamente a
+    ' direita. Nao depende de C9:C11 nem de outra coordenada fixa.
+    For Each ws In ThisWorkbook.Worksheets
+        If NormalizarRotulo(ws.Name) = "CONFIGURACAO" Then
+            For Each cel In ws.UsedRange.Cells
+                If Not IsError(cel.Value2) Then
+                    rotulo = NormalizarRotulo(CStr(cel.Value2))
+                    For i = LBound(rotulos) To UBound(rotulos)
+                        If rotulo = NormalizarRotulo(CStr(rotulos(i))) Then
+                            If cel.Column < ws.Columns.Count Then
+                                Set ResolverCampoIdentidade = cel.Offset(0, 1)
+                                Exit Function
+                            End If
+                        End If
+                    Next i
+                End If
+            Next cel
+            Exit For
+        End If
+    Next ws
+End Function
+
+Private Function ValorOperacionalValido(ByVal valor As Variant) As Boolean
+    Dim s As String
+    If IsError(valor) Or IsEmpty(valor) Then Exit Function
+    s = NormalizarRotulo(CStr(valor))
+    If Len(s) = 0 Then Exit Function
+    If InStr(1, s, "PENDENTE", vbTextCompare) > 0 Then Exit Function
+    If InStr(1, s, "NAO LIBERAR", vbTextCompare) > 0 Then Exit Function
+    If InStr(1, s, "NAO INFORMADO", vbTextCompare) > 0 Then Exit Function
+    If InStr(1, s, "SEM CADASTRO", vbTextCompare) > 0 Then Exit Function
+    If InStr(1, s, "A DEFINIR", vbTextCompare) > 0 Then Exit Function
+    If InStr(1, s, "TESTE", vbTextCompare) > 0 Then Exit Function
+    If InStr(1, s, "EXEMPLO", vbTextCompare) > 0 Then Exit Function
+    Select Case s
+        Case "N A", "NA", "DESCONHECIDO", "XXX", "-", "--"
+            Exit Function
+    End Select
+    ValorOperacionalValido = True
+End Function
+
+Private Function LimparTextoOperacional(ByVal valor As String) As String
+    Dim s As String
+    s = Replace(valor, Chr(160), " ")
+    s = Trim$(s)
+    Do While InStr(1, s, "  ", vbBinaryCompare) > 0
+        s = Replace(s, "  ", " ")
+    Loop
+    LimparTextoOperacional = s
+End Function
+
+Private Function NormalizarIdentificador(ByVal valor As String) As String
+    NormalizarIdentificador = Replace(NormalizarRotulo(valor), " ", "")
+End Function
+
+Private Function NormalizarRotulo(ByVal valor As String) As String
+    Dim s As String, ch As Variant
+    s = UCase$(LimparTextoOperacional(valor))
+    s = Replace(s, ChrW(192), "A"): s = Replace(s, ChrW(193), "A")
+    s = Replace(s, ChrW(194), "A"): s = Replace(s, ChrW(195), "A")
+    s = Replace(s, ChrW(196), "A"): s = Replace(s, ChrW(199), "C")
+    s = Replace(s, ChrW(200), "E"): s = Replace(s, ChrW(201), "E")
+    s = Replace(s, ChrW(202), "E"): s = Replace(s, ChrW(203), "E")
+    s = Replace(s, ChrW(204), "I"): s = Replace(s, ChrW(205), "I")
+    s = Replace(s, ChrW(206), "I"): s = Replace(s, ChrW(207), "I")
+    s = Replace(s, ChrW(210), "O"): s = Replace(s, ChrW(211), "O")
+    s = Replace(s, ChrW(212), "O"): s = Replace(s, ChrW(213), "O")
+    s = Replace(s, ChrW(214), "O"): s = Replace(s, ChrW(217), "U")
+    s = Replace(s, ChrW(218), "U"): s = Replace(s, ChrW(219), "U")
+    s = Replace(s, ChrW(220), "U")
+    For Each ch In Array(".", ":", ";", "_", "-", "/", "\", "(", ")", ChrW(186), ChrW(176))
+        s = Replace(s, CStr(ch), " ")
+    Next ch
+    NormalizarRotulo = LimparTextoOperacional(s)
+End Function

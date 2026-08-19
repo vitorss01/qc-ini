@@ -111,13 +111,15 @@ $cm = $fc.CodeModule
 for ($i = 1; $i -le $cm.CountOfLines; $i++) {
     $t = $cm.Lines($i, 1)
     if ($t -match 'lblRun\.Caption\s*=.*NovoRUN') {
-        $cm.ReplaceLine($i, ($t -replace 'NovoRUN', 'PreverRUN'))
-        "  frmCorrida L$i  preview  -> PreverRUN"
+        $nova = $t -replace 'NovoRUN\(dt, lote\)', 'PreverRUN(dt, lote, "", CLng(Val(Me.cboNivel.Value)))'
+        $cm.ReplaceLine($i, $nova)
+        "  frmCorrida L$i  preview  -> PreverRUN por nivel"
         $alteracoes++
     }
     elseif ($t -match '^\s*run\s*=\s*NovoRUN') {
-        $cm.ReplaceLine($i, ($t -replace 'NovoRUN', 'ObterOuCriarRUN'))
-        "  frmCorrida L$i  gravacao -> ObterOuCriarRUN"
+        $nova = $t -replace 'NovoRUN\(dt, lote\)', 'ObterOuCriarRUN(dt, lote, "", lvl)'
+        $cm.ReplaceLine($i, $nova)
+        "  frmCorrida L$i  gravacao -> ObterOuCriarRUN por nivel"
         $alteracoes++
     }
 }

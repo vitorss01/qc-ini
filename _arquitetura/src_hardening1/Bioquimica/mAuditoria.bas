@@ -360,10 +360,10 @@ Public Function Auditar(ByVal categoria As String, ByVal acao As String, _
         g(i) = lido(1, i)
     Next i
     ws.Cells(lin, AU_HASH).Value = SHA256Hex(hashAnt & Payload(g))
-    ws.Cells(lin, AU_TS).NumberFormat = "dd/mm/yyyy hh:mm:ss"
-    ws.Cells(lin, AU_DATA).NumberFormat = "dd/mm/yyyy"
+    ws.Cells(lin, AU_TS).NumberFormatLocal = "dd/mm/aaaa hh:mm:ss;@"
+    ws.Cells(lin, AU_DATA).NumberFormatLocal = "dd/mm/aaaa;@"
     ws.Cells(lin, AU_HORA).NumberFormat = "hh:mm:ss"
-    ws.Cells(lin, AU_DTCORRIDA).NumberFormat = "dd/mm/yyyy"
+    ws.Cells(lin, AU_DTCORRIDA).NumberFormatLocal = "dd/mm/aaaa;@"
     ws.Cells(lin, AU_DELTAP).NumberFormat = "0.0%"
     ExpandirTabela ws, lin
     If protegida Then ProtegerAudit ws

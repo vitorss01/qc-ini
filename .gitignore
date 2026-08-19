@@ -19,6 +19,16 @@ __pycache__/
 .env
 *.secrets
 
+# Horus permanece estritamente local enquanto o remoto for publico.
+HORUS_SETUP.md
+horus_daily.py
+horus_run.bat
+qclab/horus.py
+
+# Documentos regulatorios licenciados/locais e artefatos de validacao.
+REQUISITOS DE QUALIDADE*/
+_desenvolvimento/
+
 # Editores / SO
 .vscode/
 .idea/

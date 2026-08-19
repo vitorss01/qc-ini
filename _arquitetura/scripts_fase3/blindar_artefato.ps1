@@ -54,7 +54,7 @@ $LOGIN = 'Login'
 # desconhecido. Esconder a trilha derrotaria o proposito dela.
 # Continua PROTEGIDA (nao editavel) e a integridade nao depende de estar
 # oculta: depende da cadeia de hash.
-$VISIVEIS = @($LOGIN, 'Audit_Log', 'Audit_Legenda')
+$VISIVEIS = @($LOGIN)
 
 $Workbook = (Resolve-Path -LiteralPath $Workbook).ProviderPath
 

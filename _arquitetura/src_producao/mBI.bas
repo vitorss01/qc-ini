@@ -20,7 +20,7 @@ Option Explicit
 '   media e DP alvo POR LOTE ................... LotesStore, bloco do lote
 '   CVtp / BIAStp / ETp ........................ Eng_Especificacoes
 '   area e unidade ............................. Analitos (B, C)
-'   Westgard ................................... recalculado aqui, identico a Calc
+'   Westgard ................................... produzido por mEstatistica.AvaliarWestgard
 '
 ' ALVO POR LOTE, E NAO O ALVO DA TELA
 '
@@ -30,18 +30,12 @@ Option Explicit
 ' um Z errado, plausivel e silencioso. Aqui o alvo vem sempre do bloco do lote
 ' A QUE O RESULTADO PERTENCE.
 '
-' WESTGARD: AS REGRAS QUE EXISTEM DE VERDADE
+' WESTGARD: UMA UNICA FONTE DE VERDADE
 '
-' O QC_INI implementa TRES regras, e a copia aqui e literal (Calc!K3, L3, M3):
-'
-'   1_3s   ABS(Z) > 3                                   -- por resultado
-'   2_2s   Z(N1) > 2 E Z(N2) > 2, ou ambos < -2         -- entre NIVEIS da mesma corrida
-'   R_4s   Z(N1) > 2 E Z(N2) < -2, ou o inverso         -- entre NIVEIS da mesma corrida
-'
-' Calc!N3 e Calc!O3 sao "IF(OR(FALSE,FALSE),1,0)": 4_1s e 10x estao previstas na
-' estrutura mas NAO implementadas. Esta camada nao inventa o que o motor nao
-' calcula -- as colunas existem, sempre 0, documentadas como nao implementadas.
-' Publicar um 4_1s inventado no painel do gestor seria pior do que nao ter.
+' A camada BI prepara as series por lote/analito e chama diretamente
+' mEstatistica.AvaliarWestgard. Ela nao possui uma segunda implementacao das
+' regras. Assim, 1_3s, 2_2s, R_4s, 4_1s, 10x e o alerta 1_2s usam exatamente o
+' mesmo motor que alimenta Painel, Estatistica e Eventos_Westgard.
 '
 ' O QUE NAO EXISTE E POR ISSO NAO ESTA AQUI
 '
@@ -53,10 +47,27 @@ Public Const BI_ABA As String = "BI_Data"
 Public Const BI_TABELA As String = "tblBI_Fato"
 Public Const BI_CAB As Long = 1
 Public Const BI_R0 As Long = 2
-Public Const BI_NCOL As Long = 34
+Public Const BI_NCOL As Long = 60
 
 Private Const LS_CAP As Long = 40          ' linhas por bloco no LotesStore
 Private Const LS_C0 As Long = 3            ' coluna C = Analitos!E (Media N1)
+
+Private Type BI_SYSTEMTIME
+    wYear As Integer
+    wMonth As Integer
+    wDayOfWeek As Integer
+    wDay As Integer
+    wHour As Integer
+    wMinute As Integer
+    wSecond As Integer
+    wMilliseconds As Integer
+End Type
+
+#If VBA7 Then
+Private Declare PtrSafe Sub GetSystemTime Lib "kernel32" (ByRef lpSystemTime As BI_SYSTEMTIME)
+#Else
+Private Declare Sub GetSystemTime Lib "kernel32" (ByRef lpSystemTime As BI_SYSTEMTIME)
+#End If
 
 Private Function Cab() As Variant
     Cab = Array( _
@@ -67,7 +78,37 @@ Private Function Cab() As Variant
         "Media_Alvo", "DP_Alvo", "Z", _
         "Lim_m3s", "Lim_m2s", "Lim_m1s", "Lim_p1s", "Lim_p2s", "Lim_p3s", _
         "CVtp_pct", "BIAStp_pct", "ETp_pct", _
-        "W_1_3s", "W_2_2s", "W_R_4s", "Veredito")
+        "W_1_3s", "W_2_2s", "W_R_4s", "W_4_1s", "W_10x", "A_1_2s", "Veredito", _
+        "Produto", "WorkbookID", "VersaoContrato", "AtualizadoEmUTC", "FonteArquivo", _
+        "ID_Result_Global", "ID_Corrida_Global", "ID_Lote_Global", "ID_Analito_Global", _
+        "N_Observado", "Media_Observada", "DP_Observado", "CV_Observado_pct", _
+        "Bias_Observado_pct", "ET_Observado_pct", "Sigma", _
+        "Fonte_Especificacao", "ID_Especificacao", "Vigencia_Inicio", "Vigencia_Fim", _
+        "Situacao_Especificacao", "Usuario_Atualizacao", "Tipo_Evento")
+End Function
+
+Private Function AgoraUTC() As Date
+    Dim st As BI_SYSTEMTIME
+    GetSystemTime st
+    AgoraUTC = DateSerial(st.wYear, st.wMonth, st.wDay) + _
+               TimeSerial(st.wHour, st.wMinute, st.wSecond)
+End Function
+
+Private Function ValorNomeBI(ByVal nome As String) As String
+    Dim nm As Name, s As String
+    On Error Resume Next
+    Set nm = ThisWorkbook.Names(nome)
+    On Error GoTo 0
+    If nm Is Nothing Then Exit Function
+    On Error Resume Next
+    ValorNomeBI = Trim$(CStr(nm.RefersToRange.Value))
+    On Error GoTo 0
+    If Len(ValorNomeBI) > 0 Then Exit Function
+    s = nm.RefersTo
+    If Left$(s, 1) = "=" Then s = Mid$(s, 2)
+    If Left$(s, 1) = Chr$(34) And Right$(s, 1) = Chr$(34) Then _
+        s = Mid$(s, 2, Len(s) - 2)
+    ValorNomeBI = Trim$(s)
 End Function
 
 ' Indice do lote no registro de lotes (mesma conta de mLotes.BlocoDoLote, que e
@@ -112,18 +153,39 @@ Public Sub AtualizarBIData()
     Dim dados As Variant, i As Long, n As Long, ult As Long
     Dim saida() As Variant, k As Long
     Dim idxAnalito As Object, idxBloco As Object, especCV As Object
-    Dim especBIAS As Object, especET As Object, area As Object, unid As Object
-    Dim zPorChave As Object
+    Dim especBIAS As Object, especET As Object, especFonte As Object
+    Dim especAno As Object, especID As Object, especSituacao As Object
+    Dim area As Object, unid As Object
+    Dim zPorChave As Object, runsPorGrupo As Object, flagsPorChave As Object
     Dim prot As Boolean, protEstava As Boolean
+    Dim produto As String, workbookID As String, versaoContrato As String
+    Dim atualizadoUTC As Date, fonteArquivo As String, usuarioAtual As String
 
     Set wsA = ThisWorkbook.Sheets("Analitos")
     Set ws = GarantirAba()
+    produto = ValorNomeBI("biProduto")
+    workbookID = ValorNomeBI("biWorkbookID")
+    versaoContrato = ValorNomeBI("biContratoVersao")
+    If produto = "" Or workbookID = "" Or versaoContrato = "" Then
+        Err.Raise vbObjectError + 580, "mBI.AtualizarBIData", _
+                  "Identidade BI ausente. Execute preparar_contrato_bi antes de atualizar."
+    End If
+    atualizadoUTC = AgoraUTC()
+    fonteArquivo = ThisWorkbook.Name
+    usuarioAtual = UsuarioSistema()
 
     ' --- catalogo de analitos: indice na Analitos, area, unidade -----------
     Set idxAnalito = CreateObject("Scripting.Dictionary")
     Set area = CreateObject("Scripting.Dictionary")
     Set unid = CreateObject("Scripting.Dictionary")
+    Set especET = CreateObject("Scripting.Dictionary")
+    Set especFonte = CreateObject("Scripting.Dictionary")
+    Set especAno = CreateObject("Scripting.Dictionary")
+    Set especID = CreateObject("Scripting.Dictionary")
+    Set especSituacao = CreateObject("Scripting.Dictionary")
     idxAnalito.CompareMode = 1: area.CompareMode = 1: unid.CompareMode = 1
+    especET.CompareMode = 1: especFonte.CompareMode = 1: especAno.CompareMode = 1
+    especID.CompareMode = 1: especSituacao.CompareMode = 1
     For i = 4 To 43
         Dim nm As String
         nm = Trim$(CStr(wsA.Cells(i, 1).Value))
@@ -132,6 +194,11 @@ Public Sub AtualizarBIData()
                 idxAnalito.Add nm, i - 3                  ' 1..40, alinhado ao LotesStore
                 area.Add nm, CStr(wsA.Cells(i, 2).Value)
                 unid.Add nm, CStr(wsA.Cells(i, 3).Value)
+                If IsNumeric(wsA.Cells(i, 18).Value) Then especET.Add nm, wsA.Cells(i, 18).Value
+                especFonte.Add nm, CStr(wsA.Cells(i, 17).Value)
+                especAno.Add nm, ""
+                especID.Add nm, ""
+                especSituacao.Add nm, "SEM_VERSAO_FORMAL"
             End If
         End If
     Next i
@@ -139,8 +206,7 @@ Public Sub AtualizarBIData()
     ' --- especificacoes vigentes (saida do motor do ADR-022) --------------
     Set especCV = CreateObject("Scripting.Dictionary")
     Set especBIAS = CreateObject("Scripting.Dictionary")
-    Set especET = CreateObject("Scripting.Dictionary")
-    especCV.CompareMode = 1: especBIAS.CompareMode = 1: especET.CompareMode = 1
+    especCV.CompareMode = 1: especBIAS.CompareMode = 1
     On Error Resume Next
     Set wsE = ThisWorkbook.Sheets("Eng_Especificacoes")
     On Error GoTo 0
@@ -152,7 +218,11 @@ Public Sub AtualizarBIData()
                 If Not especCV.Exists(ne) Then
                     especCV.Add ne, wsE.Cells(i, 4).Value
                     especBIAS.Add ne, wsE.Cells(i, 5).Value
-                    especET.Add ne, wsE.Cells(i, 6).Value
+                    If especET.Exists(ne) Then especET(ne) = wsE.Cells(i, 6).Value Else especET.Add ne, wsE.Cells(i, 6).Value
+                    If especFonte.Exists(ne) Then especFonte(ne) = wsE.Cells(i, 2).Value Else especFonte.Add ne, wsE.Cells(i, 2).Value
+                    If especAno.Exists(ne) Then especAno(ne) = wsE.Cells(i, 3).Value Else especAno.Add ne, wsE.Cells(i, 3).Value
+                    If especID.Exists(ne) Then especID(ne) = wsE.Cells(i, 8).Value Else especID.Add ne, wsE.Cells(i, 8).Value
+                    If especSituacao.Exists(ne) Then especSituacao(ne) = wsE.Cells(i, 9).Value Else especSituacao.Add ne, wsE.Cells(i, 9).Value
                 End If
             End If
         Next i
@@ -180,6 +250,8 @@ Public Sub AtualizarBIData()
     ' passadas, e nao uma.
     Set zPorChave = CreateObject("Scripting.Dictionary")
     zPorChave.CompareMode = 1
+    Set runsPorGrupo = CreateObject("Scripting.Dictionary")
+    runsPorGrupo.CompareMode = 1
 
     For i = 1 To n
         Dim an As String, lote As String, nucleo As String
@@ -208,9 +280,21 @@ Public Sub AtualizarBIData()
         If AlvoDoLote(iB, idxAnalito(an), nv, md, sd) Then
             zPorChave(nucleo & "|" & run & "|" & UCase$(an) & "|" & nv) = _
                 (CDbl(dados(i, COL_RESULT)) - md) / sd
+            Dim grupo As String, runsGrupo As Object
+            grupo = nucleo & "|" & UCase$(an)
+            If Not runsPorGrupo.Exists(grupo) Then
+                Set runsGrupo = CreateObject("Scripting.Dictionary")
+                runsPorGrupo.Add grupo, runsGrupo
+            Else
+                Set runsGrupo = runsPorGrupo(grupo)
+            End If
+            If Not runsGrupo.Exists(CStr(run)) Then runsGrupo.Add CStr(run), run
         End If
 proxima1:
     Next i
+
+    ' O proprio motor avalia as series. mBI apenas indexa a saida por registro.
+    Set flagsPorChave = FlagsDoMotor(zPorChave, runsPorGrupo)
 
     ' PASSO 2 -- monta a linha da tabela fato
     For i = 1 To n
@@ -283,45 +367,83 @@ proxima1:
         If especBIAS.Exists(an2) Then saida(k, 29) = especBIAS(an2)
         If especET.Exists(an2) Then saida(k, 30) = especET(an2)
 
-        ' --- Westgard, literalmente como Calc!K3, L3 e M3 -----------------
-        '
-        ' ZERAR A CADA LINHA, explicitamente.
-        '
-        ' Em VBA o Dim dentro de um laco NAO cria variavel nova a cada volta: o
-        ' escopo e o procedimento inteiro e o valor sobrevive a iteracao. Sem
-        ' estas tres atribuicoes, a primeira linha que viola uma regra contamina
-        ' TODAS as seguintes -- a reconciliacao acusou 45 divergencias em 50
-        ' pontos, todas no sentido "o motor diz OK e o BI diz REJEITADO".
-        '
-        ' O Z estava certo nas 50; so o veredito e que grudava. E o tipo de
-        ' defeito que passaria despercebido numa conferencia por amostragem,
-        ' porque o numero continua plausivel -- so que reprovando corrida boa.
-        Dim w13 As Long, w22 As Long, wr4 As Long
-        w13 = 0: w22 = 0: wr4 = 0
-        If temZ Then
-            If Abs(CDbl(z)) > 3 Then w13 = 1
+        ' --- Westgard: transporte da saida do motor -----------------------
+        Dim wf As Variant
+        If flagsPorChave.Exists(chave) Then
+            wf = flagsPorChave(chave)
+            saida(k, 31) = wf(0)
+            saida(k, 32) = wf(1)
+            saida(k, 33) = wf(2)
+            saida(k, 34) = wf(3)
+            saida(k, 35) = wf(4)
+            saida(k, 36) = wf(5)
+        Else
+            saida(k, 31) = "": saida(k, 32) = "": saida(k, 33) = ""
+            saida(k, 34) = "": saida(k, 35) = "": saida(k, 36) = ""
+        End If
+        If Len(Trim$(CStr(saida(k, 16)))) = 0 Then
+            saida(k, 37) = ""
+        ElseIf flagsPorChave.Exists(chave) Then
+            saida(k, 37) = wf(6)
+        Else
+            saida(k, 37) = "NAO AVALIADO"
+        End If
 
-            ' o OUTRO nivel da MESMA corrida: 2_2s e R_4s sao entre niveis
-            Dim outro As Long, chaveO As String, zo As Variant, temZO As Boolean
-            outro = IIf(nv2 = 1, 2, 1)
-            chaveO = nuc & "|" & run2 & "|" & UCase$(an2) & "|" & outro
-            temZO = zPorChave.Exists(chaveO)
-            If temZO Then
-                zo = zPorChave(chaveO)
-                If (CDbl(z) > 2 And CDbl(zo) > 2) Or (CDbl(z) < -2 And CDbl(zo) < -2) Then w22 = 1
-                If (CDbl(z) > 2 And CDbl(zo) < -2) Or (CDbl(z) < -2 And CDbl(zo) > 2) Then wr4 = 1
+        ' --- identidade global e contrato versionado ----------------------
+        saida(k, 38) = produto
+        saida(k, 39) = workbookID
+        saida(k, 40) = versaoContrato
+        saida(k, 41) = atualizadoUTC
+        saida(k, 42) = fonteArquivo
+        saida(k, 43) = workbookID & "|RESULT|" & CStr(saida(k, 1))
+        saida(k, 44) = workbookID & "|RUN|" & CStr(saida(k, 2))
+        saida(k, 45) = workbookID & "|LOTE|" & nuc
+        saida(k, 46) = produto & "|ANALITO|" & UCase$(an2)
+
+        ' --- desempenho calculado pelo mesmo motor do Excel ---------------
+        Dim eb As Variant, nObs As Long, mediaObs As Double, dpObs As Double
+        Dim cvObs As Double, biasObs As Double, etObs As Double, sigmaObs As Double
+        eb = mEstatistica.EstatBasica(an2, nv2, nuc)
+        nObs = CLng(eb(0))
+        saida(k, 47) = nObs
+        If nObs > 0 Then
+            mediaObs = CDbl(eb(1))
+            saida(k, 48) = mediaObs
+        End If
+        If nObs > 1 Then
+            dpObs = CDbl(eb(2))
+            saida(k, 49) = dpObs
+            If mediaObs <> 0 Then
+                cvObs = mEstatistica.CalcularCV(dpObs, mediaObs)
+                saida(k, 50) = cvObs
             End If
         End If
-        saida(k, 31) = w13
-        saida(k, 32) = w22
-        saida(k, 33) = wr4
-        If Len(Trim$(CStr(saida(k, 16)))) = 0 Then
-            saida(k, 34) = ""
-        ElseIf w13 + w22 + wr4 > 0 Then
-            saida(k, 34) = "REJEITADO"
-        Else
-            saida(k, 34) = "OK"
+        If nObs > 0 And temAlvo And md2 <> 0 Then
+            biasObs = mEstatistica.CalcularBias(mediaObs, md2)
+            saida(k, 51) = biasObs
+            If nObs > 1 And mediaObs <> 0 Then
+                etObs = mEstatistica.CalcularErroTotal(cvObs, biasObs)
+                saida(k, 52) = etObs
+                If especET.Exists(an2) Then
+                    If IsNumeric(especET(an2)) And CDbl(especET(an2)) <> 0 And cvObs <> 0 Then
+                        sigmaObs = mEstatistica.CalcularSigma(CDbl(especET(an2)), biasObs, cvObs)
+                        saida(k, 53) = sigmaObs
+                    End If
+                End If
+            End If
         End If
+
+        If especFonte.Exists(an2) Then saida(k, 54) = especFonte(an2)
+        If especID.Exists(an2) Then saida(k, 55) = especID(an2)
+        If especAno.Exists(an2) Then
+            If IsNumeric(especAno(an2)) And CLng(Val(CStr(especAno(an2)))) > 0 Then
+                saida(k, 56) = DateSerial(CLng(especAno(an2)), 1, 1)
+                saida(k, 57) = DateSerial(CLng(especAno(an2)), 12, 31)
+            End If
+        End If
+        If especSituacao.Exists(an2) Then saida(k, 58) = especSituacao(an2)
+        saida(k, 59) = usuarioAtual
+        saida(k, 60) = "RESULTADO_CQI"
 proxima2:
     Next i
 
@@ -340,8 +462,10 @@ proxima2:
             Next c2
         Next r2
         ws.Range(ws.Cells(BI_R0, 1), ws.Cells(BI_R0 + k - 1, BI_NCOL)).Value = bloco
-        ws.Range(ws.Cells(BI_R0, 3), ws.Cells(BI_R0 + k - 1, 3)).NumberFormat = "yyyy-mm-dd"
+        ws.Range(ws.Cells(BI_R0, 3), ws.Cells(BI_R0 + k - 1, 3)).NumberFormatLocal = "aaaa-mm-dd;@"
         ws.Range(ws.Cells(BI_R0, 13), ws.Cells(BI_R0 + k - 1, 13)).NumberFormat = "@"
+        ws.Range(ws.Cells(BI_R0, 41), ws.Cells(BI_R0 + k - 1, 41)).NumberFormatLocal = "aaaa-mm-dd hh:mm:ss;@"
+        ws.Range(ws.Cells(BI_R0, 56), ws.Cells(BI_R0 + k - 1, 57)).NumberFormatLocal = "aaaa-mm-dd;@"
     End If
     AjustarTabela ws, k
 
@@ -356,6 +480,88 @@ restaura:
     On Error GoTo 0
     If nErr <> 0 Then Err.Raise nErr, "mBI.AtualizarBIData", sErr
 End Sub
+
+' Avalia cada serie lote/analito usando a API publica do motor. A funcao
+' devolve um dicionario por chave de resultado com:
+'   Array(1_3s, 2_2s, R_4s, 4_1s, 10x, alerta_1_2s, veredito)
+Private Function FlagsDoMotor(ByVal zPorChave As Object, _
+                              ByVal runsPorGrupo As Object) As Object
+    Dim flags As Object, runsGrupo As Object
+    Dim g As Variant, p As Variant, chave As String
+    Dim runs() As Long, nRun As Long, i As Long, j As Long, nv As Long
+    Dim tmp As Long, nlvLocal As Long, rejeitado As Boolean
+    Dim z() As Double, temDado() As Boolean
+    Dim r13 As Variant, r22 As Variant, rR4 As Variant
+    Dim r41 As Variant, r10 As Variant, a12 As Variant
+
+    Set flags = CreateObject("Scripting.Dictionary")
+    flags.CompareMode = 1
+    nlvLocal = mEstatistica.NLV
+
+    For Each g In runsPorGrupo.Keys
+        Set runsGrupo = runsPorGrupo(g)
+        nRun = runsGrupo.Count
+        If nRun < 1 Then GoTo proximoGrupo
+
+        ReDim runs(1 To nRun)
+        i = 0
+        Dim rk As Variant
+        For Each rk In runsGrupo.Keys
+            i = i + 1
+            runs(i) = CLng(runsGrupo(rk))
+        Next rk
+        For i = 1 To nRun - 1
+            For j = i + 1 To nRun
+                If runs(j) < runs(i) Then
+                    tmp = runs(i): runs(i) = runs(j): runs(j) = tmp
+                End If
+            Next j
+        Next i
+
+        ReDim z(0 To nlvLocal - 1, 1 To nRun)
+        ReDim temDado(0 To nlvLocal - 1, 1 To nRun)
+        ReDim r13(0 To nlvLocal - 1, 1 To nRun)
+        ReDim r22(0 To nlvLocal - 1, 1 To nRun)
+        ReDim rR4(0 To nlvLocal - 1, 1 To nRun)
+        ReDim r41(0 To nlvLocal - 1, 1 To nRun)
+        ReDim r10(0 To nlvLocal - 1, 1 To nRun)
+        ReDim a12(0 To nlvLocal - 1, 1 To nRun)
+
+        p = Split(CStr(g), "|")
+        For i = 1 To nRun
+            For nv = 1 To nlvLocal
+                chave = CStr(p(0)) & "|" & runs(i) & "|" & CStr(p(1)) & "|" & nv
+                If zPorChave.Exists(chave) Then
+                    z(nv - 1, i) = CDbl(zPorChave(chave))
+                    temDado(nv - 1, i) = True
+                End If
+            Next nv
+        Next i
+
+        mEstatistica.AvaliarWestgard z, temDado, nRun, r13, r22, rR4, r41, r10, a12
+
+        For i = 1 To nRun
+            For nv = 1 To nlvLocal
+                If temDado(nv - 1, i) Then
+                    rejeitado = (r13(nv - 1, i) = 1 Or r22(nv - 1, i) = 1 Or _
+                                  rR4(nv - 1, i) = 1 Or r41(nv - 1, i) = 1 Or _
+                                  r10(nv - 1, i) = 1)
+                    chave = CStr(p(0)) & "|" & runs(i) & "|" & CStr(p(1)) & "|" & nv
+                    flags(chave) = Array(IIf(r13(nv - 1, i) = 1, 1, 0), _
+                                         IIf(r22(nv - 1, i) = 1, 1, 0), _
+                                         IIf(rR4(nv - 1, i) = 1, 1, 0), _
+                                         IIf(r41(nv - 1, i) = 1, 1, 0), _
+                                         IIf(r10(nv - 1, i) = 1, 1, 0), _
+                                         IIf(a12(nv - 1, i) = 1, 1, 0), _
+                                         IIf(rejeitado, "REJEITADO", "OK"))
+                End If
+            Next nv
+        Next i
+proximoGrupo:
+    Next g
+
+    Set FlagsDoMotor = flags
+End Function
 
 Private Function GarantirAba() As Worksheet
     Dim ws As Worksheet, i As Long, cb As Variant
@@ -403,6 +609,81 @@ Private Sub AjustarTabela(ByVal ws As Worksheet, ByVal nLinhas As Long)
     End If
 End Sub
 
+' Reconciliacao integral entre a fonte operacional e a tabela fato. Compara
+' cardinalidade, identidade, resultado e status de TODAS as linhas, nao apenas
+' o analito selecionado no Painel. Devolve "comparados|divergencias|primeira".
+Public Function ReconciliarBancoBI() As String
+    Dim wsB As Worksheet, dados As Variant, idx As Object, globais As Object
+    Dim i As Long, ultB As Long, comp As Long, div As Long, prim As String
+    Dim chave As String, nuc As String, an As String, lin As Long
+    Set wsB = ThisWorkbook.Sheets(BI_ABA)
+    Set idx = CreateObject("Scripting.Dictionary")
+    Set globais = CreateObject("Scripting.Dictionary")
+    idx.CompareMode = 1: globais.CompareMode = 1
+
+    ultB = wsB.Cells(wsB.Rows.Count, 1).End(xlUp).Row
+    For i = BI_R0 To ultB
+        chave = Trim$(CStr(wsB.Cells(i, 1).Value))
+        If chave <> "" Then
+            If idx.Exists(chave) Then
+                div = div + 1
+                If prim = "" Then prim = "ID_Result duplicado no BI: " & chave
+            Else
+                idx.Add chave, i
+            End If
+        End If
+        chave = Trim$(CStr(wsB.Cells(i, 43).Value))
+        If chave <> "" Then
+            If globais.Exists(chave) Then
+                div = div + 1
+                If prim = "" Then prim = "ID_Result_Global duplicado: " & chave
+            Else
+                globais.Add chave, True
+            End If
+        End If
+    Next i
+
+    dados = CarregarDB()
+    If Not IsEmpty(dados) Then
+        For i = 1 To UBound(dados, 1)
+            an = Trim$(CStr(dados(i, COL_ANALITO)))
+            If an <> "" Then
+                nuc = NucleoLote(CStr(dados(i, COL_LOTE)))
+                chave = nuc & "|" & CLng(Val(CStr(dados(i, COL_RUN)))) & "|" & _
+                        CLng(Val(CStr(dados(i, COL_NIVEL)))) & "|" & UCase$(an)
+                If Not idx.Exists(chave) Then
+                    div = div + 1
+                    If prim = "" Then prim = "registro ausente no BI: " & chave
+                Else
+                    comp = comp + 1
+                    lin = CLng(idx(chave))
+                    If CStr(wsB.Cells(lin, 17).Value) <> CStr(dados(i, COL_STATUS)) Then
+                        div = div + 1
+                        If prim = "" Then prim = "status diverge: " & chave
+                    End If
+                    If Not MesmoValorBI(wsB.Cells(lin, 16).Value, dados(i, COL_RESULT)) Then
+                        div = div + 1
+                        If prim = "" Then prim = "resultado diverge: " & chave
+                    End If
+                End If
+            End If
+        Next i
+    End If
+    If idx.Count <> comp Then
+        div = div + Abs(idx.Count - comp)
+        If prim = "" Then prim = "cardinalidade BI=" & idx.Count & " banco=" & comp
+    End If
+    ReconciliarBancoBI = CStr(comp) & "|" & CStr(div) & "|" & prim
+End Function
+
+Private Function MesmoValorBI(ByVal a As Variant, ByVal b As Variant) As Boolean
+    If IsNumeric(a) And IsNumeric(b) And Trim$(CStr(a)) <> "" And Trim$(CStr(b)) <> "" Then
+        MesmoValorBI = (Abs(CDbl(a) - CDbl(b)) < 0.0000001)
+    Else
+        MesmoValorBI = (Trim$(CStr(a)) = Trim$(CStr(b)))
+    End If
+End Function
+
 ' ---------------------------------------------------------------------------
 ' RECONCILIACAO: a camada BI tem de concordar com o motor, nao aproximar-se dele
 '
@@ -437,23 +718,27 @@ Public Function ReconciliarComCalc() As String
         End If
     Next i
 
-    ' Calc: linha 3..182, coluna B = RUN, G = Z do N1, P = veredito N1,
-    '                              AC = Z do N2, AL = veredito N2
-    Dim nv As Long, colZ As Long, colV As Long
+' Calc: cada nivel ocupa 22 colunas; Z, cinco flags e veredito sao comparados.
+    Dim nv As Long, colZ As Long, colV As Long, colF As Long, f As Long
     For i = 3 To 182
         If Len(Trim$(CStr(wsC.Cells(i, 2).Value))) = 0 Then GoTo prox
-        For nv = 1 To 2
-            colZ = IIf(nv = 1, 7, 29)
-            colV = IIf(nv = 1, 16, 38)
+        For nv = 1 To mEstatistica.NLV
+            colZ = 7 + (nv - 1) * 22
+            colF = 11 + (nv - 1) * 22
+            colV = 16 + (nv - 1) * 22
             If Len(Trim$(CStr(wsC.Cells(i, colZ).Value))) = 0 Then GoTo proxNivel
             chave = CStr(wsC.Cells(i, 2).Value) & "|" & CStr(nv)
-            If Not idx.Exists(chave) Then GoTo proxNivel
+            If Not idx.Exists(chave) Then
+                div = div + 1
+                If Len(prim) = 0 Then prim = "chave ausente no BI: RUN " & wsC.Cells(i, 2).Value & " N" & nv
+                GoTo proxNivel
+            End If
             comp = comp + 1
             Dim zC As Double, zB As Double, vC As String, vB As String
             zC = CDbl(wsC.Cells(i, colZ).Value)
             zB = CDbl(wsB.Cells(idx(chave), 21).Value)
             vC = Trim$(CStr(wsC.Cells(i, colV).Value))
-            vB = Trim$(CStr(wsB.Cells(idx(chave), 34).Value))
+            vB = Trim$(CStr(wsB.Cells(idx(chave), 37).Value))
             If Abs(zC - zB) > 0.000001 Or vC <> vB Then
                 div = div + 1
                 If Len(prim) = 0 Then
@@ -462,6 +747,16 @@ Public Function ReconciliarComCalc() As String
                            " veredito calc=" & vC & " bi=" & vB
                 End If
             End If
+            For f = 0 To 4
+                If CLng(Val(CStr(wsC.Cells(i, colF + f).Value))) <> _
+                   CLng(Val(CStr(wsB.Cells(idx(chave), 31 + f).Value))) Then
+                    div = div + 1
+                    If Len(prim) = 0 Then
+                        prim = "flag " & (f + 1) & " diverge: RUN " & _
+                               wsC.Cells(i, 2).Value & " N" & nv
+                    End If
+                End If
+            Next f
 proxNivel:
         Next nv
 prox:

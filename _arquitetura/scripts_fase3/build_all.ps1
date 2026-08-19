@@ -22,6 +22,14 @@
 
 param(
     [switch]$PularMotor,
+    # Modo de release/validacao: preserva integralmente os dados da fonte.
+    # O comportamento historico (com fixture) continua sendo o padrao para a
+    # suite de desenvolvimento existente.
+    [switch]$SemFixtures,
+    # Fonte e pasta de build opcionais permitem construir copias controladas
+    # sem alterar nem depender do binario canonico da raiz.
+    [string]$Fonte = '',
+    [string]$PastaBuild = '',
     # Produto alvo. Remove a amarracao a Hematologia em nome de arquivo,
     # snapshot e pasta de build.
     [string]$Produto = 'Hematologia'
@@ -105,8 +113,8 @@ New-Item -ItemType Directory -Force -Path $hp | Out-Null
 # O NOME PRECISA CONTER "build_hardening": rodar_motor.ps1 recusa executar
 # fora de uma copia de build, justamente para o motor nunca rodar sobre a
 # producao. A trava e boa -- o nome se adapta a ela, nao o contrario.
-$bd = Join-Path $env:USERPROFILE "QCINI_build_hardening1_$Produto"
-$prod = Join-Path $raiz "QC_$Produto.xlsm"
+$bd = if ($PastaBuild) { $PastaBuild } else { Join-Path $env:USERPROFILE "QCINI_build_hardening1_$Produto" }
+$prod = if ($Fonte) { $Fonte } else { Join-Path $raiz "QC_$Produto.xlsm" }
 $alvo = Join-Path $bd "QC_$Produto.xlsm"
 
 if (-not (Test-Path $prod)) { throw "Producao nao encontrada: $prod" }
@@ -210,13 +218,22 @@ Encerrar-Excel
 # estado conhecido.
 Etapa 'normalizar_protecao.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
 
+Encerrar-Excel
+"== 0b. identidade persistente do contrato BI"
+Etapa 'preparar_contrato_bi.ps1' -Argumentos @('-Workbook', $alvo, '-Produto', $Produto, '-Versao', '2.0.0') -Ultimas 3
+
 # A FIXTURE PERTENCE AO BUILD, NAO A PRODUCAO.
 #
 # A suite sempre exercitou o sistema sobre os 1.000 resultados ficticios que
 # moravam no arquivo de producao. Quando a producao foi limpa para o uso real,
 # o artefato nasceu vazio e a suite travou lendo uma linha que nao existia.
 # Dado de teste e responsabilidade de quem testa.
-Etapa 'semear_dados_teste.ps1' -Argumentos @('-Workbook', $alvo, '-NLV', $NLV) -Ultimas 4
+if ($SemFixtures) {
+    "  fixture de teste: PULADA (-SemFixtures); dados da fonte preservados"
+}
+else {
+    Etapa 'semear_dados_teste.ps1' -Argumentos @('-Workbook', $alvo, '-NLV', $NLV) -Ultimas 4
+}
 "== 1. gera os modulos VBA a partir dos patches"
 Mostrar (& (Join-Path $s 'gerar_mEstatistica.ps1') `
     -Producao (Join-Path $snapMotor 'vba\mEstatistica.bas') `
@@ -295,7 +312,10 @@ Encerrar-Excel
     (Join-Path $arq 'src_producao\mBanco.bas'),
     # mBI (ADR-026): camada de dados para o Power BI.
     (Join-Path $arq 'src_producao\mBI.bas'),
-    (Join-Path $h 'Planilha7.cls')
+    (Join-Path $h 'Planilha7.cls'),
+    # Salvamento controlado: recalcula motor, atualiza BI e bloqueia o Save se
+    # a reconciliacao falhar.
+    (Join-Path $h 'EstaPastaDeTrabalho.cls')
 )
 
 Encerrar-Excel
@@ -307,10 +327,6 @@ Etapa 'aplicar_adr025.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 6
 Encerrar-Excel
 "== 4a2. ADR-025: vigia de Status (BA:BC voltam a ser auto-corretivas)"
 Mostrar (& python (Join-Path $s 'instalar_watch_status.py') $alvo) -Ultimas 3
-
-Encerrar-Excel
-"== 4a3. ADR-026: camada de dados BI_Data + reconciliacao com o motor"
-Etapa 'aplicar_bi_data.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 6
 
 Encerrar-Excel
 "== 4b. vigia da tabela de elegibilidade (item 2.5)"
@@ -380,10 +396,22 @@ Etapa 'criar_aba_importar.ps1' -Argumentos @('-Workbook', $alvo, '-Csv', $csvAna
 # pula a etapa em vez de derrubar o build com o analito de outro setor.
 if ($ANALITO_REF) {
     Etapa 'fixar_analito_referencia.ps1' -Argumentos @('-Workbook', $alvo, '-Analito', $ANALITO_REF) -Ultimas 1
+    if (-not $PularMotor) {
+        # Alterar o seletor invalida Eng_Saida. Reexecutar o motor garante que
+        # Calc, Painel, Estatistica e a reconciliacao BI usem o mesmo analito.
+        Etapa 'rodar_motor.ps1' -Argumentos @('-Workbook', $alvo, '-Rotinas', 'AtualizarCalc,AtualizarPainelEng,AtualizarEstatisticaAba') -Ultimas 4
+    }
 }
 else {
     "  (sem analito de referencia definido para $Produto - etapa pulada)"
 }
+
+Encerrar-Excel
+# A reconciliacao precisa ocorrer DEPOIS do redirecionamento e da execucao do
+# motor. Antes disso, Calc ainda contem a implementacao antiga por formulas e
+# nao e uma referencia valida para a saida de mEstatistica.
+"== 7b2. ADR-026: camada de dados BI_Data + reconciliacao com o motor"
+Etapa 'aplicar_bi_data.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 6
 
 Encerrar-Excel
 # Depois do motor: AtualizarPainelEng nao toca em titulo de eixo, mas a ordem
@@ -393,8 +421,64 @@ Encerrar-Excel
 Etapa 'padronizar_run.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 4
 
 Encerrar-Excel
+"== 7d. P0 de identidade/rotulos/data + padrao visual P3"
+Etapa 'aplicar_release_visual.ps1' -Argumentos @('-Workbook', $alvo, '-Produto', $Produto, '-NLV', $NLV) -Ultimas 2
+
+Encerrar-Excel
+
+# Hematologia: estrutura formal de especificacoes sem corte prematuro.
+#
+# A referencia e tirada DEPOIS de todas as etapas comuns. Assim a prova mede
+# apenas a introducao de Cfg/DB/Eng + mEspecificacoes. Analitos!Q:R continua
+# operacional e nenhum consumidor e redirecionado para uma saida vazia.
+$refEspec = $null
+if ($Produto -eq 'Hematologia') {
+    "== 7e. especificacoes formais da Hematologia com fallback Q:R"
+    $refEspec = Join-Path $bd 'QC_Hematologia_ANTES_ESPEC_EM_DESENVOLVIMENTO.xlsm'
+    Copy-Item $alvo $refEspec -Force
+
+    Mostrar (& (Join-Path $s 'gerar_mEspecificacoes.ps1') `
+        -Producao (Join-Path $arq 'src_producao\mEspecificacoes.bas') `
+        -Produto $Produto `
+        -Saida (Join-Path $hp 'mEspecificacoes.bas')) -Ultimas 3
+
+    Etapa 'criar_estrutura_especificacoes.ps1' -Argumentos @('-Workbook', $alvo, '-Produto', $Produto) -Ultimas 4
+    Encerrar-Excel
+    & (Join-Path $s 'aplicar_vba.ps1') -Workbook $alvo -Modulos @((Join-Path $hp 'mEspecificacoes.bas'))
+    Encerrar-Excel
+    Etapa 'criar_form_especificacoes.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
+    Encerrar-Excel
+    Etapa 'ligar_motor_especificacoes.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 2
+    Encerrar-Excel
+    Etapa 'rodar_motor.ps1' -Argumentos @('-Workbook', $alvo, '-Rotinas', 'AtualizarEngEspec,AtualizarBIData') -Ultimas 4
+}
+
+Encerrar-Excel
 "== 8. trava a estrutura (abas so pelo Modo Desenvolvedor)"
 Etapa 'travar_estrutura.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
+
+Encerrar-Excel
+"== 8b. estado seguro persistente para macros desabilitadas"
+Etapa 'blindar_artefato.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 5
+
+Encerrar-Excel
+if ($Produto -eq 'Hematologia' -and -not $SemFixtures) {
+    "== 8c. nao regressao das especificacoes (1.575 Westgard / 1.125 Sigma)"
+    Etapa 'testar_especificacoes_hematologia.ps1' -Argumentos @(
+        '-Referencia', $refEspec,
+        '-Candidato', $alvo,
+        '-OutCsv', (Join-Path $bd 'teste_especificacoes_hematologia.csv')
+    ) -Ultimas 4
+}
+elseif ($Produto -eq 'Hematologia') {
+    "  teste 1.575/1.125 pulado: -SemFixtures nao possui a massa controlada"
+}
+
+Encerrar-Excel
+if ($Produto -eq 'Bioquimica') {
+    "== 8d. campos de equipamento/serie/controle editaveis sob protecao"
+    Etapa 'testar_release_visual_bio.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 2
+}
 
 ""
 "BUILD PRONTO: $alvo"

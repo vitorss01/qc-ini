@@ -122,7 +122,7 @@ Option Explicit
 Private carregando As Boolean
 
 Private Sub UserForm_Initialize()
-    Dim c As Collection, i As Long
+    Dim c As Collection, i As Long, rigor As String
     carregando = True
     Me.lblPrevia.Font.Bold = True
     Set c = ListaFontes()
@@ -133,20 +133,39 @@ Private Sub UserForm_Initialize()
     Me.cboRigor.AddItem "MIN"
     Me.cboRigor.AddItem "DES"
     Me.cboRigor.AddItem "OTI"
-    Me.cboRigor.Value = RigorPadrao()
+    rigor = RigorPadrao()
+    If rigor <> "" Then Me.cboRigor.Value = rigor
     Me.txtAno.Text = CStr(Year(Date))
     Me.lblRodape.Caption = "A meta vigente para um resultado e a de maior Ano que nao ultrapasse o ano DELE. " & _
                            "Cadastrar 2027 nao altera como uma corrida de 2025 e julgada."
     carregando = False
+    ConfigurarDisponibilidade
     AjustarCampos
     CarregarLista
+End Sub
+
+Private Sub ConfigurarDisponibilidade()
+    Dim disponivel As Boolean
+    disponivel = (Me.cboFonte.ListCount > 0)
+    Me.cboFonte.Enabled = disponivel
+    Me.lstAnalitos.Enabled = disponivel
+    Me.btnGravar.Enabled = disponivel
+    Me.btnGravarLista.Enabled = disponivel
+    If Not disponivel Then
+        Me.lblAviso.Caption = "Cadastre uma fonte e seu modelo em Cfg_Especificacoes."
+        Me.lblModelo.Caption = "modelo: nao configurado"
+    End If
 End Sub
 
 ' Desenha os campos conforme o modelo da fonte.
 Private Sub AjustarCampos()
     Dim modelo As String
     modelo = ModeloDaFonte(Me.cboFonte.Value)
-    Me.lblModelo.Caption = "modelo: " & modelo
+    If modelo = "" Then
+        Me.lblModelo.Caption = "modelo: nao configurado"
+    Else
+        Me.lblModelo.Caption = "modelo: " & modelo
+    End If
 
     Me.lblEnt1.Visible = False: Me.txtEnt1.Visible = False
     Me.lblEnt2.Visible = False: Me.txtEnt2.Visible = False
@@ -166,13 +185,14 @@ Private Sub AjustarCampos()
     AtualizarPrevia
 End Sub
 
-' Lista os 31 analitos com o que ja esta resolvido para este Ano + Fonte.
+' Lista os analitos do produto com o que ja esta resolvido para Ano + Fonte.
 Private Sub CarregarLista()
     Dim c As Collection, i As Long, ano As Long, r As String, p() As String
     Dim guardado As Long
     guardado = Me.lstAnalitos.ListIndex
     Me.lstAnalitos.Clear
     If Not IsNumeric(Me.txtAno.Text) Then Exit Sub
+    If Trim$(CStr(Me.cboFonte.Value)) = "" Then Exit Sub
     ano = CLng(Me.txtAno.Text)
     Set c = ListaAnalitos()
     For i = 1 To c.Count
@@ -199,6 +219,7 @@ End Function
 Private Sub AtualizarPrevia()
     Dim modelo As String, m As String, p() As String
     modelo = ModeloDaFonte(Me.cboFonte.Value)
+    If modelo = "" Then Me.lblResultado.Caption = "": Exit Sub
     Select Case modelo
         Case "ETP_DIRETO"
             m = MetasDaLinha(modelo, NumOuVazio(Me.txtEnt1.Text), "", "", "", "", "")
@@ -272,6 +293,10 @@ Private Function Gravar() As Boolean
     Dim modelo As String, ano As Long, analito As String
     Me.lblAviso.Caption = ""
 
+    If Trim$(CStr(Me.cboFonte.Value)) = "" Then
+        Me.lblAviso.Caption = "Cadastre e selecione uma fonte."
+        Exit Function
+    End If
     If Me.lstAnalitos.ListIndex < 0 Then
         Me.lblAviso.Caption = "Escolha um analito na lista."
         Exit Function
@@ -287,6 +312,14 @@ Private Function Gravar() As Boolean
     End If
     analito = CStr(Me.lstAnalitos.List(Me.lstAnalitos.ListIndex, 0))
     modelo = ModeloDaFonte(Me.cboFonte.Value)
+    If modelo = "" Then
+        Me.lblAviso.Caption = "A fonte selecionada nao possui modelo suportado."
+        Exit Function
+    End If
+    If modelo = "VB" And Trim$(CStr(Me.cboRigor.Value)) = "" Then
+        Me.lblAviso.Caption = "Selecione o rigor da fonte VB."
+        Exit Function
+    End If
 
     ' Recusa gravar sem entrada: linha sem valor viraria meta indefinida que o
     ' motor devolveria como "sem meta" -- pior que nao existir, porque parece

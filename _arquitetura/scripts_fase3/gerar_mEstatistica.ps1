@@ -132,6 +132,18 @@ else {
     "NLV: $NLV (sem alteracao)"
 }
 
+# --- lote por semantica, nao por largura fixa ---
+# Hematologia usa nucleo de seis digitos, mas Bioquimica possui lotes reais de
+# quatro digitos. Mid$(...,4,6) incorporava o sufixo do nivel ao nucleo e fazia
+# o motor publicar nRun=0. NucleoLote e a API comum de mDados para os produtos.
+$nLotesNormalizados = 0
+for ($i = 0; $i -lt $out.Count; $i++) {
+    $antes = $out[$i]
+    $depois = $antes.Replace('Mid$(CStr(mDB(i, COL_LOTE)), 4, 6)', 'NucleoLote(CStr(mDB(i, COL_LOTE)))')
+    if ($depois -ne $antes) { $out[$i] = $depois; $nLotesNormalizados++ }
+}
+if ($nLotesNormalizados -lt 1) { throw 'Nenhuma comparacao de lote foi normalizada no motor.' }
+
 # --- correcao de compilacao: aS/aM como identificadores ---
 # VBA e insensivel a maiusculas, entao o identificador "aS" e o mesmo token que
 # a palavra reservada "As" e o modulo NAO COMPILA. Como o VBA compila sob
@@ -171,6 +183,7 @@ for ($i = 0; $i -lt $out.Count; $i++) {
 "producao : $($L.Count) linhas"
 "gerado   : $($out.Count) linhas"
 "aS/aM renomeados em $nRenomeadas linhas"
+"lotes normalizados por NucleoLote em $nLotesNormalizados linhas"
 if ($achados.Count -gt 0) {
     "LINT: identificador colidindo com palavra reservada -- o modulo nao vai compilar:"
     $achados | ForEach-Object { "  $_" }
