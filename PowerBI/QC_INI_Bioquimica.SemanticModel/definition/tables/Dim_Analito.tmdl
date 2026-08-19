@@ -1,0 +1,47 @@
+table Dim_Analito
+	lineageTag: f173e50d-a527-5a2b-b909-9cca157c768c
+
+	column ID_Analito
+		dataType: string
+		isHidden
+		lineageTag: 2b1c4912-b965-5bbc-94e8-5b1654f8a353
+		summarizeBy: none
+		sourceColumn: ID_Analito
+
+		annotation SummarizationSetBy = Automatic
+
+	column Analito
+		dataType: string
+		lineageTag: d316e1c1-a663-56d7-9ccc-a8706408b919
+		summarizeBy: none
+		sourceColumn: Analito
+
+		annotation SummarizationSetBy = Automatic
+
+	column Area
+		dataType: string
+		lineageTag: ff0df7d8-1f4f-534a-8f3a-7af8dd78a20b
+		summarizeBy: none
+		sourceColumn: Area
+
+		annotation SummarizationSetBy = Automatic
+
+	column Unidade
+		dataType: string
+		lineageTag: f55b4ca3-7647-5a2c-b5b8-e6b9741eb32b
+		summarizeBy: none
+		sourceColumn: Unidade
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Dim_Analito = m
+		mode: import
+		source =
+				let
+				    Base = Table.SelectColumns(Fato_QC, {"ID_Analito", "Analito", "Area", "Unidade"}),
+				    Unicos = Table.Distinct(Base, {"ID_Analito"}),
+				    Ord = Table.Sort(Unicos, {{"Analito", Order.Ascending}})
+				in
+				    Ord
+
+	annotation PBI_ResultType = Table

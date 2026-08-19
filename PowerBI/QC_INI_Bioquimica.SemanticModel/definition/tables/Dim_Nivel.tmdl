@@ -1,0 +1,32 @@
+table Dim_Nivel
+	lineageTag: 81a6ce21-a2c6-5b51-bdd9-ecfd6fba52f7
+
+	column Nivel
+		dataType: int64
+		isHidden
+		lineageTag: 0b9a6f42-c583-55de-8017-979111199cda
+		summarizeBy: none
+		sourceColumn: Nivel
+
+		annotation SummarizationSetBy = Automatic
+
+	column Nivel_Rotulo
+		dataType: string
+		lineageTag: 5ab01aed-ff97-59f0-a735-6dbbf79cf789
+		summarizeBy: none
+		sourceColumn: Nivel_Rotulo
+		sortByColumn: Nivel
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Dim_Nivel = m
+		mode: import
+		source =
+				let
+				    Base = Table.SelectColumns(Fato_QC, {"Nivel", "Nivel_Rotulo"}),
+				    Unicos = Table.Distinct(Base, {"Nivel"}),
+				    Ord = Table.Sort(Unicos, {{"Nivel", Order.Ascending}})
+				in
+				    Ord
+
+	annotation PBI_ResultType = Table

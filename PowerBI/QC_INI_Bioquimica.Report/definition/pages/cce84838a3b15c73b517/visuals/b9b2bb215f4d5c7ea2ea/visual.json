@@ -1,0 +1,223 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.0.0/schema.json",
+  "name": "b9b2bb215f4d5c7ea2ea",
+  "position": {
+    "x": 920,
+    "y": 218,
+    "z": 1,
+    "width": 352,
+    "height": 278,
+    "tabOrder": 1920
+  },
+  "visual": {
+    "visualType": "clusteredColumnChart",
+    "query": {
+      "queryState": {
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Alertas 1_2s"
+                }
+              },
+              "queryRef": "Fato_QC.Alertas 1_2s",
+              "nativeQueryRef": "Alertas 1_2s"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Viol 1_3s"
+                }
+              },
+              "queryRef": "Fato_QC.Viol 1_3s",
+              "nativeQueryRef": "Viol 1_3s"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Viol 2_2s"
+                }
+              },
+              "queryRef": "Fato_QC.Viol 2_2s",
+              "nativeQueryRef": "Viol 2_2s"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Viol R_4s"
+                }
+              },
+              "queryRef": "Fato_QC.Viol R_4s",
+              "nativeQueryRef": "Viol R_4s"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Viol 4_1s"
+                }
+              },
+              "queryRef": "Fato_QC.Viol 4_1s",
+              "nativeQueryRef": "Viol 4_1s"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Viol 10x"
+                }
+              },
+              "queryRef": "Fato_QC.Viol 10x",
+              "nativeQueryRef": "Viol 10x"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Alertas e violações por regra'"
+                }
+              }
+            },
+            "fontColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#1F3864'"
+                    }
+                  }
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "11D"
+                }
+              }
+            },
+            "bold": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "alignment": {
+              "expr": {
+                "Literal": {
+                  "Value": "'left'"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#FFFFFF'"
+                    }
+                  }
+                }
+              }
+            },
+            "transparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#E1E5EA'"
+                    }
+                  }
+                }
+              }
+            },
+            "radius": {
+              "expr": {
+                "Literal": {
+                  "Value": "6D"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

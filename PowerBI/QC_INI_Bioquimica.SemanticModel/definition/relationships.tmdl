@@ -1,0 +1,15 @@
+relationship Fato_Data
+	fromColumn: Fato_QC.Data
+	toColumn: Dim_Data.Data
+
+relationship Fato_Analito
+	fromColumn: Fato_QC.ID_Analito
+	toColumn: Dim_Analito.ID_Analito
+
+relationship Fato_Lote
+	fromColumn: Fato_QC.ID_Lote
+	toColumn: Dim_Lote.ID_Lote
+
+relationship Fato_Nivel
+	fromColumn: Fato_QC.Nivel
+	toColumn: Dim_Nivel.Nivel

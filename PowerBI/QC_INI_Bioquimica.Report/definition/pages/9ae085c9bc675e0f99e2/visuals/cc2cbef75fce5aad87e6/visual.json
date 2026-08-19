@@ -1,0 +1,473 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.0.0/schema.json",
+  "name": "cc2cbef75fce5aad87e6",
+  "position": {
+    "x": 214,
+    "y": 524,
+    "z": 1,
+    "width": 1058,
+    "height": 188,
+    "tabOrder": 1214
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dim_Analito"
+                    }
+                  },
+                  "Property": "Analito"
+                }
+              },
+              "queryRef": "Dim_Analito.Analito",
+              "nativeQueryRef": "Analito"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dim_Nivel"
+                    }
+                  },
+                  "Property": "Nivel_Rotulo"
+                }
+              },
+              "queryRef": "Dim_Nivel.Nivel_Rotulo",
+              "nativeQueryRef": "Nível"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "N Observado"
+                }
+              },
+              "queryRef": "Fato_QC.N Observado",
+              "nativeQueryRef": "N Observado"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Media Observada"
+                }
+              },
+              "queryRef": "Fato_QC.Media Observada",
+              "nativeQueryRef": "Media Observada"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "DP Observado"
+                }
+              },
+              "queryRef": "Fato_QC.DP Observado",
+              "nativeQueryRef": "DP Observado"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "CV Observado %"
+                }
+              },
+              "queryRef": "Fato_QC.CV Observado %",
+              "nativeQueryRef": "CV Observado %"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "CVtp %"
+                }
+              },
+              "queryRef": "Fato_QC.CVtp %",
+              "nativeQueryRef": "CVtp %"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Status CV"
+                }
+              },
+              "queryRef": "Fato_QC.Status CV",
+              "nativeQueryRef": "Status CV"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Bias Observado %"
+                }
+              },
+              "queryRef": "Fato_QC.Bias Observado %",
+              "nativeQueryRef": "Bias Observado %"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "BIAStp %"
+                }
+              },
+              "queryRef": "Fato_QC.BIAStp %",
+              "nativeQueryRef": "BIAStp %"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Status Bias"
+                }
+              },
+              "queryRef": "Fato_QC.Status Bias",
+              "nativeQueryRef": "Status Bias"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "ET Observado %"
+                }
+              },
+              "queryRef": "Fato_QC.ET Observado %",
+              "nativeQueryRef": "ET Observado %"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "ETp %"
+                }
+              },
+              "queryRef": "Fato_QC.ETp %",
+              "nativeQueryRef": "ETp %"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Status ET"
+                }
+              },
+              "queryRef": "Fato_QC.Status ET",
+              "nativeQueryRef": "Status ET"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Sigma"
+                }
+              },
+              "queryRef": "Fato_QC.Sigma",
+              "nativeQueryRef": "Sigma"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Especificacao_Efetiva"
+                }
+              },
+              "queryRef": "Fato_QC.Especificacao_Efetiva",
+              "nativeQueryRef": "Especificação"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_QC"
+                    }
+                  },
+                  "Property": "Situacao_Especificacao"
+                }
+              },
+              "queryRef": "Fato_QC.Situacao_Especificacao",
+              "nativeQueryRef": "Situação"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "values": [
+        {
+          "properties": {
+            "fontColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Measure": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Fato_QC"
+                        }
+                      },
+                      "Property": "Cor Status CV"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Fato_QC.Status CV"
+          }
+        },
+        {
+          "properties": {
+            "fontColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Measure": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Fato_QC"
+                        }
+                      },
+                      "Property": "Cor Status Bias"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Fato_QC.Status Bias"
+          }
+        },
+        {
+          "properties": {
+            "fontColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Measure": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Fato_QC"
+                        }
+                      },
+                      "Property": "Cor Status ET"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Fato_QC.Status ET"
+          }
+        },
+        {
+          "properties": {
+            "fontColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Measure": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Fato_QC"
+                        }
+                      },
+                      "Property": "Cor Sigma"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Fato_QC.Sigma"
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Matriz estatística — observado, limite e situação por analito e nível'"
+                }
+              }
+            },
+            "fontColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#1F3864'"
+                    }
+                  }
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "11D"
+                }
+              }
+            },
+            "bold": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "alignment": {
+              "expr": {
+                "Literal": {
+                  "Value": "'left'"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#FFFFFF'"
+                    }
+                  }
+                }
+              }
+            },
+            "transparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#E1E5EA'"
+                    }
+                  }
+                }
+              }
+            },
+            "radius": {
+              "expr": {
+                "Literal": {
+                  "Value": "6D"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

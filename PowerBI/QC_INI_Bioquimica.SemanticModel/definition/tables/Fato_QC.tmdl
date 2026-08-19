@@ -1,0 +1,1315 @@
+table Fato_QC
+	lineageTag: 714be56d-83e4-5071-ba6f-ed9e47256ecd
+
+	column ID_Result
+		dataType: string
+		isHidden
+		lineageTag: 43456333-21cb-56a8-9d50-e66f1f0272dd
+		summarizeBy: none
+		sourceColumn: ID_Result
+
+		annotation SummarizationSetBy = Automatic
+
+	column ID_Corrida
+		dataType: string
+		isHidden
+		lineageTag: b1df32ff-f3d1-5a5c-8d18-6a911d457ec3
+		summarizeBy: none
+		sourceColumn: ID_Corrida
+
+		annotation SummarizationSetBy = Automatic
+
+	column Data
+		dataType: dateTime
+		lineageTag: edaff5b6-f4fb-538a-bcc8-338509f44990
+		summarizeBy: none
+		sourceColumn: Data
+		formatString: dd/mm/yyyy
+
+		annotation SummarizationSetBy = Automatic
+
+	column Ano
+		dataType: int64
+		lineageTag: ef9c51b6-1036-55bb-a68f-836bf4d8609f
+		summarizeBy: none
+		sourceColumn: Ano
+
+		annotation SummarizationSetBy = Automatic
+
+	column Mes
+		dataType: int64
+		lineageTag: f9348c85-9d8e-5451-94aa-d22389355722
+		summarizeBy: none
+		sourceColumn: Mes
+
+		annotation SummarizationSetBy = Automatic
+
+	column Trimestre
+		dataType: int64
+		lineageTag: a21a70a8-a216-5e2f-81b6-47a06b17fcd9
+		summarizeBy: none
+		sourceColumn: Trimestre
+
+		annotation SummarizationSetBy = Automatic
+
+	column Competencia
+		dataType: string
+		lineageTag: e33ae865-3952-57ea-a2cc-4df8295c2926
+		summarizeBy: none
+		sourceColumn: Competencia
+
+		annotation SummarizationSetBy = Automatic
+
+	column ID_Analito
+		dataType: string
+		isHidden
+		lineageTag: 7e6b6331-f412-5fcc-ae14-c2ff47de79ce
+		summarizeBy: none
+		sourceColumn: ID_Analito
+
+		annotation SummarizationSetBy = Automatic
+
+	column Analito
+		dataType: string
+		lineageTag: 11082363-d1dc-5eff-8bf7-6081428f5d51
+		summarizeBy: none
+		sourceColumn: Analito
+
+		annotation SummarizationSetBy = Automatic
+
+	column Area
+		dataType: string
+		lineageTag: d772cb79-a234-5033-8dfa-ba2afbcf07af
+		summarizeBy: none
+		sourceColumn: Area
+
+		annotation SummarizationSetBy = Automatic
+
+	column Unidade
+		dataType: string
+		lineageTag: 26432a5c-aea4-52a3-8f74-70fd4f378ec7
+		summarizeBy: none
+		sourceColumn: Unidade
+
+		annotation SummarizationSetBy = Automatic
+
+	column ID_Lote
+		dataType: string
+		isHidden
+		lineageTag: 97ffe792-d5db-5f94-8dcf-9ec63f61dec4
+		summarizeBy: none
+		sourceColumn: ID_Lote
+
+		annotation SummarizationSetBy = Automatic
+
+	column Lote
+		dataType: string
+		lineageTag: 50789e86-79ac-5942-b4d2-a7f59b89a1cd
+		summarizeBy: none
+		sourceColumn: Lote
+
+		annotation SummarizationSetBy = Automatic
+
+	column Nivel
+		dataType: int64
+		lineageTag: 60571eaa-921e-56b7-8142-b4d273eb99ad
+		summarizeBy: none
+		sourceColumn: Nivel
+
+		annotation SummarizationSetBy = Automatic
+
+	column RUN
+		dataType: int64
+		lineageTag: aeeaa050-b64c-53bc-b329-147b8c45e593
+		summarizeBy: none
+		sourceColumn: RUN
+
+		annotation SummarizationSetBy = Automatic
+
+	column Resultado
+		dataType: double
+		lineageTag: 556dde71-0280-5d2f-a86c-d441bc04d530
+		summarizeBy: none
+		sourceColumn: Resultado
+
+		annotation SummarizationSetBy = Automatic
+
+	column Status
+		dataType: string
+		isHidden
+		lineageTag: aebbe08b-a7ee-52f2-906f-4d4378052fe2
+		summarizeBy: none
+		sourceColumn: Status
+
+		annotation SummarizationSetBy = Automatic
+
+	column Ativo
+		dataType: int64
+		isHidden
+		lineageTag: 3eaf6412-a3ca-5399-b4fc-bc36086ebcd4
+		summarizeBy: none
+		sourceColumn: Ativo
+
+		annotation SummarizationSetBy = Automatic
+
+	column Media_Alvo
+		dataType: double
+		lineageTag: 9f19af7e-4156-53ae-a932-00be15e70692
+		summarizeBy: none
+		sourceColumn: Media_Alvo
+
+		annotation SummarizationSetBy = Automatic
+
+	column DP_Alvo
+		dataType: double
+		lineageTag: 40e91e38-4d19-550f-9848-7994a97a5bf0
+		summarizeBy: none
+		sourceColumn: DP_Alvo
+
+		annotation SummarizationSetBy = Automatic
+
+	column Z
+		dataType: double
+		lineageTag: 7f769e9c-9a76-5aeb-a954-f98ce336f94d
+		summarizeBy: none
+		sourceColumn: Z
+
+		annotation SummarizationSetBy = Automatic
+
+	column Lim_m3s
+		dataType: double
+		lineageTag: b025d36c-95e7-5b37-ade9-51f69992b1f9
+		summarizeBy: none
+		sourceColumn: Lim_m3s
+
+		annotation SummarizationSetBy = Automatic
+
+	column Lim_m2s
+		dataType: double
+		lineageTag: 8e6b3fa6-d017-5274-b6bd-cbccaeb4406b
+		summarizeBy: none
+		sourceColumn: Lim_m2s
+
+		annotation SummarizationSetBy = Automatic
+
+	column Lim_m1s
+		dataType: double
+		lineageTag: 85c89fd9-774c-52f0-a81f-2e833e6a455b
+		summarizeBy: none
+		sourceColumn: Lim_m1s
+
+		annotation SummarizationSetBy = Automatic
+
+	column Lim_p1s
+		dataType: double
+		lineageTag: 6fbcbcae-a91f-563d-85a7-0144b9395bea
+		summarizeBy: none
+		sourceColumn: Lim_p1s
+
+		annotation SummarizationSetBy = Automatic
+
+	column Lim_p2s
+		dataType: double
+		lineageTag: 112cce75-89e4-54e8-af27-65e91e0209a9
+		summarizeBy: none
+		sourceColumn: Lim_p2s
+
+		annotation SummarizationSetBy = Automatic
+
+	column Lim_p3s
+		dataType: double
+		lineageTag: 9213726f-39f8-519b-abb8-5c0d2e3637ea
+		summarizeBy: none
+		sourceColumn: Lim_p3s
+
+		annotation SummarizationSetBy = Automatic
+
+	column CVtp_pct
+		dataType: double
+		lineageTag: f2e05310-fe40-5e43-a8c3-4e2763739f83
+		summarizeBy: none
+		sourceColumn: CVtp_pct
+
+		annotation SummarizationSetBy = Automatic
+
+	column BIAStp_pct
+		dataType: double
+		lineageTag: aef70724-3d94-5021-ae81-f2834d4dafb5
+		summarizeBy: none
+		sourceColumn: BIAStp_pct
+
+		annotation SummarizationSetBy = Automatic
+
+	column ETp_pct
+		dataType: double
+		lineageTag: 09d270d3-507d-5f05-b4f9-566afdc33d53
+		summarizeBy: none
+		sourceColumn: ETp_pct
+
+		annotation SummarizationSetBy = Automatic
+
+	column W_1_3s
+		dataType: int64
+		lineageTag: 8aa8ab36-0717-5b07-bfb7-9d2fc3b48bec
+		summarizeBy: none
+		sourceColumn: W_1_3s
+
+		annotation SummarizationSetBy = Automatic
+
+	column W_2_2s
+		dataType: int64
+		lineageTag: 94f5c5df-17f1-553f-98b2-e0e192110f7b
+		summarizeBy: none
+		sourceColumn: W_2_2s
+
+		annotation SummarizationSetBy = Automatic
+
+	column W_R_4s
+		dataType: int64
+		lineageTag: 100795b3-f0b9-5523-b83a-75196ddf4455
+		summarizeBy: none
+		sourceColumn: W_R_4s
+
+		annotation SummarizationSetBy = Automatic
+
+	column W_4_1s
+		dataType: int64
+		lineageTag: f5b436b4-4312-595f-9692-65c0afadd085
+		summarizeBy: none
+		sourceColumn: W_4_1s
+
+		annotation SummarizationSetBy = Automatic
+
+	column W_10x
+		dataType: int64
+		lineageTag: a848a162-e93b-5beb-ba38-c9f9bac96ca0
+		summarizeBy: none
+		sourceColumn: W_10x
+
+		annotation SummarizationSetBy = Automatic
+
+	column A_1_2s
+		dataType: int64
+		lineageTag: cb00909e-4da7-53df-aa16-d02fe1879c52
+		summarizeBy: none
+		sourceColumn: A_1_2s
+
+		annotation SummarizationSetBy = Automatic
+
+	column Veredito
+		dataType: string
+		lineageTag: c0b6ecc4-1aba-53c2-901e-2befdee4744a
+		summarizeBy: none
+		sourceColumn: Veredito
+
+		annotation SummarizationSetBy = Automatic
+
+	column Produto
+		dataType: string
+		isHidden
+		lineageTag: b916c6f7-63b9-5a79-aa28-53c4f1285c38
+		summarizeBy: none
+		sourceColumn: Produto
+
+		annotation SummarizationSetBy = Automatic
+
+	column WorkbookID
+		dataType: string
+		isHidden
+		lineageTag: fe442685-7c21-5827-8337-5b2ea190b36a
+		summarizeBy: none
+		sourceColumn: WorkbookID
+
+		annotation SummarizationSetBy = Automatic
+
+	column VersaoContrato
+		dataType: string
+		isHidden
+		lineageTag: 316cdcd6-357d-544c-b0ad-a1f53e2bad8d
+		summarizeBy: none
+		sourceColumn: VersaoContrato
+
+		annotation SummarizationSetBy = Automatic
+
+	column AtualizadoEmUTC
+		dataType: string
+		isHidden
+		lineageTag: d2af00fa-5a0d-541a-a2b9-bedc83576dc5
+		summarizeBy: none
+		sourceColumn: AtualizadoEmUTC
+
+		annotation SummarizationSetBy = Automatic
+
+	column FonteArquivo
+		dataType: string
+		isHidden
+		lineageTag: bc2e47b7-59f6-5756-839d-911c0b0717fa
+		summarizeBy: none
+		sourceColumn: FonteArquivo
+
+		annotation SummarizationSetBy = Automatic
+
+	column ID_Result_Global
+		dataType: string
+		isHidden
+		lineageTag: 07baf442-8f2f-5505-8be4-38bb2e0595b9
+		summarizeBy: none
+		sourceColumn: ID_Result_Global
+
+		annotation SummarizationSetBy = Automatic
+
+	column ID_Corrida_Global
+		dataType: string
+		isHidden
+		lineageTag: eef71d41-5ec8-5163-b97c-36b6ff4d8a59
+		summarizeBy: none
+		sourceColumn: ID_Corrida_Global
+
+		annotation SummarizationSetBy = Automatic
+
+	column ID_Lote_Global
+		dataType: string
+		isHidden
+		lineageTag: ff97b68f-c0c4-5f0a-b002-2f074c67f1f5
+		summarizeBy: none
+		sourceColumn: ID_Lote_Global
+
+		annotation SummarizationSetBy = Automatic
+
+	column ID_Analito_Global
+		dataType: string
+		isHidden
+		lineageTag: 7d911a1c-8e7c-50e1-9341-7b57f07ece6f
+		summarizeBy: none
+		sourceColumn: ID_Analito_Global
+
+		annotation SummarizationSetBy = Automatic
+
+	column N_Observado
+		dataType: int64
+		lineageTag: 66b21ded-9738-5392-ac57-87e2abddeba1
+		summarizeBy: none
+		sourceColumn: N_Observado
+
+		annotation SummarizationSetBy = Automatic
+
+	column Media_Observada
+		dataType: double
+		lineageTag: 86cb7d1a-1a53-52df-9572-60c70b0ffa8e
+		summarizeBy: none
+		sourceColumn: Media_Observada
+
+		annotation SummarizationSetBy = Automatic
+
+	column DP_Observado
+		dataType: double
+		lineageTag: d351c5ed-c41a-50da-b53a-332a493be2f7
+		summarizeBy: none
+		sourceColumn: DP_Observado
+
+		annotation SummarizationSetBy = Automatic
+
+	column CV_Observado_pct
+		dataType: double
+		lineageTag: 6dcaba8e-6797-59d1-8f95-a80a8d29bb3b
+		summarizeBy: none
+		sourceColumn: CV_Observado_pct
+
+		annotation SummarizationSetBy = Automatic
+
+	column Bias_Observado_pct
+		dataType: double
+		lineageTag: b72d9b55-cd5a-5f00-82ac-4bccdacbc869
+		summarizeBy: none
+		sourceColumn: Bias_Observado_pct
+
+		annotation SummarizationSetBy = Automatic
+
+	column ET_Observado_pct
+		dataType: double
+		lineageTag: 0155143d-c683-529e-b5d1-a575280f0353
+		summarizeBy: none
+		sourceColumn: ET_Observado_pct
+
+		annotation SummarizationSetBy = Automatic
+
+	column Sigma_Obs
+		dataType: double
+		isHidden
+		lineageTag: ed4c0f4a-5bc5-5355-9e64-5b4aa85c203e
+		summarizeBy: none
+		sourceColumn: Sigma
+
+		annotation SummarizationSetBy = Automatic
+
+	column Fonte_Especificacao
+		dataType: string
+		lineageTag: ba81daae-4d32-5952-b7f0-089bcb03bdb2
+		summarizeBy: none
+		sourceColumn: Fonte_Especificacao
+
+		annotation SummarizationSetBy = Automatic
+
+	column ID_Especificacao
+		dataType: string
+		isHidden
+		lineageTag: 5362510d-39c4-5f71-a259-2920d8ee56a1
+		summarizeBy: none
+		sourceColumn: ID_Especificacao
+
+		annotation SummarizationSetBy = Automatic
+
+	column Vigencia_Inicio
+		dataType: string
+		isHidden
+		lineageTag: 06640c62-0149-5379-8c1a-5b8196f88a49
+		summarizeBy: none
+		sourceColumn: Vigencia_Inicio
+
+		annotation SummarizationSetBy = Automatic
+
+	column Vigencia_Fim
+		dataType: string
+		isHidden
+		lineageTag: 6d5aac14-bc78-5349-919b-0c338df12899
+		summarizeBy: none
+		sourceColumn: Vigencia_Fim
+
+		annotation SummarizationSetBy = Automatic
+
+	column Situacao_Especificacao
+		dataType: string
+		lineageTag: abb71fea-d5f7-5f18-a6f1-612b5968bb49
+		summarizeBy: none
+		sourceColumn: Situacao_Especificacao
+
+		annotation SummarizationSetBy = Automatic
+
+	column Usuario_Atualizacao
+		dataType: string
+		isHidden
+		lineageTag: b2abb70f-9f7e-542f-b953-7cc029d7fc10
+		summarizeBy: none
+		sourceColumn: Usuario_Atualizacao
+
+		annotation SummarizationSetBy = Automatic
+
+	column Tipo_Evento
+		dataType: string
+		isHidden
+		lineageTag: c091be95-fe64-5bce-b309-71ea20ce4803
+		summarizeBy: none
+		sourceColumn: Tipo_Evento
+
+		annotation SummarizationSetBy = Automatic
+
+	column Nivel_Rotulo
+		dataType: string
+		lineageTag: 36d63f6f-7c63-5d5a-a631-66ce5c9ce78e
+		summarizeBy: none
+		sourceColumn: Nivel_Rotulo
+
+		annotation SummarizationSetBy = Automatic
+
+	column Especificacao_Efetiva
+		dataType: string
+		lineageTag: 09f1788b-990d-5f9d-ad9c-ae74d6f009a7
+		summarizeBy: none
+		sourceColumn: Especificacao_Efetiva
+
+		annotation SummarizationSetBy = Automatic
+
+	column Faixa_Sigma =
+		SWITCH ( TRUE (), ISBLANK ( Fato_QC[Sigma_Obs] ), "Sem meta", Fato_QC[Sigma_Obs] < 3, "< 3", Fato_QC[Sigma_Obs] < 4, "3 a <4", Fato_QC[Sigma_Obs] < 5, "4 a <5", Fato_QC[Sigma_Obs] < 6, "5 a <6", ">= 6" )
+		dataType: string
+		lineageTag: 117fec81-848f-50d4-967d-1ddc4cba800b
+		summarizeBy: none
+		sortByColumn: Faixa_Sigma_Ordem
+
+		annotation SummarizationSetBy = Automatic
+
+	column Faixa_Sigma_Ordem =
+		SWITCH ( TRUE (), ISBLANK ( Fato_QC[Sigma_Obs] ), 9, Fato_QC[Sigma_Obs] < 3, 1, Fato_QC[Sigma_Obs] < 4, 2, Fato_QC[Sigma_Obs] < 5, 3, Fato_QC[Sigma_Obs] < 6, 4, 5 )
+		dataType: int64
+		isHidden
+		lineageTag: 573a27bb-fc6e-500a-940f-d6d2c768ed76
+		summarizeBy: none
+
+		annotation SummarizationSetBy = Automatic
+
+	measure 'n Resultados' =
+			COUNTROWS ( Fato_QC )
+
+		formatString: #,0
+		lineageTag: 85cfa1f9-f370-556d-aa41-6e7feb4ac679
+		displayFolder: 01 Contagens
+
+		annotation PBI_FormatHint = {}
+
+	measure 'n Corridas' =
+			DISTINCTCOUNT ( Fato_QC[ID_Corrida] )
+
+		formatString: #,0
+		lineageTag: 8441db2e-f872-540e-9e13-1ce3d40ba3c2
+		displayFolder: 01 Contagens
+
+		annotation PBI_FormatHint = {}
+
+	measure 'n Analitos' =
+			DISTINCTCOUNT ( Fato_QC[ID_Analito] )
+
+		formatString: #,0
+		lineageTag: d348e9cd-38d8-5c02-a9e4-ef4a98dc3c8d
+		displayFolder: 01 Contagens
+
+		annotation PBI_FormatHint = {}
+
+	measure 'n Lotes' =
+			DISTINCTCOUNT ( Fato_QC[ID_Lote] )
+
+		formatString: #,0
+		lineageTag: c33cfc64-86b9-568e-bc0e-f2393ab0598b
+		displayFolder: 01 Contagens
+
+		annotation PBI_FormatHint = {}
+
+	measure 'N Observado' =
+			SUMX (
+			    SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    CALCULATE ( MAX ( Fato_QC[N_Observado] ) )
+			)
+
+		formatString: #,0
+		lineageTag: b5df78ca-e2ea-5620-b2dd-f7fb644782fa
+		displayFolder: 01 Contagens
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Media Alvo' =
+			AVERAGE ( Fato_QC[Media_Alvo] )
+
+		formatString: #,0.000
+		lineageTag: 81898312-51e8-5ce8-8111-96f497faae3f
+		displayFolder: 02 Descritiva
+
+		annotation PBI_FormatHint = {}
+
+	measure 'DP Alvo' =
+			AVERAGE ( Fato_QC[DP_Alvo] )
+
+		formatString: #,0.000
+		lineageTag: 3df341e5-4908-5305-993b-86be02f4ac61
+		displayFolder: 02 Descritiva
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Ultimo Resultado' =
+			VAR ultRun = MAX ( Fato_QC[RUN] )
+			RETURN CALCULATE ( AVERAGE ( Fato_QC[Resultado] ), Fato_QC[RUN] = ultRun )
+
+		formatString: #,0.000
+		lineageTag: 20924f38-6c7b-5626-a234-b0708d4e4899
+		displayFolder: 02 Descritiva
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Z Score Atual' =
+			VAR ultRun = MAX ( Fato_QC[RUN] )
+			RETURN CALCULATE ( AVERAGE ( Fato_QC[Z] ), Fato_QC[RUN] = ultRun )
+
+		formatString: #,0.00
+		lineageTag: 72c1db2f-f737-5b98-85c4-749700ab057c
+		displayFolder: 02 Descritiva
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Media Observada' =
+			AVERAGEX (
+			    SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    CALCULATE ( AVERAGE ( Fato_QC[Media_Observada] ) )
+			)
+
+		formatString: #,0.000
+		lineageTag: 2a759d26-efc1-573e-a0eb-a3f09a299d02
+		displayFolder: 02 Descritiva
+
+		annotation PBI_FormatHint = {}
+
+	measure 'DP Observado' =
+			AVERAGEX (
+			    SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    CALCULATE ( AVERAGE ( Fato_QC[DP_Observado] ) )
+			)
+
+		formatString: #,0.0000
+		lineageTag: 31a46a8d-c15e-5469-8c80-e9e58444ee84
+		displayFolder: 02 Descritiva
+
+		annotation PBI_FormatHint = {}
+
+	measure 'CV Observado %' =
+			AVERAGEX (
+			    SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    CALCULATE ( AVERAGE ( Fato_QC[CV_Observado_pct] ) )
+			)
+
+		formatString: #,0.00
+		lineageTag: dab83875-a4f0-5859-b0a1-dadf781c4846
+		displayFolder: 02 Descritiva
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Bias Observado %' =
+			AVERAGEX (
+			    SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    CALCULATE ( AVERAGE ( Fato_QC[Bias_Observado_pct] ) )
+			)
+
+		formatString: #,0.00
+		lineageTag: f65f005c-8c79-591b-9e48-d8365ed91363
+		displayFolder: 02 Descritiva
+
+		annotation PBI_FormatHint = {}
+
+	measure 'ET Observado %' =
+			AVERAGEX (
+			    SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    CALCULATE ( AVERAGE ( Fato_QC[ET_Observado_pct] ) )
+			)
+
+		formatString: #,0.00
+		lineageTag: 26bc747f-8bea-5eb1-b3a5-c58f0a0ddcac
+		displayFolder: 02 Descritiva
+
+		annotation PBI_FormatHint = {}
+
+	measure Sigma =
+			AVERAGEX (
+			    SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    CALCULATE ( AVERAGE ( Fato_QC[Sigma_Obs] ) )
+			)
+
+		formatString: #,0.00
+		lineageTag: 486daa3a-10ef-5cab-a07c-79777c7af182
+		displayFolder: 02 Descritiva
+
+		annotation PBI_FormatHint = {}
+
+	measure 'CVtp %' =
+			AVERAGEX (
+			    SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    CALCULATE ( AVERAGE ( Fato_QC[CVtp_pct] ) )
+			)
+
+		formatString: #,0.00
+		lineageTag: ff0c075c-eb0c-5e11-a7b1-f396e906e7cd
+		displayFolder: 03 Especificacao
+
+		annotation PBI_FormatHint = {}
+
+	measure 'BIAStp %' =
+			AVERAGEX (
+			    SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    CALCULATE ( AVERAGE ( Fato_QC[BIAStp_pct] ) )
+			)
+
+		formatString: #,0.00
+		lineageTag: 19ae9f38-29f4-5e64-a92a-dd18ac8ab3a0
+		displayFolder: 03 Especificacao
+
+		annotation PBI_FormatHint = {}
+
+	measure 'ETp %' =
+			AVERAGEX (
+			    SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    CALCULATE ( AVERAGE ( Fato_QC[ETp_pct] ) )
+			)
+
+		formatString: #,0.00
+		lineageTag: 8eb87c28-ece5-5067-a5b6-7b397c30b768
+		displayFolder: 03 Especificacao
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Status CV' =
+			VAR lim = [CVtp %]
+			VAR obs = [CV Observado %]
+			RETURN SWITCH ( TRUE (), ISBLANK ( obs ), "Sem dado", ISBLANK ( lim ), "Sem meta", obs <= lim * 0.8, "Conforme", obs <= lim, "Proximo ao limite", "Nao conforme" )
+
+		lineageTag: 5bb62826-ef97-53d4-893f-a5b3def74583
+		displayFolder: 04 Conformidade
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Status Bias' =
+			VAR lim = [BIAStp %]
+			VAR obs = ABS ( [Bias Observado %] )
+			RETURN SWITCH ( TRUE (), ISBLANK ( obs ), "Sem dado", ISBLANK ( lim ), "Sem meta", obs <= lim * 0.8, "Conforme", obs <= lim, "Proximo ao limite", "Nao conforme" )
+
+		lineageTag: 18531fb4-abe6-5c90-9e1d-880b889798d9
+		displayFolder: 04 Conformidade
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Status ET' =
+			VAR lim = [ETp %]
+			VAR obs = [ET Observado %]
+			RETURN SWITCH ( TRUE (), ISBLANK ( obs ), "Sem dado", ISBLANK ( lim ), "Sem meta", obs <= lim * 0.8, "Conforme", obs <= lim, "Proximo ao limite", "Nao conforme" )
+
+		lineageTag: 58f33fb5-0c08-59bc-be37-572d5ea4f452
+		displayFolder: 04 Conformidade
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Folga ET %' =
+			VAR lim = [ETp %]
+			VAR obs = [ET Observado %]
+			RETURN IF ( NOT ISBLANK ( lim ) && NOT ISBLANK ( obs ), lim - obs )
+
+		formatString: #,0.00
+		lineageTag: e2c05f19-6d50-523c-a65f-8206ee77eee1
+		displayFolder: 04 Conformidade
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Grupos com Meta' =
+			COUNTROWS ( FILTER ( SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ), NOT ISBLANK ( CALCULATE ( AVERAGE ( Fato_QC[ETp_pct] ) ) ) ) )
+
+		formatString: #,0
+		lineageTag: fb5c748c-b896-5d6c-9f22-b98714c6bec3
+		displayFolder: 04 Conformidade
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Grupos ET Nao Conforme' =
+			COUNTROWS ( FILTER ( SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    VAR l = CALCULATE ( AVERAGE ( Fato_QC[ETp_pct] ) )
+			    VAR o = CALCULATE ( AVERAGE ( Fato_QC[ET_Observado_pct] ) )
+			    RETURN NOT ISBLANK ( l ) && NOT ISBLANK ( o ) && o > l ) )
+
+		formatString: #,0
+		lineageTag: b0fe07cb-a288-57d7-966e-43e8d14ee10b
+		displayFolder: 04 Conformidade
+
+		annotation PBI_FormatHint = {}
+
+	measure '% Grupos ET Conforme' =
+			VAR com = [Grupos com Meta]
+			VAR nc = [Grupos ET Nao Conforme]
+			RETURN IF ( com > 0, DIVIDE ( com - nc, com ) * 100 )
+
+		formatString: #,0.0
+		lineageTag: b3929dd4-978b-5e5d-aad3-43acddb870c6
+		displayFolder: 04 Conformidade
+
+		annotation PBI_FormatHint = {}
+
+	measure 'n Rejeitados' =
+			CALCULATE ( COUNTROWS ( Fato_QC ), Fato_QC[Veredito] = "REJEITADO" )
+
+		formatString: #,0
+		lineageTag: 5f5e3d73-8b71-54b6-84be-42df2d05ddbc
+		displayFolder: 05 Westgard
+
+		annotation PBI_FormatHint = {}
+
+	measure 'n Aceitos' =
+			CALCULATE ( COUNTROWS ( Fato_QC ), Fato_QC[Veredito] = "OK" )
+
+		formatString: #,0
+		lineageTag: 25d1eec7-126b-534f-9a32-a82044f4f88d
+		displayFolder: 05 Westgard
+
+		annotation PBI_FormatHint = {}
+
+	measure '% Aceitaveis' =
+			VAR n = [n Resultados]
+			RETURN IF ( n > 0, DIVIDE ( n - [n Rejeitados], n ) * 100 )
+
+		formatString: #,0.0
+		lineageTag: e8acab9c-ae7b-531d-9620-5a5429dae844
+		displayFolder: 05 Westgard
+
+		annotation PBI_FormatHint = {}
+
+	measure '% Fora de Controle' =
+			IF ( [n Resultados] > 0, 100 - [% Aceitaveis] )
+
+		formatString: #,0.0
+		lineageTag: 85c43b3a-cb58-5994-8caf-bc6e0f3b529e
+		displayFolder: 05 Westgard
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Viol 1_3s' =
+			SUM ( Fato_QC[W_1_3s] )
+
+		formatString: #,0
+		lineageTag: 6ceb82cd-5c52-5be2-b02e-a8253673769b
+		displayFolder: 05 Westgard
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Viol 2_2s' =
+			SUM ( Fato_QC[W_2_2s] )
+
+		formatString: #,0
+		lineageTag: 0335410c-9d16-5728-b6ed-8e3959b11605
+		displayFolder: 05 Westgard
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Viol R_4s' =
+			SUM ( Fato_QC[W_R_4s] )
+
+		formatString: #,0
+		lineageTag: 2c570159-f501-556c-b904-9681977eb1a3
+		displayFolder: 05 Westgard
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Viol 4_1s' =
+			SUM ( Fato_QC[W_4_1s] )
+
+		formatString: #,0
+		lineageTag: 08e8278f-bd16-58b4-9b5a-a5681bf96754
+		displayFolder: 05 Westgard
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Viol 10x' =
+			SUM ( Fato_QC[W_10x] )
+
+		formatString: #,0
+		lineageTag: 81e612e5-916b-5277-8711-e768b9528261
+		displayFolder: 05 Westgard
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Viol Total' =
+			[Viol 1_3s] + [Viol 2_2s] + [Viol R_4s] + [Viol 4_1s] + [Viol 10x]
+
+		formatString: #,0
+		lineageTag: 2ac2af45-812f-58f8-b2e6-d28fd925501b
+		displayFolder: 05 Westgard
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Alertas 1_2s' =
+			SUM ( Fato_QC[A_1_2s] )
+
+		formatString: #,0
+		lineageTag: c979a4a0-24a4-5428-9a81-63c42fd90eb6
+		displayFolder: 05 Westgard
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Analitos Criticos' =
+			CALCULATE ( DISTINCTCOUNT ( Fato_QC[ID_Analito] ), Fato_QC[Veredito] = "REJEITADO" )
+
+		formatString: #,0
+		lineageTag: d940cd87-c68c-589c-9408-369b0448dfd9
+		displayFolder: 05 Westgard
+
+		annotation PBI_FormatHint = {}
+
+	measure 'LJ Media' =
+			AVERAGE ( Fato_QC[Media_Alvo] )
+
+		formatString: #,0.000
+		lineageTag: 98ad7a4e-91c7-5fa3-ad77-abb86e6dcc31
+		displayFolder: 06 Levey-Jennings
+
+		annotation PBI_FormatHint = {}
+
+	measure 'LJ +1s' =
+			AVERAGE ( Fato_QC[Lim_p1s] )
+
+		formatString: #,0.000
+		lineageTag: 47600f08-dd2a-5a95-9e41-53e74451d946
+		displayFolder: 06 Levey-Jennings
+
+		annotation PBI_FormatHint = {}
+
+	measure 'LJ +2s' =
+			AVERAGE ( Fato_QC[Lim_p2s] )
+
+		formatString: #,0.000
+		lineageTag: 41c1e618-dfaf-5d60-a988-53a1ad99c016
+		displayFolder: 06 Levey-Jennings
+
+		annotation PBI_FormatHint = {}
+
+	measure 'LJ +3s' =
+			AVERAGE ( Fato_QC[Lim_p3s] )
+
+		formatString: #,0.000
+		lineageTag: b6379821-39d5-577c-85b0-f0f5d79aa6a5
+		displayFolder: 06 Levey-Jennings
+
+		annotation PBI_FormatHint = {}
+
+	measure 'LJ -1s' =
+			AVERAGE ( Fato_QC[Lim_m1s] )
+
+		formatString: #,0.000
+		lineageTag: 88c83cc8-5b77-5ae2-b94c-b2b026a2875f
+		displayFolder: 06 Levey-Jennings
+
+		annotation PBI_FormatHint = {}
+
+	measure 'LJ -2s' =
+			AVERAGE ( Fato_QC[Lim_m2s] )
+
+		formatString: #,0.000
+		lineageTag: c6187de5-8c8c-5ffb-b902-00d0818c3bbe
+		displayFolder: 06 Levey-Jennings
+
+		annotation PBI_FormatHint = {}
+
+	measure 'LJ -3s' =
+			AVERAGE ( Fato_QC[Lim_m3s] )
+
+		formatString: #,0.000
+		lineageTag: 85f6e6b4-5ad8-56c2-9be4-fe394d7e06d0
+		displayFolder: 06 Levey-Jennings
+
+		annotation PBI_FormatHint = {}
+
+	measure 'LJ Resultado' =
+			AVERAGE ( Fato_QC[Resultado] )
+
+		formatString: #,0.000
+		lineageTag: dd473be2-be01-50dc-b9ac-4cc3face4ff5
+		displayFolder: 06 Levey-Jennings
+
+		annotation PBI_FormatHint = {}
+
+	measure 'LJ Valido' =
+			IF ( HASONEVALUE ( Dim_Analito[ID_Analito] ) && HASONEVALUE ( Dim_Nivel[Nivel] ) && HASONEVALUE ( Dim_Lote[ID_Lote] ), 1, 0 )
+
+		formatString: 0
+		lineageTag: a55020ca-1e38-54d0-abb8-638adb9d0794
+		displayFolder: 06 Levey-Jennings
+
+		annotation PBI_FormatHint = {}
+
+	measure 'LJ Aviso' =
+			IF ( [LJ Valido] = 0, "Selecione UM analito, UM nivel e UM lote para ver o Levey-Jennings." )
+
+		lineageTag: ac1be95a-bc79-5415-8fab-18ff0ce59e2a
+		displayFolder: 06 Levey-Jennings
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Deslocamento vs Alvo (SD)' =
+			VAR d = [Media Observada] - [Media Alvo]
+			VAR sd = AVERAGE ( Fato_QC[DP_Alvo] )
+			RETURN IF ( sd > 0, DIVIDE ( d, sd ) )
+
+		formatString: #,0.00
+		lineageTag: 30c9398f-b271-568d-a59c-6cc88b9a11ad
+		displayFolder: 07 Tendencia
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Media Movel 7 Corridas' =
+			VAR corridaAtual = SELECTEDVALUE ( Fato_QC[RUN] )
+			RETURN CALCULATE ( AVERAGE ( Fato_QC[Resultado] ), FILTER ( ALLSELECTED ( Fato_QC ), Fato_QC[RUN] <= corridaAtual && Fato_QC[RUN] > corridaAtual - 7 ) )
+
+		formatString: #,0.000
+		lineageTag: 400d1996-5708-5e3f-9085-abeaf4a0a0b9
+		displayFolder: 07 Tendencia
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Data Mais Recente' =
+			MAX ( Fato_QC[Data] )
+
+		lineageTag: 24a2374a-bc2e-597f-a90e-80641978855b
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'n Hoje' =
+			CALCULATE ( [n Resultados], Fato_QC[Data] = [Data Mais Recente] )
+
+		formatString: #,0
+		lineageTag: 4f725374-c1ef-5e08-bd9f-b97c23dfc0e8
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Rejeitados Hoje' =
+			CALCULATE ( [n Rejeitados], Fato_QC[Data] = [Data Mais Recente] )
+
+		formatString: #,0
+		lineageTag: 6e341841-4666-59c8-b115-bb80a2fcab35
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Grupos Sem Meta' =
+			COUNTROWS ( FILTER ( SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ), ISBLANK ( CALCULATE ( AVERAGE ( Fato_QC[ETp_pct] ) ) ) ) )
+
+		formatString: #,0
+		lineageTag: a1618b4e-68ac-5364-ab4a-2eae9c4ce13a
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Status Global' =
+			VAR s = [Sigma]
+			VAR fora = [% Fora de Controle]
+			RETURN SWITCH ( TRUE (),
+			    ISBLANK ( [n Resultados] ), "SEM DADOS",
+			    ISBLANK ( s ), "SEM META",
+			    s < 3 || fora > 5, "FORA DE CONTROLE",
+			    s < 4 || fora > 2, "ATENCAO",
+			    "SOB CONTROLE" )
+
+		lineageTag: 3515fcc6-0ec1-5e75-a38a-a41a940973a8
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Cor Status Global' =
+			SWITCH ( [Status Global], "FORA DE CONTROLE", "#C0392B", "ATENCAO", "#D68910", "SOB CONTROLE", "#1E8449", "#7F8C8D" )
+
+		lineageTag: 45eb41c7-b9c3-56fa-bf75-ca2f2cba3517
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Periodo Analisado' =
+			VAR a = MIN ( Fato_QC[Data] )
+			VAR b = MAX ( Fato_QC[Data] )
+			RETURN IF ( NOT ISBLANK ( a ), FORMAT ( a, "dd/mm/yyyy" ) & "  ate  " & FORMAT ( b, "dd/mm/yyyy" ) )
+
+		lineageTag: d9ec3aaf-a9bb-5dde-a16c-411768d526af
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Atualizado Em' =
+			VAR t = MAX ( Fato_QC[AtualizadoEmUTC] )
+			RETURN IF ( NOT ISBLANK ( t ), "Dados do QC_INI de " & t & " (UTC)" )
+
+		lineageTag: 63575701-4e77-50be-86a9-8845d94c0f88
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Veredito Atual' =
+			VAR ultRun = MAX ( Fato_QC[RUN] )
+			RETURN CALCULATE ( CONCATENATEX ( VALUES ( Fato_QC[Veredito] ), Fato_QC[Veredito], " / " ), Fato_QC[RUN] = ultRun )
+
+		lineageTag: bdf5c262-9026-5a84-a875-772c8365db4b
+		displayFolder: 02 Descritiva
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Situacao da Especificacao' =
+			VAR n = DISTINCTCOUNT ( Fato_QC[Situacao_Especificacao] )
+			RETURN IF ( n = 1, SELECTEDVALUE ( Fato_QC[Situacao_Especificacao] ), FORMAT ( n, "0" ) & " situações" )
+
+		lineageTag: 8d30c275-c1ec-5af0-bbcc-481428d51123
+		displayFolder: 03 Especificacao
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Especificacao em Uso' =
+			VAR n = DISTINCTCOUNT ( Fato_QC[Especificacao_Efetiva] )
+			RETURN IF ( n = 1, SELECTEDVALUE ( Fato_QC[Especificacao_Efetiva] ), FORMAT ( n, "0" ) & " fontes" )
+
+		lineageTag: 52be0e75-3e68-5f99-8266-935b60f61380
+		displayFolder: 03 Especificacao
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Grupos Sigma < 3' =
+			COUNTROWS ( FILTER ( SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    VAR s = CALCULATE ( AVERAGE ( Fato_QC[Sigma_Obs] ) )
+			    RETURN NOT ISBLANK ( s ) && s < 3 ) )
+
+		formatString: #,0
+		lineageTag: 1144519a-e9c4-521f-832f-0c742e6ab851
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Grupos Sigma 3 a 4' =
+			COUNTROWS ( FILTER ( SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    VAR s = CALCULATE ( AVERAGE ( Fato_QC[Sigma_Obs] ) )
+			    RETURN NOT ISBLANK ( s ) && s >= 3 && s < 4 ) )
+
+		formatString: #,0
+		lineageTag: f94d192c-1829-53dc-a49e-369ec739fefb
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Grupos Sigma >= 6' =
+			COUNTROWS ( FILTER ( SUMMARIZE ( Fato_QC, Fato_QC[ID_Analito], Fato_QC[Nivel], Fato_QC[ID_Lote] ),
+			    VAR s = CALCULATE ( AVERAGE ( Fato_QC[Sigma_Obs] ) )
+			    RETURN NOT ISBLANK ( s ) && s >= 6 ) )
+
+		formatString: #,0
+		lineageTag: 891b9e44-8a1f-5468-8e15-7510e834f67f
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {}
+
+	measure 'Pior CV' =
+			VAR t = FILTER (
+			    SUMMARIZE ( Fato_QC, Fato_QC[Analito], Fato_QC[Nivel] ),
+			    NOT ISBLANK ( CALCULATE ( AVERAGE ( Fato_QC[CV_Observado_pct] ) ) ) )
+			VAR alvo = TOPN ( 1, t, CALCULATE ( AVERAGE ( Fato_QC[CV_Observado_pct] ) ), DESC )
+			RETURN CONCATENATEX ( alvo, Fato_QC[Analito] & "  N" & Fato_QC[Nivel], ", " )
+
+		lineageTag: 10317195-6714-55ec-b688-f36de0194132
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Pior Bias' =
+			VAR t = FILTER (
+			    SUMMARIZE ( Fato_QC, Fato_QC[Analito], Fato_QC[Nivel] ),
+			    NOT ISBLANK ( CALCULATE ( AVERAGE ( Fato_QC[Bias_Observado_pct] ) ) ) )
+			VAR alvo = TOPN ( 1, t, CALCULATE ( AVERAGE ( Fato_QC[Bias_Observado_pct] ) ), DESC )
+			RETURN CONCATENATEX ( alvo, Fato_QC[Analito] & "  N" & Fato_QC[Nivel], ", " )
+
+		lineageTag: 1f7a7c17-5dff-523f-9736-1aa756812bd8
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Pior ET' =
+			VAR t = FILTER (
+			    SUMMARIZE ( Fato_QC, Fato_QC[Analito], Fato_QC[Nivel] ),
+			    NOT ISBLANK ( CALCULATE ( AVERAGE ( Fato_QC[ET_Observado_pct] ) ) ) )
+			VAR alvo = TOPN ( 1, t, CALCULATE ( AVERAGE ( Fato_QC[ET_Observado_pct] ) ), DESC )
+			RETURN CONCATENATEX ( alvo, Fato_QC[Analito] & "  N" & Fato_QC[Nivel], ", " )
+
+		lineageTag: 4094c276-19d6-5076-b74f-3928cc2a7b21
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Pior Sigma' =
+			VAR t = FILTER (
+			    SUMMARIZE ( Fato_QC, Fato_QC[Analito], Fato_QC[Nivel] ),
+			    NOT ISBLANK ( CALCULATE ( AVERAGE ( Fato_QC[Sigma_Obs] ) ) ) )
+			VAR alvo = TOPN ( 1, t, CALCULATE ( AVERAGE ( Fato_QC[Sigma_Obs] ) ), ASC )
+			RETURN CONCATENATEX ( alvo, Fato_QC[Analito] & "  N" & Fato_QC[Nivel], ", " )
+
+		lineageTag: b20b8de4-158c-51de-a41b-69ffd86c755f
+		displayFolder: 08 Executivo
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Cor Status CV' =
+			SWITCH ( [Status CV], "Conforme", "#1E8449", "Proximo ao limite", "#D68910", "Nao conforme", "#C0392B", "#595959" )
+
+		lineageTag: 50aa67bf-47f9-5242-8b07-a4011ed4f122
+		displayFolder: 09 Cores
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Cor Status Bias' =
+			SWITCH ( [Status Bias], "Conforme", "#1E8449", "Proximo ao limite", "#D68910", "Nao conforme", "#C0392B", "#595959" )
+
+		lineageTag: 147353e7-9c2e-5b21-8592-1af0c2edeecf
+		displayFolder: 09 Cores
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Cor Status ET' =
+			SWITCH ( [Status ET], "Conforme", "#1E8449", "Proximo ao limite", "#D68910", "Nao conforme", "#C0392B", "#595959" )
+
+		lineageTag: 22dc8c52-09e8-5f51-bc1c-02fdbd5cfd03
+		displayFolder: 09 Cores
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Cor Sigma' =
+			VAR s = [Sigma]
+			RETURN SWITCH ( TRUE (), ISBLANK ( s ), "#595959", s < 3, "#C0392B", s < 4, "#D68910", "#1E8449" )
+
+		lineageTag: e7546060-a9d7-53c7-8eda-241740c1803f
+		displayFolder: 09 Cores
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Cor Veredito' =
+			IF ( [n Rejeitados] > 0, "#C0392B", "#1E8449" )
+
+		lineageTag: b473006a-2e9f-5487-9a9f-47e74600a829
+		displayFolder: 09 Cores
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition Fato_QC = m
+		mode: import
+		source =
+				let
+				    Fonte = Excel.Workbook(File.Contents(pCaminhoQC), null, true),
+				    // Le o ListObject PELO NOME, nunca por faixa de celulas: e o que permite
+				    // o banco crescer sem tocar na consulta. A aba BI_Data e xlVeryHidden --
+				    // isso nao esconde a tabela do Excel.Workbook, que enxerga o arquivo em
+				    // disco e nao a janela do Excel.
+				    Tabela = Fonte{[Item="tblBI_Fato", Kind="Table"]}[Data],
+				    Tipada = Table.TransformColumnTypes(Tabela, {
+				        {"ID_Result", type text}, {"ID_Corrida", type text},
+				        {"Data", type date}, {"Ano", Int64.Type}, {"Mes", Int64.Type},
+				        {"Trimestre", Int64.Type}, {"Competencia", type text},
+				        {"ID_Analito", type text}, {"Analito", type text},
+				        {"Area", type text}, {"Unidade", type text}, {"ID_Lote", type text},
+				        {"Lote", type text}, {"Nivel", Int64.Type}, {"RUN", Int64.Type},
+				        {"Resultado", type number}, {"Status", type text},
+				        {"Ativo", Int64.Type}, {"Media_Alvo", type number},
+				        {"DP_Alvo", type number}, {"Z", type number},
+				        {"Lim_m3s", type number}, {"Lim_m2s", type number},
+				        {"Lim_m1s", type number}, {"Lim_p1s", type number},
+				        {"Lim_p2s", type number}, {"Lim_p3s", type number},
+				        {"CVtp_pct", type number}, {"BIAStp_pct", type number},
+				        {"ETp_pct", type number}, {"W_1_3s", Int64.Type},
+				        {"W_2_2s", Int64.Type}, {"W_R_4s", Int64.Type},
+				        {"W_4_1s", Int64.Type}, {"W_10x", Int64.Type},
+				        {"A_1_2s", Int64.Type}, {"Veredito", type text},
+				        {"Produto", type text}, {"WorkbookID", type text},
+				        {"VersaoContrato", type text}, {"FonteArquivo", type text},
+				        {"ID_Result_Global", type text}, {"ID_Corrida_Global", type text},
+				        {"ID_Lote_Global", type text}, {"ID_Analito_Global", type text},
+				        {"N_Observado", Int64.Type}, {"Media_Observada", type number},
+				        {"DP_Observado", type number}, {"CV_Observado_pct", type number},
+				        {"Bias_Observado_pct", type number},
+				        {"ET_Observado_pct", type number}, {"Sigma", type number},
+				        {"Fonte_Especificacao", type text}, {"ID_Especificacao", type text},
+				        {"Situacao_Especificacao", type text},
+				        {"Usuario_Atualizacao", type text}, {"Tipo_Evento", type text}
+				    }),
+				    // Exclusao logica e decisao do laboratorio, com trilha de auditoria.
+				    // O BI a respeita; nao a revisita.
+				    Ativos = Table.SelectRows(Tipada, each [Ativo] = 1),
+				    // O motor grava Area em duas grafias ("Bioquimica" e "Bioquimica" com
+				    // acento), o que produziria dois itens identicos no filtro. Normaliza na
+				    // camada de apresentacao -- o motor nao se altera por causa de visual.
+				    AreaNorm = Table.TransformColumns(Ativos, {{"Area", each
+				        if _ = null then null
+				        else if Text.Contains(_, "Bioquimica") then "Bioquímica"
+				        else _, type text}}),
+				    // Nivel como rotulo: em visual, o numero 1 vira medida e o Power BI
+				    // tenta soma-lo.
+				    ComRotulo = Table.AddColumn(AreaNorm, "Nivel_Rotulo",
+				        each "N" & Text.From([Nivel]), type text),
+				    // Fonte_Especificacao vem preenchida mesmo onde Situacao e NAO
+				    // CADASTRADA. Exibi-la assim afirmaria um criterio de qualidade que nao
+				    // existe -- ausencia de meta nunca e aprovacao (ADR-023).
+				    ComEspec = Table.AddColumn(ComRotulo, "Especificacao_Efetiva", each
+				        if [Situacao_Especificacao] = "CADASTRADA"
+				        then [Fonte_Especificacao] else "Sem meta", type text)
+				in
+				    ComEspec
+
+	annotation PBI_ResultType = Table

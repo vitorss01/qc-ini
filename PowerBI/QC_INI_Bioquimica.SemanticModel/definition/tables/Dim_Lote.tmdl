@@ -1,0 +1,34 @@
+table Dim_Lote
+	lineageTag: 97dfd4be-8a6e-59f1-89d2-e92fe6ddbce8
+
+	column ID_Lote
+		dataType: string
+		isHidden
+		lineageTag: 613a719a-646c-562b-96e3-e34e14919971
+		summarizeBy: none
+		sourceColumn: ID_Lote
+
+		annotation SummarizationSetBy = Automatic
+
+	column Lote
+		dataType: string
+		lineageTag: 5bb45182-1213-54da-ac7a-6d503899aa78
+		summarizeBy: none
+		sourceColumn: Lote
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Dim_Lote = m
+		mode: import
+		source =
+				let
+				    Base = Table.SelectColumns(Fato_QC, {"ID_Lote"}),
+				    Unicos = Table.Distinct(Base, {"ID_Lote"}),
+				    // QC-897401 e QC-897402 sao o MESMO lote 8974 em dois niveis: o codigo
+				    // embute o nivel (ADR-024). Rotular a dimensao com o codigo por nivel
+				    // faria o filtro de lote se comportar como filtro de nivel.
+				    Rot = Table.AddColumn(Unicos, "Lote", each "Lote " & [ID_Lote], type text)
+				in
+				    Rot
+
+	annotation PBI_ResultType = Table

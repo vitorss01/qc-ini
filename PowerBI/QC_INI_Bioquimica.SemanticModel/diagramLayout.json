@@ -1,0 +1,87 @@
+{
+  "version": "1.1.0",
+  "diagrams": [
+    {
+      "ordinal": 0,
+      "scrollPosition": {
+        "x": 0,
+        "y": 0
+      },
+      "nodes": [
+        {
+          "location": {
+            "x": 420,
+            "y": 40
+          },
+          "nodeIndex": "Fato_QC",
+          "nodeLineageTag": "714be56d-83e4-5071-ba6f-ed9e47256ecd",
+          "size": {
+            "height": 300,
+            "width": 230
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 60,
+            "y": 40
+          },
+          "nodeIndex": "Dim_Data",
+          "nodeLineageTag": "5bf181f3-e696-55c1-906c-6b154eb10451",
+          "size": {
+            "height": 200,
+            "width": 200
+          },
+          "zIndex": 1
+        },
+        {
+          "location": {
+            "x": 60,
+            "y": 300
+          },
+          "nodeIndex": "Dim_Analito",
+          "nodeLineageTag": "f173e50d-a527-5a2b-b909-9cca157c768c",
+          "size": {
+            "height": 160,
+            "width": 200
+          },
+          "zIndex": 2
+        },
+        {
+          "location": {
+            "x": 760,
+            "y": 40
+          },
+          "nodeIndex": "Dim_Lote",
+          "nodeLineageTag": "97dfd4be-8a6e-59f1-89d2-e92fe6ddbce8",
+          "size": {
+            "height": 140,
+            "width": 200
+          },
+          "zIndex": 3
+        },
+        {
+          "location": {
+            "x": 760,
+            "y": 240
+          },
+          "nodeIndex": "Dim_Nivel",
+          "nodeLineageTag": "81a6ce21-a2c6-5b51-bdd9-ecfd6fba52f7",
+          "size": {
+            "height": 140,
+            "width": 200
+          },
+          "zIndex": 4
+        }
+      ],
+      "name": "Modelo QC_INI",
+      "zoomValue": 100,
+      "pinKeyFieldsToTop": false,
+      "showExtraHeaderInfo": false,
+      "hideKeyFieldsWhenCollapsed": false,
+      "tablesLocked": false
+    }
+  ],
+  "selectedDiagram": "Modelo QC_INI",
+  "defaultDiagram": "Modelo QC_INI"
+}

@@ -25,8 +25,12 @@ $wb = $xl.Workbooks.Open($Workbook)
 
 try {
     if ($wb.ReadOnly) { throw "Somente leitura: $Workbook" }
-    $cfg = $wb.Worksheets.Item('Configuração')
-    $ini = $wb.Worksheets.Item('Início')
+    # nomes montados por codigo: o PowerShell 5.1 le .ps1 como ANSI e
+    # corromperia os literais acentuados (DISP_E_BADINDEX na aba).
+    $nomeCfg = 'Configura' + [char]231 + [char]227 + 'o'
+    $nomeIni = 'In' + [char]237 + 'cio'
+    $cfg = $wb.Worksheets.Item($nomeCfg)
+    $ini = $wb.Worksheets.Item($nomeIni)
     $entradas = @('C9','C10','C11')
 
     foreach ($a in $entradas) {

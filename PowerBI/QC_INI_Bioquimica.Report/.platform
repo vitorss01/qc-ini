@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "QC_INI_Bioquimica"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "18eefab5-e533-5113-98dc-528c65b75be9"
+  }
+}

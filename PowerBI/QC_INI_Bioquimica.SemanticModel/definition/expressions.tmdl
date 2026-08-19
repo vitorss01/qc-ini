@@ -1,0 +1,6 @@
+expression pCaminhoQC = "C:\Users\vitor.santos\QCINI_build_hardening1_BI_Bioquimica\QC_Bioquimica.xlsm" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 7ab735d2-02e8-5785-b144-076695b5024b
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Text

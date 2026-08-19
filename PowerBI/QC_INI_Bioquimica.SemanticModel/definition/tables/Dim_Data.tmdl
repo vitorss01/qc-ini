@@ -1,0 +1,99 @@
+table Dim_Data
+	dataCategory: Time
+	lineageTag: 5bf181f3-e696-55c1-906c-6b154eb10451
+
+	column Data
+		dataType: dateTime
+		lineageTag: 5034bfd0-6644-5d29-8688-b09bf590ee4c
+		isKey
+		summarizeBy: none
+		sourceColumn: Data
+		formatString: dd/mm/yyyy
+
+		annotation SummarizationSetBy = Automatic
+
+	column Ano
+		dataType: int64
+		lineageTag: dacb5291-943c-5788-bec8-c7bfc3213454
+		summarizeBy: none
+		sourceColumn: Ano
+
+		annotation SummarizationSetBy = Automatic
+
+	column Mes
+		dataType: int64
+		isHidden
+		lineageTag: dce78e8f-6049-54f1-aa41-7ccd8b66946a
+		summarizeBy: none
+		sourceColumn: Mes
+
+		annotation SummarizationSetBy = Automatic
+
+	column Trimestre
+		dataType: int64
+		isHidden
+		lineageTag: a87c8612-85db-5527-b81f-03f132648cb3
+		summarizeBy: none
+		sourceColumn: Trimestre
+
+		annotation SummarizationSetBy = Automatic
+
+	column Competencia
+		dataType: string
+		lineageTag: 9c74ed4c-bc6e-56fb-814b-ccf5eb91c9d9
+		summarizeBy: none
+		sourceColumn: Competencia
+
+		annotation SummarizationSetBy = Automatic
+
+	column MesNome
+		dataType: string
+		lineageTag: 7187c70f-223e-567e-bdaf-2b22dd1fdaae
+		summarizeBy: none
+		sourceColumn: MesNome
+		sortByColumn: Mes
+
+		annotation SummarizationSetBy = Automatic
+
+	column TrimestreRotulo
+		dataType: string
+		lineageTag: 4bd56fd5-690e-5155-9c68-c4cb151fb44d
+		summarizeBy: none
+		sourceColumn: TrimestreRotulo
+		sortByColumn: Trimestre
+
+		annotation SummarizationSetBy = Automatic
+
+	column AnoMes
+		dataType: int64
+		isHidden
+		lineageTag: 8a592cd0-6863-594d-a843-5c925b22fffc
+		summarizeBy: none
+		sourceColumn: AnoMes
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Dim_Data = m
+		mode: import
+		source =
+				let
+				    // Cobre exatamente o intervalo dos dados. Um calendario 1900-2100 infla
+				    // o modelo sem servir a nada.
+				    Min = List.Min(Fato_QC[Data]),
+				    Max = List.Max(Fato_QC[Data]),
+				    FimMes = Date.EndOfMonth(Max),
+				    N = Duration.Days(FimMes - Min) + 1,
+				    Dias = List.Dates(Min, N, #duration(1,0,0,0)),
+				    Tab = Table.FromList(Dias, Splitter.SplitByNothing(), {"Data"}),
+				    Tipada = Table.TransformColumnTypes(Tab, {{"Data", type date}}),
+				    C1 = Table.AddColumn(Tipada, "Ano", each Date.Year([Data]), Int64.Type),
+				    C2 = Table.AddColumn(C1, "Mes", each Date.Month([Data]), Int64.Type),
+				    C3 = Table.AddColumn(C2, "Trimestre", each Date.QuarterOfYear([Data]), Int64.Type),
+				    C4 = Table.AddColumn(C3, "Competencia", each Date.ToText([Data], "yyyy-MM"), type text),
+				    C5 = Table.AddColumn(C4, "MesNome", each Date.ToText([Data], "MMM", "pt-BR"), type text),
+				    C6 = Table.AddColumn(C5, "TrimestreRotulo", each "T" & Text.From(Date.QuarterOfYear([Data])), type text),
+				    C7 = Table.AddColumn(C6, "AnoMes", each Date.Year([Data]) * 100 + Date.Month([Data]), Int64.Type)
+				in
+				    C7
+
+	annotation PBI_ResultType = Table

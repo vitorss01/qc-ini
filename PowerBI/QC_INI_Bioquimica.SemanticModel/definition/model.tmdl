@@ -1,0 +1,24 @@
+model Model
+	culture: pt-BR
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: pt-BR
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation PBI_QueryOrder = ["pCaminhoQC","Fato_QC","Dim_Data","Dim_Analito","Dim_Lote","Dim_Nivel"]
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table Fato_QC
+ref table Dim_Data
+ref table Dim_Analito
+ref table Dim_Lote
+ref table Dim_Nivel
+
+ref expression pCaminhoQC
+
+ref relationship Fato_Data
+ref relationship Fato_Analito
+ref relationship Fato_Lote
+ref relationship Fato_Nivel
