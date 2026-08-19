@@ -798,3 +798,61 @@ violação em diante. O painel reprovaria corrida boa, com número plausível.
 Tabular Editor ou `MicrosoftPowerBIMgmt` não há caminho suportado para gerá-lo
 por script. **Nenhum `.pbix` foi fabricado.** Entregam-se as queries M, as
 medidas DAX, o desenho do modelo e o roteiro de montagem.
+
+---
+
+## ADR-027 — Analitos!R/S/T como fonte única das especificações ativas
+
+**Contexto.** A auditoria encontrou **três fontes concorrentes de ETp** no mesmo
+arquivo:
+
+| Consumidor | De onde vinha o ETp | Alimentava |
+|---|---|---|
+| `Estatística!O` | `LimEspec(analito, ano, "CLIA", "ETP")` — **CLIA cravado no argumento** | Sigma da Estatística (`R`) |
+| `Painel!F7/F8` | `INDEX(engETp, …)` — motor `Eng_Especificacoes` (ADR-022) | Sigma do Painel (`I`) |
+| `Analitos!S` | seleção conforme `Analitos!R` | **ninguém** |
+
+Consequência concreta: Painel e Estatística podiam exibir **Sigmas diferentes
+para o mesmo analito**, e trocar a fonte em `Analitos!R` não mudava nada em lugar
+nenhum. O mesmo valia para o CV: `Estatística!G` chamava `LimEspec(…,"CLIA","CV")`
+enquanto `Analitos!T` já resolvia o CVTp conforme a fonte.
+
+**Decisão.** `Analitos` passa a ser a *single source of truth* das especificações
+**ativas**:
+
+```
+Analitos!R (fonte: CLIA | VB | FAB)
+   ↓
+Analitos!S = ETp%   ·   Analitos!T = CVTp%
+   ↓
+Estatística (O, G) → Sigma → Painel → BI_Data
+```
+
+Publicados como nomes — `espFonte`, `etpOficial`, `cvtpOficial` — para que os
+consumidores refiram o conceito e não a coordenada.
+
+**As fórmulas da `Analitos` não foram tocadas.** Foram criadas e testadas pelo
+gestor; esta mudança só liga quem as consome.
+
+**Sigma só calcula com ETp numérico.** `Analitos!S` devolve o texto
+`"DEFINIR FONTE QUE CONTENHAM DADOS"` quando a fonte escolhida não tem dado. O
+guarda `ISNUMBER` não mascara erro: diz *"não há meta utilizável"*, que é a
+verdade, e é o mesmo critério de quatro estados do ADR-023. Zero seria lido como
+"desempenho péssimo"; vazio é lido como "sem meta".
+
+**Sobre `Cfg_/DB_/Eng_Especificacoes` — mantidas (Cenário C).** Não são
+redundantes e não podem ser removidas:
+
+- `DB_Especificacoes` guarda o **histórico por ano** com campos de auditoria
+  (`ES_ANO`, `ES_USUARIO`, `ES_DATACAD`, `ES_ATIVO`) que a `Analitos` **não tem** —
+  ela só representa o estado ativo, sem dimensão temporal.
+- `Cfg_Especificacoes` guarda o catálogo de fontes e seus modelos
+  (`ETP_DIRETO`, `VB`, `CV_BIAS_DIRETO`), que alimenta o cadastro.
+- `Eng_Especificacoes` continua como saída do motor por ano, consumida por
+  `LimEspec` — que segue servindo às **comparações informativas** da Estatística
+  (colunas `L`, `M`, `P`), onde o ponto é justamente mostrar a meta de *outra*
+  fonte ao lado da escolhida.
+
+A separação passa a ser: **`Analitos` = o que está em uso agora**;
+**`DB_Especificacoes` = o que valia em cada ano, com rastro**. Nenhuma das duas
+compete pela mesma pergunta.
