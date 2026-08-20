@@ -11,3 +11,4 @@ expression pCaminhoHema = "C:\Users\vitor.santos\QCINI_build_hardening1_Hematolo
 	annotation PBI_NavigationStepName = Navegação
 
 	annotation PBI_ResultType = Text
+

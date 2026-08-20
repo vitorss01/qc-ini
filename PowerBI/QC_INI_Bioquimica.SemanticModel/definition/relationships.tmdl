@@ -13,3 +13,4 @@ relationship Fato_Lote
 relationship Fato_Nivel
 	fromColumn: Fato_QC.Nivel
 	toColumn: Dim_Nivel.Nivel
+

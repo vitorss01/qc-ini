@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.0.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "9c7ecfe141e65ab68365",
   "position": {
     "x": 214,
     "y": 138,
-    "z": 1,
-    "width": 346,
+    "z": 13000,
     "height": 200,
-    "tabOrder": 1214
+    "width": 346,
+    "tabOrder": 12000
   },
   "visual": {
     "visualType": "clusteredBarChart",
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "Dim_Analito.Analito",
-              "nativeQueryRef": "Analito"
+              "nativeQueryRef": "Analito",
+              "active": true
             }
           ]
         },

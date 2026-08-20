@@ -32,3 +32,4 @@ table Dim_Lote
 				    Rot
 
 	annotation PBI_ResultType = Table
+

@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.0.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "2f7a261c01965e3d86dd",
   "position": {
     "x": 860,
     "y": 224,
-    "z": 1,
-    "width": 412,
+    "z": 5000,
     "height": 244,
-    "tabOrder": 1860
+    "width": 412,
+    "tabOrder": 24000
   },
   "visual": {
     "visualType": "donutChart",
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "Fato_QC.Faixa_Sigma",
-              "nativeQueryRef": "Faixa Sigma"
+              "nativeQueryRef": "Faixa Sigma",
+              "active": true
             }
           ]
         },

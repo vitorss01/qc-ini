@@ -52,3 +52,8 @@ _arquitetura/build_hardening*/
 
 # Backups do arquivo de producao: o Git ja e o historico.
 _arquitetura/_backup_producao/
+
+# Cache e preferencias locais que o Power BI Desktop grava dentro do PBIP.
+# cache.abf e copia dos dados do laboratorio; localSettings guarda caminhos
+# desta maquina. Nada disso e fonte -- e estado de uma instalacao.
+PowerBI/**/.pbi/

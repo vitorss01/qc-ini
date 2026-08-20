@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.0.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "fbc488b1b2be5f188c28",
   "position": {
     "x": 214,
     "y": 224,
-    "z": 1,
-    "width": 640,
+    "z": 26000,
     "height": 244,
-    "tabOrder": 1214
+    "width": 640,
+    "tabOrder": 16000
   },
   "visual": {
     "visualType": "lineChart",
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "Dim_Data.Competencia",
-              "nativeQueryRef": "Competência"
+              "nativeQueryRef": "Competência",
+              "active": true
             }
           ]
         },

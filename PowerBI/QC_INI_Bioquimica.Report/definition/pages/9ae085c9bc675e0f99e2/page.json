@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.0.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
   "name": "9ae085c9bc675e0f99e2",
   "displayName": "Bioquímica — Estatística",
   "displayOption": "FitToPage",
@@ -59,9 +59,7 @@
             }
           ]
         },
-        "howCreated": "Auto",
-        "isLockedInViewMode": true,
-        "isHiddenInViewMode": false
+        "isLockedInViewMode": true
       }
     ]
   }

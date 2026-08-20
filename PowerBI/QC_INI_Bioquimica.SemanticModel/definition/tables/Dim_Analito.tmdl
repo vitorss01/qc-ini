@@ -45,3 +45,4 @@ table Dim_Analito
 				    Ord
 
 	annotation PBI_ResultType = Table
+

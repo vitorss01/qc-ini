@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.0.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "bafdd215734e572da25f",
   "position": {
     "x": 214,
     "y": 246,
-    "z": 1,
-    "width": 700,
+    "z": 19000,
     "height": 250,
-    "tabOrder": 1214
+    "width": 700,
+    "tabOrder": 15000
   },
   "visual": {
     "visualType": "lineChart",
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "Fato_QC.RUN",
-              "nativeQueryRef": "RUN"
+              "nativeQueryRef": "RUN",
+              "active": true
             }
           ]
         },

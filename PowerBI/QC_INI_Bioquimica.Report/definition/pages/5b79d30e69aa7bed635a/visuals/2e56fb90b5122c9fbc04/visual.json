@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.0.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "2e56fb90b5122c9fbc04",
   "position": {
     "x": 214,
     "y": 346,
-    "z": 1,
-    "width": 400,
+    "z": 2000,
     "height": 170,
-    "tabOrder": 1214
+    "width": 400,
+    "tabOrder": 13000
   },
   "visual": {
     "visualType": "clusteredColumnChart",
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "Fato_QC.Faixa_Sigma",
-              "nativeQueryRef": "Faixa Sigma"
+              "nativeQueryRef": "Faixa Sigma",
+              "active": true
             }
           ]
         },

@@ -1337,6 +1337,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--xlsm", required=True)
     ap.add_argument("--saida", required=True)
+    ap.add_argument("--forcar", action="store_true",
+                    help="regenera mesmo que o relatorio em disco tenha mais paginas")
     ap.add_argument("--incluir", default="texto,cartao,slicer,grafico,tabela,cores",
                     help="classes de visual a emitir (bissecao de diagnostico)")
     a = ap.parse_args()
@@ -1349,6 +1351,24 @@ def main():
         raise SystemExit("nao encontrei o .xlsm: " + xlsm)
 
     raiz = os.path.abspath(a.saida)
+
+    # Trava de seguranca: este gerador emite as TRES paginas originais. Depois
+    # do ADR-029 o relatorio em disco tem CINCO (dois produtos), montadas por
+    # montar_relatorio_4paginas.py em cima da saida daqui. Regenerar sem pensar
+    # apagaria esse trabalho -- a ordem correta e gerar, depois montar.
+    relat = os.path.join(raiz, NOME + ".Report")
+    pags = os.path.join(relat, "definition", "pages")
+    if os.path.isdir(pags) and not a.forcar:
+        quantas = len([d for d in os.listdir(pags)
+                       if os.path.isdir(os.path.join(pags, d))])
+        if quantas > len(construir_secoes()):
+            raise SystemExit(
+                "Recusado: o relatorio em disco tem %d paginas e este gerador\n"
+                "emite %d. Regenerar apagaria as paginas montadas depois.\n"
+                "Se e mesmo isso que voce quer, repita com --forcar; em seguida\n"
+                "rode montar_relatorio_4paginas.py para remontar os dois produtos."
+                % (quantas, len(construir_secoes())))
+
     for sub in (NOME + ".SemanticModel", NOME + ".Report"):
         alvo = os.path.join(raiz, sub)
         if os.path.isdir(alvo):

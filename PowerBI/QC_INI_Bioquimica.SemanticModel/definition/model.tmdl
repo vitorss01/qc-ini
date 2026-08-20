@@ -16,9 +16,3 @@ ref table Dim_Analito
 ref table Dim_Lote
 ref table Dim_Nivel
 
-ref expression pCaminhoQC
-
-ref relationship Fato_Data
-ref relationship Fato_Analito
-ref relationship Fato_Lote
-ref relationship Fato_Nivel

@@ -1,14 +1,14 @@
 table Dim_Data
-	dataCategory: Time
 	lineageTag: 5bf181f3-e696-55c1-906c-6b154eb10451
+	dataCategory: Time
 
 	column Data
 		dataType: dateTime
-		lineageTag: 5034bfd0-6644-5d29-8688-b09bf590ee4c
 		isKey
+		formatString: dd/mm/yyyy
+		lineageTag: 5034bfd0-6644-5d29-8688-b09bf590ee4c
 		summarizeBy: none
 		sourceColumn: Data
-		formatString: dd/mm/yyyy
 
 		annotation SummarizationSetBy = Automatic
 
@@ -97,3 +97,4 @@ table Dim_Data
 				    C7
 
 	annotation PBI_ResultType = Table
+
