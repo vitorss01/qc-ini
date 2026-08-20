@@ -856,3 +856,63 @@ redundantes e não podem ser removidas:
 A separação passa a ser: **`Analitos` = o que está em uso agora**;
 **`DB_Especificacoes` = o que valia em cada ano, com rastro**. Nenhuma das duas
 compete pela mesma pergunta.
+
+---
+
+## ADR-028 — O ano em `Analitos!S2` passa a mandar, e a camada antiga sai
+
+**Contexto.** A arquitetura pretendida era `S2 (ano) → histórico nas linhas 46–89
+→ A4:W43`. A auditoria mediu: das 23 colunas do bloco vigente, **zero fórmulas
+citavam `S2` e zero citavam as linhas 46–89**. As colunas K, M, N, O, P, Q e S
+eram literais digitados. O histórico estava lá; ninguém o lia. Trocar o ano não
+mudava nada em lugar nenhum.
+
+**Decisão.** Construir a ligação que faltava e retirar a camada antiga inteira.
+
+```
+Analitos!S2 (ano)
+   ↓  INDEX no bloco 46..89, por ano e por analito
+Analitos!K, M, N, O, P          entradas do ano
+   ↓  seleção do gestor em S (CLIA | VB | FAB)
+Analitos!T = ETp%   ·   Analitos!U = CVTp%
+   ↓
+Estatística · Painel · Sigma · BI_Data
+```
+
+**O que continua digitado, de propósito.** `Q` (Desemp.) e `S` (fonte) são
+**decisões** do laboratório, não dados do ano. Puxá-las do histórico
+transformaria uma escolha em consequência.
+
+**Classificação das abas, depois de rastrear dependências:**
+
+| Aba | Veredito | Por quê |
+|---|---|---|
+| `Cfg_Especificacoes` | **C — obsoleta** | catálogo de fontes; hoje é a validação `"CLIA,VB,FAB"` em `Analitos!S` |
+| `DB_Especificacoes` | **C — obsoleta** | era o histórico por ano; o histórico agora vive na `Analitos`. E estava **vazia**: `LimEspec` devolvia branco para os 40 analitos |
+| `Eng_Especificacoes` | **C — obsoleta** | saída do motor; sem consumidor desde o ADR-027, e o `mBI` foi reapontado |
+
+**Mudança de veredito registrada.** O ADR-027 classificou `DB_Especificacoes`
+como *indispensável* porque a `Analitos` não tinha dimensão de ano. Isso deixou
+de ser verdade. Registrar que o veredito mudou importa tanto quanto o veredito.
+
+**Dois defeitos achados no caminho:**
+
+1. **76 `#REF!` na `Estatística`** (colunas H, I). A causa não era a coluna: era
+   o mapeamento **posicional** `H14 = Analitos!N4`. Com 40 analitos × 2 níveis,
+   as linhas do nível 2 apontavam para `Analitos!N44:N83`, fora do bloco.
+   Corrigido para busca por **chave de analito**.
+2. **O `mBI` publicava o campo errado.** Lia `Analitos` coluna 18 como ETp e 17
+   como Fonte — no layout atual, *ETp VB* e *Desemp.* O painel do gestor exibia
+   o nível de desempenho (`OTI`/`DES`/`MIN`) como se fosse a fonte da
+   especificação. Reapontado para S/T/U.
+
+**Consequência que o gestor precisa saber.** Saiu junto a tela de cadastro
+(`frmEspecificacoes` + botão). O cadastro passa a ser feito digitando no próprio
+bloco histórico da `Analitos`. Não houve perda de informação — o `DB` estava vazio.
+
+**Lição de método.** A primeira tentativa de remover `LimEspec` usou
+`ProcStartLine`/`ProcCountLines` e apagou 46 linhas em vez de 23, quebrando a
+compilação de `mEstatPeriodo`. Como **todas** as UDFs vivem nesse módulo, 642
+células viraram `#NOME?` de uma vez. Recortar pelo texto exato da função é
+determinístico; e nenhuma remoção de VBA deve ser dada por boa sem **chamar uma
+UDF depois** — função quebrada não levanta erro, devolve `#NOME?` em silêncio.

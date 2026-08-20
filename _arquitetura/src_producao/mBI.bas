@@ -18,7 +18,7 @@ Option Explicit
 '
 '   resultado, data, status, RUN, nivel, lote .. DB_Resultados (A:G)
 '   media e DP alvo POR LOTE ................... LotesStore, bloco do lote
-'   CVtp / BIAStp / ETp ........................ Eng_Especificacoes
+'   Fonte / ETp / CVTp ......................... Analitos S / T / U (ADR-028)
 '   area e unidade ............................. Analitos (B, C)
 '   Westgard ................................... produzido por mEstatistica.AvaliarWestgard
 '
@@ -149,12 +149,13 @@ End Function
 
 ' Reconstroi BI_Data inteira. O(n) sobre o banco, uma escrita em bloco.
 Public Sub AtualizarBIData()
-    Dim ws As Worksheet, wsA As Worksheet, wsE As Worksheet
+    Dim ws As Worksheet, wsA As Worksheet
     Dim dados As Variant, i As Long, n As Long, ult As Long
     Dim saida() As Variant, k As Long
     Dim idxAnalito As Object, idxBloco As Object, especCV As Object
     Dim especBIAS As Object, especET As Object, especFonte As Object
     Dim especAno As Object, especID As Object, especSituacao As Object
+    Dim especCVA As Object            ' CVTp lido da Analitos!U (ADR-028)
     Dim area As Object, unid As Object
     Dim zPorChave As Object, runsPorGrupo As Object, flagsPorChave As Object
     Dim prot As Boolean, protEstava As Boolean
@@ -183,6 +184,8 @@ Public Sub AtualizarBIData()
     Set especAno = CreateObject("Scripting.Dictionary")
     Set especID = CreateObject("Scripting.Dictionary")
     Set especSituacao = CreateObject("Scripting.Dictionary")
+    Set especCVA = CreateObject("Scripting.Dictionary")
+    especCVA.CompareMode = 1
     idxAnalito.CompareMode = 1: area.CompareMode = 1: unid.CompareMode = 1
     especET.CompareMode = 1: especFonte.CompareMode = 1: especAno.CompareMode = 1
     especID.CompareMode = 1: especSituacao.CompareMode = 1
@@ -194,39 +197,39 @@ Public Sub AtualizarBIData()
                 idxAnalito.Add nm, i - 3                  ' 1..40, alinhado ao LotesStore
                 area.Add nm, CStr(wsA.Cells(i, 2).Value)
                 unid.Add nm, CStr(wsA.Cells(i, 3).Value)
-                If IsNumeric(wsA.Cells(i, 18).Value) Then especET.Add nm, wsA.Cells(i, 18).Value
-                especFonte.Add nm, CStr(wsA.Cells(i, 17).Value)
-                especAno.Add nm, ""
+                ' ADR-028: a especificacao vigente vem da Analitos, e so dela.
+                '
+                ' Estas colunas MUDARAM de lugar quando o bloco foi reorganizado,
+                ' e o codigo antigo continuou lendo 18 e 17 -- que hoje sao
+                ' "ETp VB" e "Desemp.". O BI publicava o NIVEL DE DESEMPENHO
+                ' (OTI/DES/MIN) no campo Fonte_Especificacao e um ETp que nao era
+                ' o em uso. Numero plausivel e errado, direto no painel do gestor.
+                '
+                '   S (19) = ETp fonte           CLIA | VB | FAB
+                '   T (20) = ETp em uso final %  <- a meta oficial
+                '   U (21) = CVTp%
+                If IsNumeric(wsA.Cells(i, 20).Value) Then especET.Add nm, wsA.Cells(i, 20).Value
+                If IsNumeric(wsA.Cells(i, 21).Value) Then especCVA.Add nm, wsA.Cells(i, 21).Value
+                especFonte.Add nm, CStr(wsA.Cells(i, 19).Value)
+                especAno.Add nm, ValorNomeBI("espAno")
                 especID.Add nm, ""
-                especSituacao.Add nm, "SEM_VERSAO_FORMAL"
+                especSituacao.Add nm, "ANALITOS_VIGENTE"
             End If
         End If
     Next i
 
-    ' --- especificacoes vigentes (saida do motor do ADR-022) --------------
-    Set especCV = CreateObject("Scripting.Dictionary")
+    ' --- Eng_Especificacoes saiu de cena (ADR-028) -----------------------
+    '
+    ' Este bloco relia CVtp / BIAStp / ETp do Eng_Especificacoes e SOBRESCREVIA
+    ' o que tinha acabado de ler da Analitos. Era a segunda fonte de verdade que
+    ' o ADR-027 eliminou no Painel e na Estatistica, sobrevivendo justamente na
+    ' camada que o gestor ve.
+    '
+    ' BIAStp continua vazio de proposito: nem a Analitos nem o historico por ano
+    ' informam bias permitido. Preencher com zero seria inventar meta.
+    Set especCV = especCVA
     Set especBIAS = CreateObject("Scripting.Dictionary")
-    especCV.CompareMode = 1: especBIAS.CompareMode = 1
-    On Error Resume Next
-    Set wsE = ThisWorkbook.Sheets("Eng_Especificacoes")
-    On Error GoTo 0
-    If Not wsE Is Nothing Then
-        For i = 4 To 43
-            Dim ne As String
-            ne = Trim$(CStr(wsE.Cells(i, 1).Value))
-            If Len(ne) > 0 Then
-                If Not especCV.Exists(ne) Then
-                    especCV.Add ne, wsE.Cells(i, 4).Value
-                    especBIAS.Add ne, wsE.Cells(i, 5).Value
-                    If especET.Exists(ne) Then especET(ne) = wsE.Cells(i, 6).Value Else especET.Add ne, wsE.Cells(i, 6).Value
-                    If especFonte.Exists(ne) Then especFonte(ne) = wsE.Cells(i, 2).Value Else especFonte.Add ne, wsE.Cells(i, 2).Value
-                    If especAno.Exists(ne) Then especAno(ne) = wsE.Cells(i, 3).Value Else especAno.Add ne, wsE.Cells(i, 3).Value
-                    If especID.Exists(ne) Then especID(ne) = wsE.Cells(i, 8).Value Else especID.Add ne, wsE.Cells(i, 8).Value
-                    If especSituacao.Exists(ne) Then especSituacao(ne) = wsE.Cells(i, 9).Value Else especSituacao.Add ne, wsE.Cells(i, 9).Value
-                End If
-            End If
-        Next i
-    End If
+    especBIAS.CompareMode = 1
 
     ' --- cache de blocos por lote ----------------------------------------
     Set idxBloco = CreateObject("Scripting.Dictionary")
