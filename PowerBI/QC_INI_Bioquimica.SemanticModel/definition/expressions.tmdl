@@ -1,5 +1,12 @@
-expression pCaminhoQC = "C:\Users\vitor.santos\QCINI_build_hardening1_BI_Bioquimica\QC_Bioquimica.xlsm" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+expression pCaminhoQC = "C:\Users\vitor\QCINI_build_hardening1_Bioquimica\QC_Bioquimica.xlsm" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
 	lineageTag: 7ab735d2-02e8-5785-b144-076695b5024b
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Text
+
+expression pCaminhoHema = "C:\\Users\\vitor\\QCINI_build_hardening1_Hematologia\\QC_Hematologia.xlsm" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 8c4f21a0-1111-4c2b-9f30-aa5566778899
 
 	annotation PBI_NavigationStepName = Navegação
 

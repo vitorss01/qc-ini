@@ -1,8 +1,68 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.0.0/schema.json",
   "name": "cce84838a3b15c73b517",
-  "displayName": "Painel",
+  "displayName": "Bioquímica — Painel",
   "displayOption": "FitToPage",
   "height": 720,
-  "width": 1280
+  "width": 1280,
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "filtroProduto",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Fato_QC"
+              }
+            },
+            "Property": "Produto"
+          }
+        },
+        "type": "Categorical",
+        "filter": {
+          "Version": 2,
+          "From": [
+            {
+              "Name": "f",
+              "Entity": "Fato_QC",
+              "Type": 0
+            }
+          ],
+          "Where": [
+            {
+              "Condition": {
+                "In": {
+                  "Expressions": [
+                    {
+                      "Column": {
+                        "Expression": {
+                          "SourceRef": {
+                            "Source": "f"
+                          }
+                        },
+                        "Property": "Produto"
+                      }
+                    }
+                  ],
+                  "Values": [
+                    [
+                      {
+                        "Literal": {
+                          "Value": "'Bioquimica'"
+                        }
+                      }
+                    ]
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "howCreated": "Auto",
+        "isLockedInViewMode": true,
+        "isHiddenInViewMode": false
+      }
+    ]
+  }
 }

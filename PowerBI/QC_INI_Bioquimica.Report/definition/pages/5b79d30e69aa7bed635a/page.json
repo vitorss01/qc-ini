@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.0.0/schema.json",
-  "name": "9ae085c9bc675e0f99e2",
-  "displayName": "Bioquímica — Estatística",
+  "name": "5b79d30e69aa7bed635a",
+  "displayName": "Hematologia — Estatística",
   "displayOption": "FitToPage",
   "height": 720,
   "width": 1280,
@@ -49,7 +49,7 @@
                     [
                       {
                         "Literal": {
-                          "Value": "'Bioquimica'"
+                          "Value": "'Hematologia'"
                         }
                       }
                     ]

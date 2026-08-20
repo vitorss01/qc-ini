@@ -176,12 +176,29 @@ try {
     #
     # AtualizarFlagsBanco tambem redimensiona os intervalos nomeados r* para a
     # ultima linha real, o que esta rotina precisa igualmente.
-    try {
-        $xl.Run('AtualizarFlagsBanco') | Out-Null
-        "flags BA/BB/BC e intervalos nomeados atualizados por mBanco"
+    # O modulo pode AINDA nao existir, e isso nao e erro.
+    #
+    # A semeadura roda no passo 0c; mBanco so e importado no passo 4, e o 4a
+    # chama AtualizarFlagsBanco logo em seguida. Na Bioquimica isso passava
+    # despercebido porque a PRODUCAO ja tem o modulo (ADR-025 foi aplicado la);
+    # na Hematologia, nao -- e o build inteiro morria no passo 0c.
+    #
+    # Ausencia do modulo => aviso e segue, porque o 4a corrige.
+    # Modulo presente que FALHA => continua fatal: ai a fixture ficaria mesmo
+    # fora dos calculos e ninguem consertaria depois.
+    $temBanco = $false
+    foreach ($c in $wb.VBProject.VBComponents) { if ($c.Name -eq 'mBanco') { $temBanco = $true } }
+    if (-not $temBanco) {
+        "mBanco ainda nao importado (passo 4) -- flags serao geradas no passo 4a"
     }
-    catch {
-        throw "AtualizarFlagsBanco falhou -- fixture ficaria fora dos calculos: $($_.Exception.Message)"
+    else {
+        try {
+            $xl.Run('AtualizarFlagsBanco') | Out-Null
+            "flags BA/BB/BC e intervalos nomeados atualizados por mBanco"
+        }
+        catch {
+            throw "AtualizarFlagsBanco falhou -- fixture ficaria fora dos calculos: $($_.Exception.Message)"
+        }
     }
 
     # ---- alinhar os FILTROS ao dado semeado ------------------------------

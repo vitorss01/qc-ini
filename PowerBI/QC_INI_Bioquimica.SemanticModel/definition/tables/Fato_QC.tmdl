@@ -1254,11 +1254,20 @@ table Fato_QC
 		source =
 				let
 				    Fonte = Excel.Workbook(File.Contents(pCaminhoQC), null, true),
+				    // Os dois produtos entram na MESMA fato. A coluna Produto ja vem do
+				    // motor (ADR-026) e e ela que separa as paginas. Dois modelos
+				    // separados obrigariam a duplicar as 60 medidas -- e duas copias da
+				    // formula do Sigma sao a divergencia que o ADR-027 eliminou.
+				    FonteHema = Excel.Workbook(File.Contents(pCaminhoHema), null, true),
 				    // Le o ListObject PELO NOME, nunca por faixa de celulas: e o que permite
 				    // o banco crescer sem tocar na consulta. A aba BI_Data e xlVeryHidden --
 				    // isso nao esconde a tabela do Excel.Workbook, que enxerga o arquivo em
 				    // disco e nao a janela do Excel.
-				    Tabela = Fonte{[Item="tblBI_Fato", Kind="Table"]}[Data],
+				    TabelaBio = Fonte{[Item="tblBI_Fato", Kind="Table"]}[Data],
+				    TabelaHema = FonteHema{[Item="tblBI_Fato", Kind="Table"]}[Data],
+				    // Combina no dado CRU e tipa uma vez so: tipar os dois lados em
+				    // separado abriria espaco para divergirem no tipo de uma coluna.
+				    Tabela = Table.Combine({TabelaBio, TabelaHema}),
 				    Tipada = Table.TransformColumnTypes(Tabela, {
 				        {"ID_Result", type text}, {"ID_Corrida", type text},
 				        {"Data", type date}, {"Ano", Int64.Type}, {"Mes", Int64.Type},
