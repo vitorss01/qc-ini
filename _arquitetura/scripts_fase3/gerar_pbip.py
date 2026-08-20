@@ -156,7 +156,13 @@ def m_fato():
     // CADASTRADA. Exibi-la assim afirmaria um criterio de qualidade que nao
     // existe -- ausencia de meta nunca e aprovacao (ADR-023).
     ComEspec = Table.AddColumn(ComRotulo, "Especificacao_Efetiva", each
-        if [Situacao_Especificacao] = "CADASTRADA"
+        // A meta existe quando ha ETp e fonte, nao quando a Situacao tem um
+        // texto especifico: o ADR-028 trocou "CADASTRADA" por
+        // "ANALITOS_VIGENTE" e a comparacao literal rotulou TODOS os
+        // analitos como "Sem meta". Mesmo criterio de [Grupos com Meta].
+        if [ETp_pct] <> null
+           and [Fonte_Especificacao] <> null
+           and Text.Trim(Text.From([Fonte_Especificacao])) <> ""
         then [Fonte_Especificacao] else "Sem meta", type text)
 in
     ComEspec''' % m_transform_fato()
@@ -778,6 +784,15 @@ def escrever_relatorio(relat, secoes):
         "datasetReference": {"byPath": {"path": "../" + NOME + ".SemanticModel"}},
     })
     defs = os.path.join(relat, "definition")
+    # version.json e OBRIGATORIO no PBIR e nao aparece na lista de schemas do
+    # relatorio: sem ele o Power BI Desktop abre e MORRE com
+    # "Cannot find file 'version.json'". O formato e major.minor.patch com
+    # patch sempre 0.
+    escrever_json(os.path.join(defs, "version.json"), {
+        "$schema": "https://developer.microsoft.com/json-schemas/fabric/"
+                   "item/report/definition/versionMetadata/1.0.0/schema.json",
+        "version": "2.0.0",
+    })
     escrever_json(os.path.join(defs, "report.json"), {
         "$schema": ESQ + "/report/2.0.0/schema.json",
         "themeCollection": {"baseTheme": {

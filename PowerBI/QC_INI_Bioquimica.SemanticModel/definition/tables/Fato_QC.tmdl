@@ -1316,7 +1316,13 @@ table Fato_QC
 				    // CADASTRADA. Exibi-la assim afirmaria um criterio de qualidade que nao
 				    // existe -- ausencia de meta nunca e aprovacao (ADR-023).
 				    ComEspec = Table.AddColumn(ComRotulo, "Especificacao_Efetiva", each
-				        if [Situacao_Especificacao] = "CADASTRADA"
+				        // A meta existe quando ha ETp e fonte, nao quando a Situacao tem um
+				        // texto especifico: o ADR-028 trocou "CADASTRADA" por
+				        // "ANALITOS_VIGENTE" e a comparacao literal rotulou TODOS os
+				        // analitos como "Sem meta". Mesmo criterio de [Grupos com Meta].
+				        if [ETp_pct] <> null
+				           and [Fonte_Especificacao] <> null
+				           and Text.Trim(Text.From([Fonte_Especificacao])) <> ""
 				        then [Fonte_Especificacao] else "Sem meta", type text)
 				in
 				    ComEspec
