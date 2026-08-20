@@ -424,8 +424,16 @@ def tmdl_coluna(tabela, nome, tipo, oculta, coluna_fonte=None, dax=None,
     # Coluna calculada: em TMDL o DAX mora no CABECALHO ("column X = expr"),
     # nunca numa propriedade "expression:". A forma de propriedade existe na
     # gramatica mas exige valor inline e recusa bloco multilinha.
-    if dax:
-        ln = ["\tcolumn %s =" % nome, bloco(dax, 2)]
+    if dax and "\n" not in dax:
+        # DAX de uma linha vai INLINE no cabecalho. Num bloco recuado ele
+        # ficaria no mesmo nivel das propriedades e o analisador do TMDL
+        # engoliria "dataType:", "lineageTag:" e "sortByColumn:" para dentro
+        # da formula -- o modelo ate carrega, mas a coluna calculada nasce em
+        # erro e todo visual que a usa aparece quebrado.
+        ln = ["\tcolumn %s = %s" % (nome, dax)]
+    elif dax:
+        # multilinha exige bloco delimitado por crase tripla
+        ln = ["\tcolumn %s = ```" % nome, bloco(dax, 2), "\t\t```"]
     else:
         ln = ["\tcolumn %s" % nome]
     ln.append("\t\tdataType: %s" % tipo)

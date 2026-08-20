@@ -519,8 +519,7 @@ table Fato_QC
 
 		annotation SummarizationSetBy = Automatic
 
-	column Faixa_Sigma =
-		SWITCH ( TRUE (), ISBLANK ( Fato_QC[Sigma_Obs] ), "Sem meta", Fato_QC[Sigma_Obs] < 3, "< 3", Fato_QC[Sigma_Obs] < 4, "3 a <4", Fato_QC[Sigma_Obs] < 5, "4 a <5", Fato_QC[Sigma_Obs] < 6, "5 a <6", ">= 6" )
+	column Faixa_Sigma = SWITCH ( TRUE (), ISBLANK ( Fato_QC[Sigma_Obs] ), "Sem meta", Fato_QC[Sigma_Obs] < 3, "< 3", Fato_QC[Sigma_Obs] < 4, "3 a <4", Fato_QC[Sigma_Obs] < 5, "4 a <5", Fato_QC[Sigma_Obs] < 6, "5 a <6", ">= 6" )
 		dataType: string
 		lineageTag: 117fec81-848f-50d4-967d-1ddc4cba800b
 		summarizeBy: none
@@ -528,8 +527,7 @@ table Fato_QC
 
 		annotation SummarizationSetBy = Automatic
 
-	column Faixa_Sigma_Ordem =
-		SWITCH ( TRUE (), ISBLANK ( Fato_QC[Sigma_Obs] ), 9, Fato_QC[Sigma_Obs] < 3, 1, Fato_QC[Sigma_Obs] < 4, 2, Fato_QC[Sigma_Obs] < 5, 3, Fato_QC[Sigma_Obs] < 6, 4, 5 )
+	column Faixa_Sigma_Ordem = SWITCH ( TRUE (), ISBLANK ( Fato_QC[Sigma_Obs] ), 9, Fato_QC[Sigma_Obs] < 3, 1, Fato_QC[Sigma_Obs] < 4, 2, Fato_QC[Sigma_Obs] < 5, 3, Fato_QC[Sigma_Obs] < 6, 4, 5 )
 		dataType: int64
 		isHidden
 		lineageTag: 573a27bb-fc6e-500a-940f-d6d2c768ed76
