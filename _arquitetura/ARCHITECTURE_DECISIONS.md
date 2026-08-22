@@ -916,3 +916,90 @@ compilação de `mEstatPeriodo`. Como **todas** as UDFs vivem nesse módulo, 642
 células viraram `#NOME?` de uma vez. Recortar pelo texto exato da função é
 determinístico; e nenhuma remoção de VBA deve ser dada por boa sem **chamar uma
 UDF depois** — função quebrada não levanta erro, devolve `#NOME?` em silêncio.
+
+---
+
+## ADR-030 — O bias de ET e Sigma passa a vir do ensaio de proficiência
+
+**Contexto.** `Estatística!K` — a célula que alimenta Erro Total e Sigma — chamava
+`EstatPeriodo(…,"BIAS")`, que resolve em
+`mEstatistica.CalcularBias(mediaObs, alvoDoLote)`:
+
+```
+mediaObs = média do CONTROLE INTERNO no período
+alvo     = média atribuída AO LOTE do controle interno
+```
+
+Isso mede a **deriva do CQI contra o alvo do próprio lote**. É uma medida útil, e
+não é erro sistemático: erro sistemático se mede contra um valor **externo e
+independente** — o consenso do grupo no ensaio de proficiência. O próprio
+cabeçalho dizia *"Bias % (alvo do lote)"*. Um laboratório pode estar perfeitamente
+centrado no alvo do fabricante e ainda assim 8% acima do grupo, e era esse 8% que
+sumia do Sigma.
+
+**A aritmética sempre esteve certa.** `CalcularErroTotal = |bias| + 1,65·CV` e
+`CalcularSigma = (ETp − |bias|)/CV` já estavam corretas, e o Sigma já usava o CV
+**observado**, não o CVTp. O que estava errado era o `ref` do bias.
+
+**A fonte já existia.** `EQC_Dados` guarda o EP linha a linha, com
+`N = (X_lab − X_ref)/X_ref × 100` (assinado) e `O = |N|`. Ninguém as consumia
+para ET e Sigma. `mCEQ` **consome** N e O — não recalcula. A conta acontece uma
+vez, na célula, onde é visível e auditável.
+
+**Consolidação de múltiplas rodadas: média das magnitudes.**
+
+```
+|Bias|consolidado = Σ|Bias_i| / n
+```
+
+Nunca a média dos assinados. Rodadas de +5% e −5% descrevem um método que oscila
+5% em torno do grupo; a média assinada daria 0% e afirmaria exatidão perfeita. O
+bias assinado continua disponível em `Estatística!M`, para leitura da direção.
+
+**Vigência: a rodada mais recente que não ultrapasse o ano em análise** — a mesma
+regra do ADR-022 para especificação. Exigir coincidência exata de ano fazia o
+bias sumir sempre que o CQI passasse na frente do último ciclo publicado (EP de
+2025, análise de 2026).
+
+**Ausência de dado devolve o texto `"SEM EP"`, nunca `Empty`.** Na primeira versão
+deste módulo as 80 linhas exibiram bias `0,00` — porque **o Excel renderiza o
+`Empty` de uma UDF como zero** — e esse zero entrou em ET e Sigma produzindo
+números de aparência perfeita. É o mesmo defeito que `AlvoDoLote` tem em
+`mEstatPeriodo`. Texto não é número: `ISNUMBER` reprova, e ET e Sigma ficam
+vazios.
+
+**Dois defeitos menores corrigidos junto, no Painel:**
+
+1. `H7 = E7*1,65 + IF(ISNUMBER(G7);G7;0)` somava o bias **com sinal** — um bias
+   negativo *reduzia* o erro total.
+2. Tanto `H7` quanto `I7` somavam **zero** quando faltava bias, afirmando exatidão
+   que ninguém mediu. Agora os dois exigem bias numérico.
+
+---
+
+## ADR-031 — Arquivo de trabalho sem proteção durante o desenvolvimento
+
+**Contexto.** Proteção de estrutura, senha de aba e células travadas custaram
+tempo real nesta fase: vários scripts gastaram tentativas com *"aba protegida"*,
+`AllowFormattingCells=False` e `RPC_E_CALL_REJECTED` escrevendo em célula
+travada. O produto ainda está sendo construído; a trava protege contra um
+usuário que ainda não existe.
+
+**Decisão.** O `.xlsm` de trabalho fica **sem senha, sem proteção de aba e sem
+célula travada**. `veryHidden` vira `hidden`, para que as abas de estrutura
+apareçam em *Reexibir* quando alguém precisar olhar.
+
+Isso **não** afeta o produto entregue: `travar_estrutura.ps1` e
+`blindar_artefato.ps1` continuam no build e reaplicam tudo no artefato.
+
+**Nota sobre um fantasma.** `Cfg_/DB_/Eng_Especificacoes` foram removidas no
+ADR-028 — o script reportou `aba removida` para as três e `SALVO` — e
+reapareceram. O blob commitado em `fe4d372` **já as continha**, ou seja, a
+remoção nunca chegou ao commit, enquanto as mudanças de VBA e de fórmula do
+mesmo ADR chegaram. A pasta de trabalho fica dentro do OneDrive; o padrão é
+compatível com o arquivo ter sido restaurado por sincronização entre a gravação
+e o commit.
+
+Consequência prática: **`SALVO` impresso por um script não é prova de que o byte
+sobreviveu.** Depois de remover estrutura de um `.xlsm` que mora em pasta
+sincronizada, vale reabrir e conferir — foi o que se fez aqui.

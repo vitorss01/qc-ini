@@ -19,6 +19,7 @@ Option Explicit
 '   resultado, data, status, RUN, nivel, lote .. DB_Resultados (A:G)
 '   media e DP alvo POR LOTE ................... LotesStore, bloco do lote
 '   Fonte / ETp / CVTp ......................... Analitos S / T / U (ADR-028)
+'   Bias (assinado) ............................ mCEQ.BiasEQ, do EP (ADR-030)
 '   area e unidade ............................. Analitos (B, C)
 '   Westgard ................................... produzido por mEstatistica.AvaliarWestgard
 '
@@ -421,8 +422,25 @@ proxima1:
                 saida(k, 50) = cvObs
             End If
         End If
-        If nObs > 0 And temAlvo And md2 <> 0 Then
-            biasObs = mEstatistica.CalcularBias(mediaObs, md2)
+        ' --- BIAS: vem do ENSAIO DE PROFICIENCIA, nao do alvo do lote (ADR-030)
+        '
+        ' Antes era CalcularBias(mediaObs, alvoDoLote): a deriva do controle
+        ' INTERNO contra a media atribuida ao proprio lote. Isso nao e erro
+        ' sistematico -- erro sistematico se mede contra um valor externo e
+        ' independente, o consenso do grupo no EP. O painel do gestor publicava
+        ' um Sigma construido sobre o bias errado.
+        '
+        ' A coluna publica o bias ASSINADO, que informa a direcao do desvio.
+        ' CalcularErroTotal e CalcularSigma ja aplicam Abs() internamente, entao
+        ' a magnitude entra certa nas metricas sem destruir o sinal na exibicao.
+        '
+        ' "SEM EP" (texto) quando nao ha rodada utilizavel: sem bias nao ha ET
+        ' nem Sigma. Zero seria exatidao inventada.
+        Dim biasEP As Variant, anoBI As Variant
+        anoBI = saida(k, 4)          ' o ano do proprio resultado
+        biasEP = mCEQ.BiasEQ(an2, anoBI, "SIGNED")
+        If IsNumeric(biasEP) And nObs > 0 Then
+            biasObs = CDbl(biasEP)
             saida(k, 51) = biasObs
             If nObs > 1 And mediaObs <> 0 Then
                 etObs = mEstatistica.CalcularErroTotal(cvObs, biasObs)
