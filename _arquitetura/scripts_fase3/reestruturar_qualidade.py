@@ -259,8 +259,15 @@ def main(caminho):
                 '=IF($B{0}="","",IF($R{0}>0,"REPROVA — "&$R{0}&'
                 '" violação(ões)","Sem violação"))'.format(lin),
                 formula=True)
-        por(pa, 9, 12, 'Só 1-3s, 2-2s e R-4s estão implementadas; '
-                       '4-1s e 8x são reservas e permanecem em zero.')
+        # NAO dizer "4-1s e 8x sao reservas em zero". Foi o que eu escrevi
+        # aqui olhando Calc!N3/O3, que sao IF(OR(FALSE;FALSE);1;0) -- mas a
+        # linha 3 e a PRIMEIRA do bloco, o unico lugar onde uma regra
+        # sequencial nao pode disparar por falta de ponto anterior. Da linha 4
+        # em diante elas funcionam: 45 disparos de 4-1s e 52 de 8x.
+        por(pa, 9, 12, 'As cinco regras são avaliadas (1-3s, 2-2s, R-4s, '
+                       '4-1s, 8x). As primeiras linhas de cada lote não têm '
+                       'histórico suficiente para 4-1s e 8x, e por isso não '
+                       'disparam ali.')
 
         # ---- 7. Painel: bloco SIX SIGMA ---------------------------------
         bias = 'mCEQ.BiasEQ(selAnalito,eqAnoEP,"ABS",eqProvedor,eqRodada)'

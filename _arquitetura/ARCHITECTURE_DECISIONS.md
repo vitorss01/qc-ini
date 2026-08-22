@@ -1130,6 +1130,21 @@ um viés falso perto de zero — o mesmo motivo que levou `mCEQ` a consolidar
 rodadas por magnitude.
 
 **O que NÃO mudou.** Lógica de Westgard, banco histórico, estrutura append-only e
-os registros históricos de EP. `Calc!N` e `Calc!O` (4-1s e 8x) continuam sendo
-`IF(OR(FALSE;FALSE);1;0)` — sempre zero. O `Painel` passa a dizer isso em texto,
-em vez de exibir duas colunas que o leitor supõe ativas.
+os registros históricos de EP.
+
+**Correção de uma leitura errada minha.** Eu havia registrado que `Calc!N` e
+`Calc!O` (4-1s e 8x) eram `IF(OR(FALSE;FALSE);1;0)` — sempre zero — e cheguei a
+gravar isso como nota no `Painel`. É falso, e a origem do erro vale mais do que o
+erro: eu conferi **a linha 3**, que é a primeira do bloco. Numa regra sequencial,
+a primeira linha é o único lugar onde ela **não pode** disparar, porque não existe
+ponto anterior; os termos degeneram para `FALSE`. Da linha 4 em diante as fórmulas
+crescem e as regras funcionam: nas 180 linhas do `Calc`, **4-1s dispara 45 vezes e
+8x dispara 52**. As cinco regras estão implementadas. A nota do `Painel` foi
+corrigida para dizer o que é verdade: as primeiras linhas de cada lote não têm
+histórico suficiente para 4-1s e 8x.
+
+**O eco do filtro de EP passa a contar linhas.** O arquivo estava com o filtro em
+`Controllab`, provedor sem uma única linha na `EQC_Dados` (que tem 90 linhas, todas
+`CAP`/2025, 6 analitos). O resultado eram 80 células `SEM EP` sem explicação
+visível. `Estatística!K5` agora termina com *"N linha(s) no banco de EP"* — zero
+para `Controllab`, 90 para `CAP`.
