@@ -52,7 +52,7 @@ def plataforma(caminho, tipo, nome):
 
 
 # ------------------------------------------------------- esquema da tabela fato
-# As 60 colunas de tblBI_Fato. O tipo vem do que o motor grava, nao de
+# As 65 colunas de tblBI_Fato. O tipo vem do que o motor grava, nao de
 # adivinhacao: ver mBI.bas.
 TEXTO = "string"
 INT = "int64"
@@ -88,6 +88,14 @@ COLUNAS_FATO = [
     ("Vigencia_Inicio", TEXTO, True), ("Vigencia_Fim", TEXTO, True),
     ("Situacao_Especificacao", TEXTO, False),
     ("Usuario_Atualizacao", TEXTO, True), ("Tipo_Evento", TEXTO, True),
+    # ADR-033. Bias_Observado_pct (col. 51) continua ASSINADO; a magnitude tem
+    # coluna propria porque AVERAGE sobre bias assinado cancela desvios opostos
+    # e devolve um vies falso perto de zero.
+    ("Bias_Observado_abs_pct", REAL, False),
+    ("Classificacao_Sigma", TEXTO, False),
+    ("Margem_ETp_pp", REAL, False),
+    ("Margem_ETp_pct", REAL, False),
+    ("Status_Margem_ETp", TEXTO, False),
 ]
 
 # colunas acrescentadas pelo Power Query (nao existem no Excel)

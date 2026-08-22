@@ -48,7 +48,7 @@ Public Const BI_ABA As String = "BI_Data"
 Public Const BI_TABELA As String = "tblBI_Fato"
 Public Const BI_CAB As Long = 1
 Public Const BI_R0 As Long = 2
-Public Const BI_NCOL As Long = 60
+Public Const BI_NCOL As Long = 65
 
 Private Const LS_CAP As Long = 40          ' linhas por bloco no LotesStore
 Private Const LS_C0 As Long = 3            ' coluna C = Analitos!E (Media N1)
@@ -85,7 +85,9 @@ Private Function Cab() As Variant
         "N_Observado", "Media_Observada", "DP_Observado", "CV_Observado_pct", _
         "Bias_Observado_pct", "ET_Observado_pct", "Sigma", _
         "Fonte_Especificacao", "ID_Especificacao", "Vigencia_Inicio", "Vigencia_Fim", _
-        "Situacao_Especificacao", "Usuario_Atualizacao", "Tipo_Evento")
+        "Situacao_Especificacao", "Usuario_Atualizacao", "Tipo_Evento", _
+        "Bias_Observado_abs_pct", "Classificacao_Sigma", _
+        "Margem_ETp_pp", "Margem_ETp_pct", "Status_Margem_ETp")
 End Function
 
 Private Function AgoraUTC() As Date
@@ -465,6 +467,26 @@ proxima1:
         If especSituacao.Exists(an2) Then saida(k, 58) = especSituacao(an2)
         saida(k, 59) = usuarioAtual
         saida(k, 60) = "RESULTADO_CQI"
+
+        ' --- ADR-033: magnitude do bias, classificacao e orcamento de erro ---
+        '
+        ' A coluna 51 publica o bias ASSINADO, que informa a direcao do desvio.
+        ' Uma medida de BI que faca AVERAGE sobre ela cancela desvios opostos e
+        ' devolve um vies falso perto de zero -- foi por isso que a
+        ' consolidacao de rodadas em mCEQ passou a somar magnitudes. A coluna
+        ' 61 carrega o |bias| justamente para as medidas agregarem o que deve
+        ' ser agregado.
+        '
+        ' As classificacoes NAO sao recalculadas aqui: sao as mesmas funcoes que
+        ' a Estatistica e o Painel chamam (mQualidade). Se as faixas mudarem,
+        ' mudam nos tres ao mesmo tempo.
+        If IsNumeric(biasEP) And nObs > 0 Then saida(k, 61) = Abs(CDbl(biasEP))
+        saida(k, 62) = mQualidade.ClassificarSigma(saida(k, 53))
+        If especET.Exists(an2) Then
+            saida(k, 63) = mQualidade.MargemETp(especET(an2), saida(k, 52))
+            saida(k, 64) = mQualidade.MargemETpPct(especET(an2), saida(k, 52))
+        End If
+        saida(k, 65) = mQualidade.ClassificarMargem(saida(k, 64))
 proxima2:
     Next i
 

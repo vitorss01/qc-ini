@@ -28,7 +28,7 @@ que o ADR-027 passou a sessao inteira eliminando.
 
 A COMBINACAO E FEITA ANTES DA TIPAGEM
 
-Os dois arquivos tem o mesmo schema de 60 colunas, entao Table.Combine no dado
+Os dois arquivos tem o mesmo schema de 65 colunas, entao Table.Combine no dado
 cru e depois um unico Table.TransformColumnTypes. Tipar duas vezes abriria
 espaco para os dois lados divergirem no tipo de uma coluna.
 

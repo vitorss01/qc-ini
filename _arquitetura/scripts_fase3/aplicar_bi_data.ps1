@@ -1,4 +1,4 @@
-# aplicar_bi_data.ps1 - etapa de BUILD da camada BI (ADR-026)
+﻿# aplicar_bi_data.ps1 - etapa de BUILD da camada BI (ADR-026)
 #
 # Cria a aba BI_Data, monta a tabela estruturada tblBI_Fato e RECONCILIA com a
 # aba Calc antes de deixar passar.
@@ -59,7 +59,9 @@ try {
     foreach ($t in $ws.ListObjects) { if ($t.Name -eq 'tblBI_Fato') { $lo = $t } }
     if ($lo -eq $null) { throw "ListObject tblBI_Fato nao foi criado" }
     "tabela estruturada tblBI_Fato: $($lo.Range.Address()) ($($lo.ListRows.Count) linhas x $($lo.ListColumns.Count) colunas)"
-    if ($lo.ListColumns.Count -ne 60) { throw "esperadas 60 colunas, encontradas $($lo.ListColumns.Count)" }
+    # 65 desde o ADR-033: as 60 do contrato ADR-026 mais bias em magnitude,
+    # classificacao de Sigma e as tres do orcamento de erro.
+    if ($lo.ListColumns.Count -ne 65) { throw "esperadas 65 colunas, encontradas $($lo.ListColumns.Count)" }
 
     # chaves: ID_Result tem de ser UNICO -- e a granularidade declarada
     $dup = $xl.WorksheetFunction.SumProduct(

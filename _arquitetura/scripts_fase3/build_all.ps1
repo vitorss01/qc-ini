@@ -1,4 +1,4 @@
-# build_all.ps1 - reconstroi o artefato do hardening a partir da producao
+﻿# build_all.ps1 - reconstroi o artefato do hardening a partir da producao
 #
 # Um comando so. Depois de um "git pull" noutra maquina, basta rodar isto para
 # obter QC_Hematologia.xlsm com tudo aplicado: Eng_Saida, Corridas, o motor
@@ -310,6 +310,9 @@ Encerrar-Excel
     # de 60 meses, enquanto a producao -- remendada a mao pelo instalador -- a
     # tinha. As provas passavam porque olhavam para o arquivo errado.
     (Join-Path $arq 'src_producao\mBanco.bas'),
+    # mQualidade (ADR-033): as escadas de Sigma e de orcamento de erro. Vem
+    # ANTES do mBI, que as chama. Sem ele o artefato nao compila.
+    (Join-Path $arq 'src_producao\mQualidade.bas'),
     # mBI (ADR-026): camada de dados para o Power BI.
     (Join-Path $arq 'src_producao\mBI.bas'),
     (Join-Path $h 'Planilha7.cls'),

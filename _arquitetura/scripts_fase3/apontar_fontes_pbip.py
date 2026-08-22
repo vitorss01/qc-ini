@@ -23,7 +23,7 @@ ESCOLHA DO ARTEFATO
 
 Ha mais de um build de Bioquimica no disco e eles NAO sao equivalentes:
 o de 13/08 carrega 34 colunas e o lote de fixture QC-99999901; o de 19/08
-carrega as 60 colunas do contrato ADR-026 e o lote real. O script escolhe
+carrega as 65 colunas do contrato (ADR-026 + ADR-033) e o lote real. O script escolhe
 pelo conteudo -- numero de colunas e ausencia de fixture -- e nao pela data
 ou pelo nome da pasta, que sao pistas e nao provas.
 
@@ -99,7 +99,7 @@ def escolher(param):
             if tem else 'SEM tblBI_Fato'
         print('   %-28s %s' % (marca, c))
         # Criterio: mais colunas vence (contrato mais novo); empate vai para o
-        # build mais recente. Sem o desempate, dois builds de 60 colunas
+        # build mais recente. Sem o desempate, dois builds de mesmo schema
         # fariam a ordem da lista decidir -- e a ordem da lista nao sabe qual
         # deles nasceu depois do ADR-028.
         if tem and not fix:

@@ -237,3 +237,68 @@ CALCULATE (
     Fato_QC[Veredito] = "REJEITADO"
 )
 ```
+
+## Six Sigma e orçamento de erro (ADR-033)
+
+A tabela fato ganhou cinco campos: `Bias_Observado_abs_pct`,
+`Classificacao_Sigma`, `Margem_ETp_pp`, `Margem_ETp_pct` e `Status_Margem_ETp`.
+
+**Agregue a magnitude, nunca o bias assinado.** `Bias_Observado_pct` guarda o
+sinal, para o cartão que mostra a *direção* do desvio. Uma média sobre ele
+cancela um +6% contra um −6% e devolve viés zero para um método que está longe
+do alvo nas duas rodadas. O campo `_abs_pct` existe para as medidas.
+
+```dax
+Bias EQC medio =
+AVERAGE ( tblBI_Fato[Bias_Observado_abs_pct] )       -- magnitude
+
+Bias EQC direcao =
+AVERAGE ( tblBI_Fato[Bias_Observado_pct] )           -- so para leitura do sinal
+```
+
+**Sigma do método, e não de cada resultado.** `Sigma` repete-se em todas as
+linhas do mesmo analito e nível; somar seria contar o mesmo número N vezes.
+
+```dax
+Sigma =
+AVERAGEX (
+    SUMMARIZE ( tblBI_Fato, tblBI_Fato[Analito], tblBI_Fato[Nivel] ),
+    CALCULATE ( MAX ( tblBI_Fato[Sigma] ) )
+)
+
+Analitos abaixo de 3 Sigma =
+CALCULATE (
+    DISTINCTCOUNT ( tblBI_Fato[Analito] ),
+    tblBI_Fato[Classificacao_Sigma] = "Inadequado"
+)
+```
+
+`Classificacao_Sigma` vem pronta do motor (`mQualidade`) — **não a recalcule em
+DAX**. Uma segunda escada em DAX divergiria da planilha na primeira vez que uma
+faixa mudasse, e a divergência só apareceria quando alguém comparasse os dois.
+
+**Orçamento de erro.**
+
+```dax
+Margem ETp % =
+AVERAGEX (
+    SUMMARIZE ( tblBI_Fato, tblBI_Fato[Analito], tblBI_Fato[Nivel] ),
+    CALCULATE ( MAX ( tblBI_Fato[Margem_ETp_pct] ) )
+)
+
+Analitos em margem critica =
+CALCULATE (
+    DISTINCTCOUNT ( tblBI_Fato[Analito] ),
+    tblBI_Fato[Status_Margem_ETp] IN { "Margem critica", "ETp excedido" }
+)
+```
+
+**Sigma baixo não é reprovação de corrida.** O semáforo de corrida continua
+saindo de `Veredito` (Westgard). `Classificacao_Sigma` qualifica o **método** e
+deve viver num cartão separado — juntar os dois num só semáforo faria o painel
+reprovar corridas que Westgard aprovou.
+
+**Linha sem EP.** `Bias_Observado_pct` traz o texto `SEM EP`, e `Sigma`,
+`ET_Observado_pct` e os três campos de margem ficam **em branco**. Filtre com
+`NOT ISBLANK ( tblBI_Fato[Sigma] )` antes de tirar médias; tratar branco como
+zero publicaria desempenho inventado.

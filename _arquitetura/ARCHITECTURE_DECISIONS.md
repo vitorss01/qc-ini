@@ -1049,3 +1049,87 @@ conforme a configuração regional. Gravar `;` criaria um item único chamado
 Restringir a lista por provedor exigiria validação dependente, que quebra ao
 copiar linha — e o custo não paga: rodada D de CAP não existe nos dados e não
 entra em média nenhuma.
+
+---
+
+## ADR-033 — Bias, especificação, Sigma e orçamento de erro deixam de estar embaralhados
+
+**Contexto.** A `Estatística` chegou a esta fase com quatro famílias de indicador
+misturadas nas mesmas colunas, e o gestor reestruturou a aba deixando `G`, `I`,
+`J`, `K` e `M` vazias para serem preenchidas. As duas fórmulas que já existiam
+tinham um defeito de modelo:
+
+| Coluna | Fórmula encontrada | Problema |
+|---|---|---|
+| `H` ET | `(F*1,65)+G` | usa o bias **com sinal** |
+| `L` Sigma | `(K−G)/F` | usa o bias **com sinal** |
+
+Com um bias de −8%, a primeira **encolhia** o erro total e a segunda **inflava** o
+Sigma — os dois sentidos invertidos. Westgard *et al.* (2018), p. 3:
+*"SM = (TEa% – bias%) / CV. […] the bias will be an absolute percentage (the
+presence of any bias always shrinks the allowable error, never enlarges it)."*
+
+**Decisão — layout da `Estatística`.**
+
+| Col | O quê | Origem |
+|---|---|---|
+| `G` | Bias EQC (abs) % | `mCEQ.BiasEQ(…,"ABS",…)` |
+| `H` | ET % | `1,65×CV + \|Bias\|` |
+| `I` `J` `K` | Fonte, CVTp %, ETp % | `Analitos` `S` / `U` / `T` (ADR-028) |
+| `L` | Sigma | `(ETp − \|Bias\|) / CV` |
+| `M` | Status sigma | `mQualidade.ClassificarSigma` |
+| `N` `O` | Margem ETp em p.p. e em % | `ETp − ET` e `(ETp−ET)/ETp×100` |
+| `P` | Status margem | `mQualidade.ClassificarMargem` |
+| `Q` `R` `S` | Status CV, SDI (EP), limites (EP) | |
+| `T` | Bias EQC **com sinal** % | direção do desvio, para leitura |
+| `U` | ordem do crítico (oculta) | apoio da lista, evita fórmula matricial |
+
+Abaixo da tabela: resumo de conformidade (linha 96) e a lista dos analitos em
+margem crítica ou com ETp excedido (linha 106).
+
+**Decisão — `Painel` em blocos separados.** O bloco descritivo fica só com
+`Nível / n / Média / DP / CV%`. O que saiu dele virou dois blocos próprios —
+`SIX SIGMA` em `J10` e `ERRO TOTAL vs ETp` em `J16` — ao lado do bloco Westgard,
+que ganhou a coluna `Status`. Contadores globais de margem crítica em `J21`.
+
+**A escada de classificação existe uma vez.** Enquanto estava escrita como `IF`
+encadeado na `Estatística`, no `Painel` e no BI, mexer numa faixa exigia lembrar
+dos três; o primeiro esquecido divergiria em silêncio, e só apareceria quando o
+gestor comparasse a planilha com o relatório. Agora é `mQualidade`, versionada em
+`src_producao` e importada pelo build. Custo medido: **1,1 s** de recálculo com
+164 chamadas de UDF.
+
+**Sigma baixo não reprova corrida.** A classificação qualifica o **método**; quem
+reprova **corrida** é Westgard. O artigo, p. 8–9, trata Sigma baixo como exigência
+de *mais* regras, limites mais estreitos e CQ mais frequente — *"For Three Sigma
+methods and lower, however, QC frequency must be greatly increased"* —, não como
+motivo de rejeição. A prova 6 confere que nenhum status de corrida lê `L` ou `M`.
+
+**Cinco faixas, e não as seis do artigo.** A p. 6 descreve seis zonas: *World
+Class* (≥6), *Excellent* (5–6), *Good* (4–5), *Marginal* (3–4), *Poor* (2–3) e
+*unacceptable* (<2). O produto une as duas últimas sob **Inadequado**, porque
+abaixo de 3 Sigma a conduta operacional é a mesma. É decisão de produto, não do
+artigo, e está anotada em `mQualidade`: separá-las é trocar uma linha.
+
+**`IsNumeric(Empty)` devolve `True`.** E `CDbl(Empty)` devolve `0`. Sem guarda de
+`IsEmpty`/`IsNull`, célula vazia viraria Sigma 0 → *"Inadequado"*, e margem
+ausente → *"ETp excedido"*: reprovação inventada em cima de nada. É a terceira
+aparição da mesma armadilha no projeto, depois de `AlvoDoLote` e `BiasEQ`.
+
+**Sem EP não vira zero.** `G` mostra `SEM EP` (texto) e `H`, `L`, `M`, `N`, `O`,
+`P` ficam **vazias**. Zero seria exatidão inventada.
+
+**Margem zero é crítica, não excedida.** A faixa é `< 0` → excedido; `0 ≤ m ≤ 10`
+→ crítica. Um método que consome exatamente todo o orçamento ainda não estourou.
+
+**BI: 60 → 65 colunas.** `Bias_Observado_abs_pct`, `Classificacao_Sigma`,
+`Margem_ETp_pp`, `Margem_ETp_pct`, `Status_Margem_ETp`. A coluna 51 continua
+publicando o bias **assinado**; a magnitude ganhou coluna própria porque uma
+medida que faça `AVERAGE` sobre bias assinado cancela desvios opostos e devolve
+um viés falso perto de zero — o mesmo motivo que levou `mCEQ` a consolidar
+rodadas por magnitude.
+
+**O que NÃO mudou.** Lógica de Westgard, banco histórico, estrutura append-only e
+os registros históricos de EP. `Calc!N` e `Calc!O` (4-1s e 8x) continuam sendo
+`IF(OR(FALSE;FALSE);1;0)` — sempre zero. O `Painel` passa a dizer isso em texto,
+em vez de exibir duas colunas que o leitor supõe ativas.
