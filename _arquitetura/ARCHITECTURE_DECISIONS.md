@@ -1003,3 +1003,49 @@ e o commit.
 Consequência prática: **`SALVO` impresso por um script não é prova de que o byte
 sobreviveu.** Depois de remover estrutura de um `.xlsm` que mora em pasta
 sincronizada, vale reabrir e conferir — foi o que se fez aqui.
+
+---
+
+## ADR-032 — A aba de controle externo vira operável
+
+**Contexto.** O laboratório participa de **mais de um programa** — Controllab com
+4 rodadas anuais, CAP com 3 — e qual usar para julgar o desempenho é decisão
+técnica dele, não do sistema. A aba `EQC_Dados` guardava um provedor só, rodadas
+numéricas e nenhuma validação; a `Estatística` consumia tudo sem poder escolher.
+
+**Decisão.**
+
+`EQC_Dados`:
+
+| Coluna | O quê |
+|---|---|
+| `C` Rodada | vira **letra** (A–D), com validação. O laboratório fala *"rodada A"*, e o número se confundia com contagem de amostra |
+| `E` Provedor | validação `Controllab` / `CAP` |
+| `G` `H` `I` `K` `L` | **digitados**: resultado do lab, média do grupo, DP do grupo, limite inferior e superior |
+| `J` SDI | `(X_lab − média grupo) / DP grupo` |
+| `M` Status limites | dentro da faixa do provedor? |
+| `P` Status SDI | **novo** — `\|SDI\| ≤ 2` aprova |
+
+`Estatística` ganha o bloco de filtros em `K3:P5` — **provedor, ano e rodada** —
+publicados como `eqProvedor`, `eqAnoEP` e `eqRodada`. Os três alimentam **todas**
+as colunas de EP, para que não exista um card lendo um filtro e outro lendo
+outro. `K5` mostra em texto o que está em uso. Duas colunas novas: `T` Status SDI
+e `U` Status limites, consolidados por analito.
+
+**Status por pior amostra, não pela média.** Uma rodada com SDI +3 e outra com −3
+dão média zero e descrevem um desempenho que ninguém aprovaria. É a pior que
+reprova o conjunto.
+
+**Limite ausente não é aprovação.** A amostra entra como *não avaliada* e aparece
+na contagem — `OK (3 dentro; 1 sem limite)` — em vez de passar por conforme
+alguém que ninguém conferiu.
+
+**Sobre o separador da validação.** No XML e no COM a lista vai com **vírgula**
+(`"Controllab,CAP"`); o Excel exibe e aceita ponto‑e‑vírgula na caixa de diálogo,
+conforme a configuração regional. Gravar `;` criaria um item único chamado
+`Controllab;CAP`. As validações que já existiam na aba usam vírgula.
+
+**Rodadas A–D para os dois programas.** O CAP simplesmente não usa a D.
+Restringir a lista por provedor exigiria validação dependente, que quebra ao
+copiar linha — e o custo não paga: rodada D de CAP não existe nos dados e não
+entra em média nenhuma.
