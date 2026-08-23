@@ -1445,3 +1445,86 @@ não falha.
 Uma âncora precisa ser **exata**, não "contém": `"DPM teórico"` também é
 cabeçalho do bloco Six Sigma, e a busca por trecho casava com ele antes de chegar
 à tabela de referência. `"Rendimento %"` só existe num lugar.
+
+---
+
+## ADR-037 — O Sigma acende as regras que ele exige
+
+**Contexto.** O bloco Westgard mostrava contagens de violação. Não dizia *quais
+regras deveriam estar rodando* para o desempenho daquele analito.
+
+**Decisão.** As cinco células de regra (`Painel!G6:K6`) ganharam formatação
+condicional dirigida pelo Sigma. Nada foi movido, redesenhado ou recolorido: as
+condições existentes em `G7:K9` continuam intactas.
+
+### Duas semânticas, duas cores, uma prioridade
+
+| | |
+|---|---|
+| verde escuro `#146C43`, fonte branca, negrito | regra **recomendada** pelo Sigma |
+| vermelho (codificação já existente) | regra **violada** na corrida |
+
+Uma regra pode ser as duas coisas. A condição de violação entra com prioridade
+**menor** (7 contra 8, 9 contra 10, …), então vence: regra violada não fica
+verde só porque está no plano.
+
+### A matriz é uma leitura do texto, não uma cópia dele
+
+`tblPlanoQC_Sigma` ganhou sete colunas — uma por regra da família
+`1-3S · 2-2S · R4S · 4-1S · 6x · 8X · 10x` — com a bandeira
+
+```
+=IF(ISNUMBER(SEARCH("1_3s";IF($D4="";$D$1;$D4)));1;0)
+```
+
+Cada bandeira **lê a coluna `Regras` da própria linha**. Recomendação textual e
+realce visual não podem divergir: são a mesma informação lida de dois jeitos.
+Mudar uma faixa muda os dois.
+
+### `SUMPRODUCT`, e não `INDEX/MATCH`
+
+Sondado célula a célula: a formatação condicional **aceita** `SUMPRODUCT` sobre
+nomes que apontam para outra aba e **recusa** `INDEX/MATCH` sobre os mesmos
+nomes — inclusive dentro de `IFERROR`. São funções que devolvem *referência*, e
+a CF não atravessa planilha com elas. A fórmula final é
+
+```
+=SUMPRODUCT((regrasRotulos=G6)*regrasAtivas)=1
+```
+
+### O plano cobre o nível pior
+
+O bloco tem uma linha por nível, mas a célula da regra é uma só. O realce usa o
+**menor Sigma dos dois níveis**.
+
+Isso produziu uma incoerência de leitura que o QA pegou: Lactato exibia
+*"Classe mundial"* no card (nível 1) com as cinco regras acesas (nível 2, Sigma
+1,82). Cada metade estava certa; o conjunto, contraditório. O texto de apoio
+passou a nomear o número e o nível — *"Base: menor Sigma entre os dois níveis =
+1,82 (nível 2). O plano precisa cobrir o nível que está pior"*.
+
+### Abaixo de 3 Sigma
+
+A faixa não tem regras na tabela — de propósito, porque não existe plano
+estatístico que sustente o método ali. Para o realce, a bandeira cai no conjunto
+que o **motor** suporta (estratégia intensiva), a tabela devolve
+`Status_Plano_QC = REAVALIAR MÉTODO`, o Painel exibe o alerta, e **nenhum run
+size é atribuído**. Não é prescrição de que aquelas regras resolvem; é o máximo
+que o CQ estatístico alcança enquanto o método não melhora.
+
+### O conflito 6x / 8x, declarado
+
+A especificação desta missão pede `6x` na faixa 3–4 Sigma. O gestor havia
+determinado antes: *"devemos decidir entre 6x, 8x ou 10x e nós já decidimos —
+irá ser 8x"*. A mesma missão exige que o realce saia da **mesma fonte** da
+recomendação textual. As duas coisas só fecham com 8x, que é o que a tabela diz
+e o que o motor executa — e por isso `Cobertura_Motor_Westgard` fecha `TOTAL`.
+A coluna `6x` existe na matriz, zerada, pronta para a troca de uma célula.
+
+### Achado colateral, não corrigido
+
+`Painel!I7:I9` carrega condições `cellIs` com limiares `4` e `3`, e `J7:J9`
+compara com `"OK"`/`"REJEITADO"` — sobras de um layout em que `I` era Sigma e
+`J` era Status. Hoje `I` é a contagem de R4S e `J` a de 4-1S, então essas
+condições podem colorir a contagem por um critério que não é dela. Não foram
+removidas porque remover é mudança visual, e o layout é do gestor.
