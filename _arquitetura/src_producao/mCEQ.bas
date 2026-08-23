@@ -68,21 +68,38 @@ Option Explicit
 ' faria o bias sumir sempre que o CQI passasse na frente do ultimo ciclo
 ' publicado. Mesma regra de vigencia do ADR-022 para especificacao.
 
-Private Const EQ_ABA As String = "EQC_Dados"
-Private Const EQ_R0 As Long = 4
-Private Const EQ_RN As Long = 1003
-Private Const EQ_C_ANALITO As Long = 1
+' ADR-034: A FONTE PASSOU A SER A EQA_Base
+'
+' Ate aqui este modulo lia a EQC_Dados, aba unica onde CAP e Controllab
+' dividiam as mesmas colunas. Agora cada provedor tem a sua aba de digitacao,
+' com a terminologia dele, e a EQA_Base normaliza as duas.
+'
+' Este e o UNICO lugar da pasta que le a aba de EP. As 403 celulas da
+' Estatistica e do Painel, e a coluna de bias do BI, chamam as funcoes daqui --
+' nenhuma delas aponta para a planilha. Por isso trocar a fonte foi trocar
+' estas constantes, e nao 403 formulas.
+'
+' O analito casado e o CANONICO (coluna E), nao o nome do provedor (coluna D):
+' o CAP reporta "Urea Nitrogen" e a Analitos chama "Ureia". A coluna D continua
+' na base para rastrear ate o PDF.
+
+Private Const EQ_ABA As String = "EQA_Base"
+Private Const EQ_R0 As Long = 2
+Private Const EQ_RN As Long = 5001
+Private Const EQ_C_PROVEDOR As Long = 1
 Private Const EQ_C_ANO As Long = 2
 Private Const EQ_C_RODADA As Long = 3
-Private Const EQ_C_PROVEDOR As Long = 5
+Private Const EQ_C_ANALITO As Long = 5
 Private Const EQ_C_XLAB As Long = 7
 Private Const EQ_C_XREF As Long = 8
 Private Const EQ_C_SDGRUPO As Long = 9
 Private Const EQ_C_SDI As Long = 10
 Private Const EQ_C_LIMINF As Long = 11
 Private Const EQ_C_LIMSUP As Long = 12
-Private Const EQ_C_BIAS As Long = 14
-Private Const EQ_C_BIASABS As Long = 15
+Private Const EQ_C_BIAS As Long = 16
+Private Const EQ_C_BIASABS As Long = 17
+Private Const EQ_C_USO As Long = 20
+Private Const EQ_NCOL As Long = 21
 
 Public Const SEM_EP As String = "SEM EP"
 Public Const LIM_SDI As Double = 2#
@@ -105,14 +122,20 @@ Private Function LerBanco() As Variant
     Set ws = ThisWorkbook.Sheets(EQ_ABA)
     On Error GoTo 0
     If ws Is Nothing Then Exit Function
-    LerBanco = ws.Range(ws.Cells(EQ_R0, EQ_C_ANALITO), _
-                        ws.Cells(EQ_RN, EQ_C_BIASABS)).Value
+    ' Da coluna 1 ate a ultima: assim d(i, EQ_C_XLAB) e literalmente a coluna
+    ' EQ_C_XLAB. Ler a partir do analito (coluna 5) deslocaria todo indice em 4.
+    LerBanco = ws.Range(ws.Cells(EQ_R0, 1), _
+                        ws.Cells(EQ_RN, EQ_NCOL)).Value
 End Function
 
 ' A linha pertence ao analito, ao provedor e a rodada pedidos?
 Private Function Casa(ByRef d As Variant, ByVal i As Long, ByVal analito As String, _
                       ByVal provedor As Variant, ByVal rodada As Variant) As Boolean
     If Not Igual(d(i, EQ_C_ANALITO), analito) Then Exit Function
+    ' Uso_Analitico = NAO marca dado preservado por historico que nao pode
+    ' entrar em bias, Sigma nem ET -- hoje, os 90 registros de simulacao que
+    ' vinham da EQC_Dados. Ver o cabecalho do mEQA.
+    If Igual(d(i, EQ_C_USO), "NAO") Then Exit Function
     If Not Livre(provedor) Then
         If Not Igual(d(i, EQ_C_PROVEDOR), CStr(provedor)) Then Exit Function
     End If

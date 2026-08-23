@@ -310,6 +310,15 @@ Encerrar-Excel
     # de 60 meses, enquanto a producao -- remendada a mao pelo instalador -- a
     # tinha. As provas passavam porque olhavam para o arquivo errado.
     (Join-Path $arq 'src_producao\mBanco.bas'),
+    # mEQA (ADR-034): consolida EQA.CAP_Dados e EQA.Controllab_Dados na
+    # EQA_Base. Vem ANTES do mCEQ, que le a base que ele monta.
+    (Join-Path $arq 'src_producao\mEQA.bas'),
+    # mCEQ (ADR-030/032/034): bias, SDI e status do EP. NAO estava na lista.
+    # O artefato sairia sem ele e as 403 celulas da Estatistica e do Painel
+    # que chamam BiasEQ/SDIeq/StatusSDIeq virariam #NOME?. E a mesma falha
+    # que o mBanco pagou no ADR-025: producao remendada a mao passando nas
+    # provas enquanto o build entregava outra coisa.
+    (Join-Path $arq 'src_producao\mCEQ.bas'),
     # mQualidade (ADR-033): as escadas de Sigma e de orcamento de erro. Vem
     # ANTES do mBI, que as chama. Sem ele o artefato nao compila.
     (Join-Path $arq 'src_producao\mQualidade.bas'),

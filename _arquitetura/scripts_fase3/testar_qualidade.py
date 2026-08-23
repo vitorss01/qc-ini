@@ -25,7 +25,16 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', write_through
 import win32com.client as w
 
 falhas = []
-EQ_R0 = 4
+
+# ADR-034: a fonte do EP deixou de ser a EQC_Dados. Este fixture injetava
+# rodadas naquela aba; depois do repontamento do mCEQ para a EQA_Base, as
+# linhas continuavam sendo gravadas e simplesmente nao eram lidas -- e as
+# provas passaram a medir o bias REAL do CAP em vez do bias controlado.
+# O produto estava certo; o instrumento e que apontava para o lugar antigo.
+EQ_ABA = 'EQA.CAP_Dados'
+EQ_R0 = 2
+RODADA_TESTE = 'TESTE-2099'     # nao colide com C-A/C-B/C-C nem com o legado
+ANO_TESTE = 2099
 LIN = 14                    # primeira linha da tabela: analito 1, nivel 1
 
 # Estatistica
@@ -66,7 +75,16 @@ def novo_excel():
     raise RuntimeError('Excel COM nao subiu')
 
 
-def tenta(fn, vezes=8):
+# Erros que significam 'o Excel esta ocupado, tente de novo' -- e nao
+# 'sua chamada esta errada'. 'Membro nao encontrado' entrou na lista
+# depois de aparecer de forma intermitente em Range() logo apos um
+# recalculo pesado: o modelo de objetos fica parcialmente indisponivel
+# enquanto o Excel se assenta.
+TRANSITORIOS = ('rejeitada', 'rejected', 'membro n', 'member not found',
+                'call was rejected', 'ocupado', 'busy')
+
+
+def tenta(fn, vezes=10):
     ult = None
     for i in range(vezes):
         try:
@@ -74,7 +92,7 @@ def tenta(fn, vezes=8):
         except Exception as e:
             ult = e
             s = str(e).lower()
-            if 'rejeitada' not in s and 'rejected' not in s:
+            if not any(t in s for t in TRANSITORIOS):
                 raise
             time.sleep(1.0 + 0.8 * i)
     raise ult
@@ -87,42 +105,80 @@ def main(caminho):
     xl = novo_excel()
     wb = xl.Workbooks.Open(copia)
     try:
-        eq = wb.Worksheets('EQC_Dados')
+        eq = wb.Worksheets(EQ_ABA)
+        ctl = wb.Worksheets('EQA.Controllab_Dados')
+        base = wb.Worksheets('EQA_Base')
+        base.Visible = -1
         es = wb.Worksheets('Estatística')
         pa = wb.Worksheets('Painel')
         an = wb.Worksheets('Analitos')
         xl.Calculation = -4105
 
         alvo = str(tenta(lambda: es.Cells(LIN, 1).Value)).strip()
-        ano = int(tenta(lambda: es.Range('N4').Value))
-        ultEQ = tenta(lambda: eq.Cells(eq.Rows.Count, 1).End(-4162).Row)
-        print('analito de prova: %s   nivel %s   ano EP %d'
-              % (alvo, tenta(lambda: es.Cells(LIN, 2).Value), ano))
+        ano = ANO_TESTE
+        tenta(lambda: es.Range('N4').__setattr__('Value', ano))
+        ultEQ = tenta(lambda: eq.Cells(eq.Rows.Count, 4).End(-4162).Row)
+        ultCTL = tenta(lambda: ctl.Cells(ctl.Rows.Count, 4).End(-4162).Row)
+
+        # O mapa provedor->canonico e o que faz a linha chegar na
+        # Estatistica. O analito de prova entra com mapeamento identidade.
+        ultMapa = tenta(lambda: base.Cells(base.Rows.Count, 23).End(-4162).Row)
+        for k, prov in enumerate(('CAP', 'Controllab')):
+            for cc, vv in ((23, prov), (24, alvo), (25, alvo)):
+                tenta(lambda c=cc, v=vv, kk=k:
+                      base.Cells(ultMapa + 1 + kk, c).__setattr__('Value', v))
+        print('analito de prova: %s   nivel %s   ano EP %d   (%s, linha %d)'
+              % (alvo, tenta(lambda: es.Cells(LIN, 2).Value), ano,
+                 EQ_ABA, ultEQ))
 
         # -- utilitarios de injecao -----------------------------------------
-        def limpa_eq():
-            tenta(lambda: eq.Range(eq.Rows(ultEQ + 1), eq.Rows(ultEQ + 40)).ClearContents())
+        # Rebuscar a aba pelo NOME a cada uso. O ponteiro guardado la em
+        # cima envelhece quando a estrutura da pasta muda (aba reexibida,
+        # tabela redimensionada) e o COM passa a devolver
+        # 'Membro nao encontrado' em .Range -- mesmo continuando a atender
+        # .Cells. Rebuscar custa nada.
+        def folha(nome):
+            return wb.Worksheets(nome)
 
-        def poe_eq(rodada, xlab, xref=100.0, sdgrupo=5.0, prov='CAP', desloc=0):
-            lin = ultEQ + 1 + desloc
-            for c, v in ((1, alvo), (2, ano), (3, rodada), (5, prov), (6, '01'),
-                         (7, xlab), (8, xref), (9, sdgrupo), (11, 50.0), (12, 150.0)):
-                tenta(lambda l=lin, cc=c, vv=v: eq.Cells(l, cc).__setattr__('Value', vv))
-            for faixa in ((10, 10), (13, 16)):
-                tenta(lambda f=faixa: eq.Range(eq.Cells(EQ_R0, f[0]),
-                                               eq.Cells(EQ_R0, f[1])).Copy())
-                tenta(lambda l=lin, f=faixa: eq.Range(eq.Cells(l, f[0]),
-                                                      eq.Cells(l, f[1])).PasteSpecial(-4123))
-                xl.CutCopyMode = False
+        def limpa_eq():
+            for nome, u in ((EQ_ABA, ultEQ),
+                            ('EQA.Controllab_Dados', ultCTL)):
+                ref = 'A%d:R%d' % (u + 1, u + 40)
+                tenta(lambda n=nome, r=ref: folha(n).Range(r).ClearContents())
+
+        def poe_eq(rodada, xlab, xref=100.0, sdgrupo=5.0, prov='CAP',
+                   desloc=0, aba='', base_lin=None):
+            # estrutura canonica do ADR-034:
+            # A provedor | B rodada | C ano | D analito | E amostra |
+            # F resultado | G alvo | H SD | I SDI | J lim.inf | K lim.sup
+            # O provedor vem da ABA, nao da coluna A: a consolidacao
+            # carimba o nome da planilha em que a linha vive. Escrever
+            # 'Controllab' numa linha da EQA.CAP_Dados nao a torna do
+            # Controllab -- e por isso que a linha vai para a aba certa.
+            ws = folha(aba) if aba else folha(EQ_ABA)
+            lin = (base_lin if base_lin is not None else ultEQ) + 1 + desloc
+            for c, v in ((1, prov), (2, str(rodada)), (3, ano), (4, alvo),
+                         (5, '%02d' % (desloc + 1)), (6, xlab), (7, xref),
+                         (8, sdgrupo), (9, (xlab - xref) / sdgrupo),
+                         (10, 50.0), (11, 150.0), (12, 'Acceptable')):
+                tenta(lambda l=lin, cc=c, vv=v, a=ws:
+                      a.Cells(l, cc).__setattr__('Value', vv))
+            for c, f in ((15, '=IFERROR((F{0}-G{0})/G{0}*100,"")'),
+                         (16, '=IF(O{0}="","",ABS(O{0}))')):
+                tenta(lambda cc=c, ff=f, l=lin, a=ws:
+                      a.Cells(l, cc).__setattr__('Formula', ff.format(l)))
 
         def cenario(cv, etp, xlab, prov='CAP'):
             """CV e ETp entram como literal; o bias vem de uma rodada de EP."""
             limpa_eq()
-            poe_eq('A', xlab, prov=prov)
+            poe_eq(RODADA_TESTE, xlab, prov=prov)
             tenta(lambda: es.Range('L4').__setattr__('Value', prov))
-            tenta(lambda: es.Range('P4').__setattr__('Value', 'TODAS'))
+            tenta(lambda: es.Range('P4').__setattr__('Value', RODADA_TESTE))
             tenta(lambda: es.Cells(LIN, C_CV).__setattr__('Value', cv))
             tenta(lambda: an.Cells(4, 20).__setattr__('Value', etp))
+            # a EQA_Base e materializada por VBA: sem consolidar, o mCEQ le
+            # a base anterior e a prova mede o estado errado
+            tenta(lambda: xl.Run('AtualizarEQABase'))
             tenta(lambda: xl.CalculateFull())
 
         def ler(col):
@@ -240,8 +296,9 @@ def main(caminho):
 
         print('\n=== PROVA 11. sem EP nao vira zero: vira SEM EP, e ET/Sigma ficam vazios ===')
         limpa_eq()
+        tenta(lambda: xl.Run('AtualizarEQABase'))
         tenta(lambda: es.Cells(LIN, C_CV).__setattr__('Value', 2.0))
-        tenta(lambda: es.Range('P4').__setattr__('Value', 'D'))     # rodada inexistente
+        tenta(lambda: es.Range('P4').__setattr__('Value', 'INEXISTENTE'))
         tenta(lambda: xl.CalculateFull())
         ck('G = "SEM EP" (texto, nao 0)', str(ler(C_BIAS)) == 'SEM EP', repr(ler(C_BIAS)))
         ck('ET fica vazio, nao 0', ler(C_ET) in ('', None), repr(ler(C_ET)))
@@ -252,12 +309,18 @@ def main(caminho):
 
         print('\n=== PROVA 12. os filtros de EP ainda mandam nas colunas novas ===')
         limpa_eq()
-        poe_eq('A', 104.0, prov='CAP', desloc=0)
-        poe_eq('B', 112.0, prov='CAP', desloc=1)
-        poe_eq('A', 102.0, prov='Controllab', desloc=2)
+        poe_eq(RODADA_TESTE + '-A', 104.0, prov='CAP', desloc=0)
+        poe_eq(RODADA_TESTE + '-B', 112.0, prov='CAP', desloc=1)
+        poe_eq(RODADA_TESTE + '-A', 102.0, prov='Controllab', desloc=0,
+               aba='EQA.Controllab_Dados', base_lin=ultCTL)
+        tenta(lambda: xl.CalculateFull())
+        tenta(lambda: xl.Run('AtualizarEQABase'))
         tenta(lambda: es.Range('L4').__setattr__('Value', 'CAP'))
-        for rod, esp in (('TODAS', 8.0), ('A', 4.0), ('B', 12.0)):
+        for rod, esp in (('TODAS', 8.0), (RODADA_TESTE + '-A', 4.0),
+                         (RODADA_TESTE + '-B', 12.0)):
             tenta(lambda r=rod: es.Range('P4').__setattr__('Value', r))
+            tenta(lambda: xl.CalculateFull())
+            tenta(lambda: xl.Run('AtualizarEQABase'))
             tenta(lambda: xl.CalculateFull())
             ck('CAP rodada %s -> |bias| %.0f' % (rod, esp), perto(ler(C_BIAS), esp),
                str(ler(C_BIAS)))

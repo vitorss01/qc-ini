@@ -302,3 +302,65 @@ reprovar corridas que Westgard aprovou.
 `ET_Observado_pct` e os três campos de margem ficam **em branco**. Filtre com
 `NOT ISBLANK ( tblBI_Fato[Sigma] )` antes de tirar médias; tratar branco como
 zero publicaria desempenho inventado.
+
+## Controle externo — `tblEQA_Base` (ADR-034)
+
+Fonte única para análise conjunta dos dois programas. Vive em `EQA_Base`
+(veryHidden — aba oculta é lida pelo Power Query normalmente) e tem **21 campos**:
+
+`Provedor` · `Ano` · `Rodada` · `Analito` · `Analito_Canonico` · `Amostra` ·
+`Resultado` · `Valor_Alvo` · `SD` · `SDI` · `Limite_Inferior` ·
+`Limite_Superior` · `Avaliacao_Original` · `Status_Padronizado` · `Unidade` ·
+`Bias` · `Bias_Abs` · `Pagina_Fonte` · `Arquivo_Fonte` · `Uso_Analitico` · `Chave`
+
+**Filtre `Uso_Analitico = "SIM"` em toda medida analítica.** As linhas com `NAO`
+são histórico preservado que não é resultado real de EP. Sem esse filtro o viés
+do laboratório muda — na Glicose, de 2,73% para 1,84%.
+
+```dax
+EQA linhas validas =
+CALCULATE ( COUNTROWS ( tblEQA_Base ), tblEQA_Base[Uso_Analitico] = "SIM" )
+
+Bias EQA magnitude =
+CALCULATE ( AVERAGE ( tblEQA_Base[Bias_Abs] ), tblEQA_Base[Uso_Analitico] = "SIM" )
+
+Bias EQA direcao =
+CALCULATE ( AVERAGE ( tblEQA_Base[Bias] ), tblEQA_Base[Uso_Analitico] = "SIM" )
+```
+
+**Direção e magnitude respondem perguntas diferentes.** `Bias` guarda o sinal e
+serve para ver se o método puxa para cima ou para baixo. `Bias_Abs` é o que
+alimenta Sigma e ET. Uma média sobre `Bias` cancela +8% contra −8% e devolve
+zero para um método deslocado nas duas amostras.
+
+**Isolado ou sistemático** — a pergunta que a granularidade por amostra existe
+para responder:
+
+```dax
+Amostras fora na rodada =
+CALCULATE (
+    COUNTROWS ( tblEQA_Base ),
+    tblEQA_Base[Status_Padronizado] = "NAO ACEITO"
+)
+
+Desvio na mesma direcao =
+VAR Pos = CALCULATE ( COUNTROWS ( tblEQA_Base ), tblEQA_Base[Bias] > 0 )
+VAR Neg = CALCULATE ( COUNTROWS ( tblEQA_Base ), tblEQA_Base[Bias] < 0 )
+RETURN MAX ( Pos, Neg ) / ( Pos + Neg )     -- perto de 1 = deslocamento sistematico
+```
+
+**`Analito_Canonico` é a chave de junção** com `tblBI_Fato[Analito]` e com a
+`Analitos`. `Analito` guarda o termo do provedor e serve para rastrear até o
+laudo — não use como relacionamento.
+
+**Linha com `Analito_Canonico` vazio** é analito que o provedor mede e a pasta
+não (`Ferritin`, `Thyroid Stim Hormone`). Aparece nos totais de EQA e **não** tem
+Sigma nem ET — não há especificação para cruzar.
+
+**EQA não reprova corrida.** `Status_Padronizado = "NAO ACEITO"` é avaliação
+externa; o veredito de corrida continua vindo de `tblBI_Fato[Veredito]`
+(Westgard). Juntar os dois num semáforo só faria o painel reprovar corridas que
+o CQI aprovou.
+
+**Rastreabilidade:** `Arquivo_Fonte` + `Pagina_Fonte` respondem *"de onde saiu
+exatamente esse valor?"* — mantenha os dois em qualquer tabela de detalhe.

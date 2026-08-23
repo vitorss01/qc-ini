@@ -1148,3 +1148,117 @@ histórico suficiente para 4-1s e 8x.
 `CAP`/2025, 6 analitos). O resultado eram 80 células `SEM EP` sem explicação
 visível. `Estatística!K5` agora termina com *"N linha(s) no banco de EP"* — zero
 para `Controllab`, 90 para `CAP`.
+
+---
+
+## ADR-034 — Controle externo: interface separada, motor consolidado
+
+**Contexto.** A `EQC_Dados` era uma aba só, com CAP e Controllab dividindo as
+mesmas colunas, uma linha por analito-rodada e nenhuma rastreabilidade até o
+laudo. Não respondia às perguntas que importam: *o desvio foi isolado ou as
+cinco amostras andaram juntas? de que página do PDF saiu esse valor? o CAP e o
+Controllab estão dizendo a mesma coisa?*
+
+**Decisão — sete abas.**
+
+| Aba | Papel |
+|---|---|
+| `EQA.CAP_Dados` | digitação do CAP, tabela `tblEQA_CAP_Dados` |
+| `EQA.CAP_Resumo` | indicadores + matriz analito × survey, **dinâmica** |
+| `EQA.CAP_Nao_Aceitaveis` | derivada por fórmula, só `Unacceptable` |
+| `EQA.Controllab_Dados` | digitação do Controllab, `tblEQA_Controllab_Dados` |
+| `EQA.Controllab_Resumo` | os mesmos indicadores, no vocabulário do provedor |
+| `EQA.Controllab_Desvios` | derivada, critério do próprio Controllab |
+| `EQA_Base` | consolidada, **veryHidden**, `tblEQA_Base` |
+
+As seis visíveis ficam agrupadas e nessa ordem, com guia azul (`#263B4D`) para o
+CAP e verde (`#1F6F5C`) para o Controllab. As duas abas de digitação são
+**gêmeas**: mesmas 18 colunas, mesmas larguras, mesmos formatos — o QA compara
+coluna a coluna e não achou diferença. A seção 5 da missão proíbe um provedor
+sofisticado e o outro simplificado.
+
+**Granularidade por amostra, não por analito.** Amostra 1 com +8% e amostra 2
+com −8% dão média zero e descrevem um método que ninguém aprovaria. Cada
+resultado, cada alvo, cada SDI e cada avaliação ficam guardados; a consolidação
+acontece depois, conforme a finalidade.
+
+**Um só ponto lê a aba de EP.** `mCEQ` era o único consumidor direto da
+`EQC_Dados`. Repontá-lo para a `EQA_Base` fez as **403 células** da `Estatística`
+e do `Painel` e a coluna de bias do BI acompanharem sem uma edição de fórmula.
+Foi a razão de a migração caber num commit.
+
+**Analito do provedor ≠ analito canônico.** O CAP reporta `Urea Nitrogen`; a
+pasta chama `Ureia`. Guardar só um dos dois destrói alguma coisa: só o do
+provedor impede o cruzamento com a `Analitos`; só o canônico apaga a
+rastreabilidade até o PDF. A base guarda **os dois**, e o mapa entre eles vive em
+`EQA_Base!W:Y`, editável.
+
+`Ferritin` e `Thyroid Stim Hormone` não existem na Bioquímica desta pasta: entram
+com canônico vazio — visíveis, contados (20 linhas), rastreáveis e fora da
+`Estatística`, porque não há especificação de qualidade para cruzar. Inventar
+correspondente seria pior do que a lacuna.
+
+**BUN e ureia não são a mesma escala** (fator 2,14), mas o Bias em **porcentagem**
+não muda: resultado e alvo estão na mesma unidade e o fator cancela na razão. SD,
+SDI e limites ficam na escala do provedor, que é onde são usados.
+
+**`Uso_Analitico`: preservar não é misturar.** Os 90 registros que vinham da
+`EQC_Dados` **não são resultado real de EP** — glicose entre 250 e 262 mg/dL nas
+quinze amostras, com quatro casas decimais, e **nenhum valor em comum** com o
+relatório do CAP. São simulação. Apagar violaria *"não apagar histórico"*;
+misturar contaminaria todo Sigma e todo ET da pasta. A coluna existe para não ser
+preciso escolher: a linha fica visível e contada, com `NAO`, e não entra em conta
+nenhuma. A prova 12 mede os dois números — 2,733% só com o dado real contra
+1,843% se misturasse.
+
+**`EQC_Dados` continua na pasta**, intacta, oculta, marcada como legado. As
+dependências foram levantadas antes (403 fórmulas + `mBI`), e todas passam por
+`mCEQ`.
+
+**Chave duplicada é contada, não descartada.** `Provedor|Ano|Rodada|Analito|Amostra`.
+Sumir com duplicata em silêncio esconderia digitação dobrada — exatamente o que a
+chave existe para revelar. O carimbo em `Z1` relata o número.
+
+**Status padronizado não aprova por omissão.** Termo desconhecido vira
+`NAO AVALIADO`, nunca `ACEITO`.
+
+**EQA não é Westgard.** `Unacceptable` no CAP não reprova corrida de CQI. São
+dimensões diferentes: Westgard controla a corrida, o EQA avalia o desempenho
+analítico contra pares.
+
+### O que a construção custou aprender
+
+**Argumento nomeado não vinculou neste dispatch.** `Worksheets.Add(After=x)`
+ignorou a âncora, e pior: `Move(After=x)` mandou a aba para uma **pasta nova** —
+que é o que `Move` faz sem `Before` nem `After`. A aba sumiu do arquivo sem erro
+nenhum. Só o primeiro parâmetro posicional chega intacto, então a ordenação usa
+`Move(Before)`.
+
+**`Dim ws` sombreia a função `Ws()`.** VBA não distingue maiúsculas: dentro de
+`CarregarMapa`, `Set ws = Ws(nome)` chamava o membro padrão da própria variável
+vazia — **erro 91**, em caixa modal, numa instância sem tela. A função virou
+`AbaPorNome`.
+
+**UDF dentro de `SUMPRODUCT` recebe array.** `PadronizarStatus(faixa)` não é
+chamada célula a célula: recebe a faixa inteira, `CStr(array)` dá erro de tipo e
+o resumo vira `#VALOR!`. O status virou **coluna** (`W`), calculada uma vez por
+linha — e os resumos passaram a usar `COUNTIFS`, que ainda é mais rápido.
+
+**Ordinal por `SUMPRODUCT` é O(n³).** `SUMPRODUCT((COUNTIF(faixa;faixa)=1)*1)` faz
+n×n comparações por linha. Trocado por `MAX` da própria coluna até a linha
+anterior, mais um.
+
+**`NumberFormat` comportou-se como `NumberFormatLocal`.** Num Excel pt-BR o ponto
+é separador de **milhar**, então `"0.00"` foi lido como *milhar, sem decimais*.
+Oito colunas nasceram com casas erradas: `-2,12` exibia `-002` e o SDI `-0,9`
+exibia `-01`. Só apareceu porque o QA visual mede o que a célula **exibe**, não o
+código guardado. Corrigido via `NumberFormatLocal` com vírgula decimal.
+
+**Dezesseis abas estavam protegidas**, apesar de o ADR-031 declarar a pasta
+liberada. Descoberto porque `Validation.Add` e `Font.Bold` foram recusados. A
+etapa mede o estado, registra quais estavam protegidas e desprotege — a fase de
+desenvolvimento pede a pasta aberta.
+
+**`mCEQ` não estava na lista de módulos do build.** O artefato sairia sem ele e as
+403 células virariam `#NOME?` — a mesma falha que o `mBanco` pagou no ADR-025.
+`mEQA` e `mCEQ` entraram na lista.
