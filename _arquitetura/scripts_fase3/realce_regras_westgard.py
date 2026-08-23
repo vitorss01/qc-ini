@@ -76,8 +76,9 @@ REGRAS_PAINEL = {'G6': '1-3S', 'H6': '2-2S', 'I6': 'R4S',
                  'J6': '4-1S', 'K6': '8X'}
 
 # rotulo exibido -> token usado no texto de Regras da tblPlanoQC_Sigma
+# Cinco regras, e so elas (ADR-038). 8x e a sequencial definitiva.
 MATRIZ = [('1-3S', '1_3s'), ('2-2S', '2_2s'), ('R4S', 'R_4s'),
-          ('4-1S', '4_1s'), ('6x', '6x'), ('8X', '8x'), ('10x', '10x')]
+          ('4-1S', '4_1s'), ('8X', '8x')]
 
 CFG = 'Cfg_PlanoQC'
 CFG_R0, CFG_RN = 4, 8          # linhas das faixas

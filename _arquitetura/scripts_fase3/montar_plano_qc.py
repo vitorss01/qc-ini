@@ -62,16 +62,11 @@ REF_R0 = 127                     # tabela educativa na Estatistica
 # Westgard Sigma Rules with Run Sizes.
 #   Sigma_Min | Sigma_Max | Classificacao | Regras | N | RunSize | Frequencia | Ref
 #
-# A REGRA DE MEDIA DO PRODUTO E 8x -- DECISAO DO LABORATORIO
+# 8x E A REGRA SEQUENCIAL DEFINITIVA DESTE PROJETO (ADR-038)
 #
-# A familia de regras de sequencia (6x, 8x, 10x) responde a mesma pergunta:
-# quantos resultados consecutivos do mesmo lado da media denunciam desvio
-# sistematico. Algumas tabelas publicadas de Sigma rules trazem 6x; outras,
-# 8x ou 10x. Escolher UMA e decisao operacional do laboratorio, e o QC_INI
-# ja opera com 8x -- que e a regra implementada no motor do Calc.
-#
-# Manter a tabela pedindo 6x enquanto o motor avalia 8x criaria uma cobertura
-# eternamente PARCIAL por causa de uma diferenca de rotulo, nao de metodo.
+# Uma regra de sequencia responde a pergunta: quantos resultados consecutivos
+# do mesmo lado da media denunciam desvio sistematico. O laboratorio fechou a
+# resposta em oito. E o que a tabela recomenda e o que o motor do Calc avalia.
 #
 # Abaixo de 3 Sigma, N e run size ficam VAZIOS de proposito: preencher ali
 # sugeriria existir plano de CQ estatistico capaz de sustentar o metodo.

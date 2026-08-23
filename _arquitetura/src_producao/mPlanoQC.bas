@@ -85,14 +85,12 @@ Public Const NOTA_RUNSIZE As String = _
 ' Regras que o motor desta pasta realmente avalia no Calc. Conferido coluna a
 ' coluna: K=1_3s, L=2_2s, M=R_4s, N=4_1s, O=8x.
 '
-' A REGRA DE SEQUENCIA DO PRODUTO E 8x.
+' 8x E A REGRA SEQUENCIAL DEFINITIVA DESTE PROJETO (ADR-038).
 '
-' A familia 6x / 8x / 10x responde a mesma pergunta: quantos resultados
-' consecutivos do mesmo lado da media denunciam desvio sistematico. Tabelas
-' publicadas de Sigma rules trazem ora 6x, ora 8x, ora 10x -- escolher UMA e
-' decisao operacional do laboratorio, e o QC_INI escolheu 8x. tblPlanoQC_Sigma
-' recomenda 8x, o motor avalia 8x, e por isso a cobertura fecha TOTAL: os dois
-' falam da mesma regra.
+' Uma regra de sequencia responde a pergunta: quantos resultados consecutivos
+' do mesmo lado da media denunciam desvio sistematico. O laboratorio fechou a
+' resposta em oito. tblPlanoQC_Sigma recomenda 8x, o motor avalia 8x, e por
+' isso a cobertura fecha TOTAL: os dois falam da mesma regra.
 Private Const REGRAS_IMPLEMENTADAS As String = "1_3s;2_2s;R_4s;4_1s;8x"
 
 
@@ -228,7 +226,9 @@ End Function
 ' Devolve "TOTAL", ou "PARCIAL - falta ..." nomeando o que falta. NAO ajusta a
 ' recomendacao para caber no que o codigo sabe fazer: se um dia a tabela pedir
 ' uma regra que o motor nao avalia, quem muda e o rotulo de cobertura, nao a
-' recomendacao. Fingir suporte seria a pior saida.
+' recomendacao. Fingir suporte seria a pior saida. Hoje a lista recomendada e
+' a executada coincidem, e a funcao existe para o dia em que deixarem de
+' coincidir.
 Public Function CoberturaWestgard(ByVal sigma As Variant) As String
     CoberturaWestgard = ""
     ' Sem faixa nao ha o que cobrir: Sigma ausente devolve "", e nao um

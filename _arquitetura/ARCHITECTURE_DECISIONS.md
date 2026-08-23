@@ -1471,7 +1471,7 @@ verde só porque está no plano.
 ### A matriz é uma leitura do texto, não uma cópia dele
 
 `tblPlanoQC_Sigma` ganhou sete colunas — uma por regra da família
-`1-3S · 2-2S · R4S · 4-1S · 6x · 8X · 10x` — com a bandeira
+`1-3S · 2-2S · R4S · 4-1S · 8X` — com a bandeira
 
 ```
 =IF(ISNUMBER(SEARCH("1_3s";IF($D4="";$D$1;$D4)));1;0)
@@ -1519,7 +1519,7 @@ determinado antes: *"devemos decidir entre 6x, 8x ou 10x e nós já decidimos �
 irá ser 8x"*. A mesma missão exige que o realce saia da **mesma fonte** da
 recomendação textual. As duas coisas só fecham com 8x, que é o que a tabela diz
 e o que o motor executa — e por isso `Cobertura_Motor_Westgard` fecha `TOTAL`.
-A coluna `6x` existe na matriz, zerada, pronta para a troca de uma célula.
+*(Fechado no ADR-038: `6x` e `10x` saíram do projeto; a matriz tem exatamente as cinco regras.)*
 
 ### Achado colateral, não corrigido
 
@@ -1528,3 +1528,93 @@ compara com `"OK"`/`"REJEITADO"` — sobras de um layout em que `I` era Sigma e
 `J` era Status. Hoje `I` é a contagem de R4S e `J` a de 4-1S, então essas
 condições podem colorir a contagem por um critério que não é dela. Não foram
 removidas porque remover é mudança visual, e o layout é do gestor.
+
+---
+
+## ADR-038 — 8x é a regra sequencial; o pior nível governa o plano
+
+**Três decisões fechadas pelo gestor**, sem margem: a família sequencial é `8x` e
+só ela; o plano de CQ é governado pelo **pior** nível; área visual sem função
+pode ser removida ou reconectada.
+
+### `6x` e `10x` saíram do projeto
+
+| Onde estavam | O que foi feito |
+|---|---|
+| `Cfg_PlanoQC` colunas `O`/`P` da matriz | removidas — a matriz tem exatamente cinco colunas |
+| `mPlanoQC.bas` (comentários) | reescritos: `8x` é a definitiva, sem discussão de família |
+| `montar_plano_qc.py` (comentários) | idem |
+| `realce_regras_westgard.py` (`MATRIZ`) | cinco pares |
+| `testar_realce_regras.py` | expectativas ajustadas |
+| `ARCHITECTURE_DECISIONS.md` (ADR-037) | afirmações que ficaram falsas corrigidas |
+
+Os ADRs anteriores **não** foram reescritos: eles registram por que a decisão foi
+tomada, e apagar isso destruiria a auditabilidade que este projeto usa como
+método. Só as frases que passaram a ser factualmente falsas foram corrigidas.
+
+### O defeito que a governança pelo pior nível corrige
+
+**Lactato** tem Sigma `6,99` no nível 1 e `1,83` no nível 2. O bloco de plano
+exibia a linha do nível 1:
+
+```
+1_3s   ·   N = 2   ·   Run Size máx = 1000 pacientes
+```
+
+O CQ mais leve que existe, num analito cujo nível 2 não sustenta nem 3 Sigma. Um
+plano lido assim autoriza mil pacientes entre eventos de controle.
+
+```
+Sigma_Plano = MIN(Sigma_N1; Sigma_N2)     entre os níveis válidos
+```
+
+Com um só nível válido, usa o disponível. Sem nenhum, `SEM DADOS`. Isso alimenta
+regras, N, run size, frequência **e** o realce — uma decisão, um número.
+
+O bloco passou a mostrar **um** plano:
+
+| | |
+|---|---|
+| `R22` `Plano` | Sigma do pior nível + regras + N + run size + frequência + cobertura |
+| `R23` `Base` | *"Pior nível governa: nível 2 (Sigma 1,82). N1 = 6,99 · N2 = 1,83"* |
+
+### Destino dos blocos auditados
+
+**`R15:R18` — ERRO TOTAL vs ETp:** estava **conectado e correto**. Aparecia vazio
+porque o analito selecionado no momento não tinha Sigma. Com Lactato mostra
+`N1 ET 5,65 / ETp 15,21 / margem 62,83% / Dentro do orçamento` e `N2 ET 14,01 /
+margem 7,87% / Margem crítica` — e a diferença entre os dois níveis é exatamente
+a informação que o bloco existe para dar. **Mantido.**
+
+**`R21:X24` — PLANO DE CQ:** tinha propósito e estava conectado, mas ao nível
+errado. **Reconectado** ao pior nível.
+
+### Realce
+
+Verde escuro, fonte branca, **negrito e itálico**. Prioridade inalterada:
+violação vence recomendação.
+
+### Coerência que faltava
+
+Abaixo de 3 Sigma o realce acendia as cinco regras enquanto a coluna `Regras`
+ficava vazia — cor e texto discordando na mesma tela. A faixa passou a declarar
+`1_3s / 2_2s / R_4s / 4_1s / 8x`. `N` e run size **continuam vazios**: não existe
+run size tabelado abaixo de 3 Sigma, e inventar um seria autorizar intervalo de
+CQ que o método não sustenta.
+
+### Duas armadilhas da construção
+
+**Escrever em `Cfg!A3`/`B3` destrói a tabela.** São os cabeçalhos `Sigma_Min` e
+`Sigma_Max` de `tblPlanoQC_Sigma`. O Painel passou a exibir *"Governa o PIOR
+nível: 0"* — o Excel devolveu zero no lugar do texto. A célula do nível que
+governa foi para `C2`/`D2`, acima da tabela.
+
+**A proteção volta sozinha.** Nesta etapa, **25 das 25 abas** estavam protegidas
+de novo, e `Range.Clear` devolveu `0x800A03EC` no meio da alteração. O estado
+passa a ser medido e registrado antes de qualquer escrita.
+
+### Layout
+
+Contra o checkpoint do gestor: **1798 células, zero diferenças** de estilo,
+largura, altura, mesclagem, formatação condicional e posição de objeto. Só o
+conteúdo de `R22`, `R23`, `S22` e `F10` mudou — a reconexão pedida.

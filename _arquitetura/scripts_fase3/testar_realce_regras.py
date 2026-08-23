@@ -31,7 +31,7 @@ import win32com.client as w
 
 falhas = []
 CFG = 'Cfg_PlanoQC'
-MAT_C0, MAT_N = 10, 7          # J..P
+MAT_C0, MAT_N = 10, 5          # J..N
 REGRAS_PAINEL = [('G6', '1-3S'), ('H6', '2-2S'), ('I6', 'R4S'),
                  ('J6', '4-1S'), ('K6', '8X')]
 
@@ -121,8 +121,8 @@ def main(caminho):
             f = txt(tenta(lambda x=r: cfg.Cells(x, MAT_C0).Formula))
             ck('linha %d: a bandeira LE a coluna Regras' % r,
                'SEARCH' in f and '$D' in f, f[:64])
-        ck('a matriz tem as 7 regras da familia',
-           rotulos == ['1-3S', '2-2S', 'R4S', '4-1S', '6x', '8X', '10x'],
+        ck('a matriz tem exatamente as 5 regras do projeto',
+           rotulos == ['1-3S', '2-2S', 'R4S', '4-1S', '8X'],
            str(rotulos))
 
         print()
@@ -186,7 +186,7 @@ def main(caminho):
             texto = txt(tenta(lambda s=sg: xl.Run('PlanoQC', s, 'REGRAS')))
             # normaliza o rotulo exibido para o token do texto
             mapa = {'1-3S': '1_3s', '2-2S': '2_2s', 'R4S': 'R_4s',
-                    '4-1S': '4_1s', '6x': '6x', '8X': '8x', '10x': '10x'}
+                    '4-1S': '4_1s', '8X': '8x'}
             doTexto = set(k for k, v in mapa.items() if v in texto)
             ck('Sigma %.2f: acesas == texto do plano' % sg, got == doTexto,
                '%s vs %s' % (sorted(got), sorted(doTexto)))
@@ -307,18 +307,18 @@ def main(caminho):
            str(sorted(set(tuple(v[4]) for v in vistos))))
 
         print()
-        print('=== o card do nivel e o realce podem divergir: esta explicado? ===')
+        print('=== o Painel diz QUAL nivel governa o plano? ===')
         # O card mostra a classificacao do NIVEL 1; o realce usa o MENOR Sigma
         # dos dois niveis. Lactato exibia "Classe mundial" com as cinco regras
         # acesas -- cada metade certa, o conjunto contraditorio. O texto de
         # apoio precisa dizer qual Sigma manda.
         apoio = txt(tenta(lambda: pa.Range('F10').Value))
         print('   F10: %s' % apoio[:150])
-        ck('o texto de apoio nomeia o Sigma usado e o nivel',
-           'menor Sigma' in apoio and ('nível 1' in apoio or 'nível 2' in apoio),
-           apoio[:80])
-        ck('e explica por que pode pedir mais regras que a classificacao',
-           'cobrir o nível que está pior' in apoio, apoio[-90:])
+        ck('o texto de apoio nomeia o nivel que governa',
+           'PIOR nível' in apoio and ('nível 1' in apoio or 'nível 2' in apoio),
+           apoio[:90])
+        ck('e mostra o Sigma que esta mandando',
+           'Sigma' in apoio and any(c.isdigit() for c in apoio), apoio[-60:])
     finally:
         try:
             wb.Close(False)
