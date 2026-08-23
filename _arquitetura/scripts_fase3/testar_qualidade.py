@@ -141,12 +141,24 @@ def main(caminho):
             return wb.Worksheets(nome)
 
         def bloco(titulo):
-            """Linha do titulo do bloco no Painel -- ver fix9/ADR-035."""
+            """(linha, coluna) do titulo do bloco -- procurado em toda a area,
+            porque o gestor moveu os blocos da coluna J para a R."""
             for r in range(1, 200):
-                v = tenta(lambda x=r: pa.Cells(x, 10).Value)
-                if v and titulo.lower() in str(v).lower():
-                    return r
+                for c in range(1, 34):
+                    v = tenta(lambda x=r, y=c: pa.Cells(x, y).Value)
+                    if v and titulo.lower() in str(v).lower():
+                        return r, c
             raise SystemExit('bloco %r nao encontrado' % titulo)
+
+        def colDe(titulo, nome, marca='Nível'):
+            r0, c0 = bloco(titulo)
+            for r in range(r0, r0 + 8):
+                if str(tenta(lambda x=r: pa.Cells(x, c0).Value) or '').strip() == marca:
+                    for c in range(c0, c0 + 12):
+                        t = str(tenta(lambda x=r, y=c: pa.Cells(x, y).Value) or '').strip()
+                        if t == nome:
+                            return r + 1, c
+            raise SystemExit('coluna %r nao achada em %r' % (nome, titulo))
 
         def limpa_eq():
             for nome, u in ((EQ_ABA, ultEQ),
@@ -362,14 +374,18 @@ def main(caminho):
         # J12 (cabecalho) com N1 em 13, e o ET vs ETp foi para J26/27. Sem
         # atualizar aqui, o teste lia a LINHA DE CABECALHO e comparava numero
         # com o texto "Sigma" -- foi o que aconteceu.
-        rS = bloco('DESEMPENHO SIX SIGMA') + 3
-        rE = bloco('ERRO TOTAL vs ETp') + 2
-        pBias = tenta(lambda: pa.Cells(rS, 12).Value)
-        pEtp = tenta(lambda: pa.Cells(rS, 13).Value)
-        pCV = tenta(lambda: pa.Cells(rS, 11).Value)
-        pSig = tenta(lambda: pa.Cells(rS, 14).Value)
-        pCls = str(tenta(lambda: pa.Cells(rS, 15).Value))
-        pET = tenta(lambda: pa.Cells(rE, 11).Value)
+        rS, cB = colDe('DESEMPENHO SIX SIGMA', 'Bias EQC (abs) %')
+        _r, cEtp = colDe('DESEMPENHO SIX SIGMA', 'ETp %')
+        _r, cCV = colDe('DESEMPENHO SIX SIGMA', 'CV % obs')
+        _r, cSg = colDe('DESEMPENHO SIX SIGMA', 'Sigma')
+        _r, cCl = colDe('DESEMPENHO SIX SIGMA', 'Classificação')
+        rE, cET = colDe('ERRO TOTAL vs ETp', 'ET %')
+        pBias = tenta(lambda: pa.Cells(rS, cB).Value)
+        pEtp = tenta(lambda: pa.Cells(rS, cEtp).Value)
+        pCV = tenta(lambda: pa.Cells(rS, cCV).Value)
+        pSig = tenta(lambda: pa.Cells(rS, cSg).Value)
+        pCls = str(tenta(lambda: pa.Cells(rS, cCl).Value))
+        pET = tenta(lambda: pa.Cells(rE, cET).Value)
         print('   Painel N1: CV=%s |bias|=%s ETp=%s Sigma=%s %r ET=%s'
               % (pCV, pBias, pEtp, pSig, pCls, pET))
         ck('Painel usa o mesmo |bias| do EP', perto(pBias, 8.0), str(pBias))

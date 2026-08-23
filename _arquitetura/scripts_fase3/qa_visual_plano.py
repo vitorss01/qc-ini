@@ -90,15 +90,22 @@ def main(caminho):
             if str(lista).startswith('(sem'):
                 problemas.append('seletor %s sem lista de validação' % rot)
         print('   eco do filtro: %s' % tenta(lambda: es.Range('K5').Text))
+        print('   status Westgard: M7=%r  M8=%r'
+              % (tenta(lambda: pa.Range('M7').Text),
+                 tenta(lambda: pa.Range('M8').Text)))
+        print('   status Westgard: M7=%r  M8=%r'
+              % (tenta(lambda: pa.Range('M7').Text),
+                 tenta(lambda: pa.Range('M8').Text)))
 
         print()
         print('=== PAINEL: analito %s ==='
               % tenta(lambda: pa.Range('C3').Text))
         def bloco(titulo):
             for r in range(1, 200):
-                v = tenta(lambda x=r: pa.Cells(x, 10).Value)
-                if v and titulo.lower() in str(v).lower():
-                    return r
+                for c in range(1, 34):
+                    v = tenta(lambda x=r, y=c: pa.Cells(x, y).Value)
+                    if v and titulo.lower() in str(v).lower():
+                        return r, c
             problemas.append('bloco %r nao encontrado no Painel' % titulo)
             return None
 
@@ -108,9 +115,10 @@ def main(caminho):
                              ('ERRO TOTAL vs ETp', 3, 15),
                              ('MARGEM CRÍTICA', 4, 12),
                              ('SIGMA × DPM', 11, 12)):
-            r0 = bloco(tit)
-            if r0:
-                blocos.append((tit, r0 + 1, r0 + alt, 10, c1))
+            achado = bloco(tit)
+            if achado:
+                r0, c0 = achado
+                blocos.append((tit, r0, r0 + alt + 2, c0, c0 + 8))
         for nome, r0, r1, c0, c1 in blocos:
             print('   --- %s ---' % nome)
             for r in range(r0, r1 + 1):
@@ -176,8 +184,9 @@ def main(caminho):
         print('=== OBJETOS SOBREPOSTOS AOS BLOCOS NOVOS ===')
         for sh in list(pa.Shapes):
             l, t2, w2, h2 = sh.Left, sh.Top, sh.Width, sh.Height
-            topoBloco = tenta(lambda: pa.Rows(bloco('DESEMPENHO SIX SIGMA')).Top)
-            colJ = tenta(lambda: pa.Columns(10).Left)
+            rB, cB = bloco('DESEMPENHO SIX SIGMA')
+            topoBloco = tenta(lambda: pa.Rows(rB).Top)
+            colJ = tenta(lambda: pa.Columns(cB).Left)
             invade = (t2 + h2 > topoBloco) and (l + w2 > colJ)
             print('   %-22s L=%.0f T=%.0f %.0fx%.0f  invade o bloco? %s'
                   % (str(sh.Name)[:22], l, t2, w2, h2, 'SIM' if invade else 'nao'))
@@ -191,11 +200,9 @@ def main(caminho):
             tenta(lambda i=idx: pa.Range('B3').__setattr__('Value', i))
             tenta(lambda: xl.CalculateFull())
             nome = str(tenta(lambda: pa.Range('C3').Text))
-            rS = bloco('DESEMPENHO SIX SIGMA') + 3
-            rP = bloco('PLANO DE CQ RECOMENDADO') + 2
-            sg = str(tenta(lambda x=rS: pa.Cells(x, 14).Text))
-            dp = str(tenta(lambda x=rS: pa.Cells(x, 16).Text))
-            rg = str(tenta(lambda x=rP: pa.Cells(x, 12).Text))
+            sg = str(tenta(lambda: pa.Range('V10').Text))
+            dp = str(tenta(lambda: pa.Range('X10').Text))
+            rg = str(tenta(lambda: pa.Range('T22').Text))
             print('   analito %-2d %-24s sigma=%-8s dpm=%-10s regras=%s'
                   % (idx, nome[:24], sg, dp, rg[:28]))
             antes.append((nome, sg, dp))
@@ -209,8 +216,7 @@ def main(caminho):
             tenta(lambda: xl.CalculateFull())
             print('   provedor=%-11s Estatistica G14=%-10s Painel L13=%s'
                   % (prov, str(tenta(lambda: es.Cells(14, 7).Text))[:10],
-                     str(tenta(lambda x=bloco('DESEMPENHO SIX SIGMA') + 3:
-                               pa.Cells(x, 12).Text))[:10]))
+                     str(tenta(lambda: pa.Range('T10').Text))[:10]))
     finally:
         try:
             wb.Close(False)

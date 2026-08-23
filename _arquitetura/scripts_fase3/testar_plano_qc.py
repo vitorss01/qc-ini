@@ -130,19 +130,37 @@ def main(caminho, referencia):
         xl.Calculation = -4105
 
 
-        def bloco(titulo):
-            """Linha do titulo do bloco no Painel, procurada em J.
+        def bloco(titulo, ate_col=34, ate_lin=200):
+            """(linha, coluna) do titulo do bloco, procurado em toda a area.
 
-            Coordenada fixa ja quebrou duas vezes: quando o bloco desceu duas
-            linhas o teste passou a ler o cabecalho, e quando os blocos foram
-            para baixo dos graficos as leituras cairam em celula vazia. O
-            titulo e estavel; a linha, nao.
+            Localizar por coordenada quebrou tres vezes nesta sessao; localizar
+            so na coluna J quebrou quando o gestor moveu os blocos para a R. O
+            titulo e o unico ancoradouro estavel.
             """
-            for r in range(1, 200):
-                v = tenta(lambda x=r: pa.Cells(x, 10).Value)
-                if v and titulo.lower() in str(v).lower():
-                    return r
+            for r in range(1, ate_lin):
+                for c in range(1, ate_col):
+                    v = tenta(lambda x=r, y=c: pa.Cells(x, y).Value)
+                    if v and titulo.lower() in str(v).lower():
+                        return r, c
             raise SystemExit('bloco %r nao encontrado no Painel' % titulo)
+
+        def cabecalhos(titulo, marca='Nível', largura=12):
+            """{texto do cabecalho: coluna} e a primeira linha de dado.
+
+            Le POR NOME. Assim, tirar uma coluna do bloco -- como o gestor fez
+            com "Rendimento teorico %" -- nao desalinha as outras.
+            """
+            r0, c0 = bloco(titulo)
+            for r in range(r0, r0 + 8):
+                if str(tenta(lambda x=r: pa.Cells(x, c0).Value) or '').strip() == marca:
+                    m = {}
+                    for c in range(c0, c0 + largura):
+                        t = str(tenta(lambda x=r, y=c: pa.Cells(x, y).Value) or '').strip()
+                        if t:
+                            m[t] = c
+                    return m, r + 1
+            raise SystemExit('cabecalho %r nao achado abaixo de %r'
+                             % (marca, titulo))
 
         def folha(n):
             # com retry: depois de um recalculo pesado o Excel recusa a
@@ -322,31 +340,59 @@ def main(caminho, referencia):
         print('\n=== PROVA 10. o Painel mostra o MESMO numero da Estatistica ===')
         tenta(lambda: pa.Range('B3').__setattr__('Value', 1))
         tenta(lambda: xl.CalculateFull())
-        rSigma = bloco('DESEMPENHO SIX SIGMA') + 3      # N1
-        rPlano = bloco('PLANO DE CQ RECOMENDADO') + 2    # N1
-        print('   bloco Six Sigma em J%d, plano em J%d'
-              % (rSigma - 3, rPlano - 2))
-        pares = [('CV %', 6, 11), ('|Bias| %', 7, 12), ('ETp %', 11, 13),
-                 ('Sigma', 12, 14), ('Classificação', 13, 15),
-                 ('DPM', 22, 16), ('Rendimento', 23, 17)]
-        for rot, cEst, cPai in pares:
+        hdrS, rSigma = cabecalhos('DESEMPENHO SIX SIGMA')
+        hdrP, rPlano = cabecalhos('PLANO DE CQ RECOMENDADO')
+        print('   Six Sigma: dado na linha %d, colunas %s' % (rSigma, hdrS))
+        print('   Plano de CQ: dado na linha %d, colunas %s' % (rPlano, hdrP))
+        # (rotulo, coluna na Estatistica, nome do cabecalho no Painel)
+        pares = [('CV %', 6, 'CV % obs'), ('|Bias| %', 7, 'Bias EQC (abs) %'),
+                 ('ETp %', 11, 'ETp %'), ('Sigma', 12, 'Sigma'),
+                 ('Classificação', 13, 'Classificação'),
+                 ('DPM', 22, 'DPM teórico'),
+                 ('Rendimento', 23, 'Rendimento teórico %')]
+        for rot, cEst, nomeCab in pares:
+            if nomeCab not in hdrS:
+                print('  --     %-16s nao publicado neste bloco do Painel' % rot)
+                continue
             a = ler(cEst)
-            b = tenta(lambda c=cPai: pa.Cells(rSigma, c).Value)
+            b = tenta(lambda c=hdrS[nomeCab]: pa.Cells(rSigma, c).Value)
             igual = perto(a, b, 1e-9) if isinstance(a, (int, float)) else txt(a) == txt(b)
             ck('Painel %s == Estatistica' % rot, igual, '%s vs %s' % (a, b))
-        for rot, cEst, cPai in (('Regras', 24, 12), ('N', 25, 13),
-                                ('Run size', 26, 14), ('Cobertura', 27, 16)):
+        for rot, cEst, nomeCab in (('Regras', 24, 'Regras Westgard'),
+                                   ('N', 25, 'N (medições)'),
+                                   ('Run size', 26, 'Run Size máx'),
+                                   ('Cobertura', 27, 'Cobertura do motor')):
+            if nomeCab not in hdrP:
+                print('  --     plano/%-14s nao publicado no Painel' % rot)
+                continue
             a = ler(cEst)
-            b = tenta(lambda c=cPai: pa.Cells(rPlano, c).Value)
+            b = tenta(lambda c=hdrP[nomeCab]: pa.Cells(rPlano, c).Value)
             igual = perto(a, b, 1e-9) if isinstance(a, (int, float)) else txt(a) == txt(b)
             ck('Painel plano/%s == Estatistica' % rot, igual, '%s vs %s' % (a, b))
 
         print('\n=== PROVA 11. tabela de referencia do Painel bate com a publicada ===')
-        rRef = bloco('SIGMA × DPM') + 2
+        # ANCORA EXATA, e nao 'contem'. "DPM teorico" tambem e cabecalho do
+        # bloco Six Sigma, e a busca por trecho casava com ele primeiro.
+        # "Rendimento %" so existe na tabela de referencia -- o bloco Six Sigma
+        # usa "Rendimento teorico %".
+        rTit = cTit = None
+        for r in range(1, 200):
+            for c in range(1, 34):
+                if str(tenta(lambda x=r, y=c: pa.Cells(x, y).Value)
+                       or '').strip() == 'Rendimento %':
+                    rTit, cTit = r, c
+                    break
+            if rTit:
+                break
+        if rTit is None:
+            raise SystemExit('tabela de referencia Sigma x DPM nao encontrada')
+        rRef, cRef = rTit + 1, cTit - 2
+        print('   tabela de referencia: primeira linha %d, Sigma na coluna %d'
+              % (rRef, cRef))
         for i, (sg, esperado) in enumerate(BENCH):
             r = rRef + i
-            vs = tenta(lambda x=r: pa.Cells(x, 10).Value)
-            vd = tenta(lambda x=r: pa.Cells(x, 11).Value)
+            vs = tenta(lambda x=r: pa.Cells(x, cRef).Value)
+            vd = tenta(lambda x=r: pa.Cells(x, cRef + 1).Value)
             ck('Painel L%d: Sigma %.1f -> DPM ~ %s' % (r, sg, esperado),
                perto(vs, sg) and rel(vd, esperado, 0.01), '%s / %s' % (vs, vd))
 
@@ -412,8 +458,9 @@ def main(caminho, referencia):
         print('\n=== PROVA 15. Sigma < 3 NAO reprova a corrida ===')
         cenario(cv=(20.0 - 4.0) / 2.0, etp=20.0, xlab=104.0)   # Sigma 2,00
         tenta(lambda: xl.CalculateFull())
-        wg = txt(tenta(lambda: pa.Cells(7, 19).Value))   # Westgard fica no topo
-        tot = tenta(lambda: pa.Cells(7, 18).Value)
+        # o status de Westgard esta em M7/M8 no layout do gestor
+        wg = txt(tenta(lambda: pa.Range('M7').Value))
+        tot = tenta(lambda: pa.Range('L7').Value)
         print('   Sigma=%s classe=%r | status da corrida=%r (violacoes=%s)'
               % (ler(12), txt(ler(13)), wg, tot))
         ck('classe = Desempenho inadequado',
@@ -502,8 +549,8 @@ def main(caminho, referencia):
                     tenta(lambda i=idx: pa.Range('B3').__setattr__('Value', i))
                     tenta(lambda: xl.CalculateFull())
                     lp = rSigma if int(niv) == 1 else rSigma + 1
-                    ps = tenta(lambda x=lp: pa.Cells(x, 14).Value)
-                    pd = tenta(lambda x=lp: pa.Cells(x, 16).Value)
+                    ps = tenta(lambda x=lp: pa.Cells(x, hdrS['Sigma']).Value)
+                    pd = tenta(lambda x=lp: pa.Cells(x, hdrS['DPM teórico']).Value)
                     ck('%s N%s: Painel repete Sigma e DPM' % (nome[:18], niv),
                        perto(ps, v[3], 1e-9) and perto(pd, v[5], 1e-6),
                        'sigma %s/%s  dpm %s/%s' % (v[3], ps, v[5], pd))

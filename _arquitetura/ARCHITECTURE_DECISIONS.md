@@ -1366,3 +1366,82 @@ matemática correta por causa da precisão com que o artigo imprimiu o número.
 **`Norm_S_Dist` em vez de fórmula própria.** A Φ vem da mesma função que o Excel
 expõe ao usuário: assim o número da célula e o número do VBA não podem divergir.
 `NormSDist` fica como reserva para instalações anteriores a 2010.
+
+---
+
+## ADR-036 — O layout do Painel é do gestor; a automação encosta só onde foi chamada
+
+**Contexto.** O gestor reorganizou a aba `Painel` à mão: moveu os blocos da
+coluna `J` para a `R`, redistribuiu, mudou cores. Essa organização está aprovada
+e passa a ser a **base oficial**. No meio da reorganização, as fórmulas de status
+das regras de Westgard se perderam, e a nova posição definida para elas é `M7`
+(QC nível 1) e `M8` (QC nível 2).
+
+**Decisão.** Intervenção cirúrgica: escrever `M7` e `M8`, criar duas colunas de
+rastreabilidade na `Estatística`, e **provar** que nada mais mudou.
+
+### A lógica restaurada foi localizada, não inventada
+
+No commit `07f3ff1` o status vivia em `Painel!S7`/`S8`:
+
+```
+=IF($B7="","",IF($R7>0,"REPROVA — "&$R7&" violação(ões)","Sem violação"))
+```
+
+`$B7` = n de resultados do nível; `$R7` = total das cinco regras. No layout novo
+o bloco Westgard ocupa `F6:M8` e o `Total` desceu de `R` para `L`. A fórmula é a
+mesma; muda a referência da coluna.
+
+**Defeito encontrado ao auditar a lógica original.** O guarda `$B7=""` nunca
+dispara: `B7` é `AGGREGATE(2;6;…)`, uma **contagem**, que devolve **zero** quando
+não há resultado no período — nunca texto vazio. Com o período vazio a célula
+exibia *"Sem violação"*, que se lê como "está tudo certo" onde não há dado
+nenhum. O guarda passou a testar o zero e a resposta virou *"sem dados no
+período"*.
+
+### De onde M7/M8 bebem — e de onde não
+
+```
+Calc!K..O   × Calc!D  →  violações do NÍVEL 1 no filtro de período
+Calc!AG..AK × Calc!D  →  violações do NÍVEL 2
+Painel!L7, L8         →  soma das cinco regras
+Painel!B7, B8         →  n de resultados do nível
+```
+
+Nenhuma dessas fontes lê Sigma, classificação, DPM, rendimento, run size ou
+margem de ETp. Provado por leitura da fórmula **e** por cenário: com Sigma
+`−1,80`, DPM `999.517` e margem *"ETp excedido"*, `M7` e `M8` continuaram
+*"Sem violação"*.
+
+### Rastreabilidade por analito
+
+`Estatística!AC` e `AD` — `N EQA Resultados` e `N EQA Rodadas`, por analito e por
+recorte. O eco em `K5` continua informando o total global do filtro (455), que é
+outra pergunta: quantos registros existem no recorte, não quantos entraram no
+`|Bias|` daquele analito.
+
+### Como se prova que o layout não foi tocado
+
+Comparar o índice de estilo (`s="123"`) **não funciona**: ao salvar, o Excel
+renumera a tabela `cellXfs`, remove estilos sem uso e recompacta o resto. Duas
+gravações do mesmo arquivo saem com índices diferentes apontando para o mesmo
+visual — a primeira tentativa acusou milhares de mudanças inexistentes.
+
+`comparar_layout_painel.py` resolve cada índice até o **conteúdo** — fonte,
+preenchimento, borda, formato numérico, alinhamento — e compara as tuplas. Mais
+largura de coluna, altura de linha, células mescladas, formatação condicional e
+posição de cada objeto. Contra o checkpoint do gestor: **1794 células, zero
+diferenças**.
+
+### Testes que leem por nome, não por coordenada
+
+Localizar bloco por coordenada quebrou três vezes nesta sessão: quando o bloco
+desceu duas linhas, quando foi para baixo dos gráficos, e quando o gestor o moveu
+de `J` para `R`. A forma que sobrevive: achar o título em qualquer coluna, achar
+a linha de cabeçalho abaixo dele, montar `{texto do cabeçalho: coluna}` e ler por
+nome. Coluna que o gestor tirar do bloco vira *"não publicado neste bloco"*, e
+não falha.
+
+Uma âncora precisa ser **exata**, não "contém": `"DPM teórico"` também é
+cabeçalho do bloco Six Sigma, e a busca por trecho casava com ele antes de chegar
+à tabela de referência. `"Rendimento %"` só existe num lugar.
