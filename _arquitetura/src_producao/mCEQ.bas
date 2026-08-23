@@ -178,38 +178,114 @@ Public Function BiasEQ(ByVal analito As String, ByVal anoRef As Variant, _
                        ByVal modo As String, _
                        Optional ByVal provedor As Variant = "", _
                        Optional ByVal rodada As Variant = "") As Variant
-    Dim d As Variant, i As Long, anoVig As Long, col As Long
-    Dim soma As Double, n As Long, v As Variant
+    ' -----------------------------------------------------------------
+    ' CONSOLIDACAO EM DUAS ETAPAS (ADR-035)
+    '
+    '   etapa 1: para cada RODADA, a media dos |bias| das amostras dela
+    '   etapa 2: a media dessas medias de rodada
+    '
+    ' A media simples de todas as amostras juntas dava peso maior a rodada
+    ' que por acaso teve mais amostras. Com C-A e C-C de 5 amostras e uma
+    ' rodada nova de 12, a rodada nova passaria a mandar no numero sem que
+    ' ninguem tivesse decidido isso.
+    '
+    ' E as duas etapas trabalham sobre |bias|, nunca sobre o bias com sinal:
+    ' +8% e -8% na mesma rodada descrevem um metodo que ninguem aprovaria, e
+    ' a media assinada devolveria zero.
+    '
+    '   modo  "ABS"       magnitude -> alimenta ET e Sigma
+    '         "SIGNED"    direcao do desvio, mesma consolidacao
+    '         "N"         quantas AMOSTRAS entraram
+    '         "NRODADAS"  quantas RODADAS entraram
+    '         "ANO"       qual ano acabou vigente
+    '         "DETALHE"   memoria de calculo, rodada a rodada
+    '
+    ' Devolve "SEM EP" quando nao ha rodada utilizavel -- nunca 0, que a
+    ' celula exibiria como exatidao perfeita.
+    ' -----------------------------------------------------------------
+    Const MAX_ROD As Long = 64
+
+    Dim d As Variant, i As Long, j As Long, k As Long
+    Dim anoVig As Long, col As Long, md As String, r As String
+    Dim rot(1 To MAX_ROD) As String
+    Dim somaAbs(1 To MAX_ROD) As Double
+    Dim somaSig(1 To MAX_ROD) As Double
+    Dim cnt(1 To MAX_ROD) As Long
+    Dim nRod As Long, nAmostras As Long
+    Dim acc As Double, mr As Double, det As String
 
     BiasEQ = SEM_EP
     If Len(Trim$(analito)) = 0 Then Exit Function
     d = LerBanco()
     If IsEmpty(d) Then Exit Function
 
-    Select Case UCase$(Trim$(modo))
-        Case "ABS":      col = EQ_C_BIASABS
-        Case "SIGNED":   col = EQ_C_BIAS
-        Case "N", "ANO": col = EQ_C_BIASABS
-        Case Else:       Exit Function
+    md = UCase$(Trim$(modo))
+    Select Case md
+        Case "ABS":                          col = EQ_C_BIASABS
+        Case "SIGNED":                       col = EQ_C_BIAS
+        Case "N", "NRODADAS", "ANO", "DETALHE": col = EQ_C_BIASABS
+        Case Else:                           Exit Function
     End Select
 
     anoVig = AnoVigente(d, analito, anoRef, provedor, rodada, EQ_C_BIASABS)
     If anoVig = -32768 Then Exit Function
-    If UCase$(Trim$(modo)) = "ANO" Then BiasEQ = anoVig: Exit Function
+    If md = "ANO" Then BiasEQ = anoVig: Exit Function
 
+    ' ---- etapa 1: acumula por rodada ---------------------------------
     For i = 1 To UBound(d, 1)
         If Not Casa(d, i, analito, provedor, rodada) Then GoTo prox
         If Not IsNumeric(d(i, EQ_C_ANO)) Then GoTo prox
         If CLng(Val(CStr(d(i, EQ_C_ANO)))) <> anoVig Then GoTo prox
-        v = d(i, col)
-        If Not IsNumeric(v) Then GoTo prox
-        soma = soma + CDbl(v)
-        n = n + 1
+        If Not IsNumeric(d(i, col)) Then GoTo prox
+
+        r = UCase$(Trim$(CStr(d(i, EQ_C_RODADA))))
+        k = 0
+        For j = 1 To nRod
+            If rot(j) = r Then k = j: Exit For
+        Next j
+        If k = 0 Then
+            If nRod >= MAX_ROD Then GoTo prox
+            nRod = nRod + 1
+            k = nRod
+            rot(k) = r
+        End If
+        If IsNumeric(d(i, EQ_C_BIASABS)) Then _
+            somaAbs(k) = somaAbs(k) + CDbl(d(i, EQ_C_BIASABS))
+        If IsNumeric(d(i, EQ_C_BIAS)) Then _
+            somaSig(k) = somaSig(k) + CDbl(d(i, EQ_C_BIAS))
+        cnt(k) = cnt(k) + 1
+        nAmostras = nAmostras + 1
 prox:
     Next i
 
-    If n = 0 Then Exit Function
-    If UCase$(Trim$(modo)) = "N" Then BiasEQ = n Else BiasEQ = soma / n
+    If nRod = 0 Then Exit Function
+    If md = "N" Then BiasEQ = nAmostras: Exit Function
+    If md = "NRODADAS" Then BiasEQ = nRod: Exit Function
+
+    ' ---- etapa 2: media das medias de rodada -------------------------
+    acc = 0
+    det = ""
+    For k = 1 To nRod
+        If cnt(k) > 0 Then
+            If md = "SIGNED" Then
+                mr = somaSig(k) / cnt(k)
+            Else
+                mr = somaAbs(k) / cnt(k)
+            End If
+            acc = acc + mr
+            det = det & rot(k) & " = " & Format$(mr, "0.0000") & _
+                  " (n=" & cnt(k) & ")"
+            If k < nRod Then det = det & "  |  "
+        End If
+    Next k
+
+    If md = "DETALHE" Then
+        BiasEQ = det & "   ==>   media das " & nRod & " rodada(s) = " & _
+                 Format$(acc / nRod, "0.000000")
+        Exit Function
+    End If
+
+    BiasEQ = acc / nRod
 End Function
 
 ' ---------------------------------------------------------------------------
@@ -335,7 +411,7 @@ Public Function BiasEQMemoria(ByVal analito As String, ByVal anoRef As Variant, 
     Dim somaAbs As Double, somaSig As Double
 
     d = LerBanco()
-    If IsEmpty(d) Then BiasEQMemoria = "EQC_Dados ausente": Exit Function
+    If IsEmpty(d) Then BiasEQMemoria = "EQA_Base ausente": Exit Function
     anoVig = AnoVigente(d, analito, anoRef, provedor, rodada, EQ_C_BIASABS)
     If anoVig = -32768 Then BiasEQMemoria = "sem rodada utilizavel": Exit Function
 
