@@ -59,9 +59,9 @@ try {
     foreach ($t in $ws.ListObjects) { if ($t.Name -eq 'tblBI_Fato') { $lo = $t } }
     if ($lo -eq $null) { throw "ListObject tblBI_Fato nao foi criado" }
     "tabela estruturada tblBI_Fato: $($lo.Range.Address()) ($($lo.ListRows.Count) linhas x $($lo.ListColumns.Count) colunas)"
-    # 65 desde o ADR-033: as 60 do contrato ADR-026 mais bias em magnitude,
+    # 76 desde o ADR-035 (era 65 no ADR-033): as 60 do contrato ADR-026 mais bias em magnitude,
     # classificacao de Sigma e as tres do orcamento de erro.
-    if ($lo.ListColumns.Count -ne 65) { throw "esperadas 65 colunas, encontradas $($lo.ListColumns.Count)" }
+    if ($lo.ListColumns.Count -ne 76) { throw "esperadas 76 colunas, encontradas $($lo.ListColumns.Count)" }
 
     # chaves: ID_Result tem de ser UNICO -- e a granularidade declarada
     $dup = $xl.WorksheetFunction.SumProduct(

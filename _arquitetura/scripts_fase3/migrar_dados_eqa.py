@@ -47,6 +47,8 @@ import subprocess
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', write_through=True)
 import win32com.client as w
+
+CRLF = chr(13) + chr(10)
 import openpyxl
 
 MARCA_SIM = 'EQC_Dados (simulação pré-ADR-034)'
@@ -85,6 +87,26 @@ MAPA_CAP = {
     'Urea Nitrogen': 'Ureia',
     'Uric Acid': 'Ácido úrico',
 }
+
+
+
+def importar_bas(vbp, caminho):
+    """Importa um .bas convertendo o arquivo para cp1252.
+
+    O VBA le .bas como ANSI da pagina de codigo do sistema. Um arquivo gravado
+    em UTF-8 chega com cada acento virando dois caracteres: "nao aplicavel"
+    escrito com til e acento apareceu na tela do Painel como dois simbolos por
+    letra. Converter na hora da importacao resolve para todos os modulos de uma
+    vez, e mantem os fontes legiveis em UTF-8 no repositorio.
+    """
+    import tempfile
+    texto = io.open(caminho, encoding='utf-8', errors='replace').read()
+    tmp = os.path.join(tempfile.gettempdir(),
+                       'ansi_' + os.path.basename(caminho))
+    with io.open(tmp, 'w', encoding='cp1252', errors='replace',
+                 newline=CRLF) as fh:
+        fh.write(texto)
+    vbp.VBComponents.Import(tmp)
 
 
 def novo_excel():
@@ -250,7 +272,7 @@ def main(caminho, referencia):
             for c in list(vbp.VBComponents):
                 if c.Name == nome:
                     vbp.VBComponents.Remove(c)
-            vbp.VBComponents.Import(os.path.join(raiz, 'src_producao', nome + '.bas'))
+            importar_bas(vbp, os.path.join(raiz, 'src_producao', nome + '.bas'))
         print('modulos reimportados: mEQA, mCEQ')
         # prova de compilacao antes de qualquer medida
         print('   MapearAnalito("CAP","Urea Nitrogen") = %r'

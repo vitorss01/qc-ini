@@ -48,7 +48,7 @@ Public Const BI_ABA As String = "BI_Data"
 Public Const BI_TABELA As String = "tblBI_Fato"
 Public Const BI_CAB As Long = 1
 Public Const BI_R0 As Long = 2
-Public Const BI_NCOL As Long = 65
+Public Const BI_NCOL As Long = 76
 
 Private Const LS_CAP As Long = 40          ' linhas por bloco no LotesStore
 Private Const LS_C0 As Long = 3            ' coluna C = Analitos!E (Media N1)
@@ -87,7 +87,12 @@ Private Function Cab() As Variant
         "Fonte_Especificacao", "ID_Especificacao", "Vigencia_Inicio", "Vigencia_Fim", _
         "Situacao_Especificacao", "Usuario_Atualizacao", "Tipo_Evento", _
         "Bias_Observado_abs_pct", "Classificacao_Sigma", _
-        "Margem_ETp_pp", "Margem_ETp_pct", "Status_Margem_ETp")
+        "Margem_ETp_pp", "Margem_ETp_pct", "Status_Margem_ETp", _
+        "Provedor_EQA", "Ano_EQA", "Rodada_EQA", _
+        "DPM_Teorico", "Yield_Teorico", _
+        "Regra_Westgard_Recomendada", "N_Controle_Recomendado", _
+        "RunSize_Max_Recomendado", "Frequencia_QC_Descricao", _
+        "Cobertura_Motor_Westgard", "Referencia_Plano_QC")
 End Function
 
 Private Function AgoraUTC() As Date
@@ -249,6 +254,13 @@ Public Sub AtualizarBIData()
         ThisWorkbook.Sheets(BANCO).Cells(ult, COL_STATUS)).Value
     n = UBound(dados, 1)
     ReDim saida(1 To n, 1 To BI_NCOL)
+
+    ' Os filtros de EQA sao os mesmos para o lote inteiro: ler uma vez fora
+    ' do laco, e nao 90.000 vezes dentro dele.
+    Dim provedorEQA As String, anoEQA As String, rodadaEQA As String
+    provedorEQA = ValorNomeBI("eqProvedor")
+    anoEQA = ValorNomeBI("eqAnoEP")
+    rodadaEQA = ValorNomeBI("eqRodada")
 
     ' PASSO 1 -- Z de cada resultado, guardado por (lote|run|analito|nivel).
     ' Westgard 2_2s e R_4s comparam NIVEIS DA MESMA CORRIDA, entao o Z do outro
@@ -487,6 +499,31 @@ proxima1:
             saida(k, 64) = mQualidade.MargemETpPct(especET(an2), saida(k, 52))
         End If
         saida(k, 65) = mQualidade.ClassificarMargem(saida(k, 64))
+
+        ' --- ADR-035: do Sigma ate a decisao operacional -------------------
+        '
+        ' O BI recebe a CADEIA INTEIRA, e nao so o Sigma. Um numero Sigma
+        ' isolado nao decide nada; o que decide e quantas regras rodar,
+        ' quantos controles medir e quantos pacientes podem passar entre
+        ' eventos de CQ. Recalcular isso em DAX criaria uma segunda escada
+        ' que divergiria da planilha no primeiro ajuste de faixa.
+        '
+        ' Os tres primeiros campos dizem de QUAL recorte de EQA veio o bias:
+        ' sem isso, um relatorio filtrado por CAP/C-B e outro por Controllab
+        ' pareceriam a mesma coisa.
+        saida(k, 66) = provedorEQA
+        saida(k, 67) = anoEQA
+        saida(k, 68) = rodadaEQA
+        If IsNumeric(saida(k, 53)) Then
+            saida(k, 69) = mPlanoQC.DPMdoSigma(saida(k, 53))
+            saida(k, 70) = mPlanoQC.RendimentoDoSigma(saida(k, 53))
+            saida(k, 71) = mPlanoQC.PlanoQC(saida(k, 53), "REGRAS")
+            saida(k, 72) = mPlanoQC.PlanoQC(saida(k, 53), "N")
+            saida(k, 73) = mPlanoQC.PlanoQC(saida(k, 53), "RUNSIZE")
+            saida(k, 74) = mPlanoQC.PlanoQC(saida(k, 53), "FREQUENCIA")
+            saida(k, 75) = mPlanoQC.CoberturaWestgard(saida(k, 53))
+            saida(k, 76) = mPlanoQC.PlanoQC(saida(k, 53), "REFERENCIA")
+        End If
 proxima2:
     Next i
 

@@ -84,6 +84,15 @@ Public Const NOTA_RUNSIZE As String = _
 
 ' Regras que o motor desta pasta realmente avalia no Calc. Conferido coluna a
 ' coluna: K=1_3s, L=2_2s, M=R_4s, N=4_1s, O=8x.
+'
+' A REGRA DE SEQUENCIA DO PRODUTO E 8x.
+'
+' A familia 6x / 8x / 10x responde a mesma pergunta: quantos resultados
+' consecutivos do mesmo lado da media denunciam desvio sistematico. Tabelas
+' publicadas de Sigma rules trazem ora 6x, ora 8x, ora 10x -- escolher UMA e
+' decisao operacional do laboratorio, e o QC_INI escolheu 8x. tblPlanoQC_Sigma
+' recomenda 8x, o motor avalia 8x, e por isso a cobertura fecha TOTAL: os dois
+' falam da mesma regra.
 Private Const REGRAS_IMPLEMENTADAS As String = "1_3s;2_2s;R_4s;4_1s;8x"
 
 
@@ -198,21 +207,40 @@ Public Function PlanoQC(ByVal sigma As Variant, ByVal campo As String) As Varian
         Case "REFERENCIA", "REF": c = P_REFER
         Case Else: Exit Function
     End Select
-    PlanoQC = ws.Cells(lin, c).Value
+
+    ' A celula das faixas abaixo de 3 Sigma esta VAZIA de proposito, e uma UDF
+    ' que devolve Empty e renderizada pela celula como ZERO. Sem esta conversao
+    ' a tela mostrava "N = 0" e "Run Size = 0" -- que nao e "nao ha plano
+    ' automatico", e sim "rode zero controles". Quarta vez que este projeto
+    ' tropeca no mesmo Empty; por isso a conversao mora aqui, na saida.
+    Dim v As Variant
+    v = ws.Cells(lin, c).Value
+    If IsEmpty(v) Or IsNull(v) Then
+        PlanoQC = ""
+    Else
+        PlanoQC = v
+    End If
 End Function
 
 
 ' As regras recomendadas para este Sigma estao todas implementadas no motor?
 '
 ' Devolve "TOTAL", ou "PARCIAL - falta ..." nomeando o que falta. NAO ajusta a
-' recomendacao cientifica para caber no que o codigo sabe fazer: se a literatura
-' pede 6x e o motor nao tem 6x, quem muda e o rotulo de cobertura, nao a
-' recomendacao.
+' recomendacao para caber no que o codigo sabe fazer: se um dia a tabela pedir
+' uma regra que o motor nao avalia, quem muda e o rotulo de cobertura, nao a
+' recomendacao. Fingir suporte seria a pior saida.
 Public Function CoberturaWestgard(ByVal sigma As Variant) As String
     CoberturaWestgard = ""
+    ' Sem faixa nao ha o que cobrir: Sigma ausente devolve "", e nao um
+    ' veredito. Com faixa mas sem regras -- a faixa abaixo de 3 Sigma --, a
+    ' resposta e "nao aplicavel", que e diferente de "nao sei".
+    If LinhaDoPlano(sigma) = 0 Then Exit Function
+
     Dim regras As Variant
     regras = PlanoQC(sigma, "REGRAS")
-    If Not (VarType(regras) = vbString) Then Exit Function
+    ' Celula vazia volta do Excel como Empty, nao como String vazia: testar
+    ' VarType = vbString descartaria justamente a faixa que precisa responder.
+    If IsEmpty(regras) Or IsNull(regras) Then regras = ""
     If Trim$(CStr(regras)) = "" Then
         CoberturaWestgard = "não aplicável"
         Exit Function

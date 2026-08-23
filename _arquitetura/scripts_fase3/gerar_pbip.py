@@ -52,7 +52,7 @@ def plataforma(caminho, tipo, nome):
 
 
 # ------------------------------------------------------- esquema da tabela fato
-# As 65 colunas de tblBI_Fato. O tipo vem do que o motor grava, nao de
+# As 76 colunas de tblBI_Fato. O tipo vem do que o motor grava, nao de
 # adivinhacao: ver mBI.bas.
 TEXTO = "string"
 INT = "int64"
@@ -96,6 +96,16 @@ COLUNAS_FATO = [
     ("Margem_ETp_pp", REAL, False),
     ("Margem_ETp_pct", REAL, False),
     ("Status_Margem_ETp", TEXTO, False),
+    # ADR-035: a cadeia de decisao inteira, calculada no motor e nao em DAX.
+    ("Provedor_EQA", TEXTO, False), ("Ano_EQA", TEXTO, False),
+    ("Rodada_EQA", TEXTO, False),
+    ("DPM_Teorico", REAL, False), ("Yield_Teorico", REAL, False),
+    ("Regra_Westgard_Recomendada", TEXTO, False),
+    ("N_Controle_Recomendado", INT, False),
+    ("RunSize_Max_Recomendado", INT, False),
+    ("Frequencia_QC_Descricao", TEXTO, False),
+    ("Cobertura_Motor_Westgard", TEXTO, False),
+    ("Referencia_Plano_QC", TEXTO, False),
 ]
 
 # colunas acrescentadas pelo Power Query (nao existem no Excel)

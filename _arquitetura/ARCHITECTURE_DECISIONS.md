@@ -1262,3 +1262,107 @@ desenvolvimento pede a pasta aberta.
 **`mCEQ` não estava na lista de módulos do build.** O artefato sairia sem ele e as
 403 células virariam `#NOME?` — a mesma falha que o `mBanco` pagou no ADR-025.
 `mEQA` e `mCEQ` entraram na lista.
+
+---
+
+## ADR-035 — Do Sigma até a decisão operacional: DPM, rendimento e plano de CQ
+
+**Contexto.** O `Painel` mostrava `Sigma = 5,4` e parava aí. Um número isolado
+não decide nada: o que decide é a consequência — quantas regras rodar, quantos
+controles medir, quantos pacientes podem passar entre um evento de CQ e o
+próximo.
+
+**Decisão — a cadeia completa, calculada uma vez.**
+
+```
+CV + |Bias| + ETp → Sigma → Classificação → DPM teórico → Rendimento teórico
+                                          → Regras → N → Run Size
+```
+
+`mPlanoQC` (novo, versionado) é o único lugar onde essa tradução acontece.
+`Estatística`, `Painel` e Power BI chamam as mesmas funções.
+
+**DPM é contínuo, não lookup.**
+
+```
+DPM = [1 − Φ(Sigma − 1,5)] × 1.000.000
+```
+
+Sigma real é 4,27, não 4. Arredondar antes de converter jogaria fora a
+resolução do indicador: `DPM(4,27) = 2.802,8`, entre `DPM(4,5) = 1.349,9` e
+`DPM(4,0) = 6.209,7`. As nove provas conferem contra a tabela publicada em
+Westgard *et al.*, 2018 — 3,4 / 32 / 233 / 1.350 / 6.210 / 22.750 / 66.807 /
+158.655 / 308.538.
+
+**DPM é benchmark teórico, não contagem de erro.** A conversão usa short-term
+Sigma com deslocamento de 1,5 SD. A nota aparece na `Estatística`, no `Painel` e
+na `Cfg_PlanoQC`, e não deve ser removida: sem ela, "66.807 DPM" lê-se como
+"o laboratório errou 66.807 resultados", que é falso.
+
+**O plano vem de uma tabela.** `tblPlanoQC_Sigma` (aba `Cfg_PlanoQC`):
+
+| Sigma | Classificação | Regras | N | Run Size |
+|---|---|---|---|---|
+| ≥ 6 | Classe mundial | `1_3s` | 2 | 1000 |
+| 5 – 6 | Excelente | `1_3s / 2_2s / R_4s` | 2 | 450 |
+| 4 – 5 | Bom | `1_3s / 2_2s / R_4s / 4_1s` | 4 | 200 |
+| 3 – 4 | Marginal | `1_3s / 2_2s / R_4s / 4_1s / 8x` | 6 | 45 |
+| < 3 | Desempenho inadequado | — | — | — |
+
+Mudar uma faixa é editar uma linha. `IF`s encadeados em três abas divergiriam no
+primeiro esquecimento — e divergiram: ver abaixo.
+
+**A regra de sequência do produto é 8x — decisão do laboratório.** A família
+6x / 8x / 10x responde à mesma pergunta: quantos resultados consecutivos do
+mesmo lado da média denunciam desvio sistemático. Tabelas publicadas de Sigma
+rules trazem ora 6x, ora 8x. O QC_INI opera com 8x, que é o que o motor do
+`Calc` avalia, e a tabela recomenda 8x. Por isso `Cobertura_Motor_Westgard`
+fecha **TOTAL**: recomendação e motor falam da mesma regra.
+
+**Abaixo de 3 Sigma não se atribui N nem run size.** Preencher ali sugeriria
+existir plano de CQ estatístico capaz de sustentar o método. O campo traz a
+orientação: investigar e melhorar o desempenho analítico, ou reavaliar o método.
+
+**N não é nível de controle.** É o número **total** de medições no evento. Como
+distribuir entre níveis, materiais e replicatas depende da configuração real do
+laboratório, e o sistema não presume.
+
+**Run Size não é `R_4s`.** `R_4s` é regra; run size é quantos pacientes passam
+entre eventos de CQ. A interface nunca abrevia os dois junto.
+
+**O Painel não recalcula nada.** Lê a `Estatística` por `INDEX/MATCH` na chave
+`analito|nível`. É o que faz o card e a célula coincidirem — provado campo a
+campo. A consequência está dita na tela: o Sigma do Painel responde ao período e
+ao filtro de EQA definidos na `Estatística`; o filtro de datas do Painel manda no
+gráfico e nos descritivos.
+
+**Consolidação de |Bias| em duas etapas.** Antes era média simples de todas as
+amostras juntas, o que dava peso maior à rodada que por acaso teve mais
+amostras. Agora: média dos `|bias|` **por rodada**, depois média das médias.
+Com C-A de 2 amostras (`+4%`, `+6%`) e C-B de 1 (`+20%`), a média simples daria
+10,00 e as duas etapas dão **12,50**. O modo `DETALHE` publica a memória de
+cálculo rodada a rodada.
+
+### O que as provas encontraram
+
+**`Empty` de UDF renderiza como 0 — quarta vez.** `PlanoQC` devolvia o conteúdo
+da célula vazia das faixas abaixo de 3 Sigma; a tela mostrava **`N = 0` e
+`Run Size = 0`**, que não é "não há plano automático" e sim "rode zero
+controles". A conversão para `""` agora mora na saída da função, e a prova 6c
+olha o **texto exibido**, não o valor devolvido ao Python — foi assim que o
+defeito escapou da prova anterior.
+
+**Duas etiquetas para a mesma faixa.** `mQualidade.ClassificarSigma` dizia
+`Inadequado` e `tblPlanoQC_Sigma` dizia `Desempenho inadequado`. O `COUNTIF` do
+resumo contava zero, e o painel diria que nenhum analito está inadequado
+enquanto vários estão. `ClassificarSigma` passou a **ler a tabela**; a escada de
+`IF`s continua como reserva para o caso de a `Cfg_PlanoQC` faltar, e a prova 6b
+confere que as duas concordam em todas as fronteiras.
+
+**Benchmark publicado vem arredondado.** Sigma 5,5 dá 31,671 pela conta exata e
+a tabela imprime 32 — 1,03% de diferença. A tolerância de 1% reprovava a
+matemática correta por causa da precisão com que o artigo imprimiu o número.
+
+**`Norm_S_Dist` em vez de fórmula própria.** A Φ vem da mesma função que o Excel
+expõe ao usuário: assim o número da célula e o número do VBA não podem divergir.
+`NormSDist` fica como reserva para instalações anteriores a 2010.

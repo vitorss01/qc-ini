@@ -35,6 +35,14 @@ import subprocess
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', write_through=True)
 import win32com.client as w
 
+CRLF = chr(13) + chr(10)
+
+# Tres faixas: abaixo de 1, quatro casas (senao "zero defeitos"); abaixo de
+# 1000, uma casa (para 3,4 nao virar 3); acima, separador de milhar.
+FMT_DPM = '[<1]0,0000;[<1000]0,0;#.##0'
+FMT_YIELD = '0,0000'
+FMT_YIELD_REF = '0,00000'
+
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -54,6 +62,17 @@ REF_R0 = 127                     # tabela educativa na Estatistica
 # Westgard Sigma Rules with Run Sizes.
 #   Sigma_Min | Sigma_Max | Classificacao | Regras | N | RunSize | Frequencia | Ref
 #
+# A REGRA DE MEDIA DO PRODUTO E 8x -- DECISAO DO LABORATORIO
+#
+# A familia de regras de sequencia (6x, 8x, 10x) responde a mesma pergunta:
+# quantos resultados consecutivos do mesmo lado da media denunciam desvio
+# sistematico. Algumas tabelas publicadas de Sigma rules trazem 6x; outras,
+# 8x ou 10x. Escolher UMA e decisao operacional do laboratorio, e o QC_INI
+# ja opera com 8x -- que e a regra implementada no motor do Calc.
+#
+# Manter a tabela pedindo 6x enquanto o motor avalia 8x criaria uma cobertura
+# eternamente PARCIAL por causa de uma diferenca de rotulo, nao de metodo.
+#
 # Abaixo de 3 Sigma, N e run size ficam VAZIOS de proposito: preencher ali
 # sugeriria existir plano de CQ estatistico capaz de sustentar o metodo.
 PLANO = [
@@ -66,7 +85,7 @@ PLANO = [
     (4.0, 5.0, 'Bom', '1_3s / 2_2s / R_4s / 4_1s', 4, 200,
      'Até 200 pacientes entre eventos de CQ',
      'Westgard & Westgard, 2019'),
-    (3.0, 4.0, 'Marginal', '1_3s / 2_2s / R_4s / 4_1s / 6x', 6, 45,
+    (3.0, 4.0, 'Marginal', '1_3s / 2_2s / R_4s / 4_1s / 8x', 6, 45,
      'Até 45 pacientes entre eventos de CQ',
      'Westgard & Westgard, 2019; Peng et al., 2021'),
     (-999.0, 3.0, 'Desempenho inadequado', '', '', '',
@@ -80,10 +99,14 @@ CAB_PLANO = ['Sigma_Min', 'Sigma_Max', 'Classificacao', 'Regras', 'N_Controle',
 
 # ---------------------------------------------------------- colunas novas
 NOVAS = [
+    # abaixo de 1 defeito por milhao, quatro casas: senao Sigma 6,99 exibe
+    # "0", que se le como "zero defeitos" em vez de "menos de um"
     (22, 'DPM teórico',
-     '=IF(NOT(ISNUMBER($L{0})),"",mPlanoQC.DPMdoSigma($L{0}))', '#.##0'),
+     '=IF(NOT(ISNUMBER($L{0})),"",mPlanoQC.DPMdoSigma($L{0}))',
+     FMT_DPM),
     (23, 'Rendimento teórico %',
-     '=IF(NOT(ISNUMBER($L{0})),"",mPlanoQC.RendimentoDoSigma($L{0}))', '0,0000'),
+     '=IF(NOT(ISNUMBER($L{0})),"",mPlanoQC.RendimentoDoSigma($L{0}))',
+     FMT_YIELD),
     (24, 'Regras Westgard recomendadas',
      '=IF(NOT(ISNUMBER($L{0})),"",mPlanoQC.PlanoQC($L{0},"REGRAS"))', None),
     (25, 'N (medições de controle)',
@@ -108,6 +131,26 @@ REFS = [
     ('CLSI C24-Ed4 — SQC baseado em risco (base conceitual)',
      'https://clsi.org/standards/products/method-evaluation/documents/c24/'),
 ]
+
+
+
+def importar_bas(vbp, caminho):
+    """Importa um .bas convertendo o arquivo para cp1252.
+
+    O VBA le .bas como ANSI da pagina de codigo do sistema. Um arquivo gravado
+    em UTF-8 chega com cada acento virando dois caracteres: "nao aplicavel"
+    escrito com til e acento apareceu na tela do Painel como dois simbolos por
+    letra. Converter na hora da importacao resolve para todos os modulos de uma
+    vez, e mantem os fontes legiveis em UTF-8 no repositorio.
+    """
+    import tempfile
+    texto = io.open(caminho, encoding='utf-8', errors='replace').read()
+    tmp = os.path.join(tempfile.gettempdir(),
+                       'ansi_' + os.path.basename(caminho))
+    with io.open(tmp, 'w', encoding='cp1252', errors='replace',
+                 newline=CRLF) as fh:
+        fh.write(texto)
+    vbp.VBComponents.Import(tmp)
 
 
 def novo_excel():
@@ -209,11 +252,11 @@ def main(caminho):
 
         # ---- 0. modulos --------------------------------------------------
         vbp = wb.VBProject
-        for nome in ('mCEQ', 'mPlanoQC'):
+        for nome in ('mCEQ', 'mPlanoQC', 'mQualidade'):
             for c in list(vbp.VBComponents):
                 if c.Name == nome:
                     vbp.VBComponents.Remove(c)
-            vbp.VBComponents.Import(os.path.join(RAIZ, 'src_producao', nome + '.bas'))
+            importar_bas(vbp, os.path.join(RAIZ, 'src_producao', nome + '.bas'))
             print('importado: %s' % nome)
 
         # ---- 1. Cfg_PlanoQC ----------------------------------------------
@@ -270,6 +313,20 @@ def main(caminho):
                       es.Range(es.Cells(EST_R0, cc), es.Cells(EST_RN, cc))
                       .__setattr__('NumberFormatLocal', k))
         es.Columns(28).Hidden = True
+
+        # As colunas G..T nasceram com NumberFormat = "0.00" no ADR-033, e
+        # nesta instalacao o Excel le esse codigo com convencao pt-BR, onde o
+        # ponto e separador de MILHAR. O |Bias| de 2,70 aparecia como "003" e
+        # o Sigma de 4,25 como "004". Vai por NumberFormatLocal, com virgula.
+        FMT_EST = {7: '0,00', 8: '0,00', 10: '0,00', 11: '0,00', 12: '0,00',
+                   14: '0,00', 15: '0,00', 20: '0,00',
+                   3: '0', 4: '0,0000', 5: '0,0000', 6: '0,00'}
+        for c, k in FMT_EST.items():
+            tenta(lambda cc=c, kk=k:
+                  es.Range(es.Cells(EST_R0, cc), es.Cells(EST_RN, cc))
+                  .__setattr__('NumberFormatLocal', kk))
+        print('Estatistica: %d colunas antigas reformatadas por '
+              'NumberFormatLocal' % len(FMT_EST))
         print('Estatistica V..AB: %d colunas novas (AB oculta, e a chave)'
               % len(NOVAS))
 
@@ -293,19 +350,114 @@ def main(caminho):
         tenta(lambda: es.Range('A%d:A%d' % (REF_R0 + 3, REF_R0 + 11))
               .__setattr__('NumberFormatLocal', '0,0'))
         tenta(lambda: es.Range('B%d:B%d' % (REF_R0 + 3, REF_R0 + 11))
-              .__setattr__('NumberFormatLocal', '#.##0'))
+              .__setattr__('NumberFormatLocal', FMT_DPM))
         tenta(lambda: es.Range('C%d:C%d' % (REF_R0 + 3, REF_R0 + 11))
-              .__setattr__('NumberFormatLocal', '0,00000'))
+              .__setattr__('NumberFormatLocal', FMT_YIELD_REF))
         nota(es, REF_R0 + 13, 1, mPQ_nota_dpm())
         print('Estatistica L%d: tabela de referencia com %d pontos'
               % (REF_R0, len(SIGMAS_REF)))
 
+        # ---- 3b. o rotulo do resumo acompanha a tabela --------------------
+        #
+        # tblPlanoQC_Sigma chama a faixa de "Desempenho inadequado"; a escada
+        # antiga do mQualidade chamava "Inadequado". Duas etiquetas para a
+        # mesma faixa fazem o COUNTIF do resumo contar zero. Agora a tabela
+        # manda, e o rotulo do resumo e ajustado para bater com ela.
+        trocados = 0
+        for r in range(96, 106):
+            v = tenta(lambda rr=r: es.Cells(rr, 1).Value)
+            if str(v).strip() == 'Inadequado':
+                tenta(lambda rr=r: es.Cells(rr, 1).__setattr__(
+                    'Value', 'Desempenho inadequado'))
+                trocados += 1
+        print('resumo da Estatistica: %d rotulo(s) alinhado(s) com a tabela'
+              % trocados)
+
+        # ---- 3c. o eco do filtro apontava para a aba LEGADA ---------------
+        #
+        # A formula em K5 contava linhas da EQC_Dados, que continua na pasta
+        # com os 90 registros de simulacao. Com CAP/2025/TODAS ela dizia
+        # "90 linha(s) no banco de EP" enquanto a EQA_Base tem 545 -- numero
+        # errado, e vindo da fonte que o mCEQ nem le mais.
+        tenta(lambda: es.Range('K5').__setattr__(
+            'Formula',
+            '=ResumoFiltroEQ(eqProvedor,eqAnoEP,eqRodada)&" | "&'
+            'TEXT(SUMPRODUCT((EQA_Base!$A$2:$A$5001=eqProvedor)*'
+            '(EQA_Base!$B$2:$B$5001=eqAnoEP)*'
+            '(EQA_Base!$T$2:$T$5001="SIM")*'
+            'IF(eqRodada="TODAS",1,--(EQA_Base!$C$2:$C$5001=eqRodada))),"0")&'
+            '" linha(s) analíticas na EQA_Base"'))
+        print('Estatistica K5: eco repontado para a EQA_Base')
+
+        # ---- 3d. a lista de rodadas so oferece o que alimenta analise -----
+        #
+        # As rodadas A, B e C vinham dos 90 registros de simulacao, marcados
+        # com Uso_Analitico = NAO. Oferece-las no seletor convida o gestor a
+        # escolher um filtro que nao devolve numero nenhum.
+        baseA = aba(wb, 'EQA_Base')
+        visB = baseA.Visible
+        baseA.Visible = -1
+        ultB = tenta(lambda: baseA.Cells(baseA.Rows.Count, 1).End(-4162).Row)
+        anos, rods, provs = set(), set(), set()
+        if ultB >= 2:
+            dd = tenta(lambda: baseA.Range(baseA.Cells(2, 1),
+                                           baseA.Cells(ultB, 20)).Value)
+            for row in dd:
+                if str(row[19]).strip().upper() != 'SIM':
+                    continue
+                if row[0]:
+                    provs.add(str(row[0]).strip())
+                if row[1]:
+                    anos.add(int(row[1]))
+                if row[2]:
+                    rods.add(str(row[2]).strip())
+        baseA.Visible = visB
+
+        def valida(ref, lista):
+            r = es.Range(ref)
+            try:
+                r.Validation.Delete()
+            except Exception:
+                pass
+            r.Validation.Add(3, 1, 1, lista)
+            r.Validation.InCellDropdown = True
+            r.Validation.IgnoreBlank = True
+
+        valida('L4', ','.join(sorted(provs)) or 'CAP')
+        valida('N4', ','.join(str(a) for a in sorted(anos)) or '2025')
+        valida('P4', 'TODAS,' + ','.join(sorted(rods)))
+        print('seletores: provedor %s | anos %s | rodadas %s'
+              % (sorted(provs), sorted(anos), sorted(rods)))
+        tenta(lambda: es.Range('L4').__setattr__('Value', 'CAP'))
+        tenta(lambda: es.Range('N4').__setattr__(
+            'Value', max(anos) if anos else 2025))
+        tenta(lambda: es.Range('P4').__setattr__('Value', 'TODAS'))
+
         # ---- 4. Painel ----------------------------------------------------
         pa = aba(wb, 'Painel')
         tenta(lambda: pa.Range('J10:Z70').Clear())
+        tenta(lambda: pa.Range('J10:Z120').Clear())
         for c in range(10, 18):
             pa.Columns(c).ColumnWidth = 17
         pa.Columns(10).ColumnWidth = 9
+
+        # ONDE OS BLOCOS PODEM COMECAR
+        #
+        # Os graficos de Levey-Jennings tem 1582 px de largura a partir de x=0:
+        # atravessam a coluna J inteira. Qualquer bloco colocado em J10 fica
+        # DEBAIXO deles -- invisivel, ainda que a formula esteja certa. A
+        # primeira linha livre e medida, e nao arbitrada.
+        fundo = 0.0
+        for sh in list(pa.Shapes):
+            if sh.Width > 400:            # os graficos, nao os controles
+                fundo = max(fundo, sh.Top + sh.Height)
+        BASE = 10
+        for r in range(10, 200):
+            if tenta(lambda x=r: pa.Rows(x).Top) > fundo + 12:
+                BASE = r
+                break
+        print('graficos terminam em y=%.0f; blocos comecam na linha %d'
+              % (fundo, BASE))
 
         # o Painel LE a Estatistica: uma fonte da verdade so
         def le(colEst, nivel):
@@ -313,35 +465,35 @@ def main(caminho):
                     'MATCH(selAnalito&"|"&{1},Estatística!$AB$14:$AB$93,0)),"")'
                     .format(colEst, nivel))
 
-        titulo(pa, 10, 10, 'DESEMPENHO SIX SIGMA — analito selecionado', 13)
-        nota(pa, 11, 10,
+        titulo(pa, BASE, 10, 'DESEMPENHO SIX SIGMA — analito selecionado', 13)
+        nota(pa, BASE + 1, 10,
              'Valores vindos da aba Estatística. O período e o filtro de EQA '
              '(provedor / ano / rodada) são os definidos lá; o filtro de datas '
              'deste Painel manda no gráfico e nos descritivos, não aqui.')
-        cab(pa, 12, ['Nível', 'CV % obs', 'Bias EQC (abs) %', 'ETp %', 'Sigma',
+        cab(pa, BASE + 2, ['Nível', 'CV % obs', 'Bias EQC (abs) %', 'ETp %', 'Sigma',
                      'Classificação', 'DPM teórico', 'Rendimento teórico %'], 10,
             [9, 13, 16, 12, 12, 18, 15, 18])
         for i, niv in enumerate((1, 2)):
-            r = 13 + i
+            r = BASE + 3 + i
             tenta(lambda rr=r, n=niv: pa.Cells(rr, 10).__setattr__('Value', 'N%d' % n))
             for j, (cl, fmt) in enumerate((('F', '0,00'), ('G', '0,00'),
                                            ('K', '0,00'), ('L', '0,00'),
-                                           ('M', None), ('V', '#.##0'),
-                                           ('W', '0,0000'))):
+                                           ('M', None), ('V', FMT_DPM),
+                                           ('W', FMT_YIELD))):
                 tenta(lambda rr=r, cc=11 + j, ff=le(cl, niv):
                       pa.Cells(rr, cc).__setattr__('Formula', ff))
                 if fmt:
                     tenta(lambda rr=r, cc=11 + j, k=fmt:
                           pa.Cells(rr, cc).__setattr__('NumberFormatLocal', k))
-        nota(pa, 15, 10, mPQ_nota_dpm())
+        nota(pa, BASE + 5, 10, mPQ_nota_dpm())
 
-        titulo(pa, 17, 10, 'PLANO DE CQ RECOMENDADO PELO SIGMA', 13)
-        cab(pa, 18, ['Nível', 'Sigma', 'Regras Westgard', 'N (medições)',
+        titulo(pa, BASE + 7, 10, 'PLANO DE CQ RECOMENDADO PELO SIGMA', 13)
+        cab(pa, BASE + 8, ['Nível', 'Sigma', 'Regras Westgard', 'N (medições)',
                      'Run Size máx', 'Frequência de CQ',
                      'Cobertura do motor'], 10,
             [9, 12, 28, 14, 14, 30, 24])
         for i, niv in enumerate((1, 2)):
-            r = 19 + i
+            r = BASE + 9 + i
             tenta(lambda rr=r, n=niv: pa.Cells(rr, 10).__setattr__('Value', 'N%d' % n))
             tenta(lambda rr=r, ff=le('L', niv):
                   pa.Cells(rr, 11).__setattr__('Formula', ff))
@@ -358,20 +510,20 @@ def main(caminho):
                 % (rr, rr)))
             tenta(lambda rr=r, ff=le('AA', niv):
                   pa.Cells(rr, 16).__setattr__('Formula', ff))
-        nota(pa, 21, 10, mPQ_nota_runsize())
-        nota(pa, 22, 10,
+        nota(pa, BASE + 11, 10, mPQ_nota_runsize())
+        nota(pa, BASE + 12, 10,
              'N é o número TOTAL de medições de controle no evento — não o '
              'número de níveis. Como distribuir entre níveis, materiais e '
              'replicatas depende da configuração do laboratório.')
-        nota(pa, 23, 10,
+        nota(pa, BASE + 13, 10,
              'Run Size é quantos pacientes podem passar entre eventos de CQ. '
              'Não confundir com a regra R_4s.')
 
-        titulo(pa, 25, 10, 'ERRO TOTAL vs ETp — orçamento de erro', 13)
-        cab(pa, 26, ['Nível', 'ET %', 'ETp %', 'Margem (p.p.)', 'Margem %',
+        titulo(pa, BASE + 15, 10, 'ERRO TOTAL vs ETp — orçamento de erro', 13)
+        cab(pa, BASE + 16, ['Nível', 'ET %', 'ETp %', 'Margem (p.p.)', 'Margem %',
                      'Situação'], 10, [9, 13, 13, 15, 13, 22])
         for i, niv in enumerate((1, 2)):
-            r = 27 + i
+            r = BASE + 17 + i
             tenta(lambda rr=r, n=niv: pa.Cells(rr, 10).__setattr__('Value', 'N%d' % n))
             for j, (cl, fmt) in enumerate((('H', '0,00'), ('K', '0,00'),
                                            ('N', '0,00'), ('O', '0,00'),
@@ -382,33 +534,33 @@ def main(caminho):
                     tenta(lambda rr=r, cc=11 + j, k=fmt:
                           pa.Cells(rr, cc).__setattr__('NumberFormatLocal', k))
 
-        titulo(pa, 30, 10, 'MARGEM CRÍTICA — todos os analitos', 12)
+        titulo(pa, BASE + 20, 10, 'MARGEM CRÍTICA — todos os analitos', 12)
         for i, (rot, cnt) in enumerate((('ETp excedido', 'ETp excedido'),
                                         ('Margem crítica (≤10%)', 'Margem critica'),
                                         ('Dentro do orçamento', 'Dentro do orcamento'))):
-            tenta(lambda rr=31 + i, v=rot: pa.Cells(rr, 10).__setattr__('Value', v))
-            tenta(lambda rr=31 + i, k=cnt: pa.Cells(rr, 12).__setattr__(
+            tenta(lambda rr=BASE + 21 + i, v=rot: pa.Cells(rr, 10).__setattr__('Value', v))
+            tenta(lambda rr=BASE + 21 + i, k=cnt: pa.Cells(rr, 12).__setattr__(
                 'Formula', '=COUNTIF(Estatística!$P$14:$P$93,"%s")' % k))
 
-        titulo(pa, 35, 10, 'SIGMA × DPM × RENDIMENTO — referência', 12)
-        cab(pa, 36, ['Sigma', 'DPM teórico', 'Rendimento %'], 10, [9, 15, 16])
+        titulo(pa, BASE + 25, 10, 'SIGMA × DPM × RENDIMENTO — referência', 12)
+        cab(pa, BASE + 26, ['Sigma', 'DPM teórico', 'Rendimento %'], 10, [9, 15, 16])
         for i, sg in enumerate(SIGMAS_REF):
-            r = 37 + i
+            r = BASE + 27 + i
             tenta(lambda rr=r, v=sg: pa.Cells(rr, 10).__setattr__('Value', v))
             tenta(lambda rr=r: pa.Cells(rr, 11).__setattr__(
                 'Formula', '=mPlanoQC.DPMdoSigma($J%d)' % rr))
             tenta(lambda rr=r: pa.Cells(rr, 12).__setattr__(
                 'Formula', '=mPlanoQC.RendimentoDoSigma($J%d)' % rr))
-        tenta(lambda: pa.Range('J37:J45').__setattr__('NumberFormatLocal', '0,0'))
-        tenta(lambda: pa.Range('K37:K45').__setattr__('NumberFormatLocal', '#.##0'))
-        tenta(lambda: pa.Range('L37:L45').__setattr__('NumberFormatLocal', '0,000'))
+        tenta(lambda: pa.Range('J%d:J%d' % (BASE + 27, BASE + 35)).__setattr__('NumberFormatLocal', '0,0'))
+        tenta(lambda: pa.Range('K%d:K%d' % (BASE + 27, BASE + 35)).__setattr__('NumberFormatLocal', FMT_DPM))
+        tenta(lambda: pa.Range('L%d:L%d' % (BASE + 27, BASE + 35)).__setattr__('NumberFormatLocal', FMT_YIELD_REF))
 
-        titulo(pa, 48, 10, 'BASE CIENTÍFICA DO PLANO DE CQ', 12)
-        nota(pa, 49, 10,
+        titulo(pa, BASE + 38, 10, 'BASE CIENTÍFICA DO PLANO DE CQ', 12)
+        nota(pa, BASE + 39, 10,
              'Metodologia: Westgard Sigma Rules with Run Sizes. '
              'Base conceitual de SQC baseado em risco: CLSI C24-Ed4.')
         for i, (texto, url) in enumerate(REFS):
-            r = 50 + i
+            r = BASE + 40 + i
             cel = pa.Cells(r, 10)
             tenta(lambda c=cel: c.__setattr__('Value', ''))
             # Hyperlinks.Add e POSICIONAL: argumento nomeado nao vincula neste
@@ -416,7 +568,8 @@ def main(caminho):
             # no ADR-034).
             tenta(lambda c=cel, u=url, t=texto:
                   pa.Hyperlinks.Add(c, u, '', 'Abrir: ' + u, t + ' ↗'))
-        print('Painel: Six Sigma (J12), Plano de CQ (J18), ET vs ETp (J26), '
+        print('Painel a partir da linha %d: Six Sigma, plano de CQ, ET vs ETp, margem, referencia e base cientifica' % BASE)  # noqa
+        print('(antigo) Six Sigma (J12), Plano de CQ (J18), ET vs ETp (J26), '
               'margem (J30), referência (J36), base científica (J48)')
 
         # ---- 5. recalculo e conferencia -----------------------------------
@@ -432,7 +585,7 @@ def main(caminho):
         print('   Cobertura(3.5)  = %s' % tenta(lambda: xl.Run('CoberturaWestgard', 3.5)))
 
         erros = []
-        for nome, r1, c1 in (('Estatística', 145, 28), ('Painel', 55, 18),
+        for nome, r1, c1 in (('Estatística', 145, 28), ('Painel', BASE + 45, 18),
                              ('Cfg_PlanoQC', 12, 8)):
             ws = aba(wb, nome)
             vis = ws.Visible

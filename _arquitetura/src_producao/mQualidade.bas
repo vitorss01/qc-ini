@@ -48,7 +48,7 @@ Public Const CLS_MUNDIAL As String = "Classe mundial"
 Public Const CLS_EXCELENTE As String = "Excelente"
 Public Const CLS_BOM As String = "Bom"
 Public Const CLS_MARGINAL As String = "Marginal"
-Public Const CLS_INADEQUADO As String = "Inadequado"
+Public Const CLS_INADEQUADO As String = "Desempenho inadequado"
 
 Public Const MRG_EXCEDIDO As String = "ETp excedido"
 Public Const MRG_CRITICA As String = "Margem critica"
@@ -67,6 +67,26 @@ Public Function ClassificarSigma(ByVal sigma As Variant) As String
     If Not IsNumeric(sigma) Then Exit Function
     If VarType(sigma) = vbString Then
         If Trim$(CStr(sigma)) = "" Then Exit Function
+    End If
+
+    ' A TABELA MANDA (ADR-035).
+    '
+    ' tblPlanoQC_Sigma ja carrega a classificacao de cada faixa, e e ela que
+    ' define regras, N e run size. Manter aqui uma segunda escada de IFs faria
+    ' as duas divergirem no dia em que alguem mexesse numa faixa -- e a
+    ' divergencia so apareceria quando o gestor comparasse a coluna M com o
+    ' plano de CQ ao lado. Foi assim que "Inadequado" e "Desempenho
+    ' inadequado" conviveram no mesmo arquivo.
+    '
+    ' A escada abaixo continua como RESERVA: se a Cfg_PlanoQC nao existir na
+    ' pasta, a classificacao ainda sai, em vez de a coluna inteira esvaziar.
+    Dim daTabela As Variant
+    daTabela = mPlanoQC.PlanoQC(sigma, "CLASSE")
+    If VarType(daTabela) = vbString Then
+        If Trim$(CStr(daTabela)) <> "" Then
+            ClassificarSigma = CStr(daTabela)
+            Exit Function
+        End If
     End If
 
     Dim s As Double

@@ -140,6 +140,14 @@ def main(caminho):
         def folha(nome):
             return wb.Worksheets(nome)
 
+        def bloco(titulo):
+            """Linha do titulo do bloco no Painel -- ver fix9/ADR-035."""
+            for r in range(1, 200):
+                v = tenta(lambda x=r: pa.Cells(x, 10).Value)
+                if v and titulo.lower() in str(v).lower():
+                    return r
+            raise SystemExit('bloco %r nao encontrado' % titulo)
+
         def limpa_eq():
             for nome, u in ((EQ_ABA, ultEQ),
                             ('EQA.Controllab_Dados', ultCTL)):
@@ -235,7 +243,7 @@ def main(caminho):
                                    (8.0, 4.0, 'Bom'),
                                    (7.98, 3.99, 'Marginal'),
                                    (6.0, 3.0, 'Marginal'),
-                                   (5.98, 2.99, 'Inadequado')):
+                                   (5.98, 2.99, 'Desempenho inadequado')):
             cenario(cv=2.0, etp=etp, xlab=100.0)       # bias 0
             ck('Sigma %.2f -> %s' % (sigma, classe),
                perto(ler(C_SIGMA), sigma, 1e-9) and str(ler(C_CLASSE)) == classe,
@@ -245,7 +253,7 @@ def main(caminho):
         cenario(cv=2.0, etp=5.98, xlab=100.0)          # Sigma 2,99
         wg_antes = str(tenta(lambda: pa.Cells(7, 19).Value))
         tot_antes = tenta(lambda: pa.Cells(7, 18).Value)
-        ck('classe = Inadequado', str(ler(C_CLASSE)) == 'Inadequado', str(ler(C_CLASSE)))
+        ck('classe = Inadequado', str(ler(C_CLASSE)) == 'Desempenho inadequado', str(ler(C_CLASSE)))
         ck('o veredito da corrida vem de Westgard, nao do Sigma',
            'REPROVA' not in wg_antes or (tot_antes or 0) > 0,
            'status=%r total de violacoes=%s' % (wg_antes, tot_antes))
@@ -350,12 +358,18 @@ def main(caminho):
         tenta(lambda: pa.Range('B3').__setattr__('Value', 1))   # analito 1 = alvo
         cenario(cv=2.0, etp=12.0, xlab=108.0)
         tenta(lambda: xl.CalculateFull())
-        pBias = tenta(lambda: pa.Cells(12, 12).Value)
-        pEtp = tenta(lambda: pa.Cells(12, 13).Value)
-        pCV = tenta(lambda: pa.Cells(12, 11).Value)
-        pSig = tenta(lambda: pa.Cells(12, 14).Value)
-        pCls = str(tenta(lambda: pa.Cells(12, 15).Value))
-        pET = tenta(lambda: pa.Cells(18, 11).Value)
+        # ADR-035 moveu os blocos do Painel: o Six Sigma passou a comecar em
+        # J12 (cabecalho) com N1 em 13, e o ET vs ETp foi para J26/27. Sem
+        # atualizar aqui, o teste lia a LINHA DE CABECALHO e comparava numero
+        # com o texto "Sigma" -- foi o que aconteceu.
+        rS = bloco('DESEMPENHO SIX SIGMA') + 3
+        rE = bloco('ERRO TOTAL vs ETp') + 2
+        pBias = tenta(lambda: pa.Cells(rS, 12).Value)
+        pEtp = tenta(lambda: pa.Cells(rS, 13).Value)
+        pCV = tenta(lambda: pa.Cells(rS, 11).Value)
+        pSig = tenta(lambda: pa.Cells(rS, 14).Value)
+        pCls = str(tenta(lambda: pa.Cells(rS, 15).Value))
+        pET = tenta(lambda: pa.Cells(rE, 11).Value)
         print('   Painel N1: CV=%s |bias|=%s ETp=%s Sigma=%s %r ET=%s'
               % (pCV, pBias, pEtp, pSig, pCls, pET))
         ck('Painel usa o mesmo |bias| do EP', perto(pBias, 8.0), str(pBias))
@@ -369,7 +383,7 @@ def main(caminho):
             ck('Painel sem CV no periodo -> Sigma vazio, nao zero',
                pSig in ('', None), repr(pSig))
         ck('a classificacao do Painel usa a mesma escada',
-           pCls in ('', 'Classe mundial', 'Excelente', 'Bom', 'Marginal', 'Inadequado'),
+           pCls in ('', 'Classe mundial', 'Excelente', 'Bom', 'Marginal', 'Desempenho inadequado'),
            repr(pCls))
 
         print('\n=== PROVA 15. nenhuma celula em erro nas areas mexidas ===')

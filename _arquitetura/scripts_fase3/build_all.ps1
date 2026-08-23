@@ -322,6 +322,9 @@ Encerrar-Excel
     # mQualidade (ADR-033): as escadas de Sigma e de orcamento de erro. Vem
     # ANTES do mBI, que as chama. Sem ele o artefato nao compila.
     (Join-Path $arq 'src_producao\mQualidade.bas'),
+    # mPlanoQC (ADR-035): DPM, rendimento e o plano de CQ por Sigma.
+    # Vem ANTES do mBI, que o chama.
+    (Join-Path $arq 'src_producao\mPlanoQC.bas'),
     # mBI (ADR-026): camada de dados para o Power BI.
     (Join-Path $arq 'src_producao\mBI.bas'),
     (Join-Path $h 'Planilha7.cls'),

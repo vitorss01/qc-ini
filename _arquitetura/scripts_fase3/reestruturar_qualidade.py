@@ -69,7 +69,8 @@ CAB_EST = [
     (20, 'Bias EQC (sinal) %'),
 ]
 
-CLASSES = ['Classe mundial', 'Excelente', 'Bom', 'Marginal', 'Inadequado']
+CLASSES = ['Classe mundial', 'Excelente', 'Bom', 'Marginal',
+           'Desempenho inadequado']
 MARGENS = ['Dentro do orcamento', 'Margem critica', 'ETp excedido']
 
 
