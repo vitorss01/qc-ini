@@ -216,10 +216,63 @@ End Function
 ' ============================ WESTGARD ============================
 ' z(t, i) = z-score do nivel t na i-esima corrida (ordenada). ok(t,i) = tem dado.
 ' Regras padrao: 12s (alerta) e 13s/22s/R4s/41s/10x (rejeicao).
+' A MATRIZ DE WESTGARD DEPENDE DO NUMERO DE NIVEIS (ADR-041)
+'
+' Nao existe "as regras de Westgard": existe a matriz para N=2 e a matriz para
+' N=3, e elas nao sao intercambiaveis. Ate aqui os dois produtos usavam o mesmo
+' codigo, entao a Hematologia -- que roda 3 niveis -- era avaliada pelas regras
+' de 2 niveis. As faixas de decisao existem para casar com a probabilidade de
+' erro daquele desenho de controle; aplicar a matriz errada muda a sensibilidade
+' e a taxa de falsa rejeicao, em silencio.
+'
+'   NLV = 2 (Bioquimica)      NLV = 3 (Hematologia)
+'   ------------------------  ------------------------
+'   1_3s                      1_3s
+'   2_2s                      2of3_2s
+'   R_4s                      R_4s
+'   4_1s                      3_1s
+'   8x                        6x
+'
+' As saidas mantem os mesmos SEIS parametros porque sao POSICOES, nao nomes:
+' r22 carrega 2_2s com dois niveis e 2of3_2s com tres; r41 carrega 4_1s ou 3_1s;
+' r10 carrega a regra de tendencia do produto. Quem precisa do nome chama
+' MatrizWestgard(), abaixo -- assim nao ha duas listas para divergirem.
+'
+' DUAS INTERPRETACOES, E QUAL FOI ADOTADA
+'
+' "3 consecutivos" e "6 consecutivos" admitem leitura DENTRO da corrida (os
+' niveis daquela corrida) ou AO LONGO das corridas (o mesmo nivel ao longo do
+' tempo). Aqui:
+'
+'   3_1s .. as duas. Tres niveis da MESMA corrida do mesmo lado, ou tres
+'           corridas consecutivas do MESMO nivel. E o analogo exato do que a
+'           2_2s de dois niveis ja fazia, que tambem carrega as duas leituras.
+'   6x ..... ao longo das corridas, no mesmo nivel. Segue a convencao que o
+'           motor ja usa para a regra de tendencia. A leitura alternativa --
+'           seis medicoes seguidas contando os tres niveis, ou seja duas
+'           corridas -- e bem mais sensivel; trocar e decisao do laboratorio,
+'           nao do codigo, e esta registrada para ser decidida.
 Public Sub AvaliarWestgard(ByRef z() As Double, ByRef temDado() As Boolean, ByVal nRun As Long, _
                            ByRef r13 As Variant, ByRef r22 As Variant, ByRef rR4 As Variant, _
                            ByRef r41 As Variant, ByRef r10 As Variant, ByRef a12 As Variant)
     Dim t As Long, i As Long, j As Long, cnt As Long, mn As Double, mx As Double, k As Long
+    Dim nSeq As Long, nTend As Long, acima As Long, abaixo As Long
+
+    ' 4_1s com dois niveis, 3_1s com tres: e o mesmo teste com outro tamanho.
+    If NLV >= 3 Then nSeq = 3 Else nSeq = 4
+    ' Tendencia: 8x com dois niveis, 6x com tres.
+    '
+    ' O motor contava 10 enquanto o Cfg_PlanoQC e o mPlanoQC declaravam 8x --
+    ' nomes batendo e limiares nao, com CoberturaWestgard respondendo TOTAL
+    ' porque so comparava nomes. Isso sub-relatava tendencia: uma sequencia de
+    ' oito resultados do mesmo lado da media passava sem ser denunciada.
+    '
+    ' O laboratorio determinou 8 como a regra sequencial da Bioquimica e
+    ' mandou corrigir qualquer 10x encontrado. Agora plano e motor falam da
+    ' mesma regra, e a contagem de violacoes de tendencia SOBE -- e o numero
+    ' certo, nao um aumento artificial.
+    If NLV >= 3 Then nTend = 6 Else nTend = 8
+
     For t = 0 To NLV - 1
         For i = 1 To nRun
             If temDado(t, i) Then
@@ -227,59 +280,83 @@ Public Sub AvaliarWestgard(ByRef z() As Double, ByRef temDado() As Boolean, ByVa
                 If Abs(z(t, i)) > 2 Then a12(t, i) = 1
                 If Abs(z(t, i)) > 3 Then r13(t, i) = 1
 
-                ' --- 22s: 2 consecutivos no MESMO nivel, mesmo lado, |z|>2 ---
-                If i >= 2 Then
+                ' --- 2_2s (N=2): dois consecutivos no MESMO nivel ---
+                ' Nao se aplica a N=3: com tres niveis a regra da matriz e a
+                ' 2of3_2s, que e um teste DENTRO da corrida. Manter a variante
+                ' consecutiva aqui somaria uma regra que a matriz de 3 niveis
+                ' nao pede, aumentando a rejeicao falsa.
+                If NLV = 2 And i >= 2 Then
                     If temDado(t, i - 1) Then
                         If (z(t, i) > 2 And z(t, i - 1) > 2) Or (z(t, i) < -2 And z(t, i - 1) < -2) Then
                             r22(t, i) = 1
                         End If
                     End If
                 End If
-                ' --- 22s: 2 NIVEIS na mesma corrida, mesmo lado ---
+
+                ' --- 2_2s / 2of3_2s: niveis da MESMA corrida, mesmo lado ---
+                ' Com N=2 basta o outro nivel acompanhar (2_2s). Com N=3 basta
+                ' que DOIS dos tres estejam alem do mesmo 2s (2of3_2s) -- e o
+                ' mesmo teste, e o limiar acompanha o desenho do controle.
+                cnt = 0
                 For j = 0 To NLV - 1
-                    If j <> t Then
-                        If temDado(j, i) Then
-                            If (z(t, i) > 2 And z(j, i) > 2) Or (z(t, i) < -2 And z(j, i) < -2) Then
-                                r22(t, i) = 1
-                            End If
+                    If temDado(j, i) Then
+                        If (z(t, i) > 2 And z(j, i) > 2) Or (z(t, i) < -2 And z(j, i) < -2) Then
+                            cnt = cnt + 1
                         End If
                     End If
                 Next j
+                ' cnt inclui o proprio nivel t, entao 2 significa "dois niveis".
+                If Abs(z(t, i)) > 2 And cnt >= 2 Then r22(t, i) = 1
 
-                ' --- 41s: 4 consecutivos no mesmo nivel, mesmo lado, |z|>1 ---
-                If i >= 4 Then
+                ' --- 4_1s (N=2) / 3_1s (N=3): consecutivos no mesmo nivel ---
+                If i >= nSeq Then
                     cnt = 0
-                    For k = 0 To 3
+                    For k = 0 To nSeq - 1
                         If temDado(t, i - k) Then
                             If z(t, i - k) > 1 Then cnt = cnt + 1
                         End If
                     Next k
-                    If cnt = 4 Then r41(t, i) = 1
+                    If cnt = nSeq Then r41(t, i) = 1
                     cnt = 0
-                    For k = 0 To 3
+                    For k = 0 To nSeq - 1
                         If temDado(t, i - k) Then
                             If z(t, i - k) < -1 Then cnt = cnt + 1
                         End If
                     Next k
-                    If cnt = 4 Then r41(t, i) = 1
+                    If cnt = nSeq Then r41(t, i) = 1
                 End If
 
-                ' --- 10x: 10 consecutivos no mesmo nivel, mesmo lado da media ---
-                If i >= 10 Then
+                ' --- 3_1s tambem DENTRO da corrida (so N=3) ---
+                ' Os tres niveis da mesma corrida alem do mesmo 1s. Sem isto a
+                ' regra so enxergaria deriva ao longo do tempo e perderia o
+                ' deslocamento que aparece de uma vez nos tres niveis.
+                If NLV >= 3 Then
+                    acima = 0: abaixo = 0
+                    For j = 0 To NLV - 1
+                        If temDado(j, i) Then
+                            If z(j, i) > 1 Then acima = acima + 1
+                            If z(j, i) < -1 Then abaixo = abaixo + 1
+                        End If
+                    Next j
+                    If acima >= NLV Or abaixo >= NLV Then r41(t, i) = 1
+                End If
+
+                ' --- tendencia: 8x (N=2) / 6x (N=3) no mesmo nivel ---
+                If i >= nTend Then
                     cnt = 0
-                    For k = 0 To 9
+                    For k = 0 To nTend - 1
                         If temDado(t, i - k) Then
                             If z(t, i - k) > 0 Then cnt = cnt + 1
                         End If
                     Next k
-                    If cnt = 10 Then r10(t, i) = 1
+                    If cnt = nTend Then r10(t, i) = 1
                     cnt = 0
-                    For k = 0 To 9
+                    For k = 0 To nTend - 1
                         If temDado(t, i - k) Then
                             If z(t, i - k) < 0 Then cnt = cnt + 1
                         End If
                     Next k
-                    If cnt = 10 Then r10(t, i) = 1
+                    If cnt = nTend Then r10(t, i) = 1
                 End If
             End If
         Next i
@@ -302,6 +379,89 @@ Public Sub AvaliarWestgard(ByRef z() As Double, ByRef temDado() As Boolean, ByVa
         End If
     Next i
 End Sub
+
+
+' Os nomes da matriz vigente neste produto, na ordem das saidas de
+' AvaliarWestgard. Existe para que Painel, Estatistica e a camada de BI leiam
+' os rotulos do MESMO lugar que decide as regras -- uma lista escrita a mao
+' noutro modulo divergiria no primeiro ajuste.
+Public Function MatrizWestgard() As String
+    If NLV >= 3 Then
+        MatrizWestgard = "1_3s;2of3_2s;R_4s;3_1s;6x"
+    Else
+        MatrizWestgard = "1_3s;2_2s;R_4s;4_1s;8x"
+    End If
+End Function
+
+
+' O nome da regra que ocupa uma posicao das saidas (1..5).
+Public Function NomeRegraWestgard(ByVal pos As Long) As String
+    Dim p As Variant
+    p = Split(MatrizWestgard(), ";")
+    If pos >= 1 And pos <= UBound(p) + 1 Then NomeRegraWestgard = p(pos - 1)
+End Function
+
+
+' A matriz ativa pertence mesmo a este produto? (ADR-041, secao 8)
+'
+' Devolve "" quando esta coerente, ou a descricao do problema. Existe porque a
+' contaminacao entre modulos e silenciosa: uma matriz de dois niveis rodando
+' num setor de tres continua produzindo numeros plausiveis -- so que com a
+' sensibilidade e a taxa de falsa rejeicao do desenho errado.
+'
+' Verifica os DOIS sentidos. Faltar regra da propria familia e tao defeito
+' quanto sobrar regra da outra.
+Public Function ValidarMatrizWestgard() As String
+    Dim m As String, faltando As String, intrusas As String
+    Dim proprias As Variant, alheias As Variant, x As Variant
+
+    m = ";" & MatrizWestgard() & ";"
+
+    If NLV >= 3 Then
+        proprias = Array("1_3s", "2of3_2s", "R_4s", "3_1s", "6x")
+        alheias = Array("2_2s", "4_1s", "8x", "10x")
+    Else
+        proprias = Array("1_3s", "2_2s", "R_4s", "4_1s", "8x")
+        alheias = Array("2of3_2s", "3_1s", "6x", "10x")
+    End If
+
+    For Each x In proprias
+        If InStr(1, m, ";" & x & ";", vbTextCompare) = 0 Then _
+            faltando = faltando & x & " "
+    Next x
+    For Each x In alheias
+        If InStr(1, m, ";" & x & ";", vbTextCompare) > 0 Then _
+            intrusas = intrusas & x & " "
+    Next x
+
+    If Len(faltando) > 0 Then
+        ValidarMatrizWestgard = "ERRO DE CONFIGURACAO: faltam na matriz de " & _
+            CStr(NLV) & " niveis: " & Trim$(faltando)
+    End If
+    If Len(intrusas) > 0 Then
+        If Len(ValidarMatrizWestgard) > 0 Then ValidarMatrizWestgard = _
+            ValidarMatrizWestgard & " | "
+        ValidarMatrizWestgard = ValidarMatrizWestgard & _
+            "ERRO DE CONFIGURACAO: regras de outro modulo na matriz de " & _
+            CStr(NLV) & " niveis: " & Trim$(intrusas)
+    End If
+End Function
+
+
+' O limiar que o motor REALMENTE usa para cada regra sequencial, publicado
+' para a cobertura poder conferir semantica e nao so nome. Sem isto,
+' "plano diz 8x, motor conta 10" volta a passar como TOTAL.
+Public Function LimiarSequencialWestgard() As Long
+    If NLV >= 3 Then LimiarSequencialWestgard = 6 Else LimiarSequencialWestgard = 8
+End Function
+
+
+' Quantos resultados consecutivos a regra de 1s exige neste produto
+' (4_1s com dois niveis, 3_1s com tres).
+Public Function LimiarUmSigmaWestgard() As Long
+    If NLV >= 3 Then LimiarUmSigmaWestgard = 3 Else LimiarUmSigmaWestgard = 4
+End Function
+
 
 ' ============================ MOTOR: ESCREVER Eng_Saida ============================
 ' Marco 2 do Sprint HARDENING 1 (ADR-019).

@@ -85,13 +85,31 @@ Public Const NOTA_RUNSIZE As String = _
 ' Regras que o motor desta pasta realmente avalia no Calc. Conferido coluna a
 ' coluna: K=1_3s, L=2_2s, M=R_4s, N=4_1s, O=8x.
 '
-' 8x E A REGRA SEQUENCIAL DEFINITIVA DESTE PROJETO (ADR-038).
+' AS REGRAS QUE O MOTOR AVALIA VEM DO PROPRIO MOTOR (ADR-041)
 '
-' Uma regra de sequencia responde a pergunta: quantos resultados consecutivos
-' do mesmo lado da media denunciam desvio sistematico. O laboratorio fechou a
-' resposta em oito. tblPlanoQC_Sigma recomenda 8x, o motor avalia 8x, e por
-' isso a cobertura fecha TOTAL: os dois falam da mesma regra.
-Private Const REGRAS_IMPLEMENTADAS As String = "1_3s;2_2s;R_4s;4_1s;8x"
+' Era uma constante escrita aqui a mao: "1_3s;2_2s;R_4s;4_1s;8x". Com dois
+' produtos isso vira defeito imediato -- a Hematologia avalia 2of3_2s, 3_1s e
+' 6x, e a lista fixa afirmaria o contrario, fazendo CoberturaWestgard responder
+' TOTAL sobre regras que aquele motor nao executa.
+'
+' Agora a lista vem de mEstatistica.MatrizWestgard(), que e o mesmo lugar que
+' DECIDE as regras a partir de NLV. Uma fonte so: se a matriz mudar, a
+' cobertura acompanha sem ninguem lembrar de editar dois arquivos.
+Private Function RegrasDoMotor() As String
+    ' Application.Run e nao mEstatistica.MatrizWestgard(): a chamada direta
+    ' cria dependencia de COMPILACAO. Numa pasta cujo mEstatistica ainda nao
+    ' tenha a funcao, o projeto VBA inteiro deixa de compilar -- e erro de
+    ' compilacao NAO e capturado por On Error, entao a pasta quebra em vez de
+    ' degradar. Com vinculo tardio a ausencia vira erro de execucao, que o
+    ' tratamento abaixo absorve.
+    On Error GoTo semMotor
+    RegrasDoMotor = CStr(Application.Run("MatrizWestgard"))
+    If Len(Trim$(RegrasDoMotor)) > 0 Then Exit Function
+semMotor:
+    ' Sem o motor carregado nao ha o que declarar. Devolver a matriz de dois
+    ' niveis "por seguranca" seria afirmar cobertura que ninguem verificou.
+    RegrasDoMotor = ""
+End Function
 
 
 Private Function AbaCfg() As Worksheet
@@ -249,7 +267,7 @@ Public Function CoberturaWestgard(ByVal sigma As Variant) As String
     Dim tem As Object
     Set tem = CreateObject("Scripting.Dictionary")
     Dim p As Variant, x As Variant
-    For Each x In Split(REGRAS_IMPLEMENTADAS, ";")
+    For Each x In Split(RegrasDoMotor(), ";")
         tem(UCase$(Trim$(CStr(x)))) = 1
     Next x
 
@@ -264,18 +282,82 @@ Public Function CoberturaWestgard(ByVal sigma As Variant) As String
         End If
     Next p
 
-    If falta = "" Then
-        CoberturaWestgard = "TOTAL"
-    Else
+    If falta <> "" Then
         CoberturaWestgard = "PARCIAL - falta " & falta
+        Exit Function
     End If
+
+    ' NOME BATENDO NAO E COBERTURA (ADR-041, secao 9)
+    '
+    ' Foi assim que "plano diz 8x, motor conta 10" atravessou o projeto
+    ' respondendo TOTAL: a conferencia comparava apenas os rotulos. Agora a
+    ' regra sequencial e a de 1s tambem tem o LIMIAR conferido contra o que o
+    ' motor de fato usa.
+    Dim erroCfg As String
+    erroCfg = ValidacaoDaMatriz()
+    If Len(erroCfg) > 0 Then
+        CoberturaWestgard = erroCfg
+        Exit Function
+    End If
+
+    Dim divergencia As String
+    divergencia = DivergenciaDeLimiar(CStr(regras))
+    If Len(divergencia) > 0 Then
+        CoberturaWestgard = "ERRO DE COBERTURA - " & divergencia
+        Exit Function
+    End If
+
+    CoberturaWestgard = "TOTAL"
+End Function
+
+
+' O nome da regra sequencial recomendada casa com o limiar que o motor usa?
+Private Function DivergenciaDeLimiar(ByVal regras As String) As String
+    Dim seq As Long, um As Long, r As String
+    On Error GoTo semMotor
+    seq = CLng(Application.Run("LimiarSequencialWestgard"))
+    um = CLng(Application.Run("LimiarUmSigmaWestgard"))
+    On Error GoTo 0
+
+    r = Replace(LCase$(regras), " ", "")
+
+    ' tendencia: o nome traz o proprio numero ("8x", "6x", "10x")
+    If InStr(r, "/10x") > 0 Or Left$(r, 4) = "10x/" Or r = "10x" Then
+        If seq <> 10 Then DivergenciaDeLimiar = "plano pede 10x e o motor conta " & seq
+    ElseIf InStr(r, "8x") > 0 Then
+        If seq <> 8 Then DivergenciaDeLimiar = "plano pede 8x e o motor conta " & seq
+    ElseIf InStr(r, "6x") > 0 Then
+        If seq <> 6 Then DivergenciaDeLimiar = "plano pede 6x e o motor conta " & seq
+    End If
+    If Len(DivergenciaDeLimiar) > 0 Then Exit Function
+
+    ' regra de 1s: 4_1s exige quatro consecutivos, 3_1s exige tres
+    If InStr(r, "4_1s") > 0 Then
+        If um <> 4 Then DivergenciaDeLimiar = "plano pede 4_1s e o motor conta " & um
+    ElseIf InStr(r, "3_1s") > 0 Then
+        If um <> 3 Then DivergenciaDeLimiar = "plano pede 3_1s e o motor conta " & um
+    End If
+    Exit Function
+semMotor:
+    DivergenciaDeLimiar = "motor nao publica os limiares"
+End Function
+
+
+' A matriz ativa e coerente com o produto? Vinculo tardio pelo mesmo motivo
+' de RegrasDoMotor: ausencia da funcao nao pode impedir a pasta de compilar.
+Private Function ValidacaoDaMatriz() As String
+    On Error GoTo semMotor
+    ValidacaoDaMatriz = CStr(Application.Run("ValidarMatrizWestgard"))
+    Exit Function
+semMotor:
+    ValidacaoDaMatriz = ""
 End Function
 
 
 ' Quais regras o motor desta pasta avalia. Publicado para o BI e para a tela,
 ' para ninguem precisar deduzir do codigo.
 Public Function RegrasImplementadas() As String
-    RegrasImplementadas = Replace(REGRAS_IMPLEMENTADAS, ";", " / ")
+    RegrasImplementadas = Replace(RegrasDoMotor(), ";", " / ")
 End Function
 
 

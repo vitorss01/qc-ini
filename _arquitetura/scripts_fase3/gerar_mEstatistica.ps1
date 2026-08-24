@@ -39,26 +39,53 @@ $encFonte = New-Object System.Text.UTF8Encoding($false)
 
 $L = [System.IO.File]::ReadAllLines($Producao, $enc)
 
-# --- validacao das fronteiras: falha alto se o arquivo nao for o esperado ---
-if ($L[298] -notlike "*MOTOR: MONTAR Calc*") {
-    throw "Fronteira inicial inesperada na linha 299: $($L[298])"
+# --- fronteiras por MARCADOR, nao por indice -------------------------------
+#
+# Indices fixos (299, 512, 679, 750, 799) quebram a cada linha acrescentada no
+# motor. A reescrita de AvaliarWestgard pelo ADR-041 deslocou tudo e o build
+# parou com "Fronteira inicial inesperada na linha 299". O guarda-corpo estava
+# certo; o metodo de localizar e que era fragil. Marcador nao desloca.
+function Achar([object]$linhas, [string]$padrao, [int]$de = 0) {
+    for ($i = $de; $i -lt $linhas.Count; $i++) {
+        if ($linhas[$i] -like $padrao) { return $i }
+    }
+    return -1
 }
-if ($L[311] -notlike '*Sheets("Calc")*' -and $L[309] -notlike '*Sheets("Calc")*') {
-    throw "Nao encontrei Set ws = Sheets(Calc) perto da linha 310"
+
+function AcharEndSub([object]$linhas, [int]$de) {
+    for ($i = $de; $i -lt $linhas.Count; $i++) {
+        if ($linhas[$i].Trim() -eq 'End Sub') { return $i }
+    }
+    return -1
 }
-if ($L[511].Trim() -ne 'End Sub') {
-    throw "Fronteira final inesperada na linha 512: $($L[511])"
-}
-if ($L[15] -notlike '*NFD*') {
-    throw "Fronteira de constantes inesperada na linha 16: $($L[15])"
-}
+
+$iCte = Achar $L '*NFD*'
+if ($iCte -lt 0) { throw 'Nao achei a linha de constantes (NFD).' }
+
+$iCalcIni = Achar $L '*MOTOR: MONTAR Calc*'
+if ($iCalcIni -lt 0) { throw 'Nao achei o marcador "MOTOR: MONTAR Calc".' }
+$iCalcSub = Achar $L '*Sub AtualizarCalc*' $iCalcIni
+if ($iCalcSub -lt 0) { throw 'Nao achei Public Sub AtualizarCalc.' }
+$iCalcFim = AcharEndSub $L $iCalcSub
+if ($iCalcFim -lt 0) { throw 'Nao achei o End Sub de AtualizarCalc.' }
+
+$iPainelIni = Achar $L '*Sub AtualizarPainelEng*'
+$iPainelFim = -1
+if ($iPainelIni -ge 0) { $iPainelFim = AcharEndSub $L $iPainelIni }
+
+$iEstatIni = Achar $L '*Sub AtualizarEstatisticaAba*'
+$iEstatFim = -1
+if ($iEstatIni -ge 0) { $iEstatFim = AcharEndSub $L $iEstatIni }
+
+"fronteiras: constantes=$($iCte + 1) Calc=$($iCalcIni + 1)..$($iCalcFim + 1) " +
+"Painel=$($iPainelIni + 1)..$($iPainelFim + 1) Estat=$($iEstatIni + 1)..$($iEstatFim + 1)"
 
 $novo = [System.IO.File]::ReadAllLines($NovoSub, $encFonte)
 
 $out = New-Object System.Collections.ArrayList
 
-# 1..16 (constantes) + as duas novas
-for ($i = 0; $i -le 15; $i++) { [void]$out.Add($L[$i]) }
+# constantes + as sete novas
+for ($i = 0; $i -le $iCte; $i++) { [void]$out.Add($L[$i]) }
 [void]$out.Add("Private Const EF0 As Long = 3          ' Eng_Saida: 1a coluna de bloco de nivel")
 [void]$out.Add("Private Const NEF As Long = 7          ' Eng_Saida: campos por nivel")
 [void]$out.Add("Private Const COL_FILTRO As Long = 24  ' Eng_Saida: filtro de data por corrida")
@@ -67,52 +94,29 @@ for ($i = 0; $i -le 15; $i++) { [void]$out.Add($L[$i]) }
 [void]$out.Add("Private Const LINHA_STAT As Long = 185 ' Eng_Saida: 1a linha do bloco de estatistica")
 [void]$out.Add("Private Const LINHA_EST As Long = 190  ' Eng_Saida: 1a linha da tabela de parametros")
 
-# 17..298 inalteradas
-for ($i = 16; $i -le 297; $i++) { [void]$out.Add($L[$i]) }
+# ate o inicio de AtualizarCalc, inalteradas
+for ($i = $iCte + 1; $i -lt $iCalcIni; $i++) { [void]$out.Add($L[$i]) }
 
-# 299..512 substituidas (AtualizarCalc)
+# AtualizarCalc substituida
 foreach ($linha in $novo) { [void]$out.Add($linha) }
+$prox = $iCalcFim + 1
 
-# 513..678 inalteradas
-for ($i = 512; $i -le 677; $i++) { [void]$out.Add($L[$i]) }
-
-# 679..747 substituidas (AtualizarPainelEng), se fornecido
-if ($NovoPainel) {
-    if ($L[678] -notlike '*Sub AtualizarPainelEng*') {
-        throw "Fronteira inesperada na linha 679: $($L[678])"
-    }
-    if ($L[746].Trim() -ne 'End Sub') {
-        throw "Fronteira inesperada na linha 747: $($L[746])"
-    }
+# AtualizarPainelEng, se fornecida
+if ($NovoPainel -and $iPainelIni -ge 0) {
+    for ($i = $prox; $i -lt $iPainelIni; $i++) { [void]$out.Add($L[$i]) }
     foreach ($linha in [System.IO.File]::ReadAllLines($NovoPainel, $encFonte)) { [void]$out.Add($linha) }
-    $i0 = 747
-}
-else {
-    for ($i = 678; $i -le 746; $i++) { [void]$out.Add($L[$i]) }
-    $i0 = 747
+    $prox = $iPainelFim + 1
 }
 
-# 748..749 inalteradas
-for ($i = $i0; $i -le 748; $i++) { [void]$out.Add($L[$i]) }
-
-# 750..799 substituidas (AtualizarEstatisticaAba), se fornecido
-if ($NovoEstat) {
-    if ($L[749] -notlike '*Sub AtualizarEstatisticaAba*') {
-        throw "Fronteira inesperada na linha 750: $($L[749])"
-    }
-    if ($L[798].Trim() -ne 'End Sub') {
-        throw "Fronteira inesperada na linha 799: $($L[798])"
-    }
+# AtualizarEstatisticaAba, se fornecida
+if ($NovoEstat -and $iEstatIni -ge 0) {
+    for ($i = $prox; $i -lt $iEstatIni; $i++) { [void]$out.Add($L[$i]) }
     foreach ($linha in [System.IO.File]::ReadAllLines($NovoEstat, $encFonte)) { [void]$out.Add($linha) }
-    $i1 = 799
-}
-else {
-    for ($i = 749; $i -le 798; $i++) { [void]$out.Add($L[$i]) }
-    $i1 = 799
+    $prox = $iEstatFim + 1
 }
 
-# 800..fim inalteradas
-for ($i = $i1; $i -lt $L.Count; $i++) { [void]$out.Add($L[$i]) }
+# resto inalterado
+for ($i = $prox; $i -lt $L.Count; $i++) { [void]$out.Add($L[$i]) }
 
 # --- niveis do produto ---
 $linhaNLV = -1

@@ -62,7 +62,10 @@ REF_R0 = 127                     # tabela educativa na Estatistica
 # Westgard Sigma Rules with Run Sizes.
 #   Sigma_Min | Sigma_Max | Classificacao | Regras | N | RunSize | Frequencia | Ref
 #
-# 8x E A REGRA SEQUENCIAL DEFINITIVA DESTE PROJETO (ADR-038)
+# 8x E A REGRA SEQUENCIAL DA MATRIZ DE DOIS NIVEIS (ADR-038)
+#
+# Com tres niveis a regra e 6x -- ver PLANO_HEMATOLOGIA. Nao sao sinonimos:
+# o numero de medicoes consecutivas faz parte da definicao da regra.
 #
 # Uma regra de sequencia responde a pergunta: quantos resultados consecutivos
 # do mesmo lado da media denunciam desvio sistematico. O laboratorio fechou a
@@ -70,7 +73,16 @@ REF_R0 = 127                     # tabela educativa na Estatistica
 #
 # Abaixo de 3 Sigma, N e run size ficam VAZIOS de proposito: preencher ali
 # sugeriria existir plano de CQ estatistico capaz de sustentar o metodo.
-PLANO = [
+# ADR-041: HA UMA MATRIZ POR NUMERO DE NIVEIS, e elas nao sao intercambiaveis.
+#
+# As faixas existem para casar com a probabilidade de deteccao daquele DESENHO
+# de controle. Com tres niveis por corrida o poder estatistico por evento e
+# maior, entao a mesma protecao se obtem com menos regras -- e por isso a
+# Hematologia sai de "todas as cinco" ja a partir de 4 Sigma, enquanto a
+# Bioquimica so sai a partir de 4 com quatro regras e precisa de 5 para tres.
+#
+# N e o numero de controles por evento; R e quantas vezes o evento se repete.
+PLANO_BIOQUIMICA = [
     (6.0, 999.0, 'Classe mundial', '1_3s', 2, 1000,
      'Até 1000 pacientes entre eventos de CQ',
      'Westgard & Westgard, 2019'),
@@ -93,6 +105,55 @@ PLANO = [
      'o desempenho analítico ou reavaliar o método',
      'Westgard et al., 2018; CLSI C24-Ed4'),
 ]
+
+
+# Hematologia -- tres niveis de controle. Regras 2of3_2s, 3_1s e 6x; 8x NAO
+# aparece aqui, e nao e sinonimo de 6x: o numero de medicoes consecutivas faz
+# parte da definicao da regra.
+#
+# N = 3 em todas as faixas porque o desenho ja mede os tres niveis por evento.
+# O que muda entre faixas e QUANTAS REGRAS rodam e, abaixo de 4 Sigma, quantas
+# VEZES o evento se repete (R).
+PLANO_HEMATOLOGIA = [
+    (6.0, 999.0, 'Classe mundial', '1_3s', 3, 1,
+     'Uma medicao em cada um dos 3 niveis por evento de CQ',
+     'Westgard & Westgard, 2019'),
+    (5.0, 6.0, 'Excelente', '1_3s / 2of3_2s / R_4s', 3, 1,
+     'Uma medicao em cada um dos 3 niveis por evento de CQ',
+     'Westgard & Westgard, 2019'),
+    (4.0, 5.0, 'Bom', '1_3s / 2of3_2s / R_4s / 3_1s', 3, 1,
+     'Uma medicao em cada um dos 3 niveis por evento de CQ',
+     'Westgard & Westgard, 2019'),
+    # Abaixo de 4 Sigma a matriz de 3 niveis ja pede as cinco regras -- nao ha
+    # faixa "Marginal" separada como na de 2 niveis. N e run size ficam
+    # preenchidos aqui, e nao vazios: com tres niveis existe estrategia
+    # operacional (N=6/R=1 ou N=3/R=2) que sustenta o metodo.
+    (-999.0, 4.0, 'Desempenho inadequado', '1_3s / 2of3_2s / R_4s / 3_1s / 6x',
+     6, 1,
+     'N=6 / R=1, ou N=3 / R=2 conforme a estrategia operacional do laboratorio',
+     'Westgard et al., 2018; CLSI C24-Ed4'),
+]
+
+PLANOS = {
+    'Bioquimica': PLANO_BIOQUIMICA,
+    'Hematologia': PLANO_HEMATOLOGIA,
+}
+
+# Resolvido em main() pelo arquivo alvo. O default existe apenas para o modulo
+# poder ser importado; rodar sem passar pelo main escreveria a matriz errada.
+PLANO = PLANO_BIOQUIMICA
+
+
+def plano_do_arquivo(caminho):
+    """O produto sai do NOME do arquivo alvo. Escrever a matriz errada nao
+    quebra nada visivelmente -- so publica um plano de CQ que nao corresponde
+    ao desenho de controle daquele setor."""
+    nome = os.path.basename(caminho).lower()
+    for produto, plano in PLANOS.items():
+        if produto.lower() in nome:
+            return produto, plano
+    raise SystemExit('nao reconheci o produto em %s' % os.path.basename(caminho))
+
 
 CAB_PLANO = ['Sigma_Min', 'Sigma_Max', 'Classificacao', 'Regras', 'N_Controle',
              'RunSize_Max', 'Frequencia', 'Referencia']
@@ -238,6 +299,9 @@ def nota(ws, lin, c0, texto):
 
 
 def main(caminho):
+    global PLANO
+    produto, PLANO = plano_do_arquivo(caminho)
+    print('produto: %s (%d faixas de Sigma)' % (produto, len(PLANO)))
     caminho = os.path.abspath(caminho)
     xl = novo_excel()
     wb = xl.Workbooks.Open(caminho)
