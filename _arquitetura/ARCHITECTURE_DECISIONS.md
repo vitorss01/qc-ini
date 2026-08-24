@@ -1618,3 +1618,155 @@ passa a ser medido e registrado antes de qualquer escrita.
 Contra o checkpoint do gestor: **1798 células, zero diferenças** de estilo,
 largura, altura, mesclagem, formatação condicional e posição de objeto. Só o
 conteúdo de `R22`, `R23`, `S22` e `F10` mudou — a reconexão pedida.
+
+---
+
+## ADR-039 — A formatação condicional fala português, e aceitava o inglês calada
+
+**Data:** 2026-08-23 · **Status:** aceito · **Origem:** validação final integrada
+
+### O defeito
+
+`FormatConditions.Add(..., Formula1)` nesta instalação se comporta como
+`FormulaLocal`: espera os nomes de função no idioma do Excel. Escrita em inglês,
+a condição é **aceita sem erro e nunca avalia verdadeira**.
+
+Consequência: o realce inteiro de `G6:K6` estava **morto desde o ADR-037**. Nem
+a recomendação (`SUMPRODUCT`) nem a violação (`SUM`) pintavam. O que a tela
+mostrava era só o preenchimento base.
+
+### Por que passou pelos testes anteriores
+
+Porque os testes anteriores **liam a fórmula da condição e a prioridade dela** e
+concluíam por raciocínio qual venceria. Nenhum media o que o Excel realmente
+pintava. Uma condição sintaticamente presente, com a prioridade certa, no
+`AppliesTo` certo, apontando para nomes que resolvem corretamente — e inerte.
+
+`Range.DisplayFormat` devolve o formato **efetivo**, já resolvida a CF. É a única
+leitura honesta. Passou a ser obrigatória em qualquer prova de cor.
+
+### Como foi isolado
+
+Uma condição por vez na mesma célula, medindo `DisplayFormat` depois de cada uma:
+
+| Fórmula | Resultado |
+|---|---|
+| `=TRUE` | não pintou |
+| `=$G$6="1-3S"` | **pintou** |
+| `=SUM($G$7:$G$8)=0` | não pintou |
+| `=sigmaDoPlano>=5` | **pintou** |
+| `=SUMPRODUCT((regrasRotulos=G6)*regrasAtivas)=1` | não pintou |
+| `=INDEX(regrasAtivas,1)=1` | recusada |
+
+O que pintava não tinha nome de função. Refeito em pt-BR — `VERDADEIRO()`,
+`SOMA`, `ÍNDICE`, `SOMARPRODUTO`, separador `;` — **os oito construtos pintaram**,
+inclusive o `ÍNDICE` que em inglês era recusado.
+
+### A teoria anterior estava errada
+
+O ADR-037 registrou que *"a CF não atravessa planilha com funções que devolvem
+referência"*, porque `INDEX` era recusado e `SUMPRODUCT` era aceito. Não era isso.
+Era idioma. O comentário no script foi corrigido para não induzir o mesmo
+diagnóstico errado de novo.
+
+### Correção
+
+`_arquitetura/scripts_fase3/corrigir_cf_idioma.py`:
+
+- `=SOMA($G$7:$G$8)>0` — violação
+- `=SOMARPRODUTO((regrasRotulos=G6)*regrasAtivas)=1` — recomendação
+
+Os construtores `padronizar_8x_pior_nivel.py` e `realce_regras_westgard.py` foram
+corrigidos junto, para que uma re-execução não reintroduza o inglês.
+
+### Um segundo caso, mesma causa
+
+`Estatística!Z3` — o aviso *"BASE DESATUALIZADA"* — tinha sido **recusado** no
+ADR-034 usando `LEFT`, e ficou registrado como "sem cor, o texto continua". Era o
+mesmo defeito. Com `ESQUERDA` foi aceito e pinta.
+
+### O padrão
+
+É a terceira vez que a fronteira COM↔Excel troca o protocolo pelo idioma local:
+
+| Propriedade | Comportamento real | Sintoma |
+|---|---|---|
+| `NumberFormat` | `NumberFormatLocal` | `2,70` exibido como `003` |
+| `FormatConditions.Formula1` | `FormulaLocal` | condição aceita e inerte |
+
+Nenhum dos dois deu erro. Ambos falharam **em silêncio, na renderização**. A
+regra que fica: nesta fronteira, **escrever em português e provar pelo que a tela
+mostra**, nunca pelo que o objeto aceitou.
+
+### Por que o `openpyxl` nunca acusaria isso
+
+O arquivo guarda a fórmula **sempre em inglês**. Depois da correção escrita em
+português via COM, o `.xlsm` contém:
+
+```
+G6  prio=57  SUM($G$7:$G$8)>0
+G6  prio=58  SUMPRODUCT((regrasRotulos=G6)*regrasAtivas)=1
+```
+
+A tradução acontece **na entrada do COM**, não no formato de arquivo. Ler o
+`.xlsm` mostra inglês tanto para a versão morta quanto para a viva — são
+idênticas em disco. Só `DisplayFormat`, com o Excel aberto, separa uma da outra.
+
+### Um susto que não era
+
+Comparando contra a base oficial, `Painel!O3` sumiu da lista de formatação
+condicional. Não sumiu: o comparador trunca a amostra em 8 itens. Verificado
+pelo `openpyxl` nas três versões — a condição `OR($G$3<>"";$G$4<>"")` do aviso
+de filtro de data está intacta. O comparador passou a declarar o total ao lado
+da amostra.
+
+### Um defeito no teste, não no sistema
+
+O bloco C da validação esperava *"verde = toda regra recomendada pelo Sigma"*.
+Isso só vale sem violação — a condição que o bloco D cria de propósito. Com dado
+real, violação tem prioridade sobre recomendação, então uma regra recomendada **e
+violada** aparece vermelha.
+
+Medido célula a célula em cinco analitos reais (`sonda_bloco_c.py`), **25 de 25
+células** se comportam como projetado. Exemplos:
+
+| Analito | Sigma_Plano | Recomendadas | Verdes | Vermelhas |
+|---|---|---|---|---|
+| Ácido úrico | 6,12 | `1-3S` | `1-3S` | `2-2S` `4-1S` `8X` |
+| Cálcio | 4,12 | `1-3S` `2-2S` `R4S` `4-1S` | `1-3S` `R4S` | `2-2S` `4-1S` `8X` |
+| Lactato | 1,82 | as cinco | `R4S` | `1-3S` `2-2S` `4-1S` `8X` |
+
+O `R4S` fica verde em quase todos porque é a única que raramente dispara: é
+regra de amplitude entre níveis na mesma corrida.
+
+A expectativa do bloco C foi corrigida para *"verde onde recomendada **e sem
+violação**"*, mais uma asserção nova: *"toda regra violada tem de estar
+vermelha, recomendada ou não"*.
+
+### Matriz final
+
+| Bloco | Testes | Resultado |
+|---|---|---|
+| A. Fronteiras exatas do Sigma | 64/64 | PASS |
+| B. Pior nível governa | 18/18 | PASS |
+| C. Analitos reais (cadeia completa) | 15/15 | PASS |
+| D. Realce efetivo de `G6:K6` | 25/25 | PASS |
+| E. Violação vence recomendação | 5/5 | PASS |
+| F. `M7`/`M8` independentes do plano Sigma | 8/8 | PASS |
+| G. `8x` é a única regra sequencial | — | PASS (varredura) |
+| H. ET × ETp | 10/10 | PASS |
+| I. Plano de CQ | 10/10 | PASS |
+| **TOTAL** | **155/155** | **PASS** |
+
+Layout do Painel contra a base oficial do gestor (`3a21910`): zero diferença de
+estilo, largura, altura, mesclagem e posição de objeto. As únicas mudanças são as
+autorizadas — `F10:F13` (apoio, alerta, legenda, cobertura) e a formatação
+condicional de `G6:K6`.
+
+### Fora do escopo, registrado
+
+`qclab/` — o app Streamlit, com banco SQLite próprio, que **não lê o `.xlsm`** —
+mantém `6X` e `3-1S` como regras de rejeição em `qc_engine.py`, com testes
+próprios em `test_westgard.py`. Diverge do conjunto de cinco regras do ADR-038.
+Não foi alterado: esta etapa era validação, e mudar o motor dele exigiria decidir
+o que fazer com os testes que hoje cobrem `6X`. Fica para decisão do gestor.

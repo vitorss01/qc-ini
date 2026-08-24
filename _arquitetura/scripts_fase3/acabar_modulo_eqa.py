@@ -471,9 +471,9 @@ def main(caminho):
             try:
                 alvo.FormatConditions.Delete()
                 alvo.FormatConditions.Add(
-                    2, None, '=LEFT($Z$3,4)="BASE"').Font.Color = VERM_FONTE
+                    2, None, '=ESQUERDA($Z$3;4)="BASE"').Font.Color = VERM_FONTE
                 alvo.FormatConditions.Add(
-                    2, None, '=LEFT($Z$3,4)="base"').Font.Color = VERDE_FONTE
+                    2, None, '=ESQUERDA($Z$3;4)="base"').Font.Color = VERDE_FONTE
             except Exception as e:
                 print('   AVISO: sem cor no aviso de %s (%s); o texto continua'
                       % (nome, str(e)[:60]))

@@ -180,8 +180,12 @@ def main(antes, depois, aba='Painel'):
                        ('objetos (graficos/botoes)', 'objetos')):
         if a[chave] != b[chave]:
             print('   %-25s : MUDOU' % rot)
-            print('      antes : %s' % a[chave][:8])
-            print('      depois: %s' % b[chave][:8])
+            # a lista e truncada: sem o total, um item que so ficou de fora
+            # da amostra parece ter sumido. Ja aconteceu com Painel!O3.
+            print('      antes : %d no total, mostrando %s'
+                  % (len(a[chave]), a[chave][:8]))
+            print('      depois: %d no total, mostrando %s'
+                  % (len(b[chave]), b[chave][:8]))
             problemas.append('%s mudou' % rot)
         else:
             print('   %-25s : identico (%d)' % (rot, len(a[chave])))

@@ -316,13 +316,13 @@ def main(caminho):
             except Exception:
                 pass
             f1 = pa.Range(ref).FormatConditions.Add(
-                2, None, '=SUM(${0}$7:${0}$8)>0'.format(l))
+                2, None, '=SOMA(${0}$7:${0}$8)>0'.format(l))
             f1.Interior.Color = cor(0xFD, 0xE2, 0xE2)
             f1.Font.Color = cor(0xB4, 0x23, 0x18)
             f1.Font.Bold = True
             f2 = pa.Range(ref).FormatConditions.Add(
                 2, None,
-                '=SUMPRODUCT((regrasRotulos={0})*regrasAtivas)=1'.format(ref))
+                '=SOMARPRODUTO((regrasRotulos={0})*regrasAtivas)=1'.format(ref))
             f2.Interior.Color = VERDE_ESCURO
             f2.Font.Color = BRANCO
             f2.Font.Bold = True

@@ -284,25 +284,27 @@ def main(caminho):
                 pass
             # 1) violada em qualquer um dos dois niveis
             f1 = pa.Range(ref).FormatConditions.Add(
-                2, None, '=SUM(${0}$7:${0}$8)>0'.format(letra))
+                2, None, '=SOMA(${0}$7:${0}$8)>0'.format(letra))
             f1.Interior.Color = cor(0xFD, 0xE2, 0xE2)
             f1.Font.Color = cor(0xB4, 0x23, 0x18)
             f1.Font.Bold = True
             # 2) recomendada pelo Sigma -- le a matriz, nao uma escada nova
-            # SUMPRODUCT, e nao INDEX/MATCH.
+            # SOMARPRODUTO, e em portugues.
             #
-            # Sondado celula a celula: a formatacao condicional ACEITA
-            # SUMPRODUCT sobre nomes que apontam para outra aba, e RECUSA
-            # INDEX/MATCH sobre os mesmos nomes -- inclusive dentro de
-            # IFERROR. Sao funcoes que devolvem REFERENCIA, e a CF nao
-            # atravessa planilha com elas. SUMPRODUCT so faz aritmetica de
-            # matriz e passa.
+            # A primeira leitura desta recusa foi errada. Eu havia escrito
+            # que a CF "nao atravessa planilha com funcoes que devolvem
+            # referencia", porque INDEX era recusado e SUMPRODUCT passava.
+            # Nao era isso: FormatConditions.Add le a formula no IDIOMA
+            # LOCAL. Em ingles, INDEX e recusado e SUMPRODUCT e aceito mas
+            # nunca avalia verdadeiro -- aceito e morto, que e pior que
+            # recusado. Em pt-BR, INDICE e SOMARPRODUTO funcionam os dois.
+            # Medido por DisplayFormat em corrigir_cf_idioma.py.
             #
             # A conta e a mesma: casa o rotulo da celula com o rotulo da
             # matriz e devolve a bandeira daquela regra.
             f2 = pa.Range(ref).FormatConditions.Add(
                 2, None,
-                '=SUMPRODUCT((regrasRotulos={0})*regrasAtivas)=1'.format(ref))
+                '=SOMARPRODUTO((regrasRotulos={0})*regrasAtivas)=1'.format(ref))
             f2.Interior.Color = VERDE_ESCURO
             f2.Font.Color = BRANCO
             f2.Font.Bold = True
