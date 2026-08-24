@@ -140,10 +140,26 @@ try {
     }
 
     # ---------------- 6.3 titulo do eixo X (categorias) ----------------
-    # Percorre TODO grafico embutido de TODA aba: a contagem varia por produto
+    # Percorre os graficos indexados por CORRIDA: a contagem varia por produto
     # (Bioquimica 2 niveis, Hematologia 3) e nao deve ser fixada aqui.
+    #
+    # As abas de EQA ficam FORA. Os resumos de controle externo (ADR-034) sao
+    # indexados por RODADA do provedor, nao por corrida interna -- escrever
+    # "RUN" no eixo deles rotularia o grafico errado. Antes desta excecao o
+    # portao acusava "eixo X sem titulo" nos dois resumos e derrubava o build
+    # inteiro por uma exigencia que nao se aplica a eles.
+    #
+    # A excecao e NOMEADA e contada: aba fora de escopo aparece no relatorio,
+    # para ninguem confundir "nao se aplica" com "passou".
     $nGraf = 0
+    $foraEscopo = New-Object System.Collections.ArrayList
     foreach ($ws in $wb.Worksheets) {
+        if ($ws.Name -like 'EQA.*') {
+            foreach ($co in $ws.ChartObjects()) {
+                [void]$foraEscopo.Add("$($ws.Name)!$($co.Name)")
+            }
+            continue
+        }
         foreach ($co in $ws.ChartObjects()) {
             $nGraf++
             $ch = $co.Chart
@@ -194,6 +210,10 @@ finally {
 }
 
 "graficos inspecionados: $nGraf"
+if ($foraEscopo.Count -gt 0) {
+    "graficos fora de escopo (indexados por rodada, nao por corrida): $($foraEscopo.Count)"
+    foreach ($g in $foraEscopo) { "   $g" }
+}
 "alterados ($($feitos.Count)):"
 if ($feitos.Count -eq 0) { "  (nenhum)" } else { $feitos | ForEach-Object { "  $_" } }
 "ja padronizados ($($jaOk.Count)): $(if ($jaOk.Count) { $jaOk -join ', ' } else { '-' })"

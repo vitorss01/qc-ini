@@ -59,9 +59,12 @@ try {
     foreach ($t in $ws.ListObjects) { if ($t.Name -eq 'tblBI_Fato') { $lo = $t } }
     if ($lo -eq $null) { throw "ListObject tblBI_Fato nao foi criado" }
     "tabela estruturada tblBI_Fato: $($lo.Range.Address()) ($($lo.ListRows.Count) linhas x $($lo.ListColumns.Count) colunas)"
-    # 76 desde o ADR-035 (era 65 no ADR-033): as 60 do contrato ADR-026 mais bias em magnitude,
-    # classificacao de Sigma e as tres do orcamento de erro.
-    if ($lo.ListColumns.Count -ne 76) { throw "esperadas 76 colunas, encontradas $($lo.ListColumns.Count)" }
+    # 84 desde o ADR-040 (era 76 no ADR-035, 65 no ADR-033, 60 no ADR-026).
+    # As oito novas fecham o plano de CQ: Sigma_Plano e Nivel_Governante, que
+    # materializam o "pior nivel governa", a classificacao desse Sigma e as
+    # cinco booleanas Usar_*, para o BI acender as regras sem procurar
+    # substring dentro de uma cadeia de texto.
+    if ($lo.ListColumns.Count -ne 84) { throw "esperadas 84 colunas, encontradas $($lo.ListColumns.Count)" }
 
     # chaves: ID_Result tem de ser UNICO -- e a granularidade declarada
     $dup = $xl.WorksheetFunction.SumProduct(

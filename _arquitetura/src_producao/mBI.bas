@@ -48,7 +48,7 @@ Public Const BI_ABA As String = "BI_Data"
 Public Const BI_TABELA As String = "tblBI_Fato"
 Public Const BI_CAB As Long = 1
 Public Const BI_R0 As Long = 2
-Public Const BI_NCOL As Long = 76
+Public Const BI_NCOL As Long = 84
 
 Private Const LS_CAP As Long = 40          ' linhas por bloco no LotesStore
 Private Const LS_C0 As Long = 3            ' coluna C = Analitos!E (Media N1)
@@ -92,7 +92,9 @@ Private Function Cab() As Variant
         "DPM_Teorico", "Yield_Teorico", _
         "Regra_Westgard_Recomendada", "N_Controle_Recomendado", _
         "RunSize_Max_Recomendado", "Frequencia_QC_Descricao", _
-        "Cobertura_Motor_Westgard", "Referencia_Plano_QC")
+        "Cobertura_Motor_Westgard", "Referencia_Plano_QC", _
+        "Sigma_Plano", "Nivel_Governante", "Classificacao_Sigma_Plano", _
+        "Usar_1_3s", "Usar_2_2s", "Usar_R_4s", "Usar_4_1s", "Usar_8x")
 End Function
 
 Private Function AgoraUTC() As Date
@@ -514,18 +516,14 @@ proxima1:
         saida(k, 66) = provedorEQA
         saida(k, 67) = anoEQA
         saida(k, 68) = rodadaEQA
-        If IsNumeric(saida(k, 53)) Then
-            saida(k, 69) = mPlanoQC.DPMdoSigma(saida(k, 53))
-            saida(k, 70) = mPlanoQC.RendimentoDoSigma(saida(k, 53))
-            saida(k, 71) = mPlanoQC.PlanoQC(saida(k, 53), "REGRAS")
-            saida(k, 72) = mPlanoQC.PlanoQC(saida(k, 53), "N")
-            saida(k, 73) = mPlanoQC.PlanoQC(saida(k, 53), "RUNSIZE")
-            saida(k, 74) = mPlanoQC.PlanoQC(saida(k, 53), "FREQUENCIA")
-            saida(k, 75) = mPlanoQC.CoberturaWestgard(saida(k, 53))
-            saida(k, 76) = mPlanoQC.PlanoQC(saida(k, 53), "REFERENCIA")
-        End If
+        ' As colunas 69..76 e 77..84 NAO sao preenchidas aqui: dependem do
+        ' Sigma do PIOR nivel do analito, que so se conhece depois de varrer
+        ' todas as linhas. Ver PreencherPlanoDoPiorNivel, abaixo do laco.
 proxima2:
     Next i
+
+    ' --- ADR-040: o plano de CQ vem do PIOR nivel, nao da propria linha ---
+    PreencherPlanoDoPiorNivel saida, k
 
     ' --- escrita, com a protecao tratada (mesma licao do ADR-025) ---------
     prot = ws.ProtectContents
@@ -842,4 +840,117 @@ proxNivel:
 prox:
     Next i
     ReconciliarComCalc = CStr(comp) & "|" & CStr(div) & "|" & prim
+End Function
+
+
+' --- ADR-040: o plano de CQ vem do PIOR nivel do analito -----------------
+'
+' O DEFEITO QUE ISTO CORRIGE
+'
+' Ate aqui o mBI preenchia regras, N e run size a partir do Sigma da PROPRIA
+' LINHA, ou seja, do Sigma daquele nivel. O Lactato tem Sigma 6,99 no nivel 1
+' e 1,83 no nivel 2: as linhas do nivel 1 publicavam "1_3s, N=2, run size
+' 1000" -- o CQ mais leve que existe, num analito cujo nivel 2 nao sustenta
+' nem 3 Sigma. Mil pacientes entre eventos de controle.
+'
+' O ADR-038 ja tinha resolvido isso NA PLANILHA (Sigma_Plano = MIN entre os
+' niveis validos). O contrato do BI ficou para tras e publicava a versao
+' errada -- Excel e Power BI diriam coisas diferentes sobre o mesmo analito.
+'
+' POR QUE AQUI E NAO EM DAX
+'
+' A regra e uma decisao de negocio e o motor e a unica camada de calculo
+' (ADR-019). Reimplementar o MIN entre niveis no Power BI criaria uma segunda
+' copia que divergiria no primeiro ajuste de faixa -- exatamente o que o
+' ADR-027 passou uma sessao inteira eliminando.
+'
+' O AGRUPAMENTO
+'
+' Chave = (ID_Analito, ID_Lote). Colapsa os niveis, que e o que "o pior nivel
+' governa" quer dizer, e preserva o lote: dois lotes do mesmo analito sao
+' materiais diferentes e nao devem herdar o plano um do outro.
+Private Sub PreencherPlanoDoPiorNivel(ByRef saida As Variant, ByVal n As Long)
+    If n <= 0 Then Exit Sub
+
+    Dim pior As Object, nivelPior As Object
+    Set pior = CreateObject("Scripting.Dictionary")
+    pior.CompareMode = 1
+    Set nivelPior = CreateObject("Scripting.Dictionary")
+    nivelPior.CompareMode = 1
+
+    Dim k As Long, ch As String, s As Double, sp As Double
+
+    For k = 1 To n
+        If SigmaValidoBI(saida(k, 53)) Then
+            ch = CStr(saida(k, 8)) & "|" & CStr(saida(k, 12))
+            s = CDbl(saida(k, 53))
+            If Not pior.Exists(ch) Then
+                pior(ch) = s
+                nivelPior(ch) = saida(k, 14)
+            ElseIf s < CDbl(pior(ch)) Then
+                pior(ch) = s
+                nivelPior(ch) = saida(k, 14)
+            End If
+        End If
+    Next k
+
+    For k = 1 To n
+        ch = CStr(saida(k, 8)) & "|" & CStr(saida(k, 12))
+        If pior.Exists(ch) Then
+            sp = CDbl(pior(ch))
+            saida(k, 77) = sp
+            saida(k, 78) = "Nivel " & CStr(nivelPior(ch))
+            saida(k, 79) = mQualidade.ClassificarSigma(sp)
+            saida(k, 69) = mPlanoQC.DPMdoSigma(sp)
+            saida(k, 70) = mPlanoQC.RendimentoDoSigma(sp)
+            saida(k, 71) = mPlanoQC.PlanoQC(sp, "REGRAS")
+            saida(k, 72) = mPlanoQC.PlanoQC(sp, "N")
+            saida(k, 73) = mPlanoQC.PlanoQC(sp, "RUNSIZE")
+            saida(k, 74) = mPlanoQC.PlanoQC(sp, "FREQUENCIA")
+            saida(k, 75) = mPlanoQC.CoberturaWestgard(sp)
+            saida(k, 76) = mPlanoQC.PlanoQC(sp, "REFERENCIA")
+            saida(k, 80) = mPlanoQC.RegraNoPlano(sp, "1_3s")
+            saida(k, 81) = mPlanoQC.RegraNoPlano(sp, "2_2s")
+            saida(k, 82) = mPlanoQC.RegraNoPlano(sp, "R_4s")
+            saida(k, 83) = mPlanoQC.RegraNoPlano(sp, "4_1s")
+            saida(k, 84) = mPlanoQC.RegraNoPlano(sp, "8x")
+        Else
+            ' Sem Sigma valido em nenhum nivel: o plano fica VAZIO e o rotulo
+            ' diz SEM DADOS. Nao ha faixa a aplicar, e escolher a mais rigorosa
+            ' "por seguranca" inventaria uma conclusao que o dado nao sustenta.
+            saida(k, 78) = "SEM DADOS"
+            saida(k, 79) = "SEM DADOS"
+            saida(k, 80) = False
+            saida(k, 81) = False
+            saida(k, 82) = False
+            saida(k, 83) = False
+            saida(k, 84) = False
+        End If
+    Next k
+End Sub
+
+
+' Este Sigma pode governar um plano de CQ?
+'
+' Zero e a armadilha central: um Sigma exatamente zero nao existe num metodo
+' que produziu resultado -- ele nasce de ETp, bias e CV. Zero na coluna e
+' ausencia de dado disfarcada, e aceita-lo faria o analito cair na faixa
+' "reavaliar metodo" por falta de informacao, que e conclusao diferente de
+' "o metodo e ruim". Texto, erro de celula e estouro caem pelo mesmo motivo.
+Private Function SigmaValidoBI(ByVal v As Variant) As Boolean
+    SigmaValidoBI = False
+    If IsEmpty(v) Or IsNull(v) Then Exit Function
+    If IsError(v) Then Exit Function
+    If Not IsNumeric(v) Then Exit Function
+
+    Dim d As Double
+    On Error GoTo fora
+    d = CDbl(v)
+    On Error GoTo 0
+
+    If d <= 0 Then Exit Function
+    If d > 1E+15 Then Exit Function      ' infinito / estouro
+    SigmaValidoBI = True
+    Exit Function
+fora:
 End Function

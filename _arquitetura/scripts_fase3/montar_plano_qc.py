@@ -83,7 +83,12 @@ PLANO = [
     (3.0, 4.0, 'Marginal', '1_3s / 2_2s / R_4s / 4_1s / 8x', 6, 45,
      'Até 45 pacientes entre eventos de CQ',
      'Westgard & Westgard, 2019; Peng et al., 2021'),
-    (-999.0, 3.0, 'Desempenho inadequado', '', '', '',
+    # ADR-038: a faixa DECLARA as cinco regras. Antes ficava vazia enquanto o
+    # realce acendia as cinco -- cor e texto discordando na mesma tela. N e
+    # run size continuam vazios de proposito: nao ha plano estatistico que
+    # sustente o metodo abaixo de 3 Sigma, e numero ali sugeriria que ha.
+    (-999.0, 3.0, 'Desempenho inadequado', '1_3s / 2_2s / R_4s / 4_1s / 8x',
+     '', '',
      'CQ estatístico isolado pode ser insuficiente — investigar e melhorar '
      'o desempenho analítico ou reavaliar o método',
      'Westgard et al., 2018; CLSI C24-Ed4'),

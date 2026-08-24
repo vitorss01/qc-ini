@@ -1122,6 +1122,177 @@ table Fato_QC
 
 		annotation SummarizationSetBy = Automatic
 
+	column DPM_Teorico
+		dataType: double
+		lineageTag: 954e3583-9dd7-5a7e-91b8-1cf8e2cab651
+		summarizeBy: none
+		sourceColumn: DPM_Teorico
+
+		annotation SummarizationSetBy = Automatic
+	column Yield_Teorico
+		dataType: double
+		lineageTag: b6b1310a-ba41-5049-a4cf-04e8bdb27b14
+		summarizeBy: none
+		sourceColumn: Yield_Teorico
+
+		annotation SummarizationSetBy = Automatic
+	column Regra_Westgard_Recomendada
+		dataType: string
+		lineageTag: 136fb0fd-e3ac-566c-962f-5c6cd0f0e80b
+		summarizeBy: none
+		sourceColumn: Regra_Westgard_Recomendada
+
+		annotation SummarizationSetBy = Automatic
+	column N_Controle_Recomendado
+		dataType: string
+		lineageTag: bc2ab6d3-6a72-536b-b221-6b1d4f40d226
+		summarizeBy: none
+		sourceColumn: N_Controle_Recomendado
+
+		annotation SummarizationSetBy = Automatic
+	column RunSize_Max_Recomendado
+		dataType: string
+		lineageTag: f9641422-fc02-563d-8573-aebd6a59fc39
+		summarizeBy: none
+		sourceColumn: RunSize_Max_Recomendado
+
+		annotation SummarizationSetBy = Automatic
+	column Frequencia_QC_Descricao
+		dataType: string
+		lineageTag: ce706adc-384d-5e37-bf84-2ea7556c2353
+		summarizeBy: none
+		sourceColumn: Frequencia_QC_Descricao
+
+		annotation SummarizationSetBy = Automatic
+	column Cobertura_Motor_Westgard
+		dataType: string
+		isHidden
+		lineageTag: 9b56652b-ed84-5e7b-870f-bb2da1725a64
+		summarizeBy: none
+		sourceColumn: Cobertura_Motor_Westgard
+
+		annotation SummarizationSetBy = Automatic
+	column Referencia_Plano_QC
+		dataType: string
+		isHidden
+		lineageTag: 92d18412-5934-5734-8087-74f2508069d4
+		summarizeBy: none
+		sourceColumn: Referencia_Plano_QC
+
+		annotation SummarizationSetBy = Automatic
+	column Classificacao_Sigma
+		dataType: string
+		isHidden
+		lineageTag: 14cc22f4-05fa-5803-9158-7671c198863f
+		summarizeBy: none
+		sourceColumn: Classificacao_Sigma
+
+		annotation SummarizationSetBy = Automatic
+	column Bias_Observado_abs_pct
+		dataType: double
+		lineageTag: 82140038-464d-5bb4-87f9-881906517ba0
+		summarizeBy: none
+		sourceColumn: Bias_Observado_abs_pct
+
+		annotation SummarizationSetBy = Automatic
+	column Margem_ETp_pp
+		dataType: double
+		lineageTag: 9e40fc90-784e-508c-803b-a29dce0dcb3e
+		summarizeBy: none
+		sourceColumn: Margem_ETp_pp
+
+		annotation SummarizationSetBy = Automatic
+	column Margem_ETp_pct
+		dataType: double
+		lineageTag: f31ad32d-48b5-5484-85ec-d7d703391a02
+		summarizeBy: none
+		sourceColumn: Margem_ETp_pct
+
+		annotation SummarizationSetBy = Automatic
+	column Status_Margem_ETp
+		dataType: string
+		lineageTag: ef9024be-126a-569a-885a-3d2df7addb87
+		summarizeBy: none
+		sourceColumn: Status_Margem_ETp
+
+		annotation SummarizationSetBy = Automatic
+	column Provedor_EQA
+		dataType: string
+		lineageTag: 574fbf73-108f-52a7-9ac6-afc318519ce5
+		summarizeBy: none
+		sourceColumn: Provedor_EQA
+
+		annotation SummarizationSetBy = Automatic
+	column Ano_EQA
+		dataType: int64
+		lineageTag: 86370e0b-2fc6-5f41-8e91-9f31a8a29dde
+		summarizeBy: none
+		sourceColumn: Ano_EQA
+
+		annotation SummarizationSetBy = Automatic
+	column Rodada_EQA
+		dataType: string
+		lineageTag: 1b65ee7f-fe9b-55fd-8413-285169cb679e
+		summarizeBy: none
+		sourceColumn: Rodada_EQA
+
+		annotation SummarizationSetBy = Automatic
+	column Sigma_Plano
+		dataType: double
+		lineageTag: 8687aadd-571e-5a65-b393-7ab80a3e2e6c
+		summarizeBy: none
+		sourceColumn: Sigma_Plano
+
+		annotation SummarizationSetBy = Automatic
+	column Nivel_Governante
+		dataType: string
+		lineageTag: ccf50691-40a1-5d37-b49a-0c77d187ed4f
+		summarizeBy: none
+		sourceColumn: Nivel_Governante
+
+		annotation SummarizationSetBy = Automatic
+	column Classificacao_Sigma_Plano
+		dataType: string
+		lineageTag: fd72daf4-bfb5-5e96-8cfe-147b0f43b12e
+		summarizeBy: none
+		sourceColumn: Classificacao_Sigma_Plano
+
+		annotation SummarizationSetBy = Automatic
+	column Usar_1_3s
+		dataType: boolean
+		lineageTag: b8b8dfae-7acb-588e-80a3-63e004cde6b5
+		summarizeBy: none
+		sourceColumn: Usar_1_3s
+
+		annotation SummarizationSetBy = Automatic
+	column Usar_2_2s
+		dataType: boolean
+		lineageTag: 810bdda6-faad-51f5-b759-a52b7f795f06
+		summarizeBy: none
+		sourceColumn: Usar_2_2s
+
+		annotation SummarizationSetBy = Automatic
+	column Usar_R_4s
+		dataType: boolean
+		lineageTag: 7c3fed58-40a4-5921-8305-dcfeab9fb009
+		summarizeBy: none
+		sourceColumn: Usar_R_4s
+
+		annotation SummarizationSetBy = Automatic
+	column Usar_4_1s
+		dataType: boolean
+		lineageTag: ba388ad1-b984-54f5-94ff-b16aa766b823
+		summarizeBy: none
+		sourceColumn: Usar_4_1s
+
+		annotation SummarizationSetBy = Automatic
+	column Usar_8x
+		dataType: boolean
+		lineageTag: 617f64e2-aee7-5a61-9baa-4f3764816c60
+		summarizeBy: none
+		sourceColumn: Usar_8x
+
+		annotation SummarizationSetBy = Automatic
 	column Faixa_Sigma = SWITCH ( TRUE (), ISBLANK ( Fato_QC[Sigma_Obs] ), "Sem meta", Fato_QC[Sigma_Obs] < 3, "< 3", Fato_QC[Sigma_Obs] < 4, "3 a <4", Fato_QC[Sigma_Obs] < 5, "4 a <5", Fato_QC[Sigma_Obs] < 6, "5 a <6", ">= 6" )
 		dataType: string
 		lineageTag: 117fec81-848f-50d4-967d-1ddc4cba800b
@@ -1138,6 +1309,236 @@ table Fato_QC
 
 		annotation SummarizationSetBy = Automatic
 
+	measure 'Sigma Plano' = SELECTEDVALUE ( Fato_QC[Sigma_Plano] )
+		formatString: #,0.00
+		lineageTag: 140abad0-dcee-5910-9932-6cf1fa71d5be
+		displayFolder: 10 Plano de CQ
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Nivel Governante' = VAR v = SELECTEDVALUE ( Fato_QC[Nivel_Governante] ) RETURN IF ( ISBLANK ( v ), "SEM DADOS", v )
+		lineageTag: 5b642024-2163-588a-b882-59e0be79485d
+		displayFolder: 10 Plano de CQ
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Classificacao do Plano' = VAR v = SELECTEDVALUE ( Fato_QC[Classificacao_Sigma_Plano] ) RETURN IF ( ISBLANK ( v ), "SEM DADOS", v )
+		lineageTag: b7d7babf-4858-5adf-b6e5-c29950d9e107
+		displayFolder: 10 Plano de CQ
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Regras Recomendadas' = VAR v = SELECTEDVALUE ( Fato_QC[Regra_Westgard_Recomendada] ) RETURN IF ( ISBLANK ( v ) || v = "", "--", v )
+		lineageTag: 6cbce701-aa59-5247-bfee-ff6b10b6d6d8
+		displayFolder: 10 Plano de CQ
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'N Controle' = VAR v = SELECTEDVALUE ( Fato_QC[N_Controle_Recomendado] ) RETURN IF ( ISBLANK ( v ) || v = "", "--", v )
+		lineageTag: 3db8dafb-16bc-5aec-89a4-7b47d0b5f1ad
+		displayFolder: 10 Plano de CQ
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Run Size' = VAR v = SELECTEDVALUE ( Fato_QC[RunSize_Max_Recomendado] ) RETURN IF ( ISBLANK ( v ) || v = "", "--", v )
+		lineageTag: 080b0322-a59d-52b7-aecc-c07e6a5bda4b
+		displayFolder: 10 Plano de CQ
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Frequencia QC' = VAR v = SELECTEDVALUE ( Fato_QC[Frequencia_QC_Descricao] ) RETURN IF ( ISBLANK ( v ) || v = "", "--", v )
+		lineageTag: 7f682562-b092-568f-b58c-7cdd644b3007
+		displayFolder: 10 Plano de CQ
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Status Plano QC' = VAR c = SELECTEDVALUE ( Fato_QC[Classificacao_Sigma_Plano] ) RETURN SWITCH ( TRUE (), ISBLANK ( c ), "SEM DADOS", c = "SEM DADOS", "SEM DADOS", c = "Desempenho inadequado", "DESEMPENHO INADEQUADO - REAVALIAR METODO", UPPER ( c ) )
+		lineageTag: 0f0ab2b9-f3dd-5421-8b82-dca4ac0a6d81
+		displayFolder: 10 Plano de CQ
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'DPM Teorico' = SELECTEDVALUE ( Fato_QC[DPM_Teorico] )
+		formatString: #,0
+		lineageTag: 0d04d571-af20-5e39-96b0-bac2e6f8e66a
+		displayFolder: 10 Plano de CQ
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Rendimento Teorico' = SELECTEDVALUE ( Fato_QC[Yield_Teorico] )
+		formatString: 0.00%
+		lineageTag: 1f6272af-102f-567b-8ea7-ab464ed17a12
+		displayFolder: 10 Plano de CQ
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Sigma N1' = CALCULATE ( SELECTEDVALUE ( Fato_QC[Sigma_Obs] ), Fato_QC[Nivel] = 1 )
+		formatString: #,0.00
+		lineageTag: ea2a5898-c129-535d-848d-332df154c988
+		displayFolder: 10 Plano de CQ
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Sigma N2' = CALCULATE ( SELECTEDVALUE ( Fato_QC[Sigma_Obs] ), Fato_QC[Nivel] = 2 )
+		formatString: #,0.00
+		lineageTag: daeeb110-d4d1-57ec-b680-2d2516df80f7
+		displayFolder: 10 Plano de CQ
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Recomendada 1_3s' = IF ( SELECTEDVALUE ( Fato_QC[Usar_1_3s] ) = TRUE (), 1, 0 )
+		formatString: 0
+		lineageTag: b43373d7-e712-59be-bb42-dfd7861a1edc
+		displayFolder: 11 Regras recomendadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Violada 1_3s' = VAR ultRun = MAX ( Fato_QC[RUN] ) RETURN IF ( CALCULATE ( SUM ( Fato_QC[W_1_3s] ), Fato_QC[RUN] = ultRun ) > 0, 1, 0 )
+		formatString: 0
+		lineageTag: d94f390b-63a0-5453-acfe-eaccbf2feadb
+		displayFolder: 12 Regras violadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Violacoes 1_3s no periodo' = SUM ( Fato_QC[W_1_3s] )
+		formatString: #,0
+		lineageTag: 688fb1b4-f398-52be-96a7-dced12ded950
+		displayFolder: 12 Regras violadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Estado 1_3s' = VAR rec = [Recomendada 1_3s] VAR vio = [Violada 1_3s] RETURN SWITCH ( TRUE (), rec = 1 && vio = 1, "RECOMENDADA - VIOLADA", rec = 1, "RECOMENDADA", vio = 1, "FORA DO PLANO - VIOLADA", "fora do plano" )
+		lineageTag: 28607bf5-2928-5c33-9bf0-07acd7b80984
+		displayFolder: 13 Estado das regras
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Cor 1_3s' = VAR e = [Estado 1_3s] RETURN SWITCH ( e, "RECOMENDADA - VIOLADA", "#C0392B", "FORA DO PLANO - VIOLADA", "#D68910", "RECOMENDADA", "#1E8449", "#9AA0A6" )
+		lineageTag: 29e75cec-3864-503b-92c7-77cd421ceeda
+		displayFolder: 14 Cores das regras
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Rotulo 1_3s' = "1-3s"
+		lineageTag: 48bfae8e-02f9-50a4-a85d-18bbc434f567
+		displayFolder: 15 Rotulos
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Recomendada 2_2s' = IF ( SELECTEDVALUE ( Fato_QC[Usar_2_2s] ) = TRUE (), 1, 0 )
+		formatString: 0
+		lineageTag: 9ce80608-2a53-5e4d-8560-e255bc409f1e
+		displayFolder: 11 Regras recomendadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Violada 2_2s' = VAR ultRun = MAX ( Fato_QC[RUN] ) RETURN IF ( CALCULATE ( SUM ( Fato_QC[W_2_2s] ), Fato_QC[RUN] = ultRun ) > 0, 1, 0 )
+		formatString: 0
+		lineageTag: 9db4817b-4c6b-5383-bf0f-b5551dc0ac36
+		displayFolder: 12 Regras violadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Violacoes 2_2s no periodo' = SUM ( Fato_QC[W_2_2s] )
+		formatString: #,0
+		lineageTag: 433c374c-ff9a-5934-9b45-4b1a883c5b00
+		displayFolder: 12 Regras violadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Estado 2_2s' = VAR rec = [Recomendada 2_2s] VAR vio = [Violada 2_2s] RETURN SWITCH ( TRUE (), rec = 1 && vio = 1, "RECOMENDADA - VIOLADA", rec = 1, "RECOMENDADA", vio = 1, "FORA DO PLANO - VIOLADA", "fora do plano" )
+		lineageTag: 4fc5d33b-9e4e-5166-87a8-caf071f96ee0
+		displayFolder: 13 Estado das regras
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Cor 2_2s' = VAR e = [Estado 2_2s] RETURN SWITCH ( e, "RECOMENDADA - VIOLADA", "#C0392B", "FORA DO PLANO - VIOLADA", "#D68910", "RECOMENDADA", "#1E8449", "#9AA0A6" )
+		lineageTag: 7b62b627-74ec-599e-ad11-98fc35319c48
+		displayFolder: 14 Cores das regras
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Rotulo 2_2s' = "2-2s"
+		lineageTag: add6ee69-ffd5-52ed-a197-6e01036d83de
+		displayFolder: 15 Rotulos
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Recomendada R_4s' = IF ( SELECTEDVALUE ( Fato_QC[Usar_R_4s] ) = TRUE (), 1, 0 )
+		formatString: 0
+		lineageTag: f91b9987-283b-545b-a344-2104aba65c73
+		displayFolder: 11 Regras recomendadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Violada R_4s' = VAR ultRun = MAX ( Fato_QC[RUN] ) RETURN IF ( CALCULATE ( SUM ( Fato_QC[W_R_4s] ), Fato_QC[RUN] = ultRun ) > 0, 1, 0 )
+		formatString: 0
+		lineageTag: 0f905643-5972-51be-9635-e5064ed27c8d
+		displayFolder: 12 Regras violadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Violacoes R_4s no periodo' = SUM ( Fato_QC[W_R_4s] )
+		formatString: #,0
+		lineageTag: f2fa8e8e-2014-5809-bf32-23d206e8122a
+		displayFolder: 12 Regras violadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Estado R_4s' = VAR rec = [Recomendada R_4s] VAR vio = [Violada R_4s] RETURN SWITCH ( TRUE (), rec = 1 && vio = 1, "RECOMENDADA - VIOLADA", rec = 1, "RECOMENDADA", vio = 1, "FORA DO PLANO - VIOLADA", "fora do plano" )
+		lineageTag: 35d78218-01a2-5001-852d-d294c41e5252
+		displayFolder: 13 Estado das regras
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Cor R_4s' = VAR e = [Estado R_4s] RETURN SWITCH ( e, "RECOMENDADA - VIOLADA", "#C0392B", "FORA DO PLANO - VIOLADA", "#D68910", "RECOMENDADA", "#1E8449", "#9AA0A6" )
+		lineageTag: db0395ae-d486-526e-a245-6d998a6b8299
+		displayFolder: 14 Cores das regras
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Rotulo R_4s' = "R-4s"
+		lineageTag: 3ab4aefb-24ef-5f6b-9d30-99c72805adc5
+		displayFolder: 15 Rotulos
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Recomendada 4_1s' = IF ( SELECTEDVALUE ( Fato_QC[Usar_4_1s] ) = TRUE (), 1, 0 )
+		formatString: 0
+		lineageTag: 0945dea2-3c0a-5fd1-abd1-e1d79d40851c
+		displayFolder: 11 Regras recomendadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Violada 4_1s' = VAR ultRun = MAX ( Fato_QC[RUN] ) RETURN IF ( CALCULATE ( SUM ( Fato_QC[W_4_1s] ), Fato_QC[RUN] = ultRun ) > 0, 1, 0 )
+		formatString: 0
+		lineageTag: 2fca43ec-329c-5edb-825c-88801e948644
+		displayFolder: 12 Regras violadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Violacoes 4_1s no periodo' = SUM ( Fato_QC[W_4_1s] )
+		formatString: #,0
+		lineageTag: 0aeb51dc-b3e0-5bb2-9519-cb32f77ef1b5
+		displayFolder: 12 Regras violadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Estado 4_1s' = VAR rec = [Recomendada 4_1s] VAR vio = [Violada 4_1s] RETURN SWITCH ( TRUE (), rec = 1 && vio = 1, "RECOMENDADA - VIOLADA", rec = 1, "RECOMENDADA", vio = 1, "FORA DO PLANO - VIOLADA", "fora do plano" )
+		lineageTag: 0abe51b8-9eed-54e1-a072-ffdb0ff98f17
+		displayFolder: 13 Estado das regras
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Cor 4_1s' = VAR e = [Estado 4_1s] RETURN SWITCH ( e, "RECOMENDADA - VIOLADA", "#C0392B", "FORA DO PLANO - VIOLADA", "#D68910", "RECOMENDADA", "#1E8449", "#9AA0A6" )
+		lineageTag: fc6b966a-7c52-5ee3-b86c-63a49d03bbfe
+		displayFolder: 14 Cores das regras
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Rotulo 4_1s' = "4-1s"
+		lineageTag: 21ee1143-60fc-5e47-a4d4-867159058a87
+		displayFolder: 15 Rotulos
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Recomendada 8x' = IF ( SELECTEDVALUE ( Fato_QC[Usar_8x] ) = TRUE (), 1, 0 )
+		formatString: 0
+		lineageTag: 779c4c45-96de-5809-97dc-8830677d2ccb
+		displayFolder: 11 Regras recomendadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Violada 8x' = VAR ultRun = MAX ( Fato_QC[RUN] ) RETURN IF ( CALCULATE ( SUM ( Fato_QC[W_10x] ), Fato_QC[RUN] = ultRun ) > 0, 1, 0 )
+		formatString: 0
+		lineageTag: af183399-1585-533a-80c3-4dd0f56156a7
+		displayFolder: 12 Regras violadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Violacoes 8x no periodo' = SUM ( Fato_QC[W_10x] )
+		formatString: #,0
+		lineageTag: 7e864a72-6da3-5732-a980-c53ba1dc88a3
+		displayFolder: 12 Regras violadas
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Estado 8x' = VAR rec = [Recomendada 8x] VAR vio = [Violada 8x] RETURN SWITCH ( TRUE (), rec = 1 && vio = 1, "RECOMENDADA - VIOLADA", rec = 1, "RECOMENDADA", vio = 1, "FORA DO PLANO - VIOLADA", "fora do plano" )
+		lineageTag: ed4083cd-9a4a-5586-ad0d-ffb37b1bcb77
+		displayFolder: 13 Estado das regras
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Cor 8x' = VAR e = [Estado 8x] RETURN SWITCH ( e, "RECOMENDADA - VIOLADA", "#C0392B", "FORA DO PLANO - VIOLADA", "#D68910", "RECOMENDADA", "#1E8449", "#9AA0A6" )
+		lineageTag: 009533b1-efa0-5eb6-b3f2-d97f823c2106
+		displayFolder: 14 Cores das regras
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+	measure 'Rotulo 8x' = "8x"
+		lineageTag: 0eef3bfb-3dcc-57f3-9159-1cb3aa84be78
+		displayFolder: 15 Rotulos
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
 	partition Fato_QC = m
 		mode: import
 		source =
@@ -1182,7 +1583,7 @@ table Fato_QC
 				        {"N_Observado", Int64.Type}, {"Media_Observada", type number},
 				        {"DP_Observado", type number}, {"CV_Observado_pct", type number},
 				        {"Bias_Observado_pct", type number},
-				        {"ET_Observado_pct", type number}, {"Sigma", type number},
+				        {"ET_Observado_pct", type number}, {"Sigma", type number}, {"DPM_Teorico", type number}, {"Yield_Teorico", type number}, {"Regra_Westgard_Recomendada", type text}, {"N_Controle_Recomendado", type text}, {"RunSize_Max_Recomendado", type text}, {"Frequencia_QC_Descricao", type text}, {"Cobertura_Motor_Westgard", type text}, {"Referencia_Plano_QC", type text}, {"Classificacao_Sigma", type text}, {"Bias_Observado_abs_pct", type number}, {"Margem_ETp_pp", type number}, {"Margem_ETp_pct", type number}, {"Status_Margem_ETp", type text}, {"Provedor_EQA", type text}, {"Ano_EQA", Int64.Type}, {"Rodada_EQA", type text}, {"Sigma_Plano", type number}, {"Nivel_Governante", type text}, {"Classificacao_Sigma_Plano", type text}, {"Usar_1_3s", type logical}, {"Usar_2_2s", type logical}, {"Usar_R_4s", type logical}, {"Usar_4_1s", type logical}, {"Usar_8x", type logical},
 				        {"Fonte_Especificacao", type text}, {"ID_Especificacao", type text},
 				        {"Situacao_Especificacao", type text},
 				        {"Usuario_Atualizacao", type text}, {"Tipo_Evento", type text}

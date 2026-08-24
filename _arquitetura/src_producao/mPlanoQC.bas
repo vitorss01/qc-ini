@@ -277,3 +277,50 @@ End Function
 Public Function RegrasImplementadas() As String
     RegrasImplementadas = Replace(REGRAS_IMPLEMENTADAS, ";", " / ")
 End Function
+
+
+' Esta regra faz parte do plano recomendado para este Sigma?
+'
+' Existe para o BI publicar CINCO COLUNAS BOOLEANAS em vez de uma cadeia de
+' texto. Uma medida DAX que procurasse "4_1s" dentro de
+' "1_3s / 2_2s / R_4s / 4_1s / 8x" funcionaria hoje e quebraria no dia em que
+' alguem escrevesse "4-1s" ou trocasse o separador -- e quebraria em silencio,
+' devolvendo FALSE e apagando a regra da tela. O reconhecimento fica aqui, no
+' mesmo modulo que produz a cadeia.
+'
+' Compara sobre a cadeia normalizada: separadores viram espaco e o traco vira
+' sublinhado, entao "4-1s", "4_1s" e "4 1s" sao a mesma regra. A comparacao e
+' por TOKEN INTEIRO -- sem isso "1_3s" casaria dentro de "11_3s".
+Public Function RegraNoPlano(ByVal sigma As Variant, ByVal regra As String) As Boolean
+    RegraNoPlano = False
+    Dim s As String
+    s = CStr(PlanoQC(sigma, "REGRAS"))
+    If Len(Trim$(s)) = 0 Then Exit Function
+
+    Dim alvo As String
+    alvo = NormalizarRegra(regra)
+    If Len(alvo) = 0 Then Exit Function
+
+    Dim partes As Variant, i As Long
+    partes = Split(NormalizarRegra(s), " ")
+    For i = LBound(partes) To UBound(partes)
+        If partes(i) = alvo Then
+            RegraNoPlano = True
+            Exit Function
+        End If
+    Next i
+End Function
+
+
+Private Function NormalizarRegra(ByVal t As String) As String
+    Dim s As String
+    s = LCase$(Trim$(t))
+    s = Replace(s, "/", " ")
+    s = Replace(s, ";", " ")
+    s = Replace(s, ",", " ")
+    s = Replace(s, "-", "_")
+    Do While InStr(s, "  ") > 0
+        s = Replace(s, "  ", " ")
+    Loop
+    NormalizarRegra = Trim$(s)
+End Function
