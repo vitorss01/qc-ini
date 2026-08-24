@@ -53,8 +53,13 @@ import openpyxl
 
 MARCA_SIM = 'EQC_Dados (simulação pré-ADR-034)'
 
-# CAP (como o provedor escreve) -> analito canonico da pasta
-MAPA_CAP = {
+# CAP (como o provedor escreve) -> analito canonico da pasta.
+#
+# UM MAPA POR PRODUTO. O CAP nomeia por extenso ("White Blood Cell Count") e a
+# pasta usa a sigla do equipamento ("WBC"); sem o mapa nenhuma linha cruzaria
+# com a Analitos e a Estatistica ficaria vazia. Os dois produtos tem listas
+# disjuntas, entao um mapa unico so criaria chance de colisao.
+MAPA_CAP_BIOQUIMICA = {
     'ALT (SGPT)': 'ALT (TGP)',
     'AST (SGOT)': 'AST (TGO)',
     'Albumin': 'Albumina',
@@ -87,6 +92,60 @@ MAPA_CAP = {
     'Urea Nitrogen': 'Ureia',
     'Uric Acid': 'Ácido úrico',
 }
+
+# Hematologia -- CAP FH9. Duas decisoes que as UNIDADES resolveram:
+#
+#   RDW vem em %, entao e o RDW-CV. O RDW-SD da pasta e em fL e NAO tem
+#   correspondente no survey; mapea-lo para "RDW" publicaria um bias medido
+#   noutra escala.
+#
+#   "Immature Platelet Frac" (IPF) fica SEM correspondente. A pasta tem IRF,
+#   que e fracao de reticulocitos imaturos -- outro analito, outra celula.
+#   Mesma decisao do ADR-034 para Ferritin: a lacuna e melhor que a invencao.
+MAPA_CAP_HEMATOLOGIA = {
+    'White Blood Cell Count': 'WBC',
+    'Red Blood Cell Count': 'RBC',
+    'Hemoglobin': 'HGB',
+    'Hematocrit': 'HCT',
+    'MCV': 'MCV',
+    'MCH': 'MCH',
+    'MCHC': 'MCHC',
+    'Platelet Count': 'PLT',
+    'MPV': 'MPV',
+    'RDW': 'RDW-CV',
+    'Neut/Gran': 'NEUT%',
+    'Lymphs': 'LYMPH%',
+    'Monocytes': 'MONO%',
+    'Eosinophils': 'EO%',
+    'Basophils': 'BASO%',
+    'Neut/Gran Absolute': 'NEUT#',
+    'Lymphs Absolute': 'LYMPH#',
+    'Monocytes Absolute': 'MONO#',
+    'Eosinophils Absolute': 'EO#',
+    'Basophils Absolute': 'BASO#',
+    'IG': 'IG%',
+    'IG Absolute': 'IG#',
+    'nRBC/100 WBC': 'NRBC%',
+    'nRBC Absolute': 'NRBC#',
+    'Immature Platelet Frac': '',           # IPF nao e o IRF da pasta
+}
+
+MAPAS = {
+    'Bioquimica': MAPA_CAP_BIOQUIMICA,
+    'Hematologia': MAPA_CAP_HEMATOLOGIA,
+}
+
+
+def mapa_do_arquivo(caminho):
+    """O produto sai do NOME do arquivo alvo. Passar o mapa errado nao
+    quebraria nada visivelmente -- so deixaria Analito_Canonico vazio em tudo,
+    e a Estatistica silenciosamente sem EQA."""
+    nome = os.path.basename(caminho).lower()
+    for produto, mapa in MAPAS.items():
+        if produto.lower() in nome:
+            return produto, mapa
+    raise SystemExit('nao reconheci o produto em %s (esperava Bioquimica ou '
+                     'Hematologia no nome)' % os.path.basename(caminho))
 
 
 
@@ -146,7 +205,20 @@ def ler_referencia(caminho):
     """Devolve as linhas do CAP na estrutura canonica A..R (sem O/P, que sao
     formula na planilha)."""
     wb = openpyxl.load_workbook(caminho, data_only=True)
-    ws = wb['CAP_Evaluation_Data']
+    # DUAS ORIGENS, MESMO CONTEUDO. O relatorio da Bioquimica veio na aba
+    # 'CAP_Evaluation_Data'; o da Hematologia veio ja no formato do modulo,
+    # em 'EQA.CAP_Dados'. As colunas sao as mesmas e na mesma ordem -- o que
+    # muda e o nome da aba. Localizar POR CONTEUDO evita ter de renomear o
+    # arquivo do provedor a mao antes de cada importacao.
+    ws = None
+    for nome in ('CAP_Evaluation_Data', 'EQA.CAP_Dados'):
+        if nome in wb.sheetnames:
+            ws = wb[nome]
+            break
+    if ws is None:
+        raise SystemExit('nao achei a aba de dados do CAP em %s (esperava '
+                         'CAP_Evaluation_Data ou EQA.CAP_Dados; ha: %s)'
+                         % (os.path.basename(caminho), ', '.join(wb.sheetnames)))
     linhas = []
     for r in range(2, ws.max_row + 1):
         survey = ws.cell(r, 1).value
@@ -181,6 +253,22 @@ def ler_referencia(caminho):
     return linhas
 
 
+def _ano_de(v):
+    """A coluna de ano da aba legada nao tem o mesmo tipo nos dois produtos:
+    na Bioquimica veio numero, na Hematologia veio DATA. int() sobre um
+    datetime do pywintypes estoura, e a importacao inteira parava por causa
+    de uma celula de historico que nem entra na analise."""
+    if v is None or v == '':
+        return None
+    if hasattr(v, 'year'):
+        return int(v.year)
+    try:
+        return int(float(str(v).strip()))
+    except (TypeError, ValueError):
+        m = re.search(r'(\d{4})', str(v))
+        return int(m.group(1)) if m else None
+
+
 def ler_legado(wsEQC):
     """Os 90 registros da aba legada, na mesma estrutura canonica."""
     ult = tenta(lambda: wsEQC.Cells(wsEQC.Rows.Count, 1).End(-4162).Row)
@@ -194,7 +282,7 @@ def ler_legado(wsEQC):
         linhas.append([
             str(row[4] or 'CAP').strip(),        # A provedor (col E da legada)
             str(row[2] or '').strip(),           # B rodada  (col C)
-            int(row[1]) if row[1] else None,     # C ano     (col B)
+            _ano_de(row[1]),                     # C ano     (col B)
             str(row[0]).strip(),                 # D analito (col A) -- ja canonico
             str(row[5] or '').strip(),           # E amostra (col F)
             row[6],                              # F resultado
@@ -250,6 +338,8 @@ def gravar(ws, lo, linhas, nome):
 
 def main(caminho, referencia):
     caminho = os.path.abspath(caminho)
+    produto, MAPA_CAP = mapa_do_arquivo(caminho)
+    print('produto: %s (%d analitos no mapa CAP)' % (produto, len(MAPA_CAP)))
     linhasCAP = ler_referencia(referencia)
     print('referencia lida: %d resultados' % len(linhasCAP))
 

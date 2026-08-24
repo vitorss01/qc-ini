@@ -256,6 +256,18 @@ def main(caminho):
     xl = novo_excel()
     wb = xl.Workbooks.Open(caminho)
     salvou = False
+    # A protecao de ESTRUTURA impede Worksheets.Add e o erro que o Excel
+    # devolve ("O metodo Add da classe Sheets falhou") nao diz por que. No
+    # build da Bioquimica este script roda antes da etapa que tranca; rodando
+    # sobre um artefato ja pronto, precisa destrancar e devolver o estado.
+    estruturaProtegida = False
+    try:
+        estruturaProtegida = bool(wb.ProtectStructure)
+        if estruturaProtegida:
+            wb.Unprotect('qcini2025')
+            print('estrutura destravada para a montagem (sera restaurada)')
+    except Exception as e:
+        raise SystemExit('nao consegui destravar a estrutura: %s' % e)
     if wb.ReadOnly:
         wb.Close(False)
         xl.Quit()
@@ -304,9 +316,18 @@ def main(caminho):
         REFERENCIA = 'Estatística'
         if aba(wb, REFERENCIA) is None:
             raise SystemExit('aba de referencia %r nao existe' % REFERENCIA)
+        # ENCADEAMENTO, e nao ancora fixa. Mover cada aba para Before=REFERENCIA
+        # depende de o Excel empurrar as anteriores para a esquerda, e esse
+        # comportamento nao se sustentou aqui: as sete cairam fora do lugar e
+        # em ordem inversa. Encadear -- a primeira antes da referencia, cada
+        # seguinte DEPOIS da anterior -- fixa a sequencia sem depender disso.
+        anterior = None
         for nome, guia in ABAS:
             ws = aba(wb, nome)
-            tenta(lambda s=ws: s.Move(wb.Worksheets(REFERENCIA)))
+            if anterior is None:
+                tenta(lambda s=ws: s.Move(aba(wb, REFERENCIA)))
+            else:
+                tenta(lambda s=ws, a=anterior: s.Move(None, aba(wb, a)))
             # Move invalida a referencia COM da aba movida: qualquer acesso
             # depois dela devolve 0x800A01A8 (objeto necessario).
             ws = aba(wb, nome)
@@ -314,6 +335,7 @@ def main(caminho):
                 raise SystemExit('aba %r desapareceu; abas atuais: %s'
                                  % (nome, [x.Name for x in wb.Worksheets]))
             ws.Tab.Color = guia
+            anterior = nome
         print('7 abas criadas e ordenadas imediatamente antes de %s' % REFERENCIA)
 
         # ---- 2. as duas abas de digitacao --------------------------------
@@ -361,18 +383,22 @@ def main(caminho):
         # So deixa de ser consumida -- o mCEQ agora le a EQA_Base.
         eqc = aba(wb, 'EQC_Dados')
         if eqc is not None:
-            tenta(lambda: eqc.Cells(1, 1).__setattr__(
-                'Value', 'LEGADO (ADR-034) — esta aba não alimenta mais nada. '
-                         'Preservada apenas como histórico; o módulo vigente é '
-                         'EQA.CAP_Dados / EQA.Controllab_Dados / EQA_Base.'))
-            # Font.Bold recusado aqui foi sintoma de aba protegida em etapas
-            # anteriores deste projeto; entao o estado e medido, e nao suposto.
+            # Destravar ANTES de escrever. A ordem antiga escrevia primeiro e
+            # so entao media a protecao -- funcionava na Bioquimica porque ali
+            # este script roda antes da etapa que protege as abas, e falhava
+            # sobre um artefato ja pronto.
             prot = eqc.ProtectContents
             if prot:
                 try:
                     eqc.Unprotect('qcini2025')
                 except Exception:
                     eqc.Unprotect()
+            tenta(lambda: eqc.Cells(1, 1).__setattr__(
+                'Value', 'LEGADO (ADR-034) — esta aba não alimenta mais nada. '
+                         'Preservada apenas como histórico; o módulo vigente é '
+                         'EQA.CAP_Dados / EQA.Controllab_Dados / EQA_Base.'))
+            # Font.Bold recusado aqui foi sintoma de aba protegida em etapas
+            # anteriores deste projeto; entao o estado e medido, e nao suposto.
             try:
                 eqc.Cells(1, 1).Font.Bold = True
                 negrito = 'sim'
@@ -399,6 +425,12 @@ def main(caminho):
         print('ordem conferida: %s' % ' > '.join(ordem[i0:i0 + 7]))
 
         wb.Save()
+        if estruturaProtegida:
+            try:
+                wb.Protect('qcini2025', True, False)
+                print('estrutura retravada')
+            except Exception as e:
+                print('AVISO: nao retravei a estrutura: %s' % e)
         salvou = True
         print('SALVO: %s' % caminho)
     finally:
