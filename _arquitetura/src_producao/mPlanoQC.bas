@@ -95,6 +95,26 @@ Public Const NOTA_RUNSIZE As String = _
 ' Agora a lista vem de mEstatistica.MatrizWestgard(), que e o mesmo lugar que
 ' DECIDE as regras a partir de NLV. Uma fonte so: se a matriz mudar, a
 ' cobertura acompanha sem ninguem lembrar de editar dois arquivos.
+' O CONTRATO ESPERADO DE CADA REGRA (ADR-044)
+'
+' Isto e a ESPECIFICACAO; DETECTORES, no mEstatistica, e a DECLARACAO do que
+' o motor implementa. Comparar as duas nao e ter duas fontes da mesma coisa:
+' e o mesmo papel de um teste que afirma o valor esperado. Se fossem o mesmo
+' texto lido do mesmo lugar, a conferencia nao provaria nada.
+'
+'   Area|Regra|Detector|N|R|Escopo
+Private Const CONTRATO As String = _
+    "BIOQUIMICA|1_3s|INDIVIDUAL|1|1|WITHIN_RUN;" & _
+    "BIOQUIMICA|2_2s|WITHIN_RUN|2|1|WITHIN_RUN_ACROSS_MATERIALS;" & _
+    "BIOQUIMICA|R_4s|WITHIN_RUN|2|1|WITHIN_RUN_ACROSS_MATERIALS;" & _
+    "BIOQUIMICA|4_1s|N2_R2|2|2|ACROSS_RUN_ACROSS_MATERIALS;" & _
+    "BIOQUIMICA|8x|N2_R4|2|4|ACROSS_RUN_ACROSS_MATERIALS;" & _
+    "HEMATOLOGIA|1_3s|INDIVIDUAL|1|1|WITHIN_RUN;" & _
+    "HEMATOLOGIA|2of3_2s|WITHIN_RUN|3|1|WITHIN_RUN_ACROSS_MATERIALS;" & _
+    "HEMATOLOGIA|R_4s|WITHIN_RUN|3|1|WITHIN_RUN_ACROSS_MATERIALS;" & _
+    "HEMATOLOGIA|3_1s|N3_R1|3|1|WITHIN_RUN_ACROSS_MATERIALS;" & _
+    "HEMATOLOGIA|6x|N3_R2|3|2|ACROSS_RUN_ACROSS_MATERIALS"
+
 Private Function RegrasDoMotor() As String
     ' Application.Run e nao mEstatistica.MatrizWestgard(): a chamada direta
     ' cria dependencia de COMPILACAO. Numa pasta cujo mEstatistica ainda nao
@@ -287,12 +307,11 @@ Public Function CoberturaWestgard(ByVal sigma As Variant) As String
         Exit Function
     End If
 
-    ' NOME BATENDO NAO E COBERTURA (ADR-041, secao 9)
+    ' NOME BATENDO NAO E COBERTURA (ADR-044)
     '
     ' Foi assim que "plano diz 8x, motor conta 10" atravessou o projeto
-    ' respondendo TOTAL: a conferencia comparava apenas os rotulos. Agora a
-    ' regra sequencial e a de 1s tambem tem o LIMIAR conferido contra o que o
-    ' motor de fato usa.
+    ' respondendo TOTAL: a conferencia comparava apenas os rotulos. Agora o
+    ' contrato inteiro e conferido -- detector oficial, N, R e escopo.
     Dim erroCfg As String
     erroCfg = ValidacaoDaMatriz()
     If Len(erroCfg) > 0 Then
@@ -300,14 +319,80 @@ Public Function CoberturaWestgard(ByVal sigma As Variant) As String
         Exit Function
     End If
 
-    Dim divergencia As String
-    divergencia = DivergenciaDeLimiar(CStr(regras))
-    If Len(divergencia) > 0 Then
-        CoberturaWestgard = "ERRO DE COBERTURA - " & divergencia
+    Dim contrato As String
+    contrato = ConferirContrato(CStr(regras), TabelaDoMotor())
+    If Len(contrato) > 0 Then
+        CoberturaWestgard = "ERRO DE COBERTURA - " & contrato
         Exit Function
     End If
 
     CoberturaWestgard = "TOTAL"
+End Function
+
+
+
+
+Public Function ContratoWestgard() As String
+    ContratoWestgard = CONTRATO
+End Function
+
+
+' A tabela que o motor declara. Vinculo tardio: pasta sem o motor carregado
+' devolve vazio e a cobertura diz que nao pode conferir, em vez de a pasta
+' inteira deixar de compilar.
+Private Function TabelaDoMotor() As String
+    On Error GoTo semMotor
+    TabelaDoMotor = CStr(Application.Run("DetectoresWestgard"))
+    Exit Function
+semMotor:
+    TabelaDoMotor = ""
+End Function
+
+
+' Confere TODAS as regras que o plano pede contra a tabela informada.
+' Publica para o QA poder passar uma tabela MUTADA e provar que reprova.
+Public Function ConferirContrato(ByVal regras As String, ByVal tabela As String) As String
+    If Len(Trim$(tabela)) = 0 Then
+        ConferirContrato = "o motor nao publica a tabela de detectores"
+        Exit Function
+    End If
+
+    Dim area As String
+    On Error Resume Next
+    area = CStr(Application.Run("AreaDoProduto"))
+    On Error GoTo 0
+    If Len(area) = 0 Then
+        ConferirContrato = "o motor nao publica a area"
+        Exit Function
+    End If
+
+    Dim p As Variant, x As Variant, c As Variant, erro As String
+    For Each p In Split(Replace(CStr(regras), " ", ""), "/")
+        If Len(Trim$(CStr(p))) > 0 Then
+            Dim esperado As String
+            esperado = ""
+            For Each x In Split(CONTRATO, ";")
+                c = Split(CStr(x), "|")
+                If UCase$(CStr(c(0))) = UCase$(area) And _
+                   UCase$(CStr(c(1))) = UCase$(Trim$(CStr(p))) Then
+                    esperado = CStr(x)
+                    Exit For
+                End If
+            Next x
+            If Len(esperado) = 0 Then
+                ConferirContrato = Trim$(CStr(p)) & ": sem contrato definido para " & area
+                Exit Function
+            End If
+            c = Split(esperado, "|")
+            erro = CStr(Application.Run("ConferirRegra", tabela, area, _
+                        CStr(c(1)), CStr(c(2)), CLng(Val(CStr(c(3)))), _
+                        CLng(Val(CStr(c(4)))), CStr(c(5))))
+            If Len(erro) > 0 Then
+                ConferirContrato = erro
+                Exit Function
+            End If
+        End If
+    Next p
 End Function
 
 

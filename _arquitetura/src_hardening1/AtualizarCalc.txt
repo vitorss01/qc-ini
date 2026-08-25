@@ -19,7 +19,7 @@ Public Sub AtualizarCalc()
     Dim ws As Worksheet, analito As String, lote As String
     Dim i As Long, t As Long, nRun As Long, r As Long
     Dim runs() As Long, dts() As Double, valor() As Double, temDado() As Boolean, z() As Double
-    Dim r13 As Variant, r22 As Variant, rR4 As Variant, r41 As Variant, r10 As Variant, a12 As Variant
+    Dim r13 As Variant, r2sMulti As Variant, rR4 As Variant, r1sMulti As Variant, rSeq As Variant, a12 As Variant
     Dim alvoM() As Double, alvoS() As Double, etp As Double
     Dim seen As Object, ordem As Object
 
@@ -103,10 +103,10 @@ Public Sub AtualizarCalc()
     Next t
 
     ' ---- Westgard ----
-    ReDim r13(0 To NLV - 1, 1 To nRun): ReDim r22(0 To NLV - 1, 1 To nRun)
-    ReDim rR4(0 To NLV - 1, 1 To nRun): ReDim r41(0 To NLV - 1, 1 To nRun)
-    ReDim r10(0 To NLV - 1, 1 To nRun): ReDim a12(0 To NLV - 1, 1 To nRun)
-    AvaliarWestgard z, temDado, nRun, r13, r22, rR4, r41, r10, a12
+    ReDim r13(0 To NLV - 1, 1 To nRun): ReDim r2sMulti(0 To NLV - 1, 1 To nRun)
+    ReDim rR4(0 To NLV - 1, 1 To nRun): ReDim r1sMulti(0 To NLV - 1, 1 To nRun)
+    ReDim rSeq(0 To NLV - 1, 1 To nRun): ReDim a12(0 To NLV - 1, 1 To nRun)
+    AvaliarWestgard z, temDado, nRun, r13, r2sMulti, rR4, r1sMulti, rSeq, a12
 
     ' ---- publicar em Eng_Saida ----
     ' Sem filtro de data de proposito: as regras dependem da sequencia completa
@@ -144,12 +144,12 @@ Public Sub AtualizarCalc()
         For i = 1 To nRun
             If temDado(t, i) Then
                 outLvl(i, 1) = IIf(r13(t, i) = 1, 1, 0)
-                outLvl(i, 2) = IIf(r22(t, i) = 1, 1, 0)
+                outLvl(i, 2) = IIf(r2sMulti(t, i) = 1, 1, 0)
                 outLvl(i, 3) = IIf(rR4(t, i) = 1, 1, 0)
-                outLvl(i, 4) = IIf(r41(t, i) = 1, 1, 0)
-                outLvl(i, 5) = IIf(r10(t, i) = 1, 1, 0)
+                outLvl(i, 4) = IIf(r1sMulti(t, i) = 1, 1, 0)
+                outLvl(i, 5) = IIf(rSeq(t, i) = 1, 1, 0)
                 outLvl(i, 6) = IIf(a12(t, i) = 1, 1, 0)
-                rej = (r13(t, i) = 1 Or r22(t, i) = 1 Or rR4(t, i) = 1 Or r41(t, i) = 1 Or r10(t, i) = 1)
+                rej = (r13(t, i) = 1 Or r2sMulti(t, i) = 1 Or rR4(t, i) = 1 Or r1sMulti(t, i) = 1 Or rSeq(t, i) = 1)
                 ' So REJEITADO/OK. O alerta 12s vai na coluna propria: o Calc usa
                 ' este campo para separar as series de pontos conformes e
                 ' rejeitados, e publicar "ALERTA" aqui mudaria o grafico.

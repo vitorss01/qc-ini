@@ -33,22 +33,22 @@ Private mAgg As Object                 ' (analito|nivel) -> agregados de Westgar
 ' procedure. Ficaram no meio do arquivo quando o motor foi substituido, e
 ' o resultado foi 'variavel nao definida' em gNaoAval.
 Private Const DETECTORES As String = _
-    "BIOQUIMICA|2|1_3s|INDIVIDUAL|1|1|1;" & _
-    "BIOQUIMICA|2|2_2s|WITHIN_RUN|1|2|1;" & _
-    "BIOQUIMICA|2|2_2s|ACROSS_RUN_SAME_LEVEL|1|1|2;" & _
-    "BIOQUIMICA|2|R_4s|WITHIN_RUN|1|2|1;" & _
-    "BIOQUIMICA|2|4_1s|N2_R2|1|2|2;" & _
-    "BIOQUIMICA|2|4_1s|SAME_LEVEL_R4|0|1|4;" & _
-    "BIOQUIMICA|2|8x|N2_R4|1|2|4;" & _
-    "BIOQUIMICA|2|8x|SAME_LEVEL_R8|0|1|8;" & _
-    "HEMATOLOGIA|3|1_3s|INDIVIDUAL|1|1|1;" & _
-    "HEMATOLOGIA|3|2of3_2s|WITHIN_RUN|1|3|1;" & _
-    "HEMATOLOGIA|3|2of3_2s|SAME_LEVEL_R3|0|1|3;" & _
-    "HEMATOLOGIA|3|R_4s|WITHIN_RUN|1|3|1;" & _
-    "HEMATOLOGIA|3|3_1s|N3_R1|1|3|1;" & _
-    "HEMATOLOGIA|3|3_1s|SAME_LEVEL_R3|0|1|3;" & _
-    "HEMATOLOGIA|3|6x|N3_R2|1|3|2;" & _
-    "HEMATOLOGIA|3|6x|SAME_LEVEL_R6|0|1|6"
+    "BIOQUIMICA|2|1_3s|INDIVIDUAL|1|1|1|WITHIN_RUN|3;" & _
+    "BIOQUIMICA|2|2_2s|WITHIN_RUN|1|2|1|WITHIN_RUN_ACROSS_MATERIALS|2;" & _
+    "BIOQUIMICA|2|2_2s|ACROSS_RUN_SAME_LEVEL|1|1|2|WITHIN_MATERIAL_ACROSS_RUN|2;" & _
+    "BIOQUIMICA|2|R_4s|WITHIN_RUN|1|2|1|WITHIN_RUN_ACROSS_MATERIALS|4;" & _
+    "BIOQUIMICA|2|4_1s|N2_R2|1|2|2|ACROSS_RUN_ACROSS_MATERIALS|1;" & _
+    "BIOQUIMICA|2|4_1s|SAME_LEVEL_R4|0|1|4|WITHIN_MATERIAL_ACROSS_RUN|1;" & _
+    "BIOQUIMICA|2|8x|N2_R4|1|2|4|ACROSS_RUN_ACROSS_MATERIALS|0;" & _
+    "BIOQUIMICA|2|8x|SAME_LEVEL_R8|0|1|8|WITHIN_MATERIAL_ACROSS_RUN|0;" & _
+    "HEMATOLOGIA|3|1_3s|INDIVIDUAL|1|1|1|WITHIN_RUN|3;" & _
+    "HEMATOLOGIA|3|2of3_2s|WITHIN_RUN|1|3|1|WITHIN_RUN_ACROSS_MATERIALS|2;" & _
+    "HEMATOLOGIA|3|2of3_2s|SAME_LEVEL_R3|0|1|3|WITHIN_MATERIAL_ACROSS_RUN|2;" & _
+    "HEMATOLOGIA|3|R_4s|WITHIN_RUN|1|3|1|WITHIN_RUN_ACROSS_MATERIALS|4;" & _
+    "HEMATOLOGIA|3|3_1s|N3_R1|1|3|1|WITHIN_RUN_ACROSS_MATERIALS|1;" & _
+    "HEMATOLOGIA|3|3_1s|SAME_LEVEL_R3|0|1|3|WITHIN_MATERIAL_ACROSS_RUN|1;" & _
+    "HEMATOLOGIA|3|6x|N3_R2|1|3|2|ACROSS_RUN_ACROSS_MATERIALS|0;" & _
+    "HEMATOLOGIA|3|6x|SAME_LEVEL_R6|0|1|6|WITHIN_MATERIAL_ACROSS_RUN|0"
 
 Private gTrace As Object            ' evidencias da ultima avaliacao
 Private gNaoAval As Object          ' regra|detector -> janelas nao avaliaveis
@@ -277,7 +277,10 @@ End Function
 
 ' A tabela de detectores. UMA fonte: o motor consulta, e Cfg_Westgard_Escopo
 ' e materializada a partir daqui -- planilha e codigo nao podem divergir.
-'   Area|Niveis|Regra|Detector|Ativo|N|R
+'   Area|Niveis|Regra|Detector|Ativo|N|R|Escopo|Limiar
+'
+' Limiar 0 nas regras de deslocamento (8x, 6x): o corte e a MEDIA,
+' nao um multiplo de DP. Deixar em branco confundiria com ausencia.
 
 
 
@@ -292,6 +295,46 @@ Public Function DetectoresWestgard() As String
 End Function
 
 
+' O contrato do motor para UMA regra, comparado contra a tabela informada.
+' Devolve "" quando confere, ou a divergencia.
+'
+' Confere o que da para conferir DECLARATIVAMENTE: existencia do detector
+' oficial, se esta ativo, N, R, escopo e limiar. NAO prova comportamento --
+' isso e papel da suite de testes, e misturar as duas garantias faria a
+' cobertura parecer mais forte do que e.
+Public Function ConferirRegra(ByVal tabela As String, ByVal area As String, _
+                              ByVal regra As String, ByVal detectorEsperado As String, _
+                              ByVal nEsperado As Long, ByVal rEsperado As Long, _
+                              ByVal escopoEsperado As String) As String
+    Dim linha As String, c As Variant
+    linha = DetectorOficialDe(tabela, area, regra)
+    If Len(linha) = 0 Then
+        ConferirRegra = regra & ": sem detector oficial ativo em " & area
+        Exit Function
+    End If
+    c = Split(linha, "|")
+    If UCase$(CStr(c(3))) <> UCase$(detectorEsperado) Then
+        ConferirRegra = regra & ": detector oficial e " & CStr(c(3)) & _
+                        ", esperado " & detectorEsperado
+        Exit Function
+    End If
+    If CLng(Val(CStr(c(5)))) <> nEsperado Then
+        ConferirRegra = regra & ": N=" & CStr(c(5)) & ", esperado " & CStr(nEsperado)
+        Exit Function
+    End If
+    If CLng(Val(CStr(c(6)))) <> rEsperado Then
+        ConferirRegra = regra & ": R=" & CStr(c(6)) & ", esperado " & CStr(rEsperado)
+        Exit Function
+    End If
+    If Len(escopoEsperado) > 0 Then
+        If UCase$(CStr(c(7))) <> UCase$(escopoEsperado) Then
+            ConferirRegra = regra & ": escopo " & CStr(c(7)) & _
+                            ", esperado " & escopoEsperado
+        End If
+    End If
+End Function
+
+
 ' Este detector participa da DECISAO oficial deste produto?
 Public Function DetectorAtivo(ByVal regra As String, ByVal detector As String) As Boolean
     Dim p As Variant, c As Variant, x As Variant
@@ -302,6 +345,50 @@ Public Function DetectorAtivo(ByVal regra As String, ByVal detector As String) A
             If UCase$(CStr(c(2))) = UCase$(Trim$(regra)) And _
                UCase$(CStr(c(3))) = UCase$(Trim$(detector)) Then
                 DetectorAtivo = (CStr(c(4)) = "1")
+                Exit Function
+            End If
+        End If
+    Next x
+End Function
+
+
+' Metadata completa de um detector, na tabela informada.
+'
+' Recebe a TABELA como parametro para que o QA possa passar uma versao
+' mutada e provar que a cobertura reprova um motor com detector errado. Sem
+' isso os testes negativos seriam encenacao: nao existe como alterar uma
+' Const em tempo de execucao.
+'
+' Devolve "" quando nao ha o detector; senao
+'   Area|Niveis|Regra|Detector|Ativo|N|R|Escopo|Limiar
+Public Function MetadataDetector(ByVal tabela As String, ByVal area As String, _
+                                 ByVal regra As String, ByVal detector As String) As String
+    Dim c As Variant, x As Variant
+    For Each x In Split(tabela, ";")
+        c = Split(CStr(x), "|")
+        If UBound(c) >= 8 Then
+            If UCase$(CStr(c(0))) = UCase$(Trim$(area)) And _
+               UCase$(CStr(c(2))) = UCase$(Trim$(regra)) And _
+               UCase$(CStr(c(3))) = UCase$(Trim$(detector)) Then
+                MetadataDetector = CStr(x)
+                Exit Function
+            End If
+        End If
+    Next x
+End Function
+
+
+' O detector OFICIAL de uma regra: o unico com Ativo=1 naquela area.
+' Devolve "" se nao houver -- e isso e ERRO DE COBERTURA, nao ausencia banal.
+Public Function DetectorOficialDe(ByVal tabela As String, ByVal area As String, _
+                                  ByVal regra As String) As String
+    Dim c As Variant, x As Variant
+    For Each x In Split(tabela, ";")
+        c = Split(CStr(x), "|")
+        If UBound(c) >= 8 Then
+            If UCase$(CStr(c(0))) = UCase$(Trim$(area)) And _
+               UCase$(CStr(c(2))) = UCase$(Trim$(regra)) And CStr(c(4)) = "1" Then
+                DetectorOficialDe = CStr(x)
                 Exit Function
             End If
         End If
@@ -386,8 +473,8 @@ End Function
 
 
 Public Sub AvaliarWestgard(ByRef z() As Double, ByRef temDado() As Boolean, ByVal nRun As Long, _
-                           ByRef r13 As Variant, ByRef r22 As Variant, ByRef rR4 As Variant, _
-                           ByRef r41 As Variant, ByRef r10 As Variant, ByRef a12 As Variant)
+                           ByRef r13 As Variant, ByRef r2sMulti As Variant, ByRef rR4 As Variant, _
+                           ByRef r1sMulti As Variant, ByRef rSeq As Variant, ByRef a12 As Variant)
     Set gTrace = New Collection
     Set gNaoAval = CreateObject("Scripting.Dictionary")
     gNaoAval.CompareMode = 1
@@ -396,20 +483,20 @@ Public Sub AvaliarWestgard(ByRef z() As Double, ByRef temDado() As Boolean, ByVa
     Det_R_4s z, temDado, nRun, rR4
 
     If NLV >= 3 Then
-        Det_2of3_2s_WithinRun z, temDado, nRun, r22
-        Det_3_1s_N3R1 z, temDado, nRun, r41
-        Det_6x_N3R2 z, temDado, nRun, r10
+        Det_2of3_2s_WithinRun z, temDado, nRun, r2sMulti
+        Det_3_1s_N3R1 z, temDado, nRun, r1sMulti
+        Det_6x_N3R2 z, temDado, nRun, rSeq
         ' Complementares: calculados e registrados, NAO consolidados.
-        Det_MesmoNivel_Sequencia z, temDado, nRun, "2of3_2s", "SAME_LEVEL_R3", 3, 2#, r22
-        Det_MesmoNivel_Sequencia z, temDado, nRun, "3_1s", "SAME_LEVEL_R3", 3, 1#, r41
-        Det_MesmoNivel_Lado z, temDado, nRun, "6x", "SAME_LEVEL_R6", 6, r10
+        Det_MesmoNivel_Sequencia z, temDado, nRun, "2of3_2s", "SAME_LEVEL_R3", 3, 2#, r2sMulti
+        Det_MesmoNivel_Sequencia z, temDado, nRun, "3_1s", "SAME_LEVEL_R3", 3, 1#, r1sMulti
+        Det_MesmoNivel_Lado z, temDado, nRun, "6x", "SAME_LEVEL_R6", 6, rSeq
     Else
-        Det_2_2s_WithinRun z, temDado, nRun, r22
-        Det_2_2s_AcrossRun z, temDado, nRun, r22
-        Det_4_1s_N2R2 z, temDado, nRun, r41
-        Det_8x_N2R4 z, temDado, nRun, r10
-        Det_MesmoNivel_Sequencia z, temDado, nRun, "4_1s", "SAME_LEVEL_R4", 4, 1#, r41
-        Det_MesmoNivel_Lado z, temDado, nRun, "8x", "SAME_LEVEL_R8", 8, r10
+        Det_2_2s_WithinRun z, temDado, nRun, r2sMulti
+        Det_2_2s_AcrossRun z, temDado, nRun, r2sMulti
+        Det_4_1s_N2R2 z, temDado, nRun, r1sMulti
+        Det_8x_N2R4 z, temDado, nRun, rSeq
+        Det_MesmoNivel_Sequencia z, temDado, nRun, "4_1s", "SAME_LEVEL_R4", 4, 1#, r1sMulti
+        Det_MesmoNivel_Lado z, temDado, nRun, "8x", "SAME_LEVEL_R8", 8, rSeq
     End If
 End Sub
 
@@ -469,13 +556,13 @@ End Sub
 
 ' --- 2_2s WITHIN_RUN (N=2): os dois niveis da corrida, mesmo lado, alem de 2s.
 Private Sub Det_2_2s_WithinRun(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
-                               ByRef r22 As Variant)
+                               ByRef r2sMulti As Variant)
     Dim i As Long
     For i = 1 To nRun
         If Not CorridaCompleta(td, i) Then
             NaoAvaliavel "2_2s", "WITHIN_RUN"
         ElseIf (z(0, i) > 2 And z(1, i) > 2) Or (z(0, i) < -2 And z(1, i) < -2) Then
-            r22(0, i) = 1: r22(1, i) = 1
+            r2sMulti(0, i) = 1: r2sMulti(1, i) = 1
             Evid "2_2s", "WITHIN_RUN", "WITHIN_RUN_ACROSS_MATERIALS", i, _
                  "N1=" & Format$(z(0, i), "0.00") & " N2=" & Format$(z(1, i), "0.00")
         End If
@@ -485,7 +572,7 @@ End Sub
 
 ' --- 2_2s ACROSS_RUN, MESMO nivel: duas corridas seguidas alem do mesmo 2s.
 Private Sub Det_2_2s_AcrossRun(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
-                               ByRef r22 As Variant)
+                               ByRef r2sMulti As Variant)
     Dim t As Long, i As Long
     For t = 0 To NLV - 1
         For i = 2 To nRun
@@ -493,7 +580,7 @@ Private Sub Det_2_2s_AcrossRun(ByRef z() As Double, ByRef td() As Boolean, ByVal
                 NaoAvaliavel "2_2s", "ACROSS_RUN_SAME_LEVEL"
             ElseIf (z(t, i) > 2 And z(t, i - 1) > 2) Or _
                    (z(t, i) < -2 And z(t, i - 1) < -2) Then
-                r22(t, i) = 1
+                r2sMulti(t, i) = 1
                 Evid "2_2s", "ACROSS_RUN_SAME_LEVEL", "WITHIN_MATERIAL_ACROSS_RUN", i, _
                      "N" & CStr(t + 1) & " " & Format$(z(t, i - 1), "0.00") & _
                      "->" & Format$(z(t, i), "0.00")
@@ -506,7 +593,7 @@ End Sub
 ' --- 2of3_2s WITHIN_RUN: dois dos tres niveis da corrida alem do MESMO 2s.
 ' Lados opostos NAO contam -- isso e R_4s, fenomeno diferente.
 Private Sub Det_2of3_2s_WithinRun(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
-                                  ByRef r22 As Variant)
+                                  ByRef r2sMulti As Variant)
     Dim i As Long, t As Long, acima As Long, abaixo As Long, comDado As Long
     For i = 1 To nRun
         acima = 0: abaixo = 0: comDado = 0
@@ -526,7 +613,7 @@ Private Sub Det_2of3_2s_WithinRun(ByRef z() As Double, ByRef td() As Boolean, By
             For t = 0 To NLV - 1
                 If td(t, i) Then
                     If (lado = 1 And z(t, i) > 2) Or (lado = -1 And z(t, i) < -2) Then
-                        r22(t, i) = 1
+                        r2sMulti(t, i) = 1
                         det = det & "N" & CStr(t + 1) & "=" & Format$(z(t, i), "0.00") & " "
                     End If
                 End If
@@ -539,7 +626,7 @@ End Sub
 
 ' --- 3_1s N3/R1: os TRES niveis da mesma corrida alem do mesmo 1s.
 Private Sub Det_3_1s_N3R1(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
-                          ByRef r41 As Variant)
+                          ByRef r1sMulti As Variant)
     Dim i As Long, t As Long, acima As Long, abaixo As Long
     For i = 1 To nRun
         If Not CorridaCompleta(td, i) Then
@@ -555,7 +642,7 @@ Private Sub Det_3_1s_N3R1(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun
             Dim det As String
             det = ""
             For t = 0 To NLV - 1
-                r41(t, i) = 1
+                r1sMulti(t, i) = 1
                 det = det & "N" & CStr(t + 1) & "=" & Format$(z(t, i), "0.00") & " "
             Next t
             Evid "3_1s", "N3_R1", "WITHIN_RUN_ACROSS_MATERIALS", i, Trim$(det)
@@ -567,7 +654,7 @@ End Sub
 
 ' --- 4_1s N2/R2: dois niveis x duas corridas = quatro observacoes.
 Private Sub Det_4_1s_N2R2(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
-                          ByRef r41 As Variant)
+                          ByRef r1sMulti As Variant)
     Dim i As Long, t As Long, k As Long, acima As Long, abaixo As Long
     For i = 2 To nRun
         If Not (CorridaCompleta(td, i) And CorridaCompleta(td, i - 1)) Then
@@ -583,7 +670,7 @@ Private Sub Det_4_1s_N2R2(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun
         Next k
         If acima = NLV * 2 Or abaixo = NLV * 2 Then
             For t = 0 To NLV - 1
-                r41(t, i) = 1
+                r1sMulti(t, i) = 1
             Next t
             Evid "4_1s", "N2_R2", "ACROSS_RUN_ACROSS_MATERIALS", i, _
                  "runs " & CStr(i - 1) & ".." & CStr(i) & " " & CStr(NLV * 2) & " obs"
@@ -597,15 +684,15 @@ End Sub
 ' LADO DA MEDIA. E regra de deslocamento, nao de tendencia: nao exige que os
 ' valores crescam, so que fiquem do mesmo lado.
 Private Sub Det_8x_N2R4(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
-                        ByRef r10 As Variant)
-    Det_JanelaNR z, td, nRun, "8x", "N2_R4", 4, r10
+                        ByRef rSeq As Variant)
+    Det_JanelaNR z, td, nRun, "8x", "N2_R4", 4, rSeq
 End Sub
 
 
 ' --- 6x N3/R2: tres niveis x duas corridas = seis observacoes do mesmo lado.
 Private Sub Det_6x_N3R2(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
-                        ByRef r10 As Variant)
-    Det_JanelaNR z, td, nRun, "6x", "N3_R2", 2, r10
+                        ByRef rSeq As Variant)
+    Det_JanelaNR z, td, nRun, "6x", "N3_R2", 2, rSeq
 End Sub
 
 
@@ -805,7 +892,7 @@ Public Sub AtualizarCalc()
     Dim ws As Worksheet, analito As String, lote As String
     Dim i As Long, t As Long, nRun As Long, r As Long
     Dim runs() As Long, dts() As Double, valor() As Double, temDado() As Boolean, z() As Double
-    Dim r13 As Variant, r22 As Variant, rR4 As Variant, r41 As Variant, r10 As Variant, a12 As Variant
+    Dim r13 As Variant, r2sMulti As Variant, rR4 As Variant, r1sMulti As Variant, rSeq As Variant, a12 As Variant
     Dim alvoM() As Double, alvoS() As Double, etp As Double
     Dim seen As Object, ordem As Object
 
@@ -888,10 +975,10 @@ Public Sub AtualizarCalc()
     Next t
 
     ' ---- Westgard ----
-    ReDim r13(0 To NLV - 1, 1 To nRun): ReDim r22(0 To NLV - 1, 1 To nRun)
-    ReDim rR4(0 To NLV - 1, 1 To nRun): ReDim r41(0 To NLV - 1, 1 To nRun)
-    ReDim r10(0 To NLV - 1, 1 To nRun): ReDim a12(0 To NLV - 1, 1 To nRun)
-    AvaliarWestgard z, temDado, nRun, r13, r22, rR4, r41, r10, a12
+    ReDim r13(0 To NLV - 1, 1 To nRun): ReDim r2sMulti(0 To NLV - 1, 1 To nRun)
+    ReDim rR4(0 To NLV - 1, 1 To nRun): ReDim r1sMulti(0 To NLV - 1, 1 To nRun)
+    ReDim rSeq(0 To NLV - 1, 1 To nRun): ReDim a12(0 To NLV - 1, 1 To nRun)
+    AvaliarWestgard z, temDado, nRun, r13, r2sMulti, rR4, r1sMulti, rSeq, a12
 
     ' ---- montar a matriz de saida ----
     Dim outBase() As Variant, outLvl() As Variant, rej As Boolean, filtro As Long
@@ -913,12 +1000,12 @@ Public Sub AtualizarCalc()
             If temDado(t, i) Then
                 outLvl(i, 1) = valor(t, i)
                 outLvl(i, 2) = z(t, i)
-                rej = (r13(t, i) = 1 Or r22(t, i) = 1 Or rR4(t, i) = 1 Or r41(t, i) = 1 Or r10(t, i) = 1)
+                rej = (r13(t, i) = 1 Or r2sMulti(t, i) = 1 Or rR4(t, i) = 1 Or r1sMulti(t, i) = 1 Or rSeq(t, i) = 1)
                 outLvl(i, 6) = IIf(r13(t, i) = 1, 1, 0)
-                outLvl(i, 7) = IIf(r22(t, i) = 1, 1, 0)
+                outLvl(i, 7) = IIf(r2sMulti(t, i) = 1, 1, 0)
                 outLvl(i, 8) = IIf(rR4(t, i) = 1, 1, 0)
-                outLvl(i, 9) = IIf(r41(t, i) = 1, 1, 0)
-                outLvl(i, 10) = IIf(r10(t, i) = 1, 1, 0)
+                outLvl(i, 9) = IIf(r1sMulti(t, i) = 1, 1, 0)
+                outLvl(i, 10) = IIf(rSeq(t, i) = 1, 1, 0)
                 If rej Then
                     outLvl(i, 11) = "REJEITADO"
                 ElseIf a12(t, i) = 1 Then
@@ -1125,24 +1212,24 @@ Public Function AnalisarViolacoes(ByVal analito As String, ByVal nivel As Long, 
 
     ' --- avaliar Westgard sobre a serie ---
     Dim zz() As Double, tdd() As Boolean, tot As Long
-    Dim q13 As Variant, q22 As Variant, qR4 As Variant, q41 As Variant, q10 As Variant, q12 As Variant
+    Dim q13 As Variant, q2sMulti As Variant, qR4 As Variant, q1sMulti As Variant, qSeq As Variant, q12 As Variant
     ReDim zz(0 To NLV - 1, 1 To nS): ReDim tdd(0 To NLV - 1, 1 To nS)
     For i = 1 To nS
         If alvoS > 0 Then zz(nivel - 1, i) = CalcularZ(ys(i), alvoM, alvoS)
         tdd(nivel - 1, i) = True
     Next i
-    ReDim q13(0 To NLV - 1, 1 To nS): ReDim q22(0 To NLV - 1, 1 To nS)
-    ReDim qR4(0 To NLV - 1, 1 To nS): ReDim q41(0 To NLV - 1, 1 To nS)
-    ReDim q10(0 To NLV - 1, 1 To nS): ReDim q12(0 To NLV - 1, 1 To nS)
-    AvaliarWestgard zz, tdd, nS, q13, q22, qR4, q41, q10, q12
+    ReDim q13(0 To NLV - 1, 1 To nS): ReDim q2sMulti(0 To NLV - 1, 1 To nS)
+    ReDim qR4(0 To NLV - 1, 1 To nS): ReDim q1sMulti(0 To NLV - 1, 1 To nS)
+    ReDim qSeq(0 To NLV - 1, 1 To nS): ReDim q12(0 To NLV - 1, 1 To nS)
+    AvaliarWestgard zz, tdd, nS, q13, q2sMulti, qR4, q1sMulti, qSeq, q12
 
     For i = 1 To nS
         Dim rg As String
         rg = ""
         If Val(q13(nivel - 1, i)) = 1 Then rg = "13s"
-        If Val(q22(nivel - 1, i)) = 1 Then rg = IIf(rg = "", "22s", rg & "+22s")
-        If Val(q41(nivel - 1, i)) = 1 Then rg = IIf(rg = "", "41s", rg & "+41s")
-        If Val(q10(nivel - 1, i)) = 1 Then rg = IIf(rg = "", "10x", rg & "+10x")
+        If Val(q2sMulti(nivel - 1, i)) = 1 Then rg = IIf(rg = "", "22s", rg & "+22s")
+        If Val(q1sMulti(nivel - 1, i)) = 1 Then rg = IIf(rg = "", "41s", rg & "+41s")
+        If Val(qSeq(nivel - 1, i)) = 1 Then rg = IIf(rg = "", "10x", rg & "+10x")
         If rg <> "" Then
             tot = tot + 1
             regra = rg: runV = rs(i): valV = ys(i): zV = zz(nivel - 1, i): dtV = ds(i)
@@ -1388,16 +1475,16 @@ Public Sub RegistrarEventosWestgard()
                 AlvoAnalito analitoN, nivelN, aM, aS, etp
 
                 Dim zz() As Double, td() As Boolean
-                Dim q13 As Variant, q22 As Variant, qR4 As Variant, q41 As Variant, q10 As Variant, q12 As Variant
+                Dim q13 As Variant, q2sMulti As Variant, qR4 As Variant, q1sMulti As Variant, qSeq As Variant, q12 As Variant
                 ReDim zz(0 To 0, 1 To nS): ReDim td(0 To 0, 1 To nS)
                 For j = 1 To nS
                     If aS > 0 Then zz(0, j) = CalcularZ(ys(j), aM, aS)
                     td(0, j) = True
                 Next j
-                ReDim q13(0 To 0, 1 To nS): ReDim q22(0 To 0, 1 To nS)
-                ReDim qR4(0 To 0, 1 To nS): ReDim q41(0 To 0, 1 To nS)
-                ReDim q10(0 To 0, 1 To nS): ReDim q12(0 To 0, 1 To nS)
-                AvaliarWestgard1N zz, td, nS, q13, q22, qR4, q41, q10, q12
+                ReDim q13(0 To 0, 1 To nS): ReDim q2sMulti(0 To 0, 1 To nS)
+                ReDim qR4(0 To 0, 1 To nS): ReDim q1sMulti(0 To 0, 1 To nS)
+                ReDim qSeq(0 To 0, 1 To nS): ReDim q12(0 To 0, 1 To nS)
+                AvaliarWestgard1N zz, td, nS, q13, q2sMulti, qR4, q1sMulti, qSeq, q12
 
                 Dim nv As Long, priR As String, priRun As Long, ultR As String, ultRun As Long, maxZ As Double
                 nv = 0: maxZ = 0
@@ -1405,9 +1492,9 @@ Public Sub RegistrarEventosWestgard()
                     Dim regs As String
                     regs = ""
                     If Val(q13(0, j)) = 1 Then regs = "13s"
-                    If Val(q22(0, j)) = 1 Then regs = IIf(regs = "", "22s", regs & "+22s")
-                    If Val(q41(0, j)) = 1 Then regs = IIf(regs = "", "41s", regs & "+41s")
-                    If Val(q10(0, j)) = 1 Then regs = IIf(regs = "", "10x", regs & "+10x")
+                    If Val(q2sMulti(0, j)) = 1 Then regs = IIf(regs = "", "22s", regs & "+22s")
+                    If Val(q1sMulti(0, j)) = 1 Then regs = IIf(regs = "", "41s", regs & "+41s")
+                    If Val(qSeq(0, j)) = 1 Then regs = IIf(regs = "", "10x", regs & "+10x")
                     If regs <> "" And nEv < 5000 Then
                         nEv = nEv + 1
                         ev(nEv, 1) = IIf(ds(j) > 0, CDate(ds(j)), "")
@@ -1460,8 +1547,8 @@ End Function
 ' 22s intra-corrida entre niveis e R4s sao avaliados no motor do Calc, que tem a
 ' visao multi-nivel; aqui tratamos a serie temporal do proprio nivel.
 Public Sub AvaliarWestgard1N(ByRef z() As Double, ByRef temDado() As Boolean, ByVal nRun As Long, _
-                             ByRef r13 As Variant, ByRef r22 As Variant, ByRef rR4 As Variant, _
-                             ByRef r41 As Variant, ByRef r10 As Variant, ByRef a12 As Variant)
+                             ByRef r13 As Variant, ByRef r2sMulti As Variant, ByRef rR4 As Variant, _
+                             ByRef r1sMulti As Variant, ByRef rSeq As Variant, ByRef a12 As Variant)
     Dim i As Long, k As Long, cnt As Long
     For i = 1 To nRun
         If temDado(0, i) Then
@@ -1469,7 +1556,7 @@ Public Sub AvaliarWestgard1N(ByRef z() As Double, ByRef temDado() As Boolean, By
             If Abs(z(0, i)) > 3 Then r13(0, i) = 1
             If i >= 2 Then
                 If temDado(0, i - 1) Then
-                    If (z(0, i) > 2 And z(0, i - 1) > 2) Or (z(0, i) < -2 And z(0, i - 1) < -2) Then r22(0, i) = 1
+                    If (z(0, i) > 2 And z(0, i - 1) > 2) Or (z(0, i) < -2 And z(0, i - 1) < -2) Then r2sMulti(0, i) = 1
                 End If
             End If
             If i >= 4 Then
@@ -1477,24 +1564,24 @@ Public Sub AvaliarWestgard1N(ByRef z() As Double, ByRef temDado() As Boolean, By
                 For k = 0 To 3
                     If z(0, i - k) > 1 Then cnt = cnt + 1
                 Next k
-                If cnt = 4 Then r41(0, i) = 1
+                If cnt = 4 Then r1sMulti(0, i) = 1
                 cnt = 0
                 For k = 0 To 3
                     If z(0, i - k) < -1 Then cnt = cnt + 1
                 Next k
-                If cnt = 4 Then r41(0, i) = 1
+                If cnt = 4 Then r1sMulti(0, i) = 1
             End If
             If i >= 10 Then
                 cnt = 0
                 For k = 0 To 9
                     If z(0, i - k) > 0 Then cnt = cnt + 1
                 Next k
-                If cnt = 10 Then r10(0, i) = 1
+                If cnt = 10 Then rSeq(0, i) = 1
                 cnt = 0
                 For k = 0 To 9
                     If z(0, i - k) < 0 Then cnt = cnt + 1
                 Next k
-                If cnt = 10 Then r10(0, i) = 1
+                If cnt = 10 Then rSeq(0, i) = 1
             End If
         End If
     Next i
