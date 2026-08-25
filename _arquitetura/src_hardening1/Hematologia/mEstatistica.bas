@@ -35,6 +35,31 @@ Private mAnal As Variant               ' snapshot de Analitos (alvos)
 Private mIdxAnal As Object             ' analito -> linha em mAnal
 Private mAgg As Object                 ' (analito|nivel) -> agregados de Westgard
 
+' ---- Westgard por detector (ADR-042) ----
+' Declaracao de MODULO: em VBA tudo isto tem de vir antes da primeira
+' procedure. Ficaram no meio do arquivo quando o motor foi substituido, e
+' o resultado foi 'variavel nao definida' em gNaoAval.
+Private Const DETECTORES As String = _
+    "BIOQUIMICA|2|1_3s|INDIVIDUAL|1|1|1;" & _
+    "BIOQUIMICA|2|2_2s|WITHIN_RUN|1|2|1;" & _
+    "BIOQUIMICA|2|2_2s|ACROSS_RUN_SAME_LEVEL|1|1|2;" & _
+    "BIOQUIMICA|2|R_4s|WITHIN_RUN|1|2|1;" & _
+    "BIOQUIMICA|2|4_1s|N2_R2|1|2|2;" & _
+    "BIOQUIMICA|2|4_1s|SAME_LEVEL_R4|0|1|4;" & _
+    "BIOQUIMICA|2|8x|N2_R4|1|2|4;" & _
+    "BIOQUIMICA|2|8x|SAME_LEVEL_R8|0|1|8;" & _
+    "HEMATOLOGIA|3|1_3s|INDIVIDUAL|1|1|1;" & _
+    "HEMATOLOGIA|3|2of3_2s|WITHIN_RUN|1|3|1;" & _
+    "HEMATOLOGIA|3|2of3_2s|SAME_LEVEL_R3|0|1|3;" & _
+    "HEMATOLOGIA|3|R_4s|WITHIN_RUN|1|3|1;" & _
+    "HEMATOLOGIA|3|3_1s|N3_R1|1|3|1;" & _
+    "HEMATOLOGIA|3|3_1s|SAME_LEVEL_R3|0|1|3;" & _
+    "HEMATOLOGIA|3|6x|N3_R2|1|3|2;" & _
+    "HEMATOLOGIA|3|6x|SAME_LEVEL_R6|0|1|6"
+
+Private gTrace As Object            ' evidencias da ultima avaliacao
+Private gNaoAval As Object          ' regra|detector -> janelas nao avaliaveis
+
 ' ============================ ELEGIBILIDADE ============================
 Public Sub CarregarElegibilidade()
     Dim ws As Worksheet, i As Long, s As String
@@ -216,168 +241,482 @@ End Function
 ' ============================ WESTGARD ============================
 ' z(t, i) = z-score do nivel t na i-esima corrida (ordenada). ok(t,i) = tem dado.
 ' Regras padrao: 12s (alerta) e 13s/22s/R4s/41s/10x (rejeicao).
-' A MATRIZ DE WESTGARD DEPENDE DO NUMERO DE NIVEIS (ADR-041)
+' ===========================================================================
+' MOTOR WESTGARD POR DETECTOR E ESCOPO (ADR-042)
+' ===========================================================================
 '
-' Nao existe "as regras de Westgard": existe a matriz para N=2 e a matriz para
-' N=3, e elas nao sao intercambiaveis. Ate aqui os dois produtos usavam o mesmo
-' codigo, entao a Hematologia -- que roda 3 niveis -- era avaliada pelas regras
-' de 2 niveis. As faixas de decisao existem para casar com a probabilidade de
-' erro daquele desenho de controle; aplicar a matriz errada muda a sensibilidade
-' e a taxa de falsa rejeicao, em silencio.
+' O QUE MUDOU, E POR QUE
 '
-'   NLV = 2 (Bioquimica)      NLV = 3 (Hematologia)
-'   ------------------------  ------------------------
-'   1_3s                      1_3s
-'   2_2s                      2of3_2s
-'   R_4s                      R_4s
-'   4_1s                      3_1s
-'   8x                        6x
+' A versao anterior avaliava "a regra 8x" como oito CORRIDAS consecutivas do
+' mesmo lado da media, num unico nivel. Isso e o detector LONGITUDINAL. A
+' matriz Sigma da Bioquimica pede outra coisa: N=2, R=4 -- dois niveis por
+' corrida, quatro corridas, oito OBSERVACOES. Sao janelas diferentes, com
+' sensibilidade diferente, e a versao anterior chamava uma pelo nome da outra.
+' O mesmo valia para 6x: a matriz de tres niveis pede N=3, R=2.
 '
-' As saidas mantem os mesmos SEIS parametros porque sao POSICOES, nao nomes:
-' r22 carrega 2_2s com dois niveis e 2of3_2s com tres; r41 carrega 4_1s ou 3_1s;
-' r10 carrega a regra de tendencia do produto. Quem precisa do nome chama
-' MatrizWestgard(), abaixo -- assim nao ha duas listas para divergirem.
+' ESCOPOS
 '
-' DUAS INTERPRETACOES, E QUAL FOI ADOTADA
+'   WITHIN_RUN ......... so a corrida atual
+'   ACROSS_RUN ......... usa corridas diferentes
+'   WITHIN_MATERIAL .... o mesmo nivel ao longo do tempo
+'   ACROSS_MATERIALS ... combina niveis diferentes
 '
-' "3 consecutivos" e "6 consecutivos" admitem leitura DENTRO da corrida (os
-' niveis daquela corrida) ou AO LONGO das corridas (o mesmo nivel ao longo do
-' tempo). Aqui:
+' R_4s e WITHIN_RUN e ponto. Amplitude de 4 DP entre a corrida de ontem e a
+' de hoje NAO e R_4s -- e deriva, que outras regras pegam. Aplicar R_4s
+' atraves de corridas inventa rejeicao que o metodo nao cometeu.
 '
-'   3_1s .. as duas. Tres niveis da MESMA corrida do mesmo lado, ou tres
-'           corridas consecutivas do MESMO nivel. E o analogo exato do que a
-'           2_2s de dois niveis ja fazia, que tambem carrega as duas leituras.
-'   6x ..... ao longo das corridas, no mesmo nivel. Segue a convencao que o
-'           motor ja usa para a regra de tendencia. A leitura alternativa --
-'           seis medicoes seguidas contando os tres niveis, ou seja duas
-'           corridas -- e bem mais sensivel; trocar e decisao do laboratorio,
-'           nao do codigo, e esta registrada para ser decidida.
+' OFICIAL x COMPLEMENTAR
+'
+' Detectores adicionais NAO entram automaticamente na decisao. Somar
+' longitudinal com N/R multiplica as oportunidades de rejeicao e sobe a
+' probabilidade de falsa rejeicao sem ninguem decidir isso. DetectorAtivo()
+' e a unica porta: o que nao esta la e calculado, registrado e NAO consolidado.
+'
+' NAO_AVALIAVEL x FALSE
+'
+' FALSE quer dizer "avaliei e nao violou". Janela sem os dados que a regra
+' exige nao e FALSE -- e ausencia de avaliacao, e some do QA se for tratada
+' como aprovacao. 6x N3/R2 exige tres niveis validos nas DUAS corridas; com
+' N3 faltando numa delas, a regra nao foi avaliada.
+
+' A tabela de detectores. UMA fonte: o motor consulta, e Cfg_Westgard_Escopo
+' e materializada a partir daqui -- planilha e codigo nao podem divergir.
+'   Area|Niveis|Regra|Detector|Ativo|N|R
+
+
+
+Public Function AreaDoProduto() As String
+    If NLV >= 3 Then AreaDoProduto = "HEMATOLOGIA" Else AreaDoProduto = "BIOQUIMICA"
+End Function
+
+
+' A tabela inteira, para a planilha de configuracao e para o QA.
+Public Function DetectoresWestgard() As String
+    DetectoresWestgard = DETECTORES
+End Function
+
+
+' Este detector participa da DECISAO oficial deste produto?
+Public Function DetectorAtivo(ByVal regra As String, ByVal detector As String) As Boolean
+    Dim p As Variant, c As Variant, x As Variant
+    p = Split(DETECTORES, ";")
+    For Each x In p
+        c = Split(CStr(x), "|")
+        If UCase$(CStr(c(0))) = AreaDoProduto() Then
+            If UCase$(CStr(c(2))) = UCase$(Trim$(regra)) And _
+               UCase$(CStr(c(3))) = UCase$(Trim$(detector)) Then
+                DetectorAtivo = (CStr(c(4)) = "1")
+                Exit Function
+            End If
+        End If
+    Next x
+End Function
+
+
+' N e R declarados para um detector, no formato "N=2 R=4".
+Public Function EscalaDoDetector(ByVal regra As String, ByVal detector As String) As String
+    Dim c As Variant, x As Variant
+    For Each x In Split(DETECTORES, ";")
+        c = Split(CStr(x), "|")
+        If UCase$(CStr(c(0))) = AreaDoProduto() Then
+            If UCase$(CStr(c(2))) = UCase$(Trim$(regra)) And _
+               UCase$(CStr(c(3))) = UCase$(Trim$(detector)) Then
+                EscalaDoDetector = "N=" & CStr(c(5)) & " R=" & CStr(c(6))
+                Exit Function
+            End If
+        End If
+    Next x
+End Function
+
+
+Private Sub Evid(ByVal regra As String, ByVal detector As String, ByVal escopo As String, _
+                 ByVal run As Long, ByVal detalhe As String)
+    If gTrace Is Nothing Then Set gTrace = New Collection
+    Dim oficial As String
+    If DetectorAtivo(regra, detector) Then oficial = "OFICIAL" Else oficial = "COMPLEMENTAR"
+    gTrace.Add regra & "|" & detector & "|" & escopo & "|" & oficial & _
+               "|run=" & CStr(run) & "|" & EscalaDoDetector(regra, detector) & _
+               "|" & detalhe
+End Sub
+
+
+Private Sub NaoAvaliavel(ByVal regra As String, ByVal detector As String)
+    If gNaoAval Is Nothing Then
+        Set gNaoAval = CreateObject("Scripting.Dictionary")
+        gNaoAval.CompareMode = 1
+    End If
+    Dim k As String
+    k = regra & "|" & detector
+    If gNaoAval.Exists(k) Then
+        gNaoAval(k) = CLng(gNaoAval(k)) + 1
+    Else
+        gNaoAval.Add k, 1
+    End If
+End Sub
+
+
+' As evidencias da ultima avaliacao, uma por linha.
+Public Function TraceWestgard() As String
+    Dim s As String, x As Variant
+    If gTrace Is Nothing Then Exit Function
+    For Each x In gTrace
+        If Len(s) > 0 Then s = s & vbLf
+        s = s & CStr(x)
+    Next x
+    TraceWestgard = s
+End Function
+
+
+' Quantas janelas ficaram sem avaliacao por falta de dado, por detector.
+Public Function NaoAvaliaveisWestgard() As String
+    Dim s As String, k As Variant
+    If gNaoAval Is Nothing Then Exit Function
+    For Each k In gNaoAval.Keys
+        If Len(s) > 0 Then s = s & vbLf
+        s = s & CStr(k) & "=" & CStr(gNaoAval(k))
+    Next k
+    NaoAvaliaveisWestgard = s
+End Function
+
+
+' Todos os niveis da corrida tem dado?
+Private Function CorridaCompleta(ByRef td() As Boolean, ByVal i As Long) As Boolean
+    Dim t As Long
+    For t = 0 To NLV - 1
+        If Not td(t, i) Then Exit Function
+    Next t
+    CorridaCompleta = True
+End Function
+
+
 Public Sub AvaliarWestgard(ByRef z() As Double, ByRef temDado() As Boolean, ByVal nRun As Long, _
                            ByRef r13 As Variant, ByRef r22 As Variant, ByRef rR4 As Variant, _
                            ByRef r41 As Variant, ByRef r10 As Variant, ByRef a12 As Variant)
-    Dim t As Long, i As Long, j As Long, cnt As Long, mn As Double, mx As Double, k As Long
-    Dim nSeq As Long, nTend As Long, acima As Long, abaixo As Long
+    Set gTrace = New Collection
+    Set gNaoAval = CreateObject("Scripting.Dictionary")
+    gNaoAval.CompareMode = 1
 
-    ' 4_1s com dois niveis, 3_1s com tres: e o mesmo teste com outro tamanho.
-    If NLV >= 3 Then nSeq = 3 Else nSeq = 4
-    ' Tendencia: 8x com dois niveis, 6x com tres.
-    '
-    ' O motor contava 10 enquanto o Cfg_PlanoQC e o mPlanoQC declaravam 8x --
-    ' nomes batendo e limiares nao, com CoberturaWestgard respondendo TOTAL
-    ' porque so comparava nomes. Isso sub-relatava tendencia: uma sequencia de
-    ' oito resultados do mesmo lado da media passava sem ser denunciada.
-    '
-    ' O laboratorio determinou 8 como a regra sequencial da Bioquimica e
-    ' mandou corrigir qualquer 10x encontrado. Agora plano e motor falam da
-    ' mesma regra, e a contagem de violacoes de tendencia SOBE -- e o numero
-    ' certo, nao um aumento artificial.
-    If NLV >= 3 Then nTend = 6 Else nTend = 8
+    Det_1_3s z, temDado, nRun, r13, a12
+    Det_R_4s z, temDado, nRun, rR4
 
+    If NLV >= 3 Then
+        Det_2of3_2s_WithinRun z, temDado, nRun, r22
+        Det_3_1s_N3R1 z, temDado, nRun, r41
+        Det_6x_N3R2 z, temDado, nRun, r10
+        ' Complementares: calculados e registrados, NAO consolidados.
+        Det_MesmoNivel_Sequencia z, temDado, nRun, "2of3_2s", "SAME_LEVEL_R3", 3, 2#, r22
+        Det_MesmoNivel_Sequencia z, temDado, nRun, "3_1s", "SAME_LEVEL_R3", 3, 1#, r41
+        Det_MesmoNivel_Lado z, temDado, nRun, "6x", "SAME_LEVEL_R6", 6, r10
+    Else
+        Det_2_2s_WithinRun z, temDado, nRun, r22
+        Det_2_2s_AcrossRun z, temDado, nRun, r22
+        Det_4_1s_N2R2 z, temDado, nRun, r41
+        Det_8x_N2R4 z, temDado, nRun, r10
+        Det_MesmoNivel_Sequencia z, temDado, nRun, "4_1s", "SAME_LEVEL_R4", 4, 1#, r41
+        Det_MesmoNivel_Lado z, temDado, nRun, "8x", "SAME_LEVEL_R8", 8, r10
+    End If
+End Sub
+
+
+' --- 1_3s: INDIVIDUAL. Nao depende de outro nivel nem da corrida anterior.
+Private Sub Det_1_3s(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
+                     ByRef r13 As Variant, ByRef a12 As Variant)
+    Dim t As Long, i As Long
     For t = 0 To NLV - 1
         For i = 1 To nRun
-            If temDado(t, i) Then
-                ' --- 12s (alerta) e 13s (rejeicao) ---
+            If td(t, i) Then
                 If Abs(z(t, i)) > 2 Then a12(t, i) = 1
-                If Abs(z(t, i)) > 3 Then r13(t, i) = 1
-
-                ' --- 2_2s (N=2): dois consecutivos no MESMO nivel ---
-                ' Nao se aplica a N=3: com tres niveis a regra da matriz e a
-                ' 2of3_2s, que e um teste DENTRO da corrida. Manter a variante
-                ' consecutiva aqui somaria uma regra que a matriz de 3 niveis
-                ' nao pede, aumentando a rejeicao falsa.
-                If NLV = 2 And i >= 2 Then
-                    If temDado(t, i - 1) Then
-                        If (z(t, i) > 2 And z(t, i - 1) > 2) Or (z(t, i) < -2 And z(t, i - 1) < -2) Then
-                            r22(t, i) = 1
-                        End If
-                    End If
-                End If
-
-                ' --- 2_2s / 2of3_2s: niveis da MESMA corrida, mesmo lado ---
-                ' Com N=2 basta o outro nivel acompanhar (2_2s). Com N=3 basta
-                ' que DOIS dos tres estejam alem do mesmo 2s (2of3_2s) -- e o
-                ' mesmo teste, e o limiar acompanha o desenho do controle.
-                cnt = 0
-                For j = 0 To NLV - 1
-                    If temDado(j, i) Then
-                        If (z(t, i) > 2 And z(j, i) > 2) Or (z(t, i) < -2 And z(j, i) < -2) Then
-                            cnt = cnt + 1
-                        End If
-                    End If
-                Next j
-                ' cnt inclui o proprio nivel t, entao 2 significa "dois niveis".
-                If Abs(z(t, i)) > 2 And cnt >= 2 Then r22(t, i) = 1
-
-                ' --- 4_1s (N=2) / 3_1s (N=3): consecutivos no mesmo nivel ---
-                If i >= nSeq Then
-                    cnt = 0
-                    For k = 0 To nSeq - 1
-                        If temDado(t, i - k) Then
-                            If z(t, i - k) > 1 Then cnt = cnt + 1
-                        End If
-                    Next k
-                    If cnt = nSeq Then r41(t, i) = 1
-                    cnt = 0
-                    For k = 0 To nSeq - 1
-                        If temDado(t, i - k) Then
-                            If z(t, i - k) < -1 Then cnt = cnt + 1
-                        End If
-                    Next k
-                    If cnt = nSeq Then r41(t, i) = 1
-                End If
-
-                ' --- 3_1s tambem DENTRO da corrida (so N=3) ---
-                ' Os tres niveis da mesma corrida alem do mesmo 1s. Sem isto a
-                ' regra so enxergaria deriva ao longo do tempo e perderia o
-                ' deslocamento que aparece de uma vez nos tres niveis.
-                If NLV >= 3 Then
-                    acima = 0: abaixo = 0
-                    For j = 0 To NLV - 1
-                        If temDado(j, i) Then
-                            If z(j, i) > 1 Then acima = acima + 1
-                            If z(j, i) < -1 Then abaixo = abaixo + 1
-                        End If
-                    Next j
-                    If acima >= NLV Or abaixo >= NLV Then r41(t, i) = 1
-                End If
-
-                ' --- tendencia: 8x (N=2) / 6x (N=3) no mesmo nivel ---
-                If i >= nTend Then
-                    cnt = 0
-                    For k = 0 To nTend - 1
-                        If temDado(t, i - k) Then
-                            If z(t, i - k) > 0 Then cnt = cnt + 1
-                        End If
-                    Next k
-                    If cnt = nTend Then r10(t, i) = 1
-                    cnt = 0
-                    For k = 0 To nTend - 1
-                        If temDado(t, i - k) Then
-                            If z(t, i - k) < 0 Then cnt = cnt + 1
-                        End If
-                    Next k
-                    If cnt = nTend Then r10(t, i) = 1
+                If Abs(z(t, i)) > 3 Then
+                    r13(t, i) = 1
+                    Evid "1_3s", "INDIVIDUAL", "WITHIN_RUN", i, _
+                         "N" & CStr(t + 1) & " z=" & Format$(z(t, i), "0.00")
                 End If
             End If
         Next i
     Next t
+End Sub
 
-    ' --- R4s: amplitude entre niveis DENTRO da mesma corrida > 4 DP ---
+
+' --- R_4s: WITHIN_RUN ONLY, todos os pares de niveis da MESMA corrida.
+' Com tres niveis sao N1xN2, N1xN3 e N2xN3. O par fica registrado com o menor
+' indice primeiro, para N1xN3 e N3xN1 nao virarem duas violacoes.
+Private Sub Det_R_4s(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
+                     ByRef rR4 As Variant)
+    Dim i As Long, t As Long, j As Long, comDado As Long
     For i = 1 To nRun
-        mn = 1E+30: mx = -1E+30: cnt = 0
+        comDado = 0
         For t = 0 To NLV - 1
-            If temDado(t, i) Then
-                cnt = cnt + 1
-                If z(t, i) < mn Then mn = z(t, i)
-                If z(t, i) > mx Then mx = z(t, i)
-            End If
+            If td(t, i) Then comDado = comDado + 1
         Next t
-        If cnt >= 2 And (mx - mn) > 4 Then
-            For t = 0 To NLV - 1
-                If temDado(t, i) Then rR4(t, i) = 1
-            Next t
+        If comDado < 2 Then
+            NaoAvaliavel "R_4s", "WITHIN_RUN"
+            GoTo proximaRun
+        End If
+        For t = 0 To NLV - 2
+            For j = t + 1 To NLV - 1
+                If td(t, i) And td(j, i) Then
+                    If Abs(z(t, i) - z(j, i)) > 4 Then
+                        rR4(t, i) = 1
+                        rR4(j, i) = 1
+                        Evid "R_4s", "WITHIN_RUN", "WITHIN_RUN_ACROSS_MATERIALS", i, _
+                             "N" & CStr(t + 1) & "xN" & CStr(j + 1) & _
+                             " z=" & Format$(z(t, i), "0.00") & _
+                             "/" & Format$(z(j, i), "0.00")
+                    End If
+                End If
+            Next j
+        Next t
+proximaRun:
+    Next i
+End Sub
+
+
+' --- 2_2s WITHIN_RUN (N=2): os dois niveis da corrida, mesmo lado, alem de 2s.
+Private Sub Det_2_2s_WithinRun(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
+                               ByRef r22 As Variant)
+    Dim i As Long
+    For i = 1 To nRun
+        If Not CorridaCompleta(td, i) Then
+            NaoAvaliavel "2_2s", "WITHIN_RUN"
+        ElseIf (z(0, i) > 2 And z(1, i) > 2) Or (z(0, i) < -2 And z(1, i) < -2) Then
+            r22(0, i) = 1: r22(1, i) = 1
+            Evid "2_2s", "WITHIN_RUN", "WITHIN_RUN_ACROSS_MATERIALS", i, _
+                 "N1=" & Format$(z(0, i), "0.00") & " N2=" & Format$(z(1, i), "0.00")
         End If
     Next i
+End Sub
+
+
+' --- 2_2s ACROSS_RUN, MESMO nivel: duas corridas seguidas alem do mesmo 2s.
+Private Sub Det_2_2s_AcrossRun(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
+                               ByRef r22 As Variant)
+    Dim t As Long, i As Long
+    For t = 0 To NLV - 1
+        For i = 2 To nRun
+            If Not (td(t, i) And td(t, i - 1)) Then
+                NaoAvaliavel "2_2s", "ACROSS_RUN_SAME_LEVEL"
+            ElseIf (z(t, i) > 2 And z(t, i - 1) > 2) Or _
+                   (z(t, i) < -2 And z(t, i - 1) < -2) Then
+                r22(t, i) = 1
+                Evid "2_2s", "ACROSS_RUN_SAME_LEVEL", "WITHIN_MATERIAL_ACROSS_RUN", i, _
+                     "N" & CStr(t + 1) & " " & Format$(z(t, i - 1), "0.00") & _
+                     "->" & Format$(z(t, i), "0.00")
+            End If
+        Next i
+    Next t
+End Sub
+
+
+' --- 2of3_2s WITHIN_RUN: dois dos tres niveis da corrida alem do MESMO 2s.
+' Lados opostos NAO contam -- isso e R_4s, fenomeno diferente.
+Private Sub Det_2of3_2s_WithinRun(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
+                                  ByRef r22 As Variant)
+    Dim i As Long, t As Long, acima As Long, abaixo As Long, comDado As Long
+    For i = 1 To nRun
+        acima = 0: abaixo = 0: comDado = 0
+        For t = 0 To NLV - 1
+            If td(t, i) Then
+                comDado = comDado + 1
+                If z(t, i) > 2 Then acima = acima + 1
+                If z(t, i) < -2 Then abaixo = abaixo + 1
+            End If
+        Next t
+        If comDado < 2 Then
+            NaoAvaliavel "2of3_2s", "WITHIN_RUN"
+        ElseIf acima >= 2 Or abaixo >= 2 Then
+            Dim lado As Long, det As String
+            If acima >= 2 Then lado = 1 Else lado = -1
+            det = ""
+            For t = 0 To NLV - 1
+                If td(t, i) Then
+                    If (lado = 1 And z(t, i) > 2) Or (lado = -1 And z(t, i) < -2) Then
+                        r22(t, i) = 1
+                        det = det & "N" & CStr(t + 1) & "=" & Format$(z(t, i), "0.00") & " "
+                    End If
+                End If
+            Next t
+            Evid "2of3_2s", "WITHIN_RUN", "WITHIN_RUN_ACROSS_MATERIALS", i, Trim$(det)
+        End If
+    Next i
+End Sub
+
+
+' --- 3_1s N3/R1: os TRES niveis da mesma corrida alem do mesmo 1s.
+Private Sub Det_3_1s_N3R1(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
+                          ByRef r41 As Variant)
+    Dim i As Long, t As Long, acima As Long, abaixo As Long
+    For i = 1 To nRun
+        If Not CorridaCompleta(td, i) Then
+            NaoAvaliavel "3_1s", "N3_R1"
+            GoTo prox
+        End If
+        acima = 0: abaixo = 0
+        For t = 0 To NLV - 1
+            If z(t, i) > 1 Then acima = acima + 1
+            If z(t, i) < -1 Then abaixo = abaixo + 1
+        Next t
+        If acima = NLV Or abaixo = NLV Then
+            Dim det As String
+            det = ""
+            For t = 0 To NLV - 1
+                r41(t, i) = 1
+                det = det & "N" & CStr(t + 1) & "=" & Format$(z(t, i), "0.00") & " "
+            Next t
+            Evid "3_1s", "N3_R1", "WITHIN_RUN_ACROSS_MATERIALS", i, Trim$(det)
+        End If
+prox:
+    Next i
+End Sub
+
+
+' --- 4_1s N2/R2: dois niveis x duas corridas = quatro observacoes.
+Private Sub Det_4_1s_N2R2(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
+                          ByRef r41 As Variant)
+    Dim i As Long, t As Long, k As Long, acima As Long, abaixo As Long
+    For i = 2 To nRun
+        If Not (CorridaCompleta(td, i) And CorridaCompleta(td, i - 1)) Then
+            NaoAvaliavel "4_1s", "N2_R2"
+            GoTo prox
+        End If
+        acima = 0: abaixo = 0
+        For k = i - 1 To i
+            For t = 0 To NLV - 1
+                If z(t, k) > 1 Then acima = acima + 1
+                If z(t, k) < -1 Then abaixo = abaixo + 1
+            Next t
+        Next k
+        If acima = NLV * 2 Or abaixo = NLV * 2 Then
+            For t = 0 To NLV - 1
+                r41(t, i) = 1
+            Next t
+            Evid "4_1s", "N2_R2", "ACROSS_RUN_ACROSS_MATERIALS", i, _
+                 "runs " & CStr(i - 1) & ".." & CStr(i) & " " & CStr(NLV * 2) & " obs"
+        End If
+prox:
+    Next i
+End Sub
+
+
+' --- 8x N2/R4: dois niveis x quatro corridas = oito observacoes do mesmo
+' LADO DA MEDIA. E regra de deslocamento, nao de tendencia: nao exige que os
+' valores crescam, so que fiquem do mesmo lado.
+Private Sub Det_8x_N2R4(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
+                        ByRef r10 As Variant)
+    Det_JanelaNR z, td, nRun, "8x", "N2_R4", 4, r10
+End Sub
+
+
+' --- 6x N3/R2: tres niveis x duas corridas = seis observacoes do mesmo lado.
+Private Sub Det_6x_N3R2(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
+                        ByRef r10 As Variant)
+    Det_JanelaNR z, td, nRun, "6x", "N3_R2", 2, r10
+End Sub
+
+
+' Janela de nRunsJanela corridas COMPLETAS: todas as NLV*nRunsJanela
+' observacoes do mesmo lado da media.
+Private Sub Det_JanelaNR(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
+                         ByVal regra As String, ByVal detector As String, _
+                         ByVal nRunsJanela As Long, ByRef saida As Variant)
+    Dim i As Long, k As Long, t As Long, acima As Long, abaixo As Long, total As Long
+    total = NLV * nRunsJanela
+    For i = nRunsJanela To nRun
+        Dim completa As Boolean
+        completa = True
+        For k = i - nRunsJanela + 1 To i
+            If Not CorridaCompleta(td, k) Then completa = False
+        Next k
+        If Not completa Then
+            NaoAvaliavel regra, detector
+            GoTo prox
+        End If
+        acima = 0: abaixo = 0
+        For k = i - nRunsJanela + 1 To i
+            For t = 0 To NLV - 1
+                If z(t, k) > 0 Then acima = acima + 1
+                If z(t, k) < 0 Then abaixo = abaixo + 1
+            Next t
+        Next k
+        If acima = total Or abaixo = total Then
+            For t = 0 To NLV - 1
+                saida(t, i) = 1
+            Next t
+            Dim sinal As String
+            If acima = total Then sinal = String$(total, "+") Else sinal = String$(total, "-")
+            Evid regra, detector, "ACROSS_RUN_ACROSS_MATERIALS", i, _
+                 "runs " & CStr(i - nRunsJanela + 1) & ".." & CStr(i) & " " & sinal
+        End If
+prox:
+    Next i
+End Sub
+
+
+' --- COMPLEMENTAR: n corridas seguidas do mesmo lado, no MESMO nivel.
+' Registrado e nao consolidado, salvo se DetectorAtivo disser o contrario.
+Private Sub Det_MesmoNivel_Lado(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
+                                ByVal regra As String, ByVal detector As String, _
+                                ByVal n As Long, ByRef saida As Variant)
+    Dim t As Long, i As Long, k As Long, acima As Long, abaixo As Long
+    Dim ativo As Boolean
+    ativo = DetectorAtivo(regra, detector)
+    For t = 0 To NLV - 1
+        For i = n To nRun
+            Dim ok As Boolean
+            ok = True
+            For k = i - n + 1 To i
+                If Not td(t, k) Then ok = False
+            Next k
+            If Not ok Then
+                NaoAvaliavel regra, detector
+                GoTo prox
+            End If
+            acima = 0: abaixo = 0
+            For k = i - n + 1 To i
+                If z(t, k) > 0 Then acima = acima + 1
+                If z(t, k) < 0 Then abaixo = abaixo + 1
+            Next k
+            If acima = n Or abaixo = n Then
+                If ativo Then saida(t, i) = 1
+                Evid regra, detector, "WITHIN_MATERIAL_ACROSS_RUN", i, _
+                     "N" & CStr(t + 1) & " runs " & CStr(i - n + 1) & ".." & CStr(i)
+            End If
+prox:
+        Next i
+    Next t
+End Sub
+
+
+' --- COMPLEMENTAR: n corridas seguidas alem do mesmo limite, no MESMO nivel.
+Private Sub Det_MesmoNivel_Sequencia(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
+                                     ByVal regra As String, ByVal detector As String, _
+                                     ByVal n As Long, ByVal limite As Double, ByRef saida As Variant)
+    Dim t As Long, i As Long, k As Long, acima As Long, abaixo As Long
+    Dim ativo As Boolean
+    ativo = DetectorAtivo(regra, detector)
+    For t = 0 To NLV - 1
+        For i = n To nRun
+            Dim ok As Boolean
+            ok = True
+            For k = i - n + 1 To i
+                If Not td(t, k) Then ok = False
+            Next k
+            If Not ok Then
+                NaoAvaliavel regra, detector
+                GoTo prox
+            End If
+            acima = 0: abaixo = 0
+            For k = i - n + 1 To i
+                If z(t, k) > limite Then acima = acima + 1
+                If z(t, k) < -limite Then abaixo = abaixo + 1
+            Next k
+            If acima = n Or abaixo = n Then
+                If ativo Then saida(t, i) = 1
+                Evid regra, detector, "WITHIN_MATERIAL_ACROSS_RUN", i, _
+                     "N" & CStr(t + 1) & " runs " & CStr(i - n + 1) & ".." & CStr(i)
+            End If
+prox:
+        Next i
+    Next t
 End Sub
 
 

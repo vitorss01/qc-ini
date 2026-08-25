@@ -108,6 +108,14 @@ Public Function TestarWestgardSerie(ByVal itens As String, ByVal nRun As Long) A
     TestarWestgardSerie = saida
 End Function
 
+Public Function TraceDaUltima() As String
+    TraceDaUltima = TraceWestgard()
+End Function
+
+Public Function NaoAvalDaUltima() As String
+    NaoAvalDaUltima = NaoAvaliaveisWestgard()
+End Function
+
 Private Function Soma(ByRef m As Variant) As Long
     Dim t As Long, i As Long, s As Long
     For t = LBound(m, 1) To UBound(m, 1)
@@ -196,44 +204,108 @@ def main():
                   % (nome, 'dispara' if esperado else 'nao', '%d' % got,
                      'PASS' if ok else 'FAIL'))
 
-        # 1_3s: um ponto alem de 3s
-        cenario('D', '1_3s: z=+3,4 num nivel', {(0, 1): 3.4}, 1, '1_3s', True)
-        cenario('E', '1_3s: z=+2,9 nao dispara', {(0, 1): 2.9}, 1, '1_3s', False)
+        def det(padrao):
+            """O detector aparece no trace? E o que distingue N3/R2 de
+            longitudinal -- as saidas consolidadas nao contam essa historia."""
+            return padrao in str(xl.Run('TraceDaUltima') or '')
+
+        def naoaval(padrao):
+            return padrao in str(xl.Run('NaoAvalDaUltima') or '')
+
+        def cena(bloco, nome, pontos, nrun, verificar):
+            """verificar: lista de (rotulo, esperado, obtido)."""
+            avaliar(xl, nlv, nrun, pontos)
+            for rotulo, esperado, obtido in verificar():
+                ok = (esperado == obtido)
+                resultados.append((bloco, nome + ' :: ' + rotulo,
+                                   esperado, obtido, ok))
+                print('   %-46s %-6s %-6s %s'
+                      % ((nome + ' :: ' + rotulo)[:46], str(esperado),
+                         str(obtido), 'PASS' if ok else 'FAIL'))
+
+        # ---------- comuns aos dois modulos ----------
+        cena('D', '1_3s z=+3,4', {(0, 1): 3.4}, 1,
+             lambda: [('1_3s dispara', True, det('1_3s|INDIVIDUAL'))])
+        cena('E', '1_3s z=+2,9', {(0, 1): 2.9}, 1,
+             lambda: [('1_3s nao dispara', False, det('1_3s|INDIVIDUAL'))])
+
+        # R_4s NUNCA cruza corridas -- teste negativo obrigatorio (secao 7)
+        cena('E', 'R_4s entre corridas',
+             {(0, 1): 2.3, (0, 2): -2.3}, 2,
+             lambda: [('R_4s nao dispara', False, det('R_4s|WITHIN_RUN'))])
 
         if nlv == 3:
-            # 2of3_2s: dois dos tres niveis alem de 2s, mesmo lado
-            cenario('D', '2of3_2s: +2,3 +2,4 +0,5',
-                    {(0, 1): 2.3, (1, 1): 2.4, (2, 1): 0.5}, 1, 'R2', True)
-            cenario('E', '2of3_2s: so um nivel alem de 2s',
-                    {(0, 1): 2.3, (1, 1): 0.4, (2, 1): 0.5}, 1, 'R2', False)
-            # 3_1s: os tres niveis alem de 1s, mesmo lado
-            cenario('D', '3_1s: +1,2 +1,4 +1,1',
-                    {(0, 1): 1.2, (1, 1): 1.4, (2, 1): 1.1}, 1, 'R4', True)
-            cenario('E', '3_1s: so dois niveis alem de 1s',
-                    {(0, 1): 1.2, (1, 1): 1.4, (2, 1): 0.3}, 1, 'R4', False)
-            # 6x: seis corridas consecutivas do mesmo lado, no mesmo nivel
-            cenario('D', '6x: 6 corridas do mesmo lado',
-                    {(0, i): 0.5 for i in range(1, 7)}, 6, 'TEND', True)
-            cenario('E', '6x: 5 corridas NAO dispara',
-                    {(0, i): 0.5 for i in range(1, 6)}, 5, 'TEND', False)
+            # secao 35 cenario A
+            cena('D', 'A: +2,3 +2,4 +0,5',
+                 {(0, 1): 2.3, (1, 1): 2.4, (2, 1): 0.5}, 1,
+                 lambda: [('2of3_2s', True, det('2of3_2s|WITHIN_RUN')),
+                          ('R_4s', False, det('R_4s|WITHIN_RUN'))])
+            # secao 35 cenario B
+            cena('D', 'B: +2,3 +0,2 -2,2',
+                 {(0, 1): 2.3, (1, 1): 0.2, (2, 1): -2.2}, 1,
+                 lambda: [('2of3_2s', False, det('2of3_2s|WITHIN_RUN')),
+                          ('R_4s N1xN3', True, det('N1xN3'))])
+            # secao 6: R_4s tem de testar todos os pares
+            cena('D', 'R_4s par N2xN3',
+                 {(0, 1): 0.1, (1, 1): 2.3, (2, 1): -2.2}, 1,
+                 lambda: [('R_4s N2xN3', True, det('N2xN3'))])
+            # secao 35 cenario C
+            cena('D', 'C: +1,2 +1,4 +1,1',
+                 {(0, 1): 1.2, (1, 1): 1.4, (2, 1): 1.1}, 1,
+                 lambda: [('3_1s N3/R1', True, det('3_1s|N3_R1'))])
+            cena('E', 'C-: so dois niveis alem de 1s',
+                 {(0, 1): 1.2, (1, 1): 1.4, (2, 1): 0.3}, 1,
+                 lambda: [('3_1s N3/R1 nao', False, det('3_1s|N3_R1'))])
+            # secao 35 cenario D -- 6x OFICIAL e N3/R2
+            cena('D', 'D: runA +++ runB +++',
+                 {(0, 1): .4, (1, 1): .5, (2, 1): .6,
+                  (0, 2): .3, (1, 2): .7, (2, 2): .2}, 2,
+                 lambda: [('6x N3/R2', True, det('6x|N3_R2'))])
+            # secao 35 cenario E -- sequencia interrompida
+            cena('E', 'E: runA +++ runB ++-',
+                 {(0, 1): .4, (1, 1): .5, (2, 1): .6,
+                  (0, 2): .3, (1, 2): .7, (2, 2): -.2}, 2,
+                 lambda: [('6x N3/R2 nao', False, det('6x|N3_R2'))])
+            # secao 37 -- NAO_AVALIAVEL nao e FALSE
+            cena('G', 'sec.37: runB sem N3',
+                 {(0, 1): .4, (1, 1): .5, (2, 1): .6,
+                  (0, 2): .3, (1, 2): .7}, 2,
+                 lambda: [('6x N3/R2 nao dispara', False, det('6x|N3_R2')),
+                          ('registrado NAO_AVALIAVEL', True, naoaval('6x|N3_R2'))])
         else:
-            # 2_2s: dois consecutivos no mesmo nivel
-            cenario('D', '2_2s: +2,3 e +2,4 seguidos',
-                    {(0, 1): 2.3, (0, 2): 2.4}, 2, 'R2', True)
-            # 4_1s: quatro consecutivos alem de 1s
-            cenario('D', '4_1s: 4 corridas alem de 1s',
-                    {(0, i): 1.2 for i in range(1, 5)}, 4, 'R4', True)
-            cenario('E', '4_1s: 3 corridas NAO dispara',
-                    {(0, i): 1.2 for i in range(1, 4)}, 3, 'R4', False)
-            # 8x: a fronteira que a secao 11 exige
-            cenario('D', '8x: 8 corridas do mesmo lado',
-                    {(0, i): 0.5 for i in range(1, 9)}, 8, 'TEND', True)
-            cenario('E', '8x: 7 corridas NAO dispara',
-                    {(0, i): 0.5 for i in range(1, 8)}, 7, 'TEND', False)
+            # secao 36 cenario A
+            cena('D', 'A: N1+2,3 N2+2,4',
+                 {(0, 1): 2.3, (1, 1): 2.4}, 1,
+                 lambda: [('2_2s within-run', True, det('2_2s|WITHIN_RUN')),
+                          ('R_4s', False, det('R_4s|WITHIN_RUN'))])
+            # secao 36 cenario B
+            cena('D', 'B: N1+2,3 N2-2,2',
+                 {(0, 1): 2.3, (1, 1): -2.2}, 1,
+                 lambda: [('R_4s', True, det('R_4s|WITHIN_RUN')),
+                          ('2_2s nao', False, det('2_2s|WITHIN_RUN'))])
+            # 2_2s across-run, mesmo nivel
+            cena('D', '2_2s across-run N1',
+                 {(0, 1): 2.3, (0, 2): 2.2}, 2,
+                 lambda: [('2_2s across-run', True,
+                           det('2_2s|ACROSS_RUN_SAME_LEVEL'))])
+            # 4_1s N2/R2
+            cena('D', '4_1s N2/R2',
+                 {(0, 1): 1.3, (1, 1): 1.2, (0, 2): 1.4, (1, 2): 1.5}, 2,
+                 lambda: [('4_1s N2/R2', True, det('4_1s|N2_R2'))])
+            # secao 36 cenario C -- 8x OFICIAL e N2/R4
+            cena('D', 'C: 4 corridas x 2 niveis, todos +',
+                 {(t, i): .5 for i in range(1, 5) for t in (0, 1)}, 4,
+                 lambda: [('8x N2/R4', True, det('8x|N2_R4'))])
+            # secao 36 cenario D -- ultima corrida mista
+            cena('E', 'D: runD com + e -',
+                 {**{(t, i): .5 for i in range(1, 4) for t in (0, 1)},
+                  (0, 4): .5, (1, 4): -.5}, 4,
+                 lambda: [('8x N2/R4 nao', False, det('8x|N2_R4'))])
 
-        # R_4s vale nos dois: amplitude entre niveis > 4 DP
-        cenario('D', 'R_4s: +2,2 e -2,1 na mesma corrida',
-                {(0, 1): 2.2, (1, 1): -2.1}, 1, 'R_4s', True)
+        # R_4s within-run vale nos dois
+        cena('D', 'R_4s +2,2 e -2,1 mesma corrida',
+             {(0, 1): 2.2, (1, 1): -2.1}, 1,
+             lambda: [('R_4s', True, det('R_4s|WITHIN_RUN'))])
 
         # ---- F. cobertura
         cob = str(xl.Run('CoberturaWestgard', 3.5))
