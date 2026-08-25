@@ -124,13 +124,28 @@ PLANO_HEMATOLOGIA = [
     (4.0, 5.0, 'Bom', '1_3s / 2of3_2s / R_4s / 3_1s', 3, 1,
      'Uma medicao em cada um dos 3 niveis por evento de CQ',
      'Westgard & Westgard, 2019'),
-    # Abaixo de 4 Sigma a matriz de 3 niveis ja pede as cinco regras -- nao ha
-    # faixa "Marginal" separada como na de 2 niveis. N e run size ficam
-    # preenchidos aqui, e nao vazios: com tres niveis existe estrategia
-    # operacional (N=6/R=1 ou N=3/R=2) que sustenta o metodo.
-    (-999.0, 4.0, 'Desempenho inadequado', '1_3s / 2of3_2s / R_4s / 3_1s / 6x',
-     6, 1,
+    # DUAS faixas abaixo de 4, com AS MESMAS cinco regras.
+    #
+    # A matriz de tres niveis nao muda de regra entre 3 e 4 Sigma -- ja pede
+    # as cinco. Mas a CLASSIFICACAO DE DESEMPENHO e outra pergunta, e ela tem
+    # cinco faixas em todo o QC_INI: 3 a <4 e "Marginal", abaixo de 3 e
+    # "Desempenho inadequado".
+    #
+    # Colapsar as duas numa faixa so obrigaria mQualidade.ClassificarSigma --
+    # que le a classificacao DESTA tabela -- a chamar um metodo de Sigma 3,5
+    # de "Desempenho inadequado", divergindo da Bioquimica para o mesmo
+    # numero. Separar aqui mantem UMA escada de classificacao no projeto
+    # inteiro, sem tabela paralela.
+    (3.0, 4.0, 'Marginal', '1_3s / 2of3_2s / R_4s / 3_1s / 6x', 6, 1,
      'N=6 / R=1, ou N=3 / R=2 conforme a estrategia operacional do laboratorio',
+     'Westgard & Westgard, 2019; Peng et al., 2021'),
+    # Abaixo de 3 Sigma as regras continuam as cinco, e N e run size ficam
+    # VAZIOS: nao ha plano estatistico que sustente o metodo, e numero ali
+    # sugeriria que ha. O caminho e investigar o metodo.
+    (-999.0, 3.0, 'Desempenho inadequado', '1_3s / 2of3_2s / R_4s / 3_1s / 6x',
+     '', '',
+     'CQ estatistico isolado pode ser insuficiente - investigar e melhorar '
+     'o desempenho analitico ou reavaliar o metodo',
      'Westgard et al., 2018; CLSI C24-Ed4'),
 ]
 

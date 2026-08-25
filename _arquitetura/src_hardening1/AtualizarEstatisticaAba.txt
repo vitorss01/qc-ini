@@ -60,7 +60,7 @@ Public Sub AtualizarEstatisticaAba()
                 outp(er, 8) = IIf(n = 0 Or alvoM = 0, "", bias)
                 outp(er, 9) = IIf(n < 2 Or media = 0, "", et)
                 outp(er, 10) = IIf(n < 2 Or cv = 0 Or etp = 0, "", sg)
-                outp(er, 11) = IIf(n < 2 Or cv = 0 Or etp = 0, "", ClassificarSigma(sg))
+                outp(er, 11) = IIf(n < 2 Or cv = 0 Or etp = 0, "", mQualidade.ClassificarSigma(sg))
             End If
         Next t
     Next i

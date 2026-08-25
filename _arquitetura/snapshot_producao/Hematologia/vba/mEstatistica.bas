@@ -165,17 +165,20 @@ Public Function CalcularZ(ByVal valor As Double, ByVal media As Double, ByVal dp
     CalcularZ = (valor - media) / dp
 End Function
 
-Public Function ClassificarSigma(ByVal s As Double) As String
-    If s >= 6 Then
-        ClassificarSigma = "Excelente"
-    ElseIf s >= 4 Then
-        ClassificarSigma = "Bom"
-    ElseIf s >= 3 Then
-        ClassificarSigma = "Marginal"
-    Else
-        ClassificarSigma = "Inaceitável"
-    End If
-End Function
+' A CLASSIFICACAO DE SIGMA MORA EM mQualidade (ADR-043)
+'
+' Existia aqui uma segunda escada, com TRES defeitos: >=6 devolvia
+' "Excelente" em vez de "Classe mundial"; a faixa 5 a <6 nao existia, entao
+' Sigma 5,5 caia em "Bom"; e abaixo de 3 dizia "Inaceitavel" enquanto o resto
+' do projeto diz "Desempenho inadequado".
+'
+' Pior que os defeitos: ela vencia a canonica. AtualizarEstatisticaAba
+' chamava ClassificarSigma SEM QUALIFICAR, e chamada nao qualificada resolve
+' para a funcao do PROPRIO modulo -- entao a coluna de classificacao dos dois
+' produtos vinha daqui, e nao de mQualidade, sem ninguem perceber.
+'
+' Removida. Quem precisa da classificacao chama mQualidade.ClassificarSigma,
+' que le as faixas de Cfg_PlanoQC e cai numa escada de reserva identica.
 
 ' ============================ ALVOS (Analitos) ============================
 Private Function LinhaAnalito(ByVal analito As String) As Long
@@ -1289,7 +1292,7 @@ Public Sub AtualizarEstatisticaAba()
                 outp(er, 8) = IIf(n = 0 Or aM = 0, "", bias)
                 outp(er, 9) = IIf(n < 2 Or media = 0, "", et)
                 outp(er, 10) = IIf(n < 2 Or cv = 0 Or etp = 0, "", sg)
-                outp(er, 11) = IIf(n < 2 Or cv = 0 Or etp = 0, "", ClassificarSigma(sg))
+                outp(er, 11) = IIf(n < 2 Or cv = 0 Or etp = 0, "", mQualidade.ClassificarSigma(sg))
             End If
         Next t
     Next i
