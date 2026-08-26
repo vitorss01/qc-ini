@@ -70,31 +70,72 @@ Private Declare PtrSafe Sub GetSystemTime Lib "kernel32" (ByRef lpSystemTime As 
 Private Declare Sub GetSystemTime Lib "kernel32" (ByRef lpSystemTime As BI_SYSTEMTIME)
 #End If
 
+' Nome da regra na POSICAO p (1..5) da matriz deste produto.
+'
+' As cinco posicoes sao as mesmas nos dois produtos -- individual, 2s
+' multi-material, amplitude, 1s multi-material, deslocamento -- mas os NOMES
+' mudam. MatrizWestgard() e a fonte, entao um ajuste na regra do produto chega
+' aqui sozinho, sem ninguem lembrar de mexer no contrato do BI.
+Private Function NomeRegra(ByVal p As Long) As String
+    Dim m As Variant
+    m = Split(mEstatistica.MatrizWestgard(), ";")
+    If p < 1 Or p > UBound(m) - LBound(m) + 1 Then Exit Function
+    NomeRegra = Trim$(CStr(m(LBound(m) + p - 1)))
+End Function
+
+
+' CONTRATO DO BI, COM O NOME DA REGRA DO PRODUTO (ADR-047)
+'
+' Ate aqui as colunas de Westgard chamavam-se W_1_3s, W_2_2s, W_R_4s, W_4_1s e
+' W_10x nos DOIS produtos. Isso fazia o mesmo nome significar coisas
+' diferentes: na Hematologia, W_2_2s carregava 2of3_2s, W_4_1s carregava 3_1s
+' e W_10x carregava 6x -- uma regra que o ADR-041 aposentou e que continuava
+' nomeando coluna.
+'
+' Cada produto passa a gravar o SEU cabecalho. O Power Query combina os dois
+' com Table.Combine, que faz a uniao das colunas e deixa vazio onde a coluna
+' nao existe naquele produto. Vazio ali significa "esta regra nao existe nesta
+' area" -- diferente de zero, que significaria "existe e nao violou". E o que
+' atende o §20 sem nenhuma condicional na camada visual: o que nao se aplica
+' simplesmente nao tem valor.
 Private Function Cab() As Variant
-    Cab = Array( _
-        "ID_Result", "ID_Corrida", "Data", "Ano", "Mes", "Trimestre", "Competencia", _
-        "ID_Analito", "Analito", "Area", "Unidade", _
-        "ID_Lote", "Lote", "Nivel", "RUN", _
-        "Resultado", "Status", "Ativo", _
-        "Media_Alvo", "DP_Alvo", "Z", _
-        "Lim_m3s", "Lim_m2s", "Lim_m1s", "Lim_p1s", "Lim_p2s", "Lim_p3s", _
-        "CVtp_pct", "BIAStp_pct", "ETp_pct", _
-        "W_1_3s", "W_2_2s", "W_R_4s", "W_4_1s", "W_10x", "A_1_2s", "Veredito", _
-        "Produto", "WorkbookID", "VersaoContrato", "AtualizadoEmUTC", "FonteArquivo", _
-        "ID_Result_Global", "ID_Corrida_Global", "ID_Lote_Global", "ID_Analito_Global", _
-        "N_Observado", "Media_Observada", "DP_Observado", "CV_Observado_pct", _
-        "Bias_Observado_pct", "ET_Observado_pct", "Sigma", _
-        "Fonte_Especificacao", "ID_Especificacao", "Vigencia_Inicio", "Vigencia_Fim", _
-        "Situacao_Especificacao", "Usuario_Atualizacao", "Tipo_Evento", _
-        "Bias_Observado_abs_pct", "Classificacao_Sigma", _
-        "Margem_ETp_pp", "Margem_ETp_pct", "Status_Margem_ETp", _
-        "Provedor_EQA", "Ano_EQA", "Rodada_EQA", _
-        "DPM_Teorico", "Yield_Teorico", _
-        "Regra_Westgard_Recomendada", "N_Controle_Recomendado", _
-        "RunSize_Max_Recomendado", "Frequencia_QC_Descricao", _
-        "Cobertura_Motor_Westgard", "Referencia_Plano_QC", _
-        "Sigma_Plano", "Nivel_Governante", "Classificacao_Sigma_Plano", _
-        "Usar_1_3s", "Usar_2_2s", "Usar_R_4s", "Usar_4_1s", "Usar_8x")
+    ' Montado em VARIAS instrucoes, e nao num Array() unico: o VBA aceita no
+    ' maximo 25 continuacoes de linha por instrucao, e o contrato ja batia no
+    ' teto. Ao acrescentar os nomes por area o modulo passou a ser recusado
+    ' pelo proprio Import do VBE -- sem mensagem util, so um erro de COM.
+    Dim s As String
+
+    s = "ID_Result;ID_Corrida;Data;Ano;Mes;Trimestre;Competencia;" & _
+        "ID_Analito;Analito;Area;Unidade;ID_Lote;Lote;Nivel;RUN;" & _
+        "Resultado;Status;Ativo;Media_Alvo;DP_Alvo;Z;" & _
+        "Lim_m3s;Lim_m2s;Lim_m1s;Lim_p1s;Lim_p2s;Lim_p3s;" & _
+        "CVtp_pct;BIAStp_pct;ETp_pct;"
+
+    ' As cinco de Westgard, com o nome DESTE produto (ADR-047).
+    s = s & "W_" & NomeRegra(1) & ";W_" & NomeRegra(2) & ";W_" & NomeRegra(3) & _
+            ";W_" & NomeRegra(4) & ";W_" & NomeRegra(5) & ";"
+
+    s = s & "A_1_2s;Veredito;Produto;WorkbookID;VersaoContrato;" & _
+            "AtualizadoEmUTC;FonteArquivo;" & _
+            "ID_Result_Global;ID_Corrida_Global;ID_Lote_Global;ID_Analito_Global;" & _
+            "N_Observado;Media_Observada;DP_Observado;CV_Observado_pct;" & _
+            "Bias_Observado_pct;ET_Observado_pct;Sigma;" & _
+            "Fonte_Especificacao;ID_Especificacao;Vigencia_Inicio;Vigencia_Fim;" & _
+            "Situacao_Especificacao;Usuario_Atualizacao;Tipo_Evento;" & _
+            "Bias_Observado_abs_pct;Classificacao_Sigma;"
+
+    s = s & "Margem_ETp_pp;Margem_ETp_pct;Status_Margem_ETp;" & _
+            "Provedor_EQA;Ano_EQA;Rodada_EQA;DPM_Teorico;Yield_Teorico;" & _
+            "Regra_Westgard_Recomendada;N_Controle_Recomendado;" & _
+            "RunSize_Max_Recomendado;Frequencia_QC_Descricao;" & _
+            "Cobertura_Motor_Westgard;Referencia_Plano_QC;" & _
+            "Sigma_Plano;Nivel_Governante;Classificacao_Sigma_Plano;"
+
+    s = s & "Usar_" & NomeRegra(1) & ";Usar_" & NomeRegra(2) & _
+            ";Usar_" & NomeRegra(3) & ";Usar_" & NomeRegra(4) & _
+            ";Usar_" & NomeRegra(5)
+
+    Cab = Split(s, ";")
 End Function
 
 Private Function AgoraUTC() As Date
@@ -650,11 +691,30 @@ Private Function GarantirAba() As Worksheet
         Set ws = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
         ws.Name = BI_ABA
     End If
+    ' O CABECALHO TAMBEM E ESCRITA (ADR-046).
+    '
+    ' Esta rotina ficou de fora da guarda de protecao que AtualizarBIData ja
+    ' tinha: a guarda abre DEPOIS, para o corpo da tabela. Nunca falhou no
+    ' build porque ali as abas ainda nao estao protegidas -- so quebrava no
+    ' artefato pronto, aberto sem Workbook_Open, com 1004 apontando para a
+    ' linha do cabecalho. Foi o erro relatado em producao.
+    Dim protEstava As Boolean
+    On Error GoTo restauraCab
+    protEstava = LiberarEscrita(ws)
+
     cb = Cab()
     For i = 0 To UBound(cb)
         ws.Cells(BI_CAB, i + 1).Value = cb(i)
     Next i
     ws.Rows(BI_CAB).Font.Bold = True
+
+restauraCab:
+    Dim nErrC As Long, sErrC As String
+    nErrC = Err.Number: sErrC = Err.Description
+    RestaurarProtecao ws, protEstava
+    On Error GoTo 0
+    If nErrC <> 0 Then Err.Raise nErrC, "mBI.GarantirAba", sErrC
+
     Set GarantirAba = ws
 End Function
 
@@ -912,11 +972,22 @@ Public Sub PreencherPlanoDoPiorNivel(ByRef saida As Variant, ByVal n As Long)
             saida(k, 74) = mPlanoQC.PlanoQC(sp, "FREQUENCIA")
             saida(k, 75) = mPlanoQC.CoberturaWestgard(sp)
             saida(k, 76) = mPlanoQC.PlanoQC(sp, "REFERENCIA")
-            saida(k, 80) = mPlanoQC.RegraNoPlano(sp, "1_3s")
-            saida(k, 81) = mPlanoQC.RegraNoPlano(sp, "2_2s")
-            saida(k, 82) = mPlanoQC.RegraNoPlano(sp, "R_4s")
-            saida(k, 83) = mPlanoQC.RegraNoPlano(sp, "4_1s")
-            saida(k, 84) = mPlanoQC.RegraNoPlano(sp, "8x")
+            ' AS FLAGS VINHAM DO NOME ERRADO (ADR-047).
+            '
+            ' Eram cinco literais da Bioquimica -- "2_2s", "4_1s", "8x" --
+            ' consultados contra o plano do produto. RegraNoPlano compara token
+            ' exato, e o plano da Hematologia diz 2of3_2s, 3_1s e 6x: nenhum
+            ' casava. Resultado medido no BI_Data: tres das cinco flags
+            ' PERMANENTEMENTE falsas na Hematologia, enquanto o texto do plano
+            ' na coluna 71 dizia corretamente "1_3s / 2of3_2s / R_4s / ...".
+            '
+            ' Nao era ambiguidade de nome: era dado errado chegando ao Power BI,
+            ' onde a medida 'Recomendada 4_1s' le esta coluna e mostrava 3_1s
+            ' como nao recomendada em todo analito da Hematologia.
+            Dim iR As Long
+            For iR = 1 To 5
+                saida(k, 79 + iR) = mPlanoQC.RegraNoPlano(sp, NomeRegra(iR))
+            Next iR
         Else
             ' Sem Sigma valido em nenhum nivel: o plano fica VAZIO e o rotulo
             ' diz SEM DADOS. Nao ha faixa a aplicar, e escolher a mais rigorosa
