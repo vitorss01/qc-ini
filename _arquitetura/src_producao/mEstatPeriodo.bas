@@ -403,11 +403,25 @@ Public Function LimEspec(ByVal analito As String, ByVal ano As Variant, _
     a = CLng(Val(CStr(ano)))
     If a < 1900 Then LimEspec = "": Exit Function
 
+    ' VINCULO TARDIO, PELO MESMO MOTIVO DO ADR-041.
+    '
+    ' EspecCVtp/EspecBIAStp/EspecETp vivem no mEspecificacoes, que HOJE nao
+    ' existe em nenhum dos dois produtos -- so a Hematologia tem etapa de build
+    ' que o gera, e nem o artefato dela o carrega ainda. Chamada direta cria
+    ' dependencia de COMPILACAO: numa pasta sem o modulo, o projeto VBA INTEIRO
+    ' deixa de compilar, e On Error nao captura erro de compilacao. O sintoma e
+    ' um dialogo modal invisivel que trava qualquer automacao -- ja aconteceu
+    ' tres vezes neste projeto.
+    '
+    ' Com Application.Run a ausencia vira erro de EXECUCAO (1004), que o
+    ' On Error abaixo captura e converte em "sem limite". E a degradacao certa:
+    ' StatusCV/StatusETP ja tratam "SEM LIMITE" como NAO-aprovacao (ADR-023),
+    ' entao ninguem se ve aprovado por um criterio que nao foi avaliado.
     On Error GoTo semLimite
     Select Case UCase$(Trim$(tipo))
-        Case "CV":   v = EspecCVtp(analito, a, fonte)
-        Case "BIAS": v = EspecBIAStp(analito, a, fonte)
-        Case "ETP":  v = EspecETp(analito, a, fonte)
+        Case "CV":   v = Application.Run("EspecCVtp", analito, a, fonte)
+        Case "BIAS": v = Application.Run("EspecBIAStp", analito, a, fonte)
+        Case "ETP":  v = Application.Run("EspecETp", analito, a, fonte)
         Case Else:   LimEspec = "": Exit Function
     End Select
 

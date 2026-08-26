@@ -393,6 +393,34 @@ if (-not $PularMotor) {
 }
 
 Encerrar-Excel
+"== 7a. ADR-045: mEstatPeriodo entra pelo build, e nao a mao"
+# POR QUE ESTA ETAPA EXISTE.
+#
+# Ate aqui o mEstatPeriodo era o unico modulo de src_producao fora do build. O
+# build_all parte da producao e SO adiciona modulos, entao a copia que ja vivia
+# dentro do arquivo sobrevivia intacta e ninguem via falta -- nao havia #NOME?
+# para denunciar. O resultado foi silencioso: a correcao do teto do LotesStore
+# (ADR-045) ficou em src_producao por uma serie inteira de ADRs sem nunca
+# chegar ao arquivo, e a producao seguiu varrendo "To 200", devolvendo alvo
+# vazio do 5o lote em diante.
+#
+# E a mesma familia do mBanco (ADR-025) e do mCEQ (ADR-034): fonte a frente do
+# artefato, com as provas olhando para o arquivo errado.
+#
+# DEPOIS do motor de proposito: o portao do instalador le n, media, DP e CV da
+# Estatistica antes de importar e exige que o modulo novo os reproduza. Com a
+# aba ainda vazia nao havia o que conferir.
+#
+# So a Bioquimica: e o unico produto cujas celulas chamam EstatPeriodo (323
+# delas). Instalar na Hematologia poria um modulo que ninguem usa, e o portao
+# nao teria linha para conferir.
+if ($Produto -eq 'Bioquimica') {
+    Etapa 'instalar_estat_periodo.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 5
+} else {
+    "  $Produto nao usa EstatPeriodo em celula: etapa nao se aplica"
+}
+
+Encerrar-Excel
 "== 7b. importacao por aba (substitui o frmMassa)"
 # O CSV DE ANALITOS E POR PRODUTO, E PRECISA SER PASSADO EXPLICITAMENTE.
 #
