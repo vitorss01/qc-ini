@@ -22,11 +22,18 @@ Public Sub AtualizarCalc()
     Dim r13 As Variant, r2sMulti As Variant, rR4 As Variant, r1sMulti As Variant, rSeq As Variant, a12 As Variant
     Dim alvoM() As Double, alvoS() As Double, etp As Double
     Dim seen As Object, ordem As Object
+    Dim protEstava As Boolean
 
     Set ws = ThisWorkbook.Sheets("Eng_Saida")
     analito = Trim$(CStr(ThisWorkbook.Names("selAnalito").RefersToRange.Value))
     lote = LoteAtivoCore()
     GarantirDB
+
+    ' Eng_Saida e aba tecnica e protegida. Ver o cabecalho de LiberarEscrita:
+    ' UserInterfaceOnly nao sobrevive ao salvar, entao a rotina nao pode supor
+    ' que LockApp rodou.
+    On Error GoTo restaura
+    protEstava = LiberarEscrita(ws)
 
     ' limpa a area de saida (colunas B em diante; a coluna A guarda os slots fixos)
     ws.Range(ws.Cells(KC0, 2), ws.Cells(KC0 + NK - 1, COL_CHAVE)).ClearContents
@@ -34,7 +41,7 @@ Public Sub AtualizarCalc()
     ws.Range("E1").Value = lote
     ws.Range("G1").Value = Now
     ws.Range("I1").Value = 0
-    If analito = "" Or IsEmpty(mDB) Then Exit Sub
+    If analito = "" Or IsEmpty(mDB) Then GoTo restaura
 
     ' ---- descobrir corridas (RUN) elegiveis do analito no lote ----
     Set seen = CreateObject("Scripting.Dictionary")
@@ -55,7 +62,7 @@ Public Sub AtualizarCalc()
             End If
         End If
     Next i
-    If nRun = 0 Then Exit Sub
+    If nRun = 0 Then GoTo restaura
 
     ' ordenar por RUN (insercao: nRun e pequeno)
     Dim a As Long, b As Long, tmpR As Long, tmpD As Double
@@ -164,4 +171,13 @@ Public Sub AtualizarCalc()
     Next t
 
     ws.Range("I1").Value = nRun
+restaura:
+    ' Restauro garantido: a saida antecipada e o erro passam por aqui. Sem
+    ' isto, "nRun = 0" (analito sem corrida elegivel -- caso rotineiro, nao
+    ' excecao) deixaria a aba tecnica destrancada para o usuario.
+    Dim nErrP As Long, sErrP As String
+    nErrP = Err.Number: sErrP = Err.Description
+    RestaurarProtecao ws, protEstava
+    On Error GoTo 0
+    If nErrP <> 0 Then Err.Raise nErrP, "mEstatistica.AtualizarCalc", sErrP
 End Sub

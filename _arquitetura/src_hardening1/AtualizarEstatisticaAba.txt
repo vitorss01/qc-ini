@@ -20,6 +20,7 @@ Public Sub AtualizarEstatisticaAba()
     ' mesmo token que a palavra reservada "As" e o modulo nao compila.
     Dim alvoM As Double, alvoS As Double, etp As Double, bias As Double, et As Double, sg As Double
     Dim outp() As Variant, linhas As Long
+    Dim protEstava As Boolean
 
     Set ws = ThisWorkbook.Sheets("Estatística")
     Set wa = ThisWorkbook.Sheets("Analitos")
@@ -66,7 +67,22 @@ Public Sub AtualizarEstatisticaAba()
     Next i
 
     ' publica em Eng_Saida; a aba Estatistica le por formula
+    On Error GoTo restaura
+    protEstava = LiberarEscrita(eng)
     eng.Range(eng.Cells(LINHA_EST, 3), eng.Cells(LINHA_EST + linhas - 1, 13)).Value = outp
+    RestaurarProtecao eng, protEstava
+    On Error GoTo 0
 
+    ' Fora do bloco protegido de proposito: RegistrarEventosWestgard cuida da
+    ' PROPRIA aba (Eventos_Westgard). Chama-la com Eng_Saida ainda destrancada
+    ' ampliaria a janela de exposicao sem necessidade nenhuma.
     RegistrarEventosWestgard
+    Exit Sub
+
+restaura:
+    Dim nErrP As Long, sErrP As String
+    nErrP = Err.Number: sErrP = Err.Description
+    RestaurarProtecao eng, protEstava
+    On Error GoTo 0
+    If nErrP <> 0 Then Err.Raise nErrP, "mEstatistica.AtualizarEstatisticaAba", sErrP
 End Sub

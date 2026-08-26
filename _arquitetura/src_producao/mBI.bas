@@ -869,7 +869,10 @@ End Function
 ' Chave = (ID_Analito, ID_Lote). Colapsa os niveis, que e o que "o pior nivel
 ' governa" quer dizer, e preserva o lote: dois lotes do mesmo analito sao
 ' materiais diferentes e nao devem herdar o plano um do outro.
-Private Sub PreencherPlanoDoPiorNivel(ByRef saida As Variant, ByVal n As Long)
+' Publica para o QA poder exercitar a regra com series construidas. A
+' alternativa seria o teste reimplementar o MIN entre niveis em Python --
+' e ai ele provaria a reimplementacao, nao o motor.
+Public Sub PreencherPlanoDoPiorNivel(ByRef saida As Variant, ByVal n As Long)
     If n <= 0 Then Exit Sub
 
     Dim pior As Object, nivelPior As Object

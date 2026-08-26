@@ -1,5 +1,19 @@
 # buffer_dinamico.ps1 - fim do teto de 5.000 eventos de Westgard
 #
+# OBSOLETO DESDE O ADR-045, e mantido apenas como registro.
+#
+# O que este patch fazia passou para dentro do proprio motor: a limpeza
+# proporcional e o buffer sem teto sao nativos em RegistrarEventosWestgard. A
+# guarda de idempotencia no topo (marcador ultimaLinhaEv) detecta isso e o
+# script sai sem tocar em nada.
+#
+# A premissa abaixo -- "eventos nunca excedem as linhas elegiveis do banco" --
+# tambem MORREU com o ADR-045: com granularidade de EVENTO, dez detectores
+# podem emitir evidencia sobre a mesma corrida, entao a relacao deixou de ser
+# de um para um. Por isso o motor passou a crescer o buffer (ReDim Preserve na
+# ultima dimensao, com a matriz orientada em coluna x evento) em vez de
+# calcular um teto.
+#
 # ACHADO DO TESTE DE ESTRESSE (04/08/2026). Com 10.000 linhas no banco, o
 # buffer de eventos estourou: 5.000 registrados, 9.317 descartados. A guarda
 # instalada de manha fez o que devia -- auditou e interrompeu em vez de

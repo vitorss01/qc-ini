@@ -10,6 +10,8 @@ Option Explicit
 '  Cfg_Status; acrescentar um novo estado NAO exige alterar nenhuma rotina.
 ' ============================================================================
 Public Const NLV As Long = 3          ' niveis deste setor
+
+Public Const EV_NCOL As Long = 14     ' colunas de Eventos_Westgard (ADR-045)
 Private Const KC0 As Long = 3          ' Calc: 1a linha
 Private Const NK  As Long = 180        ' Calc: nº de corridas exibiveis
 Private Const CF0 As Long = 6          ' Calc: 1a coluna de nivel (F)
@@ -419,15 +421,36 @@ Public Function EscalaDoDetector(ByVal regra As String, ByVal detector As String
 End Function
 
 
+' Uma evidencia = UM evento de Westgard. O par (niveis, runIni) nao e enfeite:
+' e o que torna o trace utilizavel como FATO. Sem eles, quem consome so teria o
+' texto livre de "detalhe" e precisaria adivinhar, por arqueologia de string,
+' quais resultados o evento marcou -- exatamente o tipo de segunda leitura da
+' regra que o ADR-042 existe para eliminar.
+'
+'   niveis  1-based, separados por virgula ("1" / "1,3" / "1,2,3")
+'   runIni  primeira corrida da janela; = run nos detectores intra-corrida
 Private Sub Evid(ByVal regra As String, ByVal detector As String, ByVal escopo As String, _
-                 ByVal run As Long, ByVal detalhe As String)
+                 ByVal run As Long, ByVal niveis As String, ByVal runIni As Long, _
+                 ByVal detalhe As String)
     If gTrace Is Nothing Then Set gTrace = New Collection
     Dim oficial As String
     If DetectorAtivo(regra, detector) Then oficial = "OFICIAL" Else oficial = "COMPLEMENTAR"
     gTrace.Add regra & "|" & detector & "|" & escopo & "|" & oficial & _
-               "|run=" & CStr(run) & "|" & EscalaDoDetector(regra, detector) & _
+               "|run=" & CStr(run) & "|runIni=" & CStr(runIni) & _
+               "|niveis=" & niveis & "|" & EscalaDoDetector(regra, detector) & _
                "|" & detalhe
 End Sub
+
+
+' Lista "1,2,3" com todos os niveis do produto.
+Private Function TodosOsNiveis() As String
+    Dim t As Long, s As String
+    For t = 1 To NLV
+        If Len(s) > 0 Then s = s & ","
+        s = s & CStr(t)
+    Next t
+    TodosOsNiveis = s
+End Function
 
 
 Private Sub NaoAvaliavel(ByVal regra As String, ByVal detector As String)
@@ -518,7 +541,7 @@ Private Sub Det_1_3s(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As L
                 If Abs(z(t, i)) > 2 Then a12(t, i) = 1
                 If Abs(z(t, i)) > 3 Then
                     r13(t, i) = 1
-                    Evid "1_3s", "INDIVIDUAL", "WITHIN_RUN", i, _
+                    Evid "1_3s", "INDIVIDUAL", "WITHIN_RUN", i, CStr(t + 1), i, _
                          "N" & CStr(t + 1) & " z=" & Format$(z(t, i), "0.00")
                 End If
             End If
@@ -549,6 +572,7 @@ Private Sub Det_R_4s(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As L
                         rR4(t, i) = 1
                         rR4(j, i) = 1
                         Evid "R_4s", "WITHIN_RUN", "WITHIN_RUN_ACROSS_MATERIALS", i, _
+                             CStr(t + 1) & "," & CStr(j + 1), i, _
                              "N" & CStr(t + 1) & "xN" & CStr(j + 1) & _
                              " z=" & Format$(z(t, i), "0.00") & _
                              "/" & Format$(z(j, i), "0.00")
@@ -570,7 +594,7 @@ Private Sub Det_2_2s_WithinRun(ByRef z() As Double, ByRef td() As Boolean, ByVal
             NaoAvaliavel "2_2s", "WITHIN_RUN"
         ElseIf (z(0, i) > 2 And z(1, i) > 2) Or (z(0, i) < -2 And z(1, i) < -2) Then
             r2sMulti(0, i) = 1: r2sMulti(1, i) = 1
-            Evid "2_2s", "WITHIN_RUN", "WITHIN_RUN_ACROSS_MATERIALS", i, _
+            Evid "2_2s", "WITHIN_RUN", "WITHIN_RUN_ACROSS_MATERIALS", i, "1,2", i, _
                  "N1=" & Format$(z(0, i), "0.00") & " N2=" & Format$(z(1, i), "0.00")
         End If
     Next i
@@ -589,6 +613,7 @@ Private Sub Det_2_2s_AcrossRun(ByRef z() As Double, ByRef td() As Boolean, ByVal
                    (z(t, i) < -2 And z(t, i - 1) < -2) Then
                 r2sMulti(t, i) = 1
                 Evid "2_2s", "ACROSS_RUN_SAME_LEVEL", "WITHIN_MATERIAL_ACROSS_RUN", i, _
+                     CStr(t + 1), i - 1, _
                      "N" & CStr(t + 1) & " " & Format$(z(t, i - 1), "0.00") & _
                      "->" & Format$(z(t, i), "0.00")
             End If
@@ -614,18 +639,20 @@ Private Sub Det_2of3_2s_WithinRun(ByRef z() As Double, ByRef td() As Boolean, By
         If comDado < 2 Then
             NaoAvaliavel "2of3_2s", "WITHIN_RUN"
         ElseIf acima >= 2 Or abaixo >= 2 Then
-            Dim lado As Long, det As String
+            Dim lado As Long, det As String, nivs As String
             If acima >= 2 Then lado = 1 Else lado = -1
-            det = ""
+            det = "": nivs = ""
             For t = 0 To NLV - 1
                 If td(t, i) Then
                     If (lado = 1 And z(t, i) > 2) Or (lado = -1 And z(t, i) < -2) Then
                         r2sMulti(t, i) = 1
+                        If Len(nivs) > 0 Then nivs = nivs & ","
+                        nivs = nivs & CStr(t + 1)
                         det = det & "N" & CStr(t + 1) & "=" & Format$(z(t, i), "0.00") & " "
                     End If
                 End If
             Next t
-            Evid "2of3_2s", "WITHIN_RUN", "WITHIN_RUN_ACROSS_MATERIALS", i, Trim$(det)
+            Evid "2of3_2s", "WITHIN_RUN", "WITHIN_RUN_ACROSS_MATERIALS", i, nivs, i, Trim$(det)
         End If
     Next i
 End Sub
@@ -652,7 +679,7 @@ Private Sub Det_3_1s_N3R1(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun
                 r1sMulti(t, i) = 1
                 det = det & "N" & CStr(t + 1) & "=" & Format$(z(t, i), "0.00") & " "
             Next t
-            Evid "3_1s", "N3_R1", "WITHIN_RUN_ACROSS_MATERIALS", i, Trim$(det)
+            Evid "3_1s", "N3_R1", "WITHIN_RUN_ACROSS_MATERIALS", i, TodosOsNiveis(), i, Trim$(det)
         End If
 prox:
     Next i
@@ -679,7 +706,7 @@ Private Sub Det_4_1s_N2R2(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun
             For t = 0 To NLV - 1
                 r1sMulti(t, i) = 1
             Next t
-            Evid "4_1s", "N2_R2", "ACROSS_RUN_ACROSS_MATERIALS", i, _
+            Evid "4_1s", "N2_R2", "ACROSS_RUN_ACROSS_MATERIALS", i, TodosOsNiveis(), i - 1, _
                  "runs " & CStr(i - 1) & ".." & CStr(i) & " " & CStr(NLV * 2) & " obs"
         End If
 prox:
@@ -734,6 +761,7 @@ Private Sub Det_JanelaNR(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun 
             Dim sinal As String
             If acima = total Then sinal = String$(total, "+") Else sinal = String$(total, "-")
             Evid regra, detector, "ACROSS_RUN_ACROSS_MATERIALS", i, _
+                 TodosOsNiveis(), i - nRunsJanela + 1, _
                  "runs " & CStr(i - nRunsJanela + 1) & ".." & CStr(i) & " " & sinal
         End If
 prox:
@@ -768,6 +796,7 @@ Private Sub Det_MesmoNivel_Lado(ByRef z() As Double, ByRef td() As Boolean, ByVa
             If acima = n Or abaixo = n Then
                 If ativo Then saida(t, i) = 1
                 Evid regra, detector, "WITHIN_MATERIAL_ACROSS_RUN", i, _
+                     CStr(t + 1), i - n + 1, _
                      "N" & CStr(t + 1) & " runs " & CStr(i - n + 1) & ".." & CStr(i)
             End If
 prox:
@@ -802,6 +831,7 @@ Private Sub Det_MesmoNivel_Sequencia(ByRef z() As Double, ByRef td() As Boolean,
             If acima = n Or abaixo = n Then
                 If ativo Then saida(t, i) = 1
                 Evid regra, detector, "WITHIN_MATERIAL_ACROSS_RUN", i, _
+                     CStr(t + 1), i - n + 1, _
                      "N" & CStr(t + 1) & " runs " & CStr(i - n + 1) & ".." & CStr(i)
             End If
 prox:
@@ -892,6 +922,17 @@ Public Function LimiarUmSigmaWestgard() As Long
 End Function
 
 
+' O par LiberarEscrita/RestaurarProtecao mudou para mSeguranca (ADR-046).
+'
+' Ele nasceu aqui, mas a auditoria estatica achou oito pontos com o mesmo
+' defeito em mAuditoria, mConfig, mLogDB, mRegistros e mImportar -- nenhum
+' deles com relacao alguma com estatistica. Pior: a Imunologia ainda nao tem
+' motor, entao um primitivo compartilhado morando aqui a deixaria sem ele.
+'
+' mSeguranca existe em todos os produtos e e a dona da protecao. Instalado no
+' artefato por instalar_guarda_protecao.ps1 (mSeguranca e fonte de producao,
+' ADR-021).
+
 ' ============================ MOTOR: ESCREVER Eng_Saida ============================
 ' Marco 2 do Sprint HARDENING 1 (ADR-019).
 '
@@ -916,11 +957,18 @@ Public Sub AtualizarCalc()
     Dim r13 As Variant, r2sMulti As Variant, rR4 As Variant, r1sMulti As Variant, rSeq As Variant, a12 As Variant
     Dim alvoM() As Double, alvoS() As Double, etp As Double
     Dim seen As Object, ordem As Object
+    Dim protEstava As Boolean
 
     Set ws = ThisWorkbook.Sheets("Eng_Saida")
     analito = Trim$(CStr(ThisWorkbook.Names("selAnalito").RefersToRange.Value))
     lote = LoteAtivoCore()
     GarantirDB
+
+    ' Eng_Saida e aba tecnica e protegida. Ver o cabecalho de LiberarEscrita:
+    ' UserInterfaceOnly nao sobrevive ao salvar, entao a rotina nao pode supor
+    ' que LockApp rodou.
+    On Error GoTo restaura
+    protEstava = LiberarEscrita(ws)
 
     ' limpa a area de saida (colunas B em diante; a coluna A guarda os slots fixos)
     ws.Range(ws.Cells(KC0, 2), ws.Cells(KC0 + NK - 1, COL_CHAVE)).ClearContents
@@ -928,7 +976,7 @@ Public Sub AtualizarCalc()
     ws.Range("E1").Value = lote
     ws.Range("G1").Value = Now
     ws.Range("I1").Value = 0
-    If analito = "" Or IsEmpty(mDB) Then Exit Sub
+    If analito = "" Or IsEmpty(mDB) Then GoTo restaura
 
     ' ---- descobrir corridas (RUN) elegiveis do analito no lote ----
     Set seen = CreateObject("Scripting.Dictionary")
@@ -949,7 +997,7 @@ Public Sub AtualizarCalc()
             End If
         End If
     Next i
-    If nRun = 0 Then Exit Sub
+    If nRun = 0 Then GoTo restaura
 
     ' ordenar por RUN (insercao: nRun e pequeno)
     Dim a As Long, b As Long, tmpR As Long, tmpD As Double
@@ -1058,6 +1106,15 @@ Public Sub AtualizarCalc()
     Next t
 
     ws.Range("I1").Value = nRun
+restaura:
+    ' Restauro garantido: a saida antecipada e o erro passam por aqui. Sem
+    ' isto, "nRun = 0" (analito sem corrida elegivel -- caso rotineiro, nao
+    ' excecao) deixaria a aba tecnica destrancada para o usuario.
+    Dim nErrP As Long, sErrP As String
+    nErrP = Err.Number: sErrP = Err.Description
+    RestaurarProtecao ws, protEstava
+    On Error GoTo 0
+    If nErrP <> 0 Then Err.Raise nErrP, "mEstatistica.AtualizarCalc", sErrP
 End Sub
 
 ' Filtro de data/trimestre do Painel.
@@ -1323,7 +1380,10 @@ Public Sub AtualizarPainelEng()
         Else
             outStat(t + 1, 19) = aa(3) & " " & Chr$(183) & " RUN " & aa(4)
             outStat(t + 1, 20) = RegraClassificacao(Split(CStr(aa(3)), "+")(0))
-            outStat(t + 1, 21) = aa(0) & "x  |  maior Z " & Format(aa(5), "+0.00;-0.00")
+            ' ADR-045: "3x" era ambiguo -- 3 eventos ou 3 resultados fora?
+            ' Um 6x N3/R2 e 1 evento e 6 resultados marcados. Mostrar os dois.
+            outStat(t + 1, 21) = aa(0) & " ev / " & aa(6) & " res  |  maior Z " & _
+                                 Format(aa(5), "+0.00;-0.00")
         End If
     Next t
 
@@ -1331,7 +1391,17 @@ Public Sub AtualizarPainelEng()
     For t = 1 To NLV
         outStat(t, 1) = t
     Next t
+    Dim protEstava As Boolean
+    On Error GoTo restaura
+    protEstava = LiberarEscrita(eng)
     eng.Range(eng.Cells(LINHA_STAT, 1), eng.Cells(LINHA_STAT + NLV - 1, 21)).Value = outStat
+
+restaura:
+    Dim nErrP As Long, sErrP As String
+    nErrP = Err.Number: sErrP = Err.Description
+    RestaurarProtecao eng, protEstava
+    On Error GoTo 0
+    If nErrP <> 0 Then Err.Raise nErrP, "mEstatistica.AtualizarPainelEng", sErrP
 End Sub
 
 ' ============================ ABA ESTATISTICA ============================
@@ -1357,6 +1427,7 @@ Public Sub AtualizarEstatisticaAba()
     ' mesmo token que a palavra reservada "As" e o modulo nao compila.
     Dim alvoM As Double, alvoS As Double, etp As Double, bias As Double, et As Double, sg As Double
     Dim outp() As Variant, linhas As Long
+    Dim protEstava As Boolean
 
     Set ws = ThisWorkbook.Sheets("Estatística")
     Set wa = ThisWorkbook.Sheets("Analitos")
@@ -1403,188 +1474,441 @@ Public Sub AtualizarEstatisticaAba()
     Next i
 
     ' publica em Eng_Saida; a aba Estatistica le por formula
+    On Error GoTo restaura
+    protEstava = LiberarEscrita(eng)
     eng.Range(eng.Cells(LINHA_EST, 3), eng.Cells(LINHA_EST + linhas - 1, 13)).Value = outp
+    RestaurarProtecao eng, protEstava
+    On Error GoTo 0
 
+    ' Fora do bloco protegido de proposito: RegistrarEventosWestgard cuida da
+    ' PROPRIA aba (Eventos_Westgard). Chama-la com Eng_Saida ainda destrancada
+    ' ampliaria a janela de exposicao sem necessidade nenhuma.
     RegistrarEventosWestgard
+    Exit Sub
+
+restaura:
+    Dim nErrP As Long, sErrP As String
+    nErrP = Err.Number: sErrP = Err.Description
+    RestaurarProtecao eng, protEstava
+    On Error GoTo 0
+    If nErrP <> 0 Then Err.Raise nErrP, "mEstatistica.AtualizarEstatisticaAba", sErrP
 End Sub
 
 
 
 ' ============================================================================
-'  EVENTOS_WESTGARD — historico auditavel de violacoes
-'  UMA passagem no banco produz todos os eventos de todos os analitos/niveis.
-'  A aba Estatística permanece dedicada a PARAMETROS; eventos vivem aqui.
-'  Colunas: Data | RUN | Analito | Nível | Regra | Classificação | Resultado | Z-Score
+'  EVENTOS_WESTGARD -- historico auditavel, granularidade de EVENTO
+
+'
+
+'  Uma linha = uma EVIDENCIA do motor: uma regra disparou, num detector, num
+
+'  escopo, fechando numa corrida. Nao e uma linha por resultado marcado --
+
+'  um 6x N3/R2 e UM evento e marca SEIS resultados, e confundir as duas
+
+'  coisas era o defeito que o ADR-045 encerra.
+
+'
+
+'  A serie vem do trace de AvaliarWestgard. Nao existe aqui uma segunda
+
+'  implementacao das regras: a anterior (AvaliarWestgard1N) era cega para
+
+'  R_4s, 2of3_2s, 3_1s e 6x, e ainda materializava o 10x aposentado.
+
+'
+
+'  Colunas A..N: Data | RUN | Analito | Niveis | Regra | Detector | Escopo |
+
+'                Classe | N | R | RUN_Inicial | Evidencia | Classificacao |
+
+'                Z_Max
+
 ' ============================================================================
+
 Public Sub RegistrarEventosWestgard()
     Dim ws As Worksheet, i As Long, t As Long, j As Long, k As Long
-    Dim lote As String, chave As String, nEv As Long
-    Dim grupos As Object, listaCh As Object
-    Dim ev() As Variant
-    Dim agg As Object
+    Dim lote As String, chave As String, nEv As Long, nDescartados As Long
+    Dim porAnalito As Object, nomeDe As Object
+    Dim ev() As Variant, agg As Object
+    Dim prot As Boolean
 
     GarantirDB
     Set ws = ThisWorkbook.Sheets("Eventos_Westgard")
+
+    ' Protecao tratada pelo par LiberarEscrita/RestaurarProtecao (ADR-046).
+    On Error GoTo restaura
+    prot = LiberarEscrita(ws)
+
     ' Limpa ate a ultima linha REALMENTE usada, com piso na area antiga.
-    ' Fixar em 5003 deixava orfas embaixo quando o historico crescia; usar
-    ' ws.Rows.Count limparia 1 milhao de linhas em toda operacao do dia.
+    ' Fixar num numero deixava linhas orfas embaixo quando o historico crescia;
+    ' usar ws.Rows.Count limparia um milhao de linhas em toda operacao do dia.
     ' Linhas 1 a 3 (titulo e cabecalho) nunca sao tocadas.
     Dim ultimaLinhaEv As Long
-    ultimaLinhaEv = ws.Cells(ws.rows.Count, 1).End(xlUp).Row
+    ultimaLinhaEv = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
     If ultimaLinhaEv < 5003 Then ultimaLinhaEv = 5003
-    ws.Range(ws.Cells(4, 1), ws.Cells(ultimaLinhaEv, 8)).ClearContents
+    ws.Range(ws.Cells(4, 1), ws.Cells(ultimaLinhaEv, EV_NCOL)).ClearContents
     If mAgg Is Nothing Then Set mAgg = CreateObject("Scripting.Dictionary")
-    If IsEmpty(mDB) Then Exit Sub
+    If IsEmpty(mDB) Then GoTo restaura
     lote = LoteAtivoCore()
 
-    ' ---- agrupar a serie elegivel por (analito|nivel) numa unica varredura ----
-    Set grupos = CreateObject("Scripting.Dictionary")
-    Set listaCh = CreateObject("Scripting.Dictionary")
+    ' ---- serie elegivel agrupada por ANALITO (todos os niveis juntos) -------
+    Set porAnalito = CreateObject("Scripting.Dictionary")
+    Set nomeDe = CreateObject("Scripting.Dictionary")
     For i = 1 To UBound(mDB, 1)
         If Len(Trim$(CStr(mDB(i, COL_ANALITO)))) > 0 Then
             If NucleoLote(CStr(mDB(i, COL_LOTE))) = lote Then
                 If EhElegivel(mDB(i, COL_STATUS)) And IsNumeric(mDB(i, COL_RESULT)) Then
-                    chave = UCase$(Trim$(CStr(mDB(i, COL_ANALITO)))) & "|" & CLng(Val(mDB(i, COL_NIVEL)))
-                    If Not grupos.Exists(chave) Then
-                        grupos.Add chave, New Collection
-                        listaCh.Add chave, Trim$(CStr(mDB(i, COL_ANALITO))) & "|" & CLng(Val(mDB(i, COL_NIVEL)))
+                    Dim nv As Long
+                    nv = CLng(Val(mDB(i, COL_NIVEL)))
+                    If nv >= 1 And nv <= NLV Then
+                        chave = UCase$(Trim$(CStr(mDB(i, COL_ANALITO))))
+                        If Not porAnalito.Exists(chave) Then
+                            porAnalito.Add chave, New Collection
+                            nomeDe.Add chave, Trim$(CStr(mDB(i, COL_ANALITO)))
+                        End If
+                        ' nivel | RUN | valor | data
+                        porAnalito(chave).Add Array(nv, CLng(Val(mDB(i, COL_RUN))), _
+                                                    CDbl(mDB(i, COL_RESULT)), _
+                                                    IIf(IsDate(mDB(i, COL_DATA)), CDbl(CDate(mDB(i, COL_DATA))), 0))
                     End If
-                    ' RUN | valor | data
-                    grupos(chave).Add Array(CLng(Val(mDB(i, COL_RUN))), CDbl(mDB(i, COL_RESULT)), _
-                                            IIf(IsDate(mDB(i, COL_DATA)), CDbl(CDate(mDB(i, COL_DATA))), 0))
                 End If
             End If
         End If
     Next i
-    If grupos.Count = 0 Then Set mAgg = CreateObject("Scripting.Dictionary"): Exit Sub
+    If porAnalito.Count = 0 Then Set mAgg = CreateObject("Scripting.Dictionary"): GoTo restaura
 
     Set agg = CreateObject("Scripting.Dictionary")
-    Set mAgg = agg          ' definido JA — AgregadoWestgard nunca re-dispara esta rotina
-    ' Dimensionado pelo BANCO, nao por numero fixo: eventos nunca excedem
-    ' as linhas elegiveis, porque cada linha de evento e uma combinacao
-    ' (analito, nivel, corrida) com as regras concatenadas. IsEmpty(mDB) ja
-    ' foi testado acima, entao o UBound e seguro.
-    ReDim ev(1 To UBound(mDB, 1), 1 To 8)
-    Dim nDescartados As Long
-    nDescartados = 0
-    nEv = 0
+    Set mAgg = agg          ' definido JA: AgregadoWestgard nunca re-dispara esta rotina
+    ' BUFFER SEM TETO, e a orientacao (coluna, evento) e o motivo de ser
+    ' possivel: VBA so aceita ReDim Preserve na ULTIMA dimensao. Com a matriz
+    ' na forma natural (evento, coluna) ela nao poderia crescer, e voltariamos
+    ' a um limite arbitrario -- que ja custou 9.317 eventos descartados no
+    ' teste de estresse de 04/08/2026.
+    '
+    ' O limite antigo (UBound(mDB,1)) tambem nao serve mais: com granularidade
+    ' de EVENTO, dez detectores podem emitir evidencia sobre a mesma corrida,
+    ' entao "um evento por linha do banco" deixou de ser verdade.
+    Dim capEv As Long
+    capEv = 1024
+    ReDim ev(1 To EV_NCOL, 1 To capEv)
+    nEv = 0: nDescartados = 0
 
     Dim ch As Variant
-    For Each ch In grupos.Keys
-        Dim col As Collection, nS As Long
-        Set col = grupos(ch)
-        nS = col.Count
-        If nS > 0 Then
-            Dim rs() As Long, ys() As Double, ds() As Double, seenR As Object
-            ReDim rs(1 To nS): ReDim ys(1 To nS): ReDim ds(1 To nS)
-            Set seenR = CreateObject("Scripting.Dictionary")
-            Dim m As Long, item As Variant
-            m = 0
-            For j = 1 To nS
-                item = col(j)                      ' resolve o membro padrao ANTES de indexar
-                If Not seenR.Exists(CStr(item(0))) Then
-                    seenR.Add CStr(item(0)), 1
-                    m = m + 1
-                    rs(m) = item(0): ys(m) = item(1): ds(m) = item(2)
+    For Each ch In porAnalito.Keys
+        Dim col As Collection
+        Set col = porAnalito(ch)
+
+        ' --- eixo de corridas COMUM aos niveis -----------------------------
+        ' O eixo tem de ser um so. Se cada nivel tivesse o proprio indice, a
+        ' corrida i do N1 poderia ser outra corrida no N3, e R_4s compararia
+        ' materiais de dias diferentes -- violacao silenciosa do escopo
+        ' WITHIN_RUN do ADR-042.
+        Dim runs() As Long, nRun As Long, vistos As Object, item As Variant
+        Set vistos = CreateObject("Scripting.Dictionary")
+        ReDim runs(1 To col.Count)
+        nRun = 0
+        For j = 1 To col.Count
+            item = col(j)
+            If Not vistos.Exists(CStr(item(1))) Then
+                vistos.Add CStr(item(1)), 1
+                nRun = nRun + 1
+                runs(nRun) = CLng(item(1))
+            End If
+        Next j
+        If nRun > 0 Then
+            Dim tr As Long
+            For j = 2 To nRun
+                tr = runs(j): k = j - 1
+                Do While k >= 1
+                    If runs(k) <= tr Then Exit Do
+                    runs(k + 1) = runs(k): k = k - 1
+                Loop
+                runs(k + 1) = tr
+            Next j
+            Dim posDe As Object
+            Set posDe = CreateObject("Scripting.Dictionary")
+            For j = 1 To nRun
+                posDe(CStr(runs(j))) = j
+            Next j
+
+            ' --- matriz (nivel, corrida) ------------------------------------
+            Dim zz() As Double, td() As Boolean, vl() As Double, dtv() As Double
+            ReDim zz(0 To NLV - 1, 1 To nRun)
+            ReDim td(0 To NLV - 1, 1 To nRun)
+            ReDim vl(0 To NLV - 1, 1 To nRun)
+            ReDim dtv(0 To NLV - 1, 1 To nRun)
+
+            Dim analitoN As String
+            analitoN = CStr(nomeDe(ch))
+
+            Dim alvoM() As Double, alvoS() As Double
+            ReDim alvoM(0 To NLV - 1): ReDim alvoS(0 To NLV - 1)
+            Dim mm As Double, ss As Double, ee As Double
+            For t = 0 To NLV - 1
+                AlvoAnalito analitoN, t + 1, mm, ss, ee
+                alvoM(t) = mm: alvoS(t) = ss
+            Next t
+
+            For j = 1 To col.Count
+                item = col(j)
+                t = CLng(item(0)) - 1
+                i = CLng(posDe(CStr(item(1))))
+                If Not td(t, i) Then           ' repetido no mesmo (nivel,RUN): fica o primeiro
+                    td(t, i) = True
+                    vl(t, i) = CDbl(item(2))
+                    dtv(t, i) = CDbl(item(3))
+                    If alvoS(t) > 0 Then zz(t, i) = CalcularZ(vl(t, i), alvoM(t), alvoS(t))
                 End If
             Next j
-            nS = m
-            If nS > 0 Then
-                ' ordenar por RUN
-                Dim tr As Long, ty As Double, tdd As Double
-                For j = 2 To nS
-                    tr = rs(j): ty = ys(j): tdd = ds(j): k = j - 1
-                    Do While k >= 1
-                        If rs(k) <= tr Then Exit Do
-                        rs(k + 1) = rs(k): ys(k + 1) = ys(k): ds(k + 1) = ds(k): k = k - 1
-                    Loop
-                    rs(k + 1) = tr: ys(k + 1) = ty: ds(k + 1) = tdd
-                Next j
 
-                Dim partes As Variant, analitoN As String, nivelN As Long
-                partes = Split(CStr(listaCh(ch)), "|")
-                analitoN = partes(0): nivelN = CLng(partes(1))
+            ' --- O MOTOR. Nao ha segunda implementacao das regras aqui. -----
+            Dim q13 As Variant, q2sMulti As Variant, qR4 As Variant
+            Dim q1sMulti As Variant, qSeq As Variant, q12 As Variant
+            ReDim q13(0 To NLV - 1, 1 To nRun): ReDim q2sMulti(0 To NLV - 1, 1 To nRun)
+            ReDim qR4(0 To NLV - 1, 1 To nRun): ReDim q1sMulti(0 To NLV - 1, 1 To nRun)
+            ReDim qSeq(0 To NLV - 1, 1 To nRun): ReDim q12(0 To NLV - 1, 1 To nRun)
+            AvaliarWestgard zz, td, nRun, q13, q2sMulti, qR4, q1sMulti, qSeq, q12
 
-                Dim alvoM As Double, alvoS As Double, etp As Double
-                AlvoAnalito analitoN, nivelN, alvoM, alvoS, etp
-
-                Dim zz() As Double, td() As Boolean
-                Dim q13 As Variant, q2sMulti As Variant, qR4 As Variant, q1sMulti As Variant, qSeq As Variant, q12 As Variant
-                ReDim zz(0 To 0, 1 To nS): ReDim td(0 To 0, 1 To nS)
-                For j = 1 To nS
-                    If alvoS > 0 Then zz(0, j) = CalcularZ(ys(j), alvoM, alvoS)
-                    td(0, j) = True
-                Next j
-                ReDim q13(0 To 0, 1 To nS): ReDim q2sMulti(0 To 0, 1 To nS)
-                ReDim qR4(0 To 0, 1 To nS): ReDim q1sMulti(0 To 0, 1 To nS)
-                ReDim qSeq(0 To 0, 1 To nS): ReDim q12(0 To 0, 1 To nS)
-                AvaliarWestgard1N zz, td, nS, q13, q2sMulti, qR4, q1sMulti, qSeq, q12
-
-                Dim nv As Long, priR As String, priRun As Long, ultR As String, ultRun As Long, maxZ As Double
-                nv = 0: maxZ = 0
-                For j = 1 To nS
-                    Dim regs As String
-                    regs = ""
-                    If Val(q13(0, j)) = 1 Then regs = "13s"
-                    If Val(q2sMulti(0, j)) = 1 Then regs = IIf(regs = "", "22s", regs & "+22s")
-                    If Val(q1sMulti(0, j)) = 1 Then regs = IIf(regs = "", "41s", regs & "+41s")
-                    If Val(qSeq(0, j)) = 1 Then regs = IIf(regs = "", "10x", regs & "+10x")
-                                        ' Teto de eventos: descartar em silencio esconderia violacao
-                    ' de Westgard do analista e do auditor. Conta e denuncia.
-                    If regs <> "" And nEv >= UBound(ev, 1) Then
-                        nDescartados = nDescartados + 1
+            ' --- EVENTOS: uma linha por evidencia do trace -------------------
+            Dim linhas As Variant, ln As String, f As Variant
+            Dim nEvIni As Long
+            nEvIni = nEv
+            linhas = Split(TraceWestgard(), vbLf)
+            For k = LBound(linhas) To UBound(linhas)
+                ln = CStr(linhas(k))
+                If Len(Trim$(ln)) > 0 Then
+                    f = Split(ln, "|")
+                    If UBound(f) >= 8 Then
+                        Dim iRun As Long, iRunIni As Long, nivs As String
+                        iRun = CLng(Val(Mid$(CStr(f(4)), 5)))
+                        iRunIni = CLng(Val(Mid$(CStr(f(5)), 8)))
+                        nivs = Mid$(CStr(f(6)), 8)
+                        If nEv >= capEv Then
+                            capEv = capEv * 2
+                            ReDim Preserve ev(1 To EV_NCOL, 1 To capEv)
+                        End If
+                        If nEv >= capEv Then
+                            nDescartados = nDescartados + 1
+                        Else
+                            nEv = nEv + 1
+                            ev(1, nEv) = DataDoEvento(dtv, nivs, iRun)
+                            ev(2, nEv) = runs(iRun)
+                            ev(3, nEv) = analitoN
+                            ev(4, nEv) = nivs
+                            ev(5, nEv) = CStr(f(0))
+                            ev(6, nEv) = CStr(f(1))
+                            ev(7, nEv) = CStr(f(2))
+                            ev(8, nEv) = CStr(f(3))
+                            ev(9, nEv) = CampoEscala(CStr(f(7)), "N=")
+                            ev(10, nEv) = CampoEscala(CStr(f(7)), "R=")
+                            ev(11, nEv) = runs(iRunIni)
+                            ev(12, nEv) = CStr(f(8))
+                            ev(13, nEv) = RegraClassificacao(CStr(f(0)))
+                            ev(14, nEv) = ZDoEvento(zz, td, nivs, iRun)
+                        End If
                     End If
-                    If regs <> "" And nEv < UBound(ev, 1) Then
-                        nEv = nEv + 1
-                        ev(nEv, 1) = IIf(ds(j) > 0, CDate(ds(j)), "")
-                        ev(nEv, 2) = rs(j)
-                        ev(nEv, 3) = analitoN
-                        ev(nEv, 4) = nivelN
-                        ev(nEv, 5) = regs
-                        ev(nEv, 6) = RegraClassificacao(Split(regs, "+")(0))
-                        ev(nEv, 7) = ys(j)
-                        ev(nEv, 8) = zz(0, j)
-                        nv = nv + 1
-                        If priR = "" Then priR = regs: priRun = rs(j)
-                        ultR = regs: ultRun = rs(j)
-                        If Abs(zz(0, j)) > Abs(maxZ) Then maxZ = zz(0, j)
+                End If
+            Next k
+
+            ' --- eventos ordenados por corrida dentro do analito -------------
+            OrdenarEventosPorRun ev, nEvIni + 1, nEv
+
+            ' --- agregados por nivel: EVENTO e MARCA sao coisas diferentes ---
+            ' Um 6x N3/R2 e UM evento e marca SEIS resultados. Somar as duas
+            ' coisas na mesma celula era o defeito que o ADR-045 encerra.
+            For t = 0 To NLV - 1
+                Dim nEvNivel As Long, nMarcados As Long
+                Dim priR As String, priRun As Long, ultR As String, ultRun As Long
+                Dim maxZ As Double, corridasEnv As Object
+                nEvNivel = 0: nMarcados = 0
+                priR = "": priRun = 0: ultR = "": ultRun = 0: maxZ = 0
+                Set corridasEnv = CreateObject("Scripting.Dictionary")
+
+                For k = nEvIni + 1 To nEv
+                    If CStr(ev(8, k)) = "OFICIAL" Then
+                        If NivelNaLista(CStr(ev(4, k)), t + 1) Then
+                            nEvNivel = nEvNivel + 1
+                            If priR = "" Then priR = CStr(ev(5, k)): priRun = CLng(ev(2, k))
+                            ultR = CStr(ev(5, k)): ultRun = CLng(ev(2, k))
+                            ' A corrida ENVOLVIDA nao e so a de fechamento: um 6x
+                            ' N3/R2 fechado na corrida 9 olhou tambem a 8. Contar
+                            ' apenas o fechamento subestimaria o que esta sob
+                            ' suspeita, que e a pergunta que o analista faz.
+                            Dim wIni As Long, wFim As Long, wq As Long
+                            wIni = CLng(posDe(CStr(ev(11, k))))
+                            wFim = CLng(posDe(CStr(ev(2, k))))
+                            For wq = wIni To wFim
+                                corridasEnv(CStr(runs(wq))) = 1
+                            Next wq
+                        End If
                     End If
-                Next j
-                agg(UCase$(analitoN) & "|" & nivelN) = Array(nv, priR, priRun, ultR, ultRun, maxZ)
-            End If
+                Next k
+
+                For i = 1 To nRun
+                    If td(t, i) Then
+                        If Val(q13(t, i)) = 1 Or Val(q2sMulti(t, i)) = 1 Or _
+                           Val(qR4(t, i)) = 1 Or Val(q1sMulti(t, i)) = 1 Or _
+                           Val(qSeq(t, i)) = 1 Then
+                            nMarcados = nMarcados + 1
+                            If Abs(zz(t, i)) > Abs(maxZ) Then maxZ = zz(t, i)
+                        End If
+                    End If
+                Next i
+
+                agg(UCase$(analitoN) & "|" & CStr(t + 1)) = _
+                    Array(nEvNivel, priR, priRun, ultR, ultRun, maxZ, _
+                          nMarcados, corridasEnv.Count)
+            Next t
         End If
     Next ch
 
     If nEv > 0 Then
         Dim outp() As Variant
-        ReDim outp(1 To nEv, 1 To 8)
+        ReDim outp(1 To nEv, 1 To EV_NCOL)
         For i = 1 To nEv
-            For j = 1 To 8
-                outp(i, j) = ev(i, j)
+            For j = 1 To EV_NCOL
+                outp(i, j) = ev(j, i)
             Next j
         Next i
-        ws.Range(ws.Cells(4, 1), ws.Cells(3 + nEv, 8)).Value = outp
+        ' A coluna Niveis e TEXTO, sempre. Sem isto o Excel converte "3" em
+        ' numero e deixa "1,2" como texto -- coluna de tipo misto, que o Power
+        ' Query resolve escolhendo um dos dois e descartando o resto em erro.
+        ws.Range(ws.Cells(4, 4), ws.Cells(3 + nEv, 4)).NumberFormat = "@"
+        ws.Range(ws.Cells(4, 1), ws.Cells(3 + nEv, EV_NCOL)).Value = outp
     End If
     ws.Range("J2").Value = nEv
 
-    ' Falha ALTA quando o buffer estourou. Eventos_Westgard e DERIVADA -- pode
-    ' ser reconstruida --, entao interromper aqui e seguro e forca a decisao.
+    ' Teto de eventos: descartar em silencio esconderia violacao de Westgard do
+    ' analista e do auditor. Eventos_Westgard e DERIVADA -- pode ser
+    ' reconstruida --, entao interromper aqui e seguro e forca a decisao.
     If nDescartados > 0 Then
         Auditar CAT_SIS, "EVENTOS_WESTGARD_ESTOUROU", "mEstatistica", _
                 0, "", "", "", 0, "", nEv, nDescartados, "", "", _
-                "Buffer dinamico de " & UBound(ev, 1) & " eventos cheio (INVARIANTE VIOLADA); " & nDescartados & _
-                " violacao(oes) NAO registrada(s)", _
+                "Buffer dinamico de " & capEv & " eventos cheio (INVARIANTE VIOLADA); " & nDescartados & _
+                " evento(s) NAO registrado(s)", _
                 "Arquivar Eventos_Westgard e reexecutar para restaurar o historico completo"
         Err.Raise vbObjectError + 513, "RegistrarEventosWestgard", _
                   "Historico de Westgard incompleto: " & nDescartados & _
-                  " violacao(oes) descartada(s) por buffer cheio (" & UBound(ev, 1) & _
+                  " evento(s) descartado(s) por buffer cheio (" & capEv & _
                   "). O evento foi registrado no Audit_Log."
     End If
+
     Set mAgg = agg
+
+restaura:
+    ' Reprotege SEMPRE -- inclusive nos caminhos de saida antecipada e no erro.
+    ' Deixar a aba destrancada por causa de uma excecao seria trocar um defeito
+    ' visivel por um buraco de seguranca silencioso.
+    Dim nErr As Long, sErr As String
+    nErr = Err.Number: sErr = Err.Description
+    RestaurarProtecao ws, prot
+    On Error GoTo 0
+    If nErr <> 0 Then Err.Raise nErr, "mEstatistica.RegistrarEventosWestgard", sErr
+End Sub
+
+
+' O nivel n aparece na lista "1,2,3" do evento?
+Private Function NivelNaLista(ByVal lista As String, ByVal n As Long) As Boolean
+    Dim x As Variant
+    For Each x In Split(lista, ",")
+        If CLng(Val(x)) = n Then NivelNaLista = True: Exit Function
+    Next x
+End Function
+
+
+' Le "N=3 R=2" devolvendo o inteiro do campo pedido.
+Private Function CampoEscala(ByVal escala As String, ByVal campo As String) As Variant
+    Dim x As Variant
+    For Each x In Split(escala, " ")
+        If Left$(CStr(x), Len(campo)) = campo Then
+            CampoEscala = CLng(Val(Mid$(CStr(x), Len(campo) + 1)))
+            Exit Function
+        End If
+    Next x
+    CampoEscala = ""
+End Function
+
+
+' Data da corrida de fechamento, pelo primeiro nivel envolvido que tenha data.
+Private Function DataDoEvento(ByRef dtv() As Double, ByVal niveis As String, _
+                              ByVal iRun As Long) As Variant
+    Dim x As Variant, t As Long
+    For Each x In Split(niveis, ",")
+        t = CLng(Val(x)) - 1
+        If t >= 0 And t <= NLV - 1 Then
+            If dtv(t, iRun) > 0 Then DataDoEvento = CDate(dtv(t, iRun)): Exit Function
+        End If
+    Next x
+    DataDoEvento = ""
+End Function
+
+
+' Maior |Z| entre os niveis envolvidos, na corrida de fechamento. Devolve o
+' valor COM sinal: o lado importa para quem le a evidencia.
+Private Function ZDoEvento(ByRef z() As Double, ByRef td() As Boolean, _
+                           ByVal niveis As String, ByVal iRun As Long) As Variant
+    Dim x As Variant, t As Long, melhor As Double, achou As Boolean
+    For Each x In Split(niveis, ",")
+        t = CLng(Val(x)) - 1
+        If t >= 0 And t <= NLV - 1 Then
+            If td(t, iRun) Then
+                If Not achou Or Abs(z(t, iRun)) > Abs(melhor) Then
+                    melhor = z(t, iRun): achou = True
+                End If
+            End If
+        End If
+    Next x
+    If achou Then ZDoEvento = melhor Else ZDoEvento = ""
+End Function
+
+
+' Insercao sobre a faixa [de..ate] do buffer, chave = corrida de fechamento.
+' O trace sai na ordem dos DETECTORES; o historico se le por data.
+Private Sub OrdenarEventosPorRun(ByRef ev() As Variant, ByVal de As Long, ByVal ate As Long)
+    Dim i As Long, j As Long, c As Long, chaveRun As Long
+    Dim tmp(1 To EV_NCOL) As Variant
+    For i = de + 1 To ate
+        For c = 1 To EV_NCOL
+            tmp(c) = ev(c, i)
+        Next c
+        chaveRun = CLng(Val(tmp(2)))
+        j = i - 1
+        Do While j >= de
+            If CLng(Val(ev(2, j))) <= chaveRun Then Exit Do
+            For c = 1 To EV_NCOL
+                ev(c, j + 1) = ev(c, j)
+            Next c
+            j = j - 1
+        Loop
+        For c = 1 To EV_NCOL
+            ev(c, j + 1) = tmp(c)
+        Next c
+    Next i
 End Sub
 
 ' Agregados por analito/nivel a partir dos eventos ja calculados (sem re-varredura).
 ' Devolve Array(nViolacoes, primeiraRegra, primeiroRUN, ultimaRegra, ultimoRUN, maiorZ)
+' As tres metricas do ADR-045, para quem so precisa dos numeros.
+'
+' Elas contam coisas DIFERENTES e nao devem ser somadas nem trocadas:
+'
+'   N_Eventos_Violacao ..... quantas vezes uma REGRA disparou (evidencias
+'                            oficiais do motor que envolvem este nivel)
+'   N_Resultados_Marcados .. quantos RESULTADOS deste nivel ficaram marcados
+'                            por alguma regra -- um evento 6x N3/R2 marca seis
+'   N_Corridas_Envolvidas .. quantas CORRIDAS deste nivel tem ao menos um
+'                            resultado marcado
+'
+' Devolve "eventos|marcados|corridas".
+Public Function MetricasWestgard(ByVal analito As String, ByVal nivel As Long) As String
+    Dim a As Variant
+    a = AgregadoWestgard(analito, nivel)
+    MetricasWestgard = CStr(a(0)) & "|" & CStr(a(6)) & "|" & CStr(a(7))
+End Function
+
+
 Public Function AgregadoWestgard(ByVal analito As String, ByVal nivel As Long) As Variant
     Dim k As String
     If mAgg Is Nothing Then RegistrarEventosWestgard
@@ -1592,53 +1916,23 @@ Public Function AgregadoWestgard(ByVal analito As String, ByVal nivel As Long) A
     If mAgg.Exists(k) Then
         AgregadoWestgard = mAgg(k)
     Else
-        AgregadoWestgard = Array(0, "", 0, "", 0, 0)
+        AgregadoWestgard = Array(0, "", 0, "", 0, 0, 0, 0)
     End If
 End Function
 
 ' Avaliacao de Westgard restrita a UM nivel (series independentes por analito/nivel).
 ' 22s intra-corrida entre niveis e R4s sao avaliados no motor do Calc, que tem a
 ' visao multi-nivel; aqui tratamos a serie temporal do proprio nivel.
-Public Sub AvaliarWestgard1N(ByRef z() As Double, ByRef temDado() As Boolean, ByVal nRun As Long, _
-                             ByRef r13 As Variant, ByRef r2sMulti As Variant, ByRef rR4 As Variant, _
-                             ByRef r1sMulti As Variant, ByRef rSeq As Variant, ByRef a12 As Variant)
-    Dim i As Long, k As Long, cnt As Long
-    For i = 1 To nRun
-        If temDado(0, i) Then
-            If Abs(z(0, i)) > 2 Then a12(0, i) = 1
-            If Abs(z(0, i)) > 3 Then r13(0, i) = 1
-            If i >= 2 Then
-                If temDado(0, i - 1) Then
-                    If (z(0, i) > 2 And z(0, i - 1) > 2) Or (z(0, i) < -2 And z(0, i - 1) < -2) Then r2sMulti(0, i) = 1
-                End If
-            End If
-            If i >= 4 Then
-                cnt = 0
-                For k = 0 To 3
-                    If z(0, i - k) > 1 Then cnt = cnt + 1
-                Next k
-                If cnt = 4 Then r1sMulti(0, i) = 1
-                cnt = 0
-                For k = 0 To 3
-                    If z(0, i - k) < -1 Then cnt = cnt + 1
-                Next k
-                If cnt = 4 Then r1sMulti(0, i) = 1
-            End If
-            If i >= 10 Then
-                cnt = 0
-                For k = 0 To 9
-                    If z(0, i - k) > 0 Then cnt = cnt + 1
-                Next k
-                If cnt = 10 Then rSeq(0, i) = 1
-                cnt = 0
-                For k = 0 To 9
-                    If z(0, i - k) < 0 Then cnt = cnt + 1
-                Next k
-                If cnt = 10 Then rSeq(0, i) = 1
-            End If
-        End If
-    Next i
-End Sub
+' AvaliarWestgard1N foi REMOVIDA (ADR-045).
+'
+' Ela era uma segunda implementacao das regras, escrita para uma serie de UM
+' nivel: estruturalmente incapaz de ver R_4s, 2of3_2s, 3_1s e 6x, que exigem
+' visao multi-nivel. Pior, materializava o proibido "10 corridas seguidas do
+' mesmo lado" -- o 10x que o ADR-041 aposentou --, de modo que a aba
+' Eventos_Westgard contava um fenomeno que o motor ja nao reconhecia.
+'
+' O historico agora vem do trace de AvaliarWestgard. Fonte unica.
+
 
 Public Sub AbrirEventosWestgard()
     On Error Resume Next
@@ -1666,3 +1960,5 @@ Public Sub RecalcularAnalitoAtual()
     AtualizarEixos
     Application.ScreenUpdating = True
 End Sub
+
+

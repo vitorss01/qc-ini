@@ -334,6 +334,15 @@ Encerrar-Excel
 )
 
 Encerrar-Excel
+"== 4z. ADR-046: guarda de escrita em aba protegida (mSeguranca)"
+# TEM de vir aqui: os modulos que acabaram de ser importados chamam
+# LiberarEscrita/RestaurarProtecao, e mSeguranca e fonte de PRODUCAO -- o build
+# nao a regera. Se a guarda so fosse instalada mais tarde (travar_estrutura.ps1
+# roda depois do motor), a primeira execucao acharia "Sub ou Function nao
+# definida" e o artefato sairia quebrado.
+Etapa 'instalar_guarda_protecao.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 4
+
+Encerrar-Excel
 "== 4a. ADR-025: BA:BC viram VALOR e os nomes r* acompanham o dado"
 # Depois do aplicar_vba (precisa do mBanco ja importado) e antes de qualquer
 # etapa que leia o banco pelos nomes.

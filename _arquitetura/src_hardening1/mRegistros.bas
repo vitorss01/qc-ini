@@ -112,8 +112,9 @@ Public Function MarcarNaoConforme(ByVal run As Long, ByVal nivel As Long, _
     If linReg > 0 Then
         Dim wr As Worksheet, prot As Boolean
         Set wr = ThisWorkbook.Sheets(REG)
-        prot = wr.ProtectContents
-        If prot Then wr.Unprotect Password:="qcini2025"
+        ' ADR-046: reprotege tambem no erro. Ver mSeguranca.LiberarEscrita.
+        On Error GoTo restauraReg
+        prot = LiberarEscrita(wr)
         wr.Cells(linReg, RG_DATA).Value = dtCorrida
         wr.Cells(linReg, RG_DATA).NumberFormat = "dd/mm/yyyy"
         wr.Cells(linReg, RG_ANALITO).Value = analito
@@ -124,11 +125,19 @@ Public Function MarcarNaoConforme(ByVal run As Long, ByVal nivel As Long, _
         wr.Cells(linReg, RG_PARECER).Value = parecer
         wr.Cells(linReg, RG_RESP).Value = UsuarioSistema()
         wr.Cells(linReg, RG_TIPO).Value = tipoNC
-        If prot Then wr.Protect Password:="qcini2025", UserInterfaceOnly:=True, _
-                                DrawingObjects:=False, Contents:=True, Scenarios:=True
+        RestaurarProtecao wr, prot
+        On Error GoTo 0
     End If
 
     MarcarNaoConforme = idEv
+    Exit Function
+
+restauraReg:
+    Dim nErrR As Long, sErrR As String
+    nErrR = Err.Number: sErrR = Err.Description
+    RestaurarProtecao wr, prot
+    On Error GoTo 0
+    Err.Raise nErrR, "mRegistros.MarcarNaoConforme", sErrR
 End Function
 
 ' Remove uma ocorrencia da VITRINE Registros. Nunca do banco.
@@ -163,11 +172,17 @@ Public Function ExcluirRegistroNC(ByVal linha As Long, ByVal parecer As String) 
                    run, dtCorrida, nivel, analito, "", valor, _
                    tipoNC, tipoNC, parecer
 
-    prot = wr.ProtectContents
-    If prot Then wr.Unprotect Password:="qcini2025"
+    ' ADR-046: reprotege tambem no erro. Ver mSeguranca.LiberarEscrita.
+    On Error GoTo restauraExc
+    prot = LiberarEscrita(wr)
     wr.Range(wr.Cells(linha, RG_DATA), wr.Cells(linha, RG_TIPO)).ClearContents
-    If prot Then wr.Protect Password:="qcini2025", UserInterfaceOnly:=True, _
-                            DrawingObjects:=False, Contents:=True, Scenarios:=True
+
+restauraExc:
+    Dim nErrE As Long, sErrE As String
+    nErrE = Err.Number: sErrE = Err.Description
+    RestaurarProtecao wr, prot
+    On Error GoTo 0
+    If nErrE <> 0 Then Err.Raise nErrE, "mRegistros.ExcluirRegistroNC", sErrE
 
     ExcluirRegistroNC = idEv
 End Function

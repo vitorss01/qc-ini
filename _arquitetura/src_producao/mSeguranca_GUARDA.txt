@@ -1,0 +1,61 @@
+' ===================== ESCRITA EM ABA PROTEGIDA (ADR-046) =====================
+'
+' POR QUE NAO BASTA O UserInterfaceOnly
+'
+' ReprotectAll aplica Protect ... UserInterfaceOnly:=True, que e exatamente a
+' configuracao certa: o usuario nao edita, o VBA edita. So que o Excel NAO
+' PERSISTE essa flag ao salvar -- ela vive apenas na sessao em que foi aplicada.
+'
+' Consequencia: no arquivo salvo e reaberto a aba volta a estar protegida
+' TAMBEM para o VBA, ate que Workbook_Open rode LockApp. E Workbook_Open nao
+' roda em abertura por automacao: todo script de build e de QA abre com
+' Application.EnableEvents = False, de proposito. Nesse estado a primeira
+' escrita estoura 1004, e o sintoma engana -- "na producao passa, no artefato
+' nao".
+'
+' Por isso a garantia nao pode ser "alguem rodou LockApp antes". Cada rotina
+' que escreve trata a propria protecao.
+'
+' POR QUE AQUI, E NAO NO MODULO DE QUEM CHAMA
+'
+' Estas rotinas nasceram no mEstatistica e mudaram para ca quando a auditoria
+' encontrou oito pontos com o mesmo defeito, espalhados por mAuditoria,
+' mConfig, mLogDB, mRegistros e mImportar. Nenhum deles tem relacao com
+' estatistica, e a Imunologia -- que ainda nao tem motor -- ficaria sem o
+' primitivo. mSeguranca existe em todos os produtos e e o dono da protecao.
+'
+' COMO USAR (o par exige On Error, nao e opcional)
+'
+'   Dim protEstava As Boolean
+'   On Error GoTo restaura
+'   protEstava = LiberarEscrita(ws)
+'   ... escritas, inclusive saidas antecipadas com GoTo restaura ...
+'
+'   restaura:
+'       Dim nErrP As Long, sErrP As String
+'       nErrP = Err.Number: sErrP = Err.Description
+'       RestaurarProtecao ws, protEstava
+'       On Error GoTo 0
+'       If nErrP <> 0 Then Err.Raise nErrP, "modulo.rotina", sErrP
+'
+' Sem o On Error, uma excecao no meio deixa a aba destrancada -- que troca um
+' defeito visivel por um furo silencioso. No Audit_Log, que guarda a cadeia de
+' hash, isso e perda de integridade e nao susto.
+
+' Libera a aba para escrita do VBA. Devolve o estado ANTERIOR, que e o que
+' RestaurarProtecao precisa para nao proteger o que ja estava desprotegido.
+Public Function LiberarEscrita(ByVal ws As Worksheet) As Boolean
+    LiberarEscrita = ws.ProtectContents
+    If LiberarEscrita Then ws.Unprotect Password:=SENHA_PROT
+End Function
+
+
+' Recoloca a protecao na forma que o projeto adota.
+' Nao propaga erro: e chamada no caminho de limpeza, onde mascarar a excecao
+' original seria pior do que falhar em reproteger.
+Public Sub RestaurarProtecao(ByVal ws As Worksheet, ByVal estava As Boolean)
+    If Not estava Then Exit Sub
+    On Error Resume Next
+    ws.Protect Password:=SENHA_PROT, UserInterfaceOnly:=True, _
+               DrawingObjects:=False, Contents:=True, Scenarios:=True
+End Sub

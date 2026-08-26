@@ -78,8 +78,15 @@ Public Sub RegistrarLogDB(ByVal origem As String, ByVal idAuditoria As String, _
     c0 = ColunaBase(origem)
     lin = UltimaLinhaLogDB(origem) + 1
 
-    prot = ws.ProtectContents
-    If prot Then ws.Unprotect Password:="qcini2025"
+    ' ADR-046: reprotege tambem no caminho de erro. Este log grava exclusao de
+    ' resultado -- deixar a aba do banco destrancada por causa de uma excecao
+    ' seria abrir justamente a aba que o log existe para tornar rastreavel.
+    '
+    ' A reprotecao fica inline, e nao no RestaurarProtecao generico, porque o
+    ' log precisa de AllowFiltering/AllowSorting: o generico nao concede, e a
+    ' troca reduziria a permissao sem aviso.
+    On Error GoTo restauraLog
+    prot = LiberarEscrita(ws)
 
     ws.Cells(lin, c0 + 0).NumberFormat = "@"
 
@@ -112,11 +119,17 @@ Public Sub RegistrarLogDB(ByVal origem As String, ByVal idAuditoria As String, _
 
     ExpandirTabelaLog ws, origem, lin
 
+restauraLog:
+    Dim nErrL As Long, sErrL As String
+    nErrL = Err.Number: sErrL = Err.Description
+    On Error Resume Next
     If prot Then
         ws.Protect Password:="qcini2025", UserInterfaceOnly:=True, _
                    DrawingObjects:=False, Contents:=True, Scenarios:=True, _
                    AllowFiltering:=True, AllowSorting:=True
     End If
+    On Error GoTo 0
+    If nErrL <> 0 Then Err.Raise nErrL, "mLogDB.RegistrarLogDB", sErrL
 End Sub
 
 ' Mantem o ListObject cobrindo a linha nova: sem isso o filtro do auditor nao

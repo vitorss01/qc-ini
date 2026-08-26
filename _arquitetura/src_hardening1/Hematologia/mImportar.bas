@@ -273,8 +273,9 @@ End Function
 Private Sub MostrarErros(ByVal ws As Worksheet, ByVal nC As Long, ByVal erros As Collection)
     Dim cErr As Long, i As Long, prot As Boolean
     cErr = IMP_C_AN0 + nC + 1
-    prot = ws.ProtectContents
-    If prot Then ws.Unprotect Password:=IMP_SENHA
+    ' ADR-046: reprotege tambem no erro. Ver mSeguranca.LiberarEscrita.
+    On Error GoTo restauraErr
+    prot = LiberarEscrita(ws)
     ws.Range(ws.Cells(IMP_CAB, cErr), ws.Cells(IMP_RN, cErr)).ClearContents
     ws.Cells(IMP_CAB, cErr).Value = "Inconsistencias"
     ws.Cells(IMP_CAB, cErr).Font.Bold = True
@@ -286,19 +287,30 @@ Private Sub MostrarErros(ByVal ws As Worksheet, ByVal nC As Long, ByVal erros As
         Next i
     End If
     ws.Columns(cErr).ColumnWidth = 58
-    If prot Then ws.Protect Password:=IMP_SENHA, UserInterfaceOnly:=True, _
-                            DrawingObjects:=False, Contents:=True, Scenarios:=True
+
+restauraErr:
+    Dim nErrM As Long, sErrM As String
+    nErrM = Err.Number: sErrM = Err.Description
+    RestaurarProtecao ws, prot
+    On Error GoTo 0
+    If nErrM <> 0 Then Err.Raise nErrM, "mImportar.MostrarErros", sErrM
 End Sub
 
 Private Sub LimparAreaImport(ByVal ws As Worksheet, ByVal nC As Long)
     Dim prot As Boolean, cErr As Long
     cErr = IMP_C_AN0 + nC + 1
-    prot = ws.ProtectContents
-    If prot Then ws.Unprotect Password:=IMP_SENHA
+    ' ADR-046: reprotege tambem no erro. Ver mSeguranca.LiberarEscrita.
+    On Error GoTo restauraLimp
+    prot = LiberarEscrita(ws)
     ws.Range(ws.Cells(IMP_R0, IMP_C_DATA), ws.Cells(IMP_RN, IMP_C_AN0 + nC - 1)).ClearContents
     ws.Range(ws.Cells(IMP_CAB, cErr), ws.Cells(IMP_RN, cErr)).ClearContents
-    If prot Then ws.Protect Password:=IMP_SENHA, UserInterfaceOnly:=True, _
-                            DrawingObjects:=False, Contents:=True, Scenarios:=True
+
+restauraLimp:
+    Dim nErrI As Long, sErrI As String
+    nErrI = Err.Number: sErrI = Err.Description
+    RestaurarProtecao ws, prot
+    On Error GoTo 0
+    If nErrI <> 0 Then Err.Raise nErrI, "mImportar.LimparAreaImport", sErrI
 End Sub
 
 ' Navegacao: o botao da aba Resultados leva para ca.

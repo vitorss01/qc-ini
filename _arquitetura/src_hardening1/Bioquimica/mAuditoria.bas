@@ -326,9 +326,17 @@ Public Function Auditar(ByVal categoria As String, ByVal acao As String, _
     v(AU_VERSAO) = VERSAO_SISTEMA
     v(AU_HASHANT) = hashAnt
 
+    ' ADR-046: a janela destrancada tem de fechar tambem no caminho de ERRO.
+    ' O Audit_Log guarda a cadeia de hash; deixa-lo aberto porque uma excecao
+    ' passou por aqui nao e susto, e perda de evidencia -- e Auditar e chamada
+    ' justamente a partir de caminhos de erro.
+    '
+    ' Reprotecao por ProtegerAudit, e nao pelo RestaurarProtecao generico: o
+    ' auditor precisa de AllowFiltering/AllowSorting, que o generico nao
+    ' concede. Trocar um pelo outro reduziria a permissao sem ninguem notar.
     Dim protegida As Boolean
-    protegida = ws.ProtectContents
-    If protegida Then ws.Unprotect Password:="qcini2025"
+    On Error GoTo restauraAudit
+    protegida = LiberarEscrita(ws)
     ' Texto ANTES de gravar: um hash de 64 digitos que por acaso seja so
     ' numeros viraria notacao cientifica, e a verificacao acusaria adulteracao
     ' onde nao houve. O mesmo vale para o ID.
@@ -367,8 +375,18 @@ Public Function Auditar(ByVal categoria As String, ByVal acao As String, _
     ws.Cells(lin, AU_DELTAP).NumberFormat = "0.0%"
     ExpandirTabela ws, lin
     If protegida Then ProtegerAudit ws
+    On Error GoTo 0
 
     Auditar = id
+    Exit Function
+
+restauraAudit:
+    Dim nErrA As Long, sErrA As String
+    nErrA = Err.Number: sErrA = Err.Description
+    On Error Resume Next
+    If protegida Then ProtegerAudit ws
+    On Error GoTo 0
+    Err.Raise nErrA, "mAuditoria.Auditar", sErrA
 End Function
 
 ' A aba e protegida, mas o auditor PRECISA filtrar e ordenar. Sem estas

@@ -96,7 +96,10 @@ Public Sub AtualizarPainelEng()
         Else
             outStat(t + 1, 19) = aa(3) & " " & Chr$(183) & " RUN " & aa(4)
             outStat(t + 1, 20) = RegraClassificacao(Split(CStr(aa(3)), "+")(0))
-            outStat(t + 1, 21) = aa(0) & "x  |  maior Z " & Format(aa(5), "+0.00;-0.00")
+            ' ADR-045: "3x" era ambiguo -- 3 eventos ou 3 resultados fora?
+            ' Um 6x N3/R2 e 1 evento e 6 resultados marcados. Mostrar os dois.
+            outStat(t + 1, 21) = aa(0) & " ev / " & aa(6) & " res  |  maior Z " & _
+                                 Format(aa(5), "+0.00;-0.00")
         End If
     Next t
 
@@ -104,5 +107,15 @@ Public Sub AtualizarPainelEng()
     For t = 1 To NLV
         outStat(t, 1) = t
     Next t
+    Dim protEstava As Boolean
+    On Error GoTo restaura
+    protEstava = LiberarEscrita(eng)
     eng.Range(eng.Cells(LINHA_STAT, 1), eng.Cells(LINHA_STAT + NLV - 1, 21)).Value = outStat
+
+restaura:
+    Dim nErrP As Long, sErrP As String
+    nErrP = Err.Number: sErrP = Err.Description
+    RestaurarProtecao eng, protEstava
+    On Error GoTo 0
+    If nErrP <> 0 Then Err.Raise nErrP, "mEstatistica.AtualizarPainelEng", sErrP
 End Sub

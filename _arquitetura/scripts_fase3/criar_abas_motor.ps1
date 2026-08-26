@@ -69,9 +69,14 @@ for ($k = 0; $k -lt $STATUS.Count; $k++) {
     }
 }
 
-$CAB_EVENTOS = @( 'Data', 'RUN', 'Analito', ('N' + $i_ + 'vel'), 'Regra',
-    ('Classifica' + $ac), 'Resultado', 'Z-Score' )
-if ($CAB_EVENTOS.Count -ne 8) { throw "CAB_EVENTOS tem $($CAB_EVENTOS.Count) itens, esperado 8" }
+# ADR-045: a granularidade da aba passou a ser o EVENTO (uma evidencia do
+# motor), e nao mais o par resultado-x-regra. Um 6x N3/R2 e UMA linha aqui e
+# marca SEIS resultados -- por isso Detector, Escopo, N, R e RUN inicial
+# passaram a existir: sem eles a linha nao diz o que foi olhado.
+$CAB_EVENTOS = @( 'Data', 'RUN', 'Analito', ('N' + $i_ + 'veis'), 'Regra',
+    'Detector', 'Escopo', 'Classe', 'N', 'R', 'RUN_Inicial', ('Evid' + $e_ + 'ncia'),
+    ('Classifica' + $ac), 'Z_Max' )
+if ($CAB_EVENTOS.Count -ne 14) { throw "CAB_EVENTOS tem $($CAB_EVENTOS.Count) itens, esperado 14" }
 
 function Novo-Excel {
     $ultimo = $null
@@ -134,7 +139,28 @@ else {
 
 # ---------------- Eventos_Westgard ----------------
 if ($existentes -contains 'Eventos_Westgard') {
-    "Eventos_Westgard: ja existe, preservada"
+    # Preservar os DADOS, nunca o cabecalho: se a aba ficou com o layout de 8
+    # colunas do ADR anterior e o motor passou a escrever 14, a coluna 6 diria
+    # "Classificacao" sobre valores de Detector. Rotulo errado sobre dado certo
+    # e pior do que aba vazia -- ninguem desconfia.
+    $ev = $wb.Worksheets('Eventos_Westgard')
+    $difere = $false
+    for ($k = 0; $k -lt $CAB_EVENTOS.Count; $k++) {
+        if ([string]$ev.Cells(3, $k + 1).Value2 -ne $CAB_EVENTOS[$k]) { $difere = $true }
+    }
+    if ($difere) {
+        $ev.Range('A4:Z5003').ClearContents()   # o motor reescreve na proxima execucao
+        $ev.Range('A3:Z3').ClearContents()
+        for ($k = 0; $k -lt $CAB_EVENTOS.Count; $k++) {
+            $ev.Cells(3, $k + 1).Formula = $CAB_EVENTOS[$k]
+        }
+        $ev.Range('A3:N3').Font.Bold = $true
+        $ev.Columns('A:N').AutoFit() | Out-Null
+        "Eventos_Westgard: cabecalho migrado para $($CAB_EVENTOS.Count) colunas (dados serao reconstruidos)"
+    }
+    else {
+        "Eventos_Westgard: ja existe com o layout corrente, preservada"
+    }
 }
 else {
     $ev = $wb.Worksheets.Add()
@@ -145,11 +171,11 @@ else {
     for ($k = 0; $k -lt $CAB_EVENTOS.Count; $k++) {
         $ev.Cells(3, $k + 1).Formula = $CAB_EVENTOS[$k]
     }
-    $ev.Range('A3:H3').Font.Bold = $true
-    $ev.Columns('A:I').AutoFit() | Out-Null
+    $ev.Range('A3:N3').Font.Bold = $true
+    $ev.Columns('A:N').AutoFit() | Out-Null
     $ev.Visible = 0
     $criadas += 'Eventos_Westgard'
-    "Eventos_Westgard: criada (cabecalho em A3:H3, dados a partir de A4)"
+    "Eventos_Westgard: criada (cabecalho em A3:N3, dados a partir de A4)"
 }
 
 # ---------------- conferencia ----------------

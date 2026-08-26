@@ -342,7 +342,23 @@ Public Function AlvoDoLote(ByVal analito As String, ByVal nivel As Variant) As V
     col = 1 + 2 * CLng(Val(CStr(nivel)))
     lote = LoteAtivoCore()
 
-    For i = 2 To 200
+    ' TETO VINDO DO DADO, NAO DE UM NUMERO ESCRITO A MAO.
+    '
+    ' O limite era 200. O LotesStore guarda 40 linhas por lote (mBI.LS_CAP),
+    ' entao 200 cobre quatro blocos e meio: a partir do 5o lote o alvo ficava
+    ' fora da varredura e esta funcao devolvia vazio -- sem Z, sem bias, e sem
+    ' erro. Num sistema dimensionado para 60 meses, trocar de lote a cada
+    ' semestre chega la dentro da vida util do arquivo.
+    '
+    ' Nota de divida tecnica: mBI.AlvoDoLote le ESTE MESMO alvo por aritmetica
+    ' de bloco, e nao por varredura. Sao duas implementacoes do mesmo contrato
+    ' de layout; concordam hoje por coincidencia de duas leituras corretas, nao
+    ' por terem uma fonte so. Unificar exige mexer na Estatistica por periodo,
+    ' que nao tem prova automatizada -- fica registrado, nao remendado aqui.
+    Dim ultLote As Long
+    ultLote = wsL.Cells(wsL.Rows.Count, 1).End(xlUp).Row
+    If ultLote < 2 Then Exit Function
+    For i = 2 To ultLote
         If Trim$(CStr(wsL.Cells(i, 1).Value)) = "" Then Exit For
         If Trim$(CStr(wsL.Cells(i, 1).Value)) = lote Then
             If CLng(Val(CStr(wsL.Cells(i, 2).Value))) = idx Then

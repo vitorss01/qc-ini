@@ -50,8 +50,11 @@ End Function
 Public Sub SincronizarSombraCfg()
     Dim ws As Worksheet, i As Long, prot As Boolean
     Set ws = ThisWorkbook.Sheets(CFG)
-    prot = ws.ProtectContents
-    If prot Then ws.Unprotect Password:="qcini2025"
+    ' ADR-046: a sombra e o que detecta mudanca retroativa de elegibilidade.
+    ' Uma excecao no meio deixando a Configuracao destrancada abriria a porta
+    ' para editar justamente o que a sombra existe para vigiar.
+    On Error GoTo restauraCfg
+    prot = LiberarEscrita(ws)
     For i = CFG_R0 To CFG_RN
         ws.Cells(i, CFG_C_SOMBRA_ST).Value = ws.Cells(i, CFG_C_STATUS).Value
         ws.Cells(i, CFG_C_SOMBRA_EL).Value = ws.Cells(i, CFG_C_ELEG).Value
@@ -59,7 +62,13 @@ Public Sub SincronizarSombraCfg()
     If VersaoCfg() = 0 Then ws.Cells(CFG_L_VERSAO, CFG_C_VERSAO).Value = 1
     ws.Columns(CFG_C_SOMBRA_ST).Hidden = True
     ws.Columns(CFG_C_SOMBRA_EL).Hidden = True
-    If prot Then ws.Protect Password:="qcini2025", UserInterfaceOnly:=True, DrawingObjects:=False, Contents:=True, Scenarios:=True
+
+restauraCfg:
+    Dim nErrC As Long, sErrC As String
+    nErrC = Err.Number: sErrC = Err.Description
+    RestaurarProtecao ws, prot
+    On Error GoTo 0
+    If nErrC <> 0 Then Err.Raise nErrC, "mConfig.SincronizarSombraCfg", sErrC
 End Sub
 
 ' Compara o estado atual com a sombra, registra cada diferenca e sobe a versao.
@@ -100,18 +109,31 @@ Public Function AuditarMudancaCfg() As Long
     Next i
 
     If n > 0 Then
-        prot = ws.ProtectContents
-        If prot Then ws.Unprotect Password:="qcini2025"
+        On Error GoTo restauraAud
+        prot = LiberarEscrita(ws)
         ws.Cells(CFG_L_VERSAO, CFG_C_VERSAO).Value = versaoNova
         For i = CFG_R0 To CFG_RN
             ws.Cells(i, CFG_C_SOMBRA_ST).Value = ws.Cells(i, CFG_C_STATUS).Value
             ws.Cells(i, CFG_C_SOMBRA_EL).Value = ws.Cells(i, CFG_C_ELEG).Value
         Next i
-        If prot Then ws.Protect Password:="qcini2025", UserInterfaceOnly:=True, DrawingObjects:=False, Contents:=True, Scenarios:=True
+        RestaurarProtecao ws, prot
+        On Error GoTo 0
 
         ' A sessao corrente ainda tem a regra antiga em memoria.
         InvalidarCache
     End If
 
     AuditarMudancaCfg = n
+    Exit Function
+
+restauraAud:
+    ' A sombra fica INCOMPLETA se o erro caiu no meio do laco, e isso e
+    ' proposital: sombra parcial faz a proxima execucao acusar diferenca e
+    ' auditar de novo. Reprotege e devolve o erro a quem chamou -- o que nao
+    ' pode acontecer e a aba ficar aberta e o erro sumir.
+    Dim nErrA As Long, sErrA As String
+    nErrA = Err.Number: sErrA = Err.Description
+    RestaurarProtecao ws, prot
+    On Error GoTo 0
+    Err.Raise nErrA, "mConfig.AuditarMudancaCfg", sErrA
 End Function
