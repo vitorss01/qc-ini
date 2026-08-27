@@ -96,8 +96,22 @@ try {
     foreach ($w in $wb.Worksheets) { if ($w.Name -like 'Estat*') { $est = $w; break } }
     if ($est -eq $null) { throw 'aba Estatistica ausente' }
 
-    $ini = [double](Get-Date -Year 2026 -Month 1 -Day 1 -Hour 0 -Minute 0 -Second 0).ToOADate()
-    $fim = [double](Get-Date -Year 2026 -Month 12 -Day 31 -Hour 0 -Minute 0 -Second 0).ToOADate()
+    # OS MESMOS ARGUMENTOS QUE A CELULA USA -- e nao um periodo inventado.
+    #
+    # O portao chamava EstatPeriodo com ini/fim fixos em 2026 e com exclusoes e
+    # LOTE vazios, mas a celula chama com Estat_Ini_Efetiva, Estat_Fim_Efetiva,
+    # Estat_Exclusoes e $H$4 (o lote ativo). Comparar as duas coisas e comparar
+    # perguntas diferentes: com lote ativo o Lactato N1 tem n=25, sem filtro de
+    # lote tem n=102. As 248 "falhas" eram essa diferenca, nao regressao do
+    # modulo -- medido chamando a UDF nos dois modos.
+    #
+    # Ler os argumentos da propria pasta e o que torna a conferencia honesta: o
+    # portao passa a perguntar exatamente o que a tela pergunta.
+    $ini = $wb.Names('Estat_Ini_Efetiva').RefersToRange.Value2
+    $fim = $wb.Names('Estat_Fim_Efetiva').RefersToRange.Value2
+    $exc = $wb.Names('Estat_Exclusoes').RefersToRange
+    $lote = $estB.Range('H4').Value2
+    "argumentos da tela: ini=$ini fim=$fim lote=$lote"
 
     # A JANELA DE LINHAS VEM DO CONTEUDO, NAO DE UM NUMERO ESCRITO A MAO.
     #
@@ -136,10 +150,10 @@ try {
         # As exclusoes eram (inicio, fim) -- dois argumentos -- e passaram a ser
         # UM intervalo Nx2. O instalador ficou com a chamada antiga e o COM
         # devolvia "o numero de parametros nao coincide", DEPOIS do import.
-        $nNovo = $xl.Run('EstatPeriodo', $a, $niv, 'N', $ini, $fim, '', '')
-        $mNovo = $xl.Run('EstatPeriodo', $a, $niv, 'MEDIA', $ini, $fim, '', '')
-        $dNovo = $xl.Run('EstatPeriodo', $a, $niv, 'DP', $ini, $fim, '', '')
-        $cNovo = $xl.Run('EstatPeriodo', $a, $niv, 'CV', $ini, $fim, '', '')
+        $nNovo = $xl.Run('EstatPeriodo', $a, $niv, 'N', $ini, $fim, $exc, $lote)
+        $mNovo = $xl.Run('EstatPeriodo', $a, $niv, 'MEDIA', $ini, $fim, $exc, $lote)
+        $dNovo = $xl.Run('EstatPeriodo', $a, $niv, 'DP', $ini, $fim, $exc, $lote)
+        $cNovo = $xl.Run('EstatPeriodo', $a, $niv, 'CV', $ini, $fim, $exc, $lote)
 
         # A REFERENCIA E O ANTES, NAO A COLUNA.
         #

@@ -415,7 +415,19 @@ Encerrar-Excel
 # delas). Instalar na Hematologia poria um modulo que ninguem usa, e o portao
 # nao teria linha para conferir.
 if ($Produto -eq 'Bioquimica') {
+    # ADR-049, ANTES do modulo: DB_Carimbo precisa existir para o Carimbo do
+    # mEstatPeriodo poder le-lo, e para as formulas poderem cita-lo.
+    Etapa 'instalar_carimbo_banco.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
+
+    Encerrar-Excel
     Etapa 'instalar_estat_periodo.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 5
+
+    # ADR-049, DEPOIS do modulo: as 320 formulas passam a citar DB_Carimbo, e e
+    # isso que poe a Estatistica no grafo de calculo do Excel. Sem este passo,
+    # so um rebuild completo atualizaria -- e o fluxo real (mDados) chama
+    # Application.Calculate, que nao faz rebuild.
+    Encerrar-Excel
+    Mostrar (& python (Join-Path $s 'ligar_carimbo_estatistica.py') $alvo) -Ultimas 3
 } else {
     "  $Produto nao usa EstatPeriodo em celula: etapa nao se aplica"
 }
