@@ -2372,3 +2372,136 @@ E `mEspecificacoes` não existe em nenhum dos dois produtos. Enquanto for assim,
 `LimEspec` devolve vazio e o status diz `SEM LIMITE` — correto pelo ADR-023, e
 declarado pelo portão em vez de silencioso. Ligar o banco de especificações da
 Bioquímica é decisão de escopo, não consequência desta correção.
+
+---
+
+## ADR-048 — O artefato híbrido da Bioquímica, e as abas que o módulo exigia
+
+**Status:** aceito · **Mesma família:** ADR-025, ADR-034, ADR-046, ADR-047
+
+### O defeito
+
+`QC_Bioquimica.xlsm` recebeu o `mEstatistica` da Fase 3 **sem receber o que ele
+exige**. Quatro dependências faltavam:
+
+| Dependência | Consequência |
+|---|---|
+| `mWestgardKnowledge` | `mEstatistica` chama `RegraClassificacao`, `RegraInterpretacao`, `RegraCausas` e `RegraSugestoes` — *"Sub ou Function não definida"*, erro de **compilação** |
+| `Eng_Saida` | `Sheets("Eng_Saida")` sem `On Error` em `AtualizarCalc`, `AtualizarPainelEng` e `AtualizarEstatisticaAba` — **erro 9** |
+| `Eventos_Westgard` | `RegistrarEventosWestgard` — erro 9 |
+| `Cfg_Status` | cai no *fallback* "somente Ativo", em silêncio |
+
+Com o Excel invisível, os dois primeiros viram **caixa de diálogo modal** que
+ninguém vê e que trava a automação indefinidamente. O motor estatístico inteiro
+estava inalcançável no arquivo de produção.
+
+A aba `Estatística` continuava mostrando números — porque são fórmulas de célula
+(`EstatPeriodo`, `BiasEQ`), não o motor. Números na tela com o motor morto atrás:
+o sintoma mais enganoso possível.
+
+### O que não era
+
+Duas leituras minhas foram derrubadas por medição, e ficam registradas para não
+serem refeitas:
+
+1. **"A duplicata de `AtualizarEstatistica` trava a cadeia."** Existiam de fato
+   duas cópias públicas (`mUI`, um *stub* de 4 linhas; `mEstatistica`, o motor).
+   Removido o *stub* em memória, `AtualizarOperacao` continuou sem responder por
+   360s. A duplicata é defeito real — `Application.Run("AtualizarEstatistica")`
+   falha com *"macro não disponível"* — **mas não era a causa do travamento**.
+2. **"É erro de compilação."** O código COM `0x800A9C68` sugeria isso. O texto do
+   diálogo, lido por enumeração de janelas, dizia
+   `Erro em tempo de execução '9': Subscrito fora do intervalo`. **O código COM
+   não identifica o erro; o texto do diálogo identifica.**
+
+### Como o diálogo invisível foi lido
+
+`ler_dialogo_vba.py`: a macro roda numa *thread* e, enquanto ela está bloqueada,
+a *thread* principal varre as janelas de classe `#32770` e lê os controles
+`Static`. É a única forma de obter a mensagem real sem sessão interativa — e o
+que transformou "trava sem dizer nada" em um diagnóstico em uma tentativa.
+
+### A varredura que antecipa o erro 9 sem abrir o Excel
+
+`checar_abas_citadas.py` cruza cada literal `Sheets("X")` do VBA com a lista real
+de abas, e separa **quem está sob `On Error`** de quem não está — porque só o
+segundo grupo vira diálogo modal. Foi ela que apontou `Eng_Saida` nas três
+rotinas.
+
+### A correção
+
+Cirúrgica, não reconstrução pelo `build_all`. O `build_all` grava fora do
+repositório e regeraria por cima do que **só existe na produção**: o layout do
+Painel ajustado à mão pelo gestor (ADR-036), os 455 resultados reais do CAP na
+`EQA_Base` e o `mEstatPeriodo` do ADR-047.
+
+| Passo | Como |
+|---|---|
+| `Eng_Saida` | `criar_eng_saida.ps1 -NLV 2` |
+| `Cfg_Status`, `Eventos_Westgard` | `criar_abas_motor.ps1` (idempotente) |
+| `mWestgardKnowledge` | importado inteiro de `snapshot_producao/Hematologia/vba/`, a mesma fonte do `build_all` |
+| *stub* duplicado | removido de `mUI` |
+
+**A unidade de correção é o módulo inteiro.** Copiar só `RegraClassificacao`
+faria o compilador parar na próxima — e são quatro.
+
+### O achado G do ADR-046 também não tinha chegado à produção
+
+`mImportar.MostrarErros` e `LimparAreaImport` desprotegem, escrevem e reprotegem
+**sem `On Error`**: um erro no meio deixa a aba destrancada em silêncio.
+
+O trecho pronto em `src_producao/mSeguranca_GUARDA.txt` **não servia**: usa a
+constante `SENHA_PROT`, que não existe no `mSeguranca` de produção (299 linhas,
+senha em literal). Importá-lo derrubaria o projeto inteiro, não só a importação.
+
+A linhagem de produção já tem o idioma dela — captura `prot`, desprotege com
+`IMP_SENHA`, reprotege com as mesmas *flags*. Faltava só o caminho de erro, e foi
+ele que se acrescentou, com `Err.Raise` depois de reproteger para não trocar um
+defeito por um silêncio.
+
+### O COM precisa de um Excel vivo antes do `DispatchEx`
+
+Depois de vários ciclos de `Stop-Process`, o DCOM passou a devolver
+`CO_E_SERVER_EXEC_FAILURE` (`0x80080005`) e não se recuperava. Medido: sem
+nenhum `EXCEL.EXE` vivo o `DispatchEx` falha; com um Excel já em execução,
+`DispatchEx`, `Dispatch` e `GetActiveObject` funcionam os três. O *priming*
+passou a vir **antes** da primeira tentativa, e não como reação à falha.
+
+### Validação, no arquivo que será entregue
+
+| Verificação | Antes | Depois |
+|---|---|---|
+| auditoria estática — Bioquímica | 3 graves | **0** |
+| auditoria estática — Hematologia / Imunologia | 0 | **0** |
+| nomes de aba citados e ausentes | 4 sem `On Error` | **0 nos três** |
+| `AtualizarCalc` | travava | **11,9s** |
+| `RegistrarEventosWestgard` | travava | **0,1s** |
+| `AtualizarPainelEng` | travava | **0,0s** |
+| `AtualizarEstatisticaAba` | travava | **0,3s** |
+| `AtualizarEstatistica` | travava | **0,5s** |
+| `AtualizarOperacao` (cadeia pós-gravação) | travava | **0,6s** |
+| `ScreenUpdating` ao fim | — | `True` nos dois |
+
+Integridade contra o backup anterior à intervenção, **12 de 12**: `DB_Resultados`
+6.811 linhas, `EQA_Base` 546, `LotesStore` 41, `Analitos` 74 — todas idênticas;
+nenhuma aba sumiu; nenhum módulo perdido; rótulos, larguras e 13 mesclagens do
+Painel intactos; nenhuma célula em erro.
+
+### Continua aberto
+
+**`ScreenUpdating` sem finalização garantida.** `AtualizarEstatistica` desliga no
+início e não tem bloco de restauro: no caminho de erro o Excel fica parecendo
+congelado. Medido `True` no caminho feliz; o caminho de erro **não foi
+corrigido**.
+
+**Achado #4 da Fase 1 — referência absoluta fixa no `Calc`.** Aberto nos três, e
+nunca resolvido: apenas mudou de endereço (`$BT$1`/`$BU$1` na Hematologia,
+`$AX$1`/`$AY$1` nos outros dois). A primeira inspeção deu falso negativo por
+procurar o endereço antigo — cometendo o próprio defeito que o achado descreve.
+São ~13.000 usos na Hematologia e ~8.600 em cada um dos outros.
+
+**Achado #6 — módulos de classe de planilha sem código.** Não é defeito: toda
+planilha do Excel tem um módulo de classe, com ou sem código. Cabe reclassificar
+na documentação da Fase 1, não corrigir.
+
+**Coluna H (`NC`) do schema da Fase 1** está sem cabeçalho e sem dado nos três.
