@@ -957,3 +957,24 @@ Private Function SigmaValidoBI(ByVal v As Variant) As Boolean
     Exit Function
 fora:
 End Function
+
+' ===================== CONTEXTO DE SESSAO =====================
+'
+' UsuarioSistema so existia no mAuditoria da linhagem do HARDENING. O mBI de
+' producao chamava a funcao mesmo assim, e o resultado era
+' "Sub ou Function nao definida" -- erro de COMPILACAO, que nenhum On Error
+' captura e que, com o Excel invisivel, vira dialogo modal travando a
+' automacao. Foi o que impediu AtualizarBIData de rodar.
+'
+' PRIVATE, DE PROPOSITO. Publicar o nome aqui criaria uma segunda copia publica
+' no dia em que o mAuditoria do hardening entrasse neste arquivo -- e nome
+' publico duplicado entre modulos e exatamente o defeito do ADR-048. O mBI e o
+' unico consumidor na producao, entao Private resolve sem abrir essa porta.
+Private Function UsuarioSistema() As String
+    Dim v As String
+    On Error Resume Next
+    v = Trim$(CStr(ThisWorkbook.Names("currentUser").RefersToRange.Value))
+    On Error GoTo 0
+    If v = "" Then v = "(sem login)"
+    UsuarioSistema = v
+End Function
