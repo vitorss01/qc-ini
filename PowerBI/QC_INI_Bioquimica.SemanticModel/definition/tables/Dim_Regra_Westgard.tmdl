@@ -1,0 +1,59 @@
+table Dim_Regra_Westgard
+
+	/// Nome da regra de Westgard em cada area, por posicao.
+	///
+	/// A fato guarda as posicoes que divergem com nome neutro (W_R2, W_R4,
+	/// W_R5) porque as duas areas rodam matrizes diferentes e uma coluna
+	/// chamada W_2_2s carregando 2of3_2s seria uma afirmacao falsa. O nome
+	/// verdadeiro vive aqui, onde pode variar por produto sem mentir.
+	///
+	/// Bioquimica  (2 niveis)  1_3s  2_2s      R_4s  4_1s  8x
+	/// Hematologia (3 niveis)  1_3s  2of3_2s   R_4s  3_1s  6x
+	///
+	/// 10x nao aparece: nao existe mais em lugar nenhum operacional desde o
+	/// ADR-041.
+
+	column Produto
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Produto
+
+	column Posicao
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Posicao
+
+	column Slot
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Slot
+
+	column Regra
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Regra
+
+	partition Dim_Regra_Westgard = m
+		mode: import
+		source =
+				let
+				    Linhas = #table(
+				        type table [Produto = text, Posicao = Int64.Type,
+				                    Slot = text, Regra = text],
+				        {
+                            {"Bioquimica", 1, "R1", "1_3s"},
+                            {"Hematologia", 1, "R1", "1_3s"},
+                            {"Bioquimica", 2, "R2", "2_2s"},
+                            {"Hematologia", 2, "R2", "2of3_2s"},
+                            {"Bioquimica", 3, "R3", "R_4s"},
+                            {"Hematologia", 3, "R3", "R_4s"},
+                            {"Bioquimica", 4, "R4", "4_1s"},
+                            {"Hematologia", 4, "R4", "3_1s"},
+                            {"Bioquimica", 5, "R5", "8x"},
+                            {"Hematologia", 5, "R5", "6x"}
+				        })
+				in
+				    Linhas
+
+	annotation PBI_ResultType = Table

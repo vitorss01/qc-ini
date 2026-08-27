@@ -273,7 +273,7 @@ table Fato_QC
 
 		annotation PBI_FormatHint = {}
 
-	measure 'Viol 2_2s' = SUM ( Fato_QC[W_2_2s] )
+	measure 'Viol R2' = SUM ( Fato_QC[W_R2] )
 		formatString: #,0
 		displayFolder: 05 Westgard
 		lineageTag: 0335410c-9d16-5728-b6ed-8e3959b11605
@@ -287,14 +287,14 @@ table Fato_QC
 
 		annotation PBI_FormatHint = {}
 
-	measure 'Viol 4_1s' = SUM ( Fato_QC[W_4_1s] )
+	measure 'Viol R4' = SUM ( Fato_QC[W_R4] )
 		formatString: #,0
 		displayFolder: 05 Westgard
 		lineageTag: 08e8278f-bd16-58b4-9b5a-a5681bf96754
 
 		annotation PBI_FormatHint = {}
 
-	measure 'Viol 10x' = SUM ( Fato_QC[W_10x] )
+	measure 'Viol R5' = SUM ( Fato_QC[W_R5] )
 		formatString: #,0
 		displayFolder: 05 Westgard
 		lineageTag: 81e612e5-916b-5277-8711-e768b9528261
@@ -859,11 +859,11 @@ table Fato_QC
 
 		annotation SummarizationSetBy = Automatic
 
-	column W_2_2s
+	column W_R2
 		dataType: int64
 		lineageTag: 94f5c5df-17f1-553f-98b2-e0e192110f7b
 		summarizeBy: none
-		sourceColumn: W_2_2s
+		sourceColumn: W_R2
 
 		annotation SummarizationSetBy = Automatic
 
@@ -875,19 +875,19 @@ table Fato_QC
 
 		annotation SummarizationSetBy = Automatic
 
-	column W_4_1s
+	column W_R4
 		dataType: int64
 		lineageTag: f5b436b4-4312-595f-9692-65c0afadd085
 		summarizeBy: none
-		sourceColumn: W_4_1s
+		sourceColumn: W_R4
 
 		annotation SummarizationSetBy = Automatic
 
-	column W_10x
+	column W_R5
 		dataType: int64
 		lineageTag: a848a162-e93b-5beb-ba38-c9f9bac96ca0
 		summarizeBy: none
-		sourceColumn: W_10x
+		sourceColumn: W_R5
 
 		annotation SummarizationSetBy = Automatic
 
@@ -1265,11 +1265,11 @@ table Fato_QC
 		sourceColumn: Usar_1_3s
 
 		annotation SummarizationSetBy = Automatic
-	column Usar_2_2s
+	column Usar_R2
 		dataType: boolean
 		lineageTag: 810bdda6-faad-51f5-b759-a52b7f795f06
 		summarizeBy: none
-		sourceColumn: Usar_2_2s
+		sourceColumn: Usar_R2
 
 		annotation SummarizationSetBy = Automatic
 	column Usar_R_4s
@@ -1279,21 +1279,21 @@ table Fato_QC
 		sourceColumn: Usar_R_4s
 
 		annotation SummarizationSetBy = Automatic
-	column Usar_4_1s
+	column Usar_R4
 		dataType: boolean
 		lineageTag: ba388ad1-b984-54f5-94ff-b16aa766b823
 		summarizeBy: none
-		sourceColumn: Usar_4_1s
+		sourceColumn: Usar_R4
 
 		annotation SummarizationSetBy = Automatic
-	column Usar_8x
+	column Usar_R5
 		dataType: boolean
 		lineageTag: 617f64e2-aee7-5a61-9baa-4f3764816c60
 		summarizeBy: none
-		sourceColumn: Usar_8x
+		sourceColumn: Usar_R5
 
 		annotation SummarizationSetBy = Automatic
-	column Faixa_Sigma = SWITCH ( TRUE (), ISBLANK ( Fato_QC[Sigma_Obs] ), "Sem meta", Fato_QC[Sigma_Obs] < 3, "< 3", Fato_QC[Sigma_Obs] < 4, "3 a <4", Fato_QC[Sigma_Obs] < 5, "4 a <5", Fato_QC[Sigma_Obs] < 6, "5 a <6", ">= 6" )
+	column Faixa_Sigma = Fato_QC[Classificacao_Sigma]
 		dataType: string
 		lineageTag: 117fec81-848f-50d4-967d-1ddc4cba800b
 		summarizeBy: none
@@ -1301,7 +1301,7 @@ table Fato_QC
 
 		annotation SummarizationSetBy = Automatic
 
-	column Faixa_Sigma_Ordem = SWITCH ( TRUE (), ISBLANK ( Fato_QC[Sigma_Obs] ), 9, Fato_QC[Sigma_Obs] < 3, 1, Fato_QC[Sigma_Obs] < 4, 2, Fato_QC[Sigma_Obs] < 5, 3, Fato_QC[Sigma_Obs] < 6, 4, 5 )
+	column Faixa_Sigma_Ordem = SWITCH ( Fato_QC[Classificacao_Sigma], "Desempenho inadequado", 1, "Marginal", 2, "Bom", 3, "Excelente", 4, "Classe mundial", 5, 9 )
 		dataType: int64
 		isHidden
 		lineageTag: 573a27bb-fc6e-500a-940f-d6d2c768ed76
@@ -1407,19 +1407,19 @@ table Fato_QC
 		displayFolder: 15 Rotulos
 
 		annotation PBI_FormatHint = {"isGeneralNumber":true}
-	measure 'Recomendada 2_2s' = IF ( SELECTEDVALUE ( Fato_QC[Usar_2_2s] ) = TRUE (), 1, 0 )
+	measure 'Recomendada 2_2s' = IF ( SELECTEDVALUE ( Fato_QC[Usar_R2] ) = TRUE (), 1, 0 )
 		formatString: 0
 		lineageTag: 9ce80608-2a53-5e4d-8560-e255bc409f1e
 		displayFolder: 11 Regras recomendadas
 
 		annotation PBI_FormatHint = {"isGeneralNumber":true}
-	measure 'Violada 2_2s' = VAR ultRun = MAX ( Fato_QC[RUN] ) RETURN IF ( CALCULATE ( SUM ( Fato_QC[W_2_2s] ), Fato_QC[RUN] = ultRun ) > 0, 1, 0 )
+	measure 'Violada 2_2s' = VAR ultRun = MAX ( Fato_QC[RUN] ) RETURN IF ( CALCULATE ( SUM ( Fato_QC[W_R2] ), Fato_QC[RUN] = ultRun ) > 0, 1, 0 )
 		formatString: 0
 		lineageTag: 9db4817b-4c6b-5383-bf0f-b5551dc0ac36
 		displayFolder: 12 Regras violadas
 
 		annotation PBI_FormatHint = {"isGeneralNumber":true}
-	measure 'Violacoes 2_2s no periodo' = SUM ( Fato_QC[W_2_2s] )
+	measure 'Violacoes 2_2s no periodo' = SUM ( Fato_QC[W_R2] )
 		formatString: #,0
 		lineageTag: 433c374c-ff9a-5934-9b45-4b1a883c5b00
 		displayFolder: 12 Regras violadas
@@ -1473,19 +1473,19 @@ table Fato_QC
 		displayFolder: 15 Rotulos
 
 		annotation PBI_FormatHint = {"isGeneralNumber":true}
-	measure 'Recomendada 4_1s' = IF ( SELECTEDVALUE ( Fato_QC[Usar_4_1s] ) = TRUE (), 1, 0 )
+	measure 'Recomendada 4_1s' = IF ( SELECTEDVALUE ( Fato_QC[Usar_R4] ) = TRUE (), 1, 0 )
 		formatString: 0
 		lineageTag: 0945dea2-3c0a-5fd1-abd1-e1d79d40851c
 		displayFolder: 11 Regras recomendadas
 
 		annotation PBI_FormatHint = {"isGeneralNumber":true}
-	measure 'Violada 4_1s' = VAR ultRun = MAX ( Fato_QC[RUN] ) RETURN IF ( CALCULATE ( SUM ( Fato_QC[W_4_1s] ), Fato_QC[RUN] = ultRun ) > 0, 1, 0 )
+	measure 'Violada 4_1s' = VAR ultRun = MAX ( Fato_QC[RUN] ) RETURN IF ( CALCULATE ( SUM ( Fato_QC[W_R4] ), Fato_QC[RUN] = ultRun ) > 0, 1, 0 )
 		formatString: 0
 		lineageTag: 2fca43ec-329c-5edb-825c-88801e948644
 		displayFolder: 12 Regras violadas
 
 		annotation PBI_FormatHint = {"isGeneralNumber":true}
-	measure 'Violacoes 4_1s no periodo' = SUM ( Fato_QC[W_4_1s] )
+	measure 'Violacoes 4_1s no periodo' = SUM ( Fato_QC[W_R4] )
 		formatString: #,0
 		lineageTag: 0aeb51dc-b3e0-5bb2-9519-cb32f77ef1b5
 		displayFolder: 12 Regras violadas
@@ -1506,19 +1506,19 @@ table Fato_QC
 		displayFolder: 15 Rotulos
 
 		annotation PBI_FormatHint = {"isGeneralNumber":true}
-	measure 'Recomendada 8x' = IF ( SELECTEDVALUE ( Fato_QC[Usar_8x] ) = TRUE (), 1, 0 )
+	measure 'Recomendada 8x' = IF ( SELECTEDVALUE ( Fato_QC[Usar_R5] ) = TRUE (), 1, 0 )
 		formatString: 0
 		lineageTag: 779c4c45-96de-5809-97dc-8830677d2ccb
 		displayFolder: 11 Regras recomendadas
 
 		annotation PBI_FormatHint = {"isGeneralNumber":true}
-	measure 'Violada 8x' = VAR ultRun = MAX ( Fato_QC[RUN] ) RETURN IF ( CALCULATE ( SUM ( Fato_QC[W_10x] ), Fato_QC[RUN] = ultRun ) > 0, 1, 0 )
+	measure 'Violada 8x' = VAR ultRun = MAX ( Fato_QC[RUN] ) RETURN IF ( CALCULATE ( SUM ( Fato_QC[W_R5] ), Fato_QC[RUN] = ultRun ) > 0, 1, 0 )
 		formatString: 0
 		lineageTag: af183399-1585-533a-80c3-4dd0f56156a7
 		displayFolder: 12 Regras violadas
 
 		annotation PBI_FormatHint = {"isGeneralNumber":true}
-	measure 'Violacoes 8x no periodo' = SUM ( Fato_QC[W_10x] )
+	measure 'Violacoes 8x no periodo' = SUM ( Fato_QC[W_R5] )
 		formatString: #,0
 		lineageTag: 7e864a72-6da3-5732-a980-c53ba1dc88a3
 		displayFolder: 12 Regras violadas
@@ -1557,7 +1557,23 @@ table Fato_QC
 				    TabelaHema = FonteHema{[Item="tblBI_Fato", Kind="Table"]}[Data],
 				    // Combina no dado CRU e tipa uma vez so: tipar os dois lados em
 				    // separado abriria espaco para divergirem no tipo de uma coluna.
-				    Tabela = Table.Combine({TabelaBio, TabelaHema}),
+				    // NOME POSICIONAL NAS TRES POSICOES QUE DIVERGEM POR AREA.
+				    //
+				    // As posicoes 1 e 3 chamam-se 1_3s e R_4s nas duas areas e
+				    // ficam como estao. As outras tres tem nome diferente em
+				    // cada produto, e Table.Combine com nomes diferentes NAO
+				    // falha: ele une e deixa meia coluna nula, fazendo metade
+				    // das violacoes sumir das medidas sem nenhum aviso.
+				    //
+				    // W_R2 nao afirma qual regra e; um W_2_2s carregando
+				    // 2of3_2s afirmaria algo falso. O nome real por area vive
+				    // em Dim_Regra_Westgard.
+				    //
+				    // MissingField.Ignore: um arquivo mais antigo, ainda sem o
+				    // rename no motor, entra sem derrubar a carga.
+				    RenBio = Table.RenameColumns(TabelaBio, {{"W_2_2s","W_R2"}, {"W_4_1s","W_R4"}, {"W_8x","W_R5"}, {"Usar_2_2s","Usar_R2"}, {"Usar_4_1s","Usar_R4"}, {"Usar_8x","Usar_R5"}}, MissingField.Ignore),
+				    RenHema = Table.RenameColumns(TabelaHema, {{"W_2of3_2s","W_R2"}, {"W_3_1s","W_R4"}, {"W_6x","W_R5"}, {"Usar_2of3_2s","Usar_R2"}, {"Usar_3_1s","Usar_R4"}, {"Usar_6x","Usar_R5"}}, MissingField.Ignore),
+				    Tabela = Table.Combine({RenBio, RenHema}),
 				    Tipada = Table.TransformColumnTypes(Tabela, {
 				        {"ID_Result", type text}, {"ID_Corrida", type text},
 				        {"Data", type date}, {"Ano", Int64.Type}, {"Mes", Int64.Type},
@@ -1573,8 +1589,8 @@ table Fato_QC
 				        {"Lim_p2s", type number}, {"Lim_p3s", type number},
 				        {"CVtp_pct", type number}, {"BIAStp_pct", type number},
 				        {"ETp_pct", type number}, {"W_1_3s", Int64.Type},
-				        {"W_2_2s", Int64.Type}, {"W_R_4s", Int64.Type},
-				        {"W_4_1s", Int64.Type}, {"W_10x", Int64.Type},
+				        {"W_R2", Int64.Type}, {"W_R_4s", Int64.Type},
+				        {"W_R4", Int64.Type}, {"W_R5", Int64.Type},
 				        {"A_1_2s", Int64.Type}, {"Veredito", type text},
 				        {"Produto", type text}, {"WorkbookID", type text},
 				        {"VersaoContrato", type text}, {"FonteArquivo", type text},
@@ -1583,7 +1599,7 @@ table Fato_QC
 				        {"N_Observado", Int64.Type}, {"Media_Observada", type number},
 				        {"DP_Observado", type number}, {"CV_Observado_pct", type number},
 				        {"Bias_Observado_pct", type number},
-				        {"ET_Observado_pct", type number}, {"Sigma", type number}, {"DPM_Teorico", type number}, {"Yield_Teorico", type number}, {"Regra_Westgard_Recomendada", type text}, {"N_Controle_Recomendado", type text}, {"RunSize_Max_Recomendado", type text}, {"Frequencia_QC_Descricao", type text}, {"Cobertura_Motor_Westgard", type text}, {"Referencia_Plano_QC", type text}, {"Classificacao_Sigma", type text}, {"Bias_Observado_abs_pct", type number}, {"Margem_ETp_pp", type number}, {"Margem_ETp_pct", type number}, {"Status_Margem_ETp", type text}, {"Provedor_EQA", type text}, {"Ano_EQA", Int64.Type}, {"Rodada_EQA", type text}, {"Sigma_Plano", type number}, {"Nivel_Governante", type text}, {"Classificacao_Sigma_Plano", type text}, {"Usar_1_3s", type logical}, {"Usar_2_2s", type logical}, {"Usar_R_4s", type logical}, {"Usar_4_1s", type logical}, {"Usar_8x", type logical},
+				        {"ET_Observado_pct", type number}, {"Sigma", type number}, {"DPM_Teorico", type number}, {"Yield_Teorico", type number}, {"Regra_Westgard_Recomendada", type text}, {"N_Controle_Recomendado", type text}, {"RunSize_Max_Recomendado", type text}, {"Frequencia_QC_Descricao", type text}, {"Cobertura_Motor_Westgard", type text}, {"Referencia_Plano_QC", type text}, {"Classificacao_Sigma", type text}, {"Bias_Observado_abs_pct", type number}, {"Margem_ETp_pp", type number}, {"Margem_ETp_pct", type number}, {"Status_Margem_ETp", type text}, {"Provedor_EQA", type text}, {"Ano_EQA", Int64.Type}, {"Rodada_EQA", type text}, {"Sigma_Plano", type number}, {"Nivel_Governante", type text}, {"Classificacao_Sigma_Plano", type text}, {"Usar_1_3s", type logical}, {"Usar_R2", type logical}, {"Usar_R_4s", type logical}, {"Usar_R4", type logical}, {"Usar_R5", type logical},
 				        {"Fonte_Especificacao", type text}, {"ID_Especificacao", type text},
 				        {"Situacao_Especificacao", type text},
 				        {"Usuario_Atualizacao", type text}, {"Tipo_Evento", type text}
