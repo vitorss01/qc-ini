@@ -16,4 +16,6 @@ ref table Dim_Analito
 ref table Dim_Lote
 ref table Dim_Nivel
 ref table Dim_Regra_Westgard
+ref table Fato_Eventos_Westgard
+ref table Fato_EQA
 

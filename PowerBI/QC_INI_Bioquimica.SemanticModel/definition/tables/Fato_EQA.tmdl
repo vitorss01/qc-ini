@@ -1,0 +1,250 @@
+table Fato_EQA
+
+	/// UMA LINHA = UM RESULTADO DE UMA AMOSTRA DE UMA RODADA.
+	///
+	/// O grao e por amostra de proposito (ADR-034): consolidar cedo perde a
+	/// dispersao dentro da rodada, e e justamente ela que separa um bias
+	/// sistematico de um resultado isolado fora.
+	///
+	/// SDI NAO E BIAS. O SDI ja vem padronizado pelo desvio do grupo e responde
+	/// "quao longe do consenso"; o Bias percentual responde "quanto o metodo
+	/// desvia". Sao perguntas diferentes e ficam em colunas diferentes -- o
+	/// provedor publica as duas e derivar uma da outra apagaria informacao.
+	///
+	/// O |Bias| consolidado usa DOIS ESTAGIOS: media dentro da rodada, depois
+	/// media das rodadas. Somar todas as amostras de uma vez daria peso maior a
+	/// rodada que por acaso teve mais amostras.
+
+	column Provedor
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Provedor
+
+	column Ano
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Ano
+
+	column Rodada
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Rodada
+
+	column Analito_Provedor
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Analito
+
+	column Analito
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Analito_Canonico
+
+	column Amostra
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Amostra
+
+	column Resultado
+		dataType: double
+		summarizeBy: none
+		sourceColumn: Resultado
+
+	column Valor_Alvo
+		dataType: double
+		summarizeBy: none
+		sourceColumn: Valor_Alvo
+
+	column SD
+		dataType: double
+		summarizeBy: none
+		sourceColumn: SD
+
+	column SDI
+		dataType: double
+		summarizeBy: none
+		sourceColumn: SDI
+
+	column Limite_Inferior
+		dataType: double
+		summarizeBy: none
+		sourceColumn: Limite_Inferior
+
+	column Limite_Superior
+		dataType: double
+		summarizeBy: none
+		sourceColumn: Limite_Superior
+
+	column Status
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Status_Padronizado
+
+	column Avaliacao_Original
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Avaliacao_Original
+
+	column Unidade
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Unidade
+
+	column Bias_pct
+		dataType: double
+		summarizeBy: none
+		sourceColumn: Bias
+
+	column Bias_Abs_pct
+		dataType: double
+		summarizeBy: none
+		sourceColumn: Bias_Abs
+
+	column Uso_Analitico
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Uso_Analitico
+
+	column Arquivo_Fonte
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Arquivo_Fonte
+
+	column Pagina_Fonte
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Pagina_Fonte
+
+	column Area
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Area
+
+	measure N_EQA_Resultados =
+			COUNTROWS ( Fato_EQA )
+		formatString: #,0
+		displayFolder: 06 EQA
+
+	measure N_EQA_Rodadas =
+			DISTINCTCOUNT ( Fato_EQA[Rodada] )
+		formatString: #,0
+		displayFolder: 06 EQA
+
+	measure SDI_Medio =
+			/// Media simples: o SDI ja e adimensional e comparavel entre analitos.
+			AVERAGE ( Fato_EQA[SDI] )
+		formatString: 0.00
+		displayFolder: 06 EQA
+
+	measure Bias_EQA_pct =
+			/// COM SINAL. Media dentro da rodada, depois media das rodadas: sem
+			/// isso a rodada com mais amostras pesaria mais que as outras.
+			AVERAGEX (
+			    VALUES ( Fato_EQA[Rodada] ),
+			    CALCULATE ( AVERAGE ( Fato_EQA[Bias_pct] ) )
+			)
+		formatString: 0.00
+		displayFolder: 06 EQA
+
+	measure Bias_Abs_EQA_pct =
+			/// EM MAGNITUDE. E este que entra no Erro Total e no Sigma: desvio
+			/// para cima e para baixo consomem o mesmo orcamento de erro, e a
+			/// media com sinal deixaria os dois se cancelarem (ADR-033).
+			AVERAGEX (
+			    VALUES ( Fato_EQA[Rodada] ),
+			    CALCULATE ( AVERAGE ( Fato_EQA[Bias_Abs_pct] ) )
+			)
+		formatString: 0.00
+		displayFolder: 06 EQA
+
+	measure N_Nao_Conformidades =
+			CALCULATE (
+			    COUNTROWS ( Fato_EQA ),
+			    Fato_EQA[Status] <> "ACEITO"
+			)
+		formatString: #,0
+		displayFolder: 06 EQA
+
+	measure Aceitabilidade_pct =
+			/// Percentual de resultados aceitos. BLANK sem resultado nenhum --
+			/// 100% de zero avaliacoes nao e desempenho perfeito, e ausencia.
+			VAR t = COUNTROWS ( Fato_EQA )
+			RETURN
+			    IF (
+			        ISBLANK ( t ),
+			        BLANK (),
+			        DIVIDE ( t - [N_Nao_Conformidades], t )
+			    )
+		formatString: 0.0%
+		displayFolder: 06 EQA
+
+	measure N_EQA_Sem_Analito_Canonico =
+			/// Resultado do provedor que nao casou com nenhum analito cadastrado.
+			/// Fica visivel de proposito: sem isso, um mapeamento incompleto some
+			/// da tela e o laboratorio se ve avaliado por menos do que enviou.
+			CALCULATE (
+			    COUNTROWS ( Fato_EQA ),
+			    ISBLANK ( Fato_EQA[Analito] ) || Fato_EQA[Analito] = ""
+			)
+		formatString: #,0
+		displayFolder: 09 Diagnostico
+
+	partition Fato_EQA = m
+		mode: import
+		source =
+				let
+				    // As duas areas publicam o MESMO esquema de 21 colunas na
+				    // EQA_Base, entao a uniao e direta. A coluna Area e o que
+				    // separa as paginas, como o Produto faz na Fato_QC.
+				    Bruto = (caminho, area) =>
+				        let
+				            F = Excel.Workbook(File.Contents(caminho), null, true),
+				            Aba = F{[Item="EQA_Base", Kind="Sheet"]}[Data],
+				            Cab = Table.PromoteHeaders(Aba, [PromoteAllScalars=true]),
+				            // A ABA TEM UM BLOCO LATERAL, E ELE NAO E DADO.
+				            //
+				            // Depois da coluna Chave vem o mapa de nomes do
+				            // provedor e o carimbo da consolidacao. Promovido
+				            // junto, ele traz um segundo "Provedor" -- que o
+				            // Power Query renomeia para Provedor.1 -- e colunas
+				            // cujo cabecalho e um texto de relatorio.
+				            //
+				            // Recorta-se pelas 21 colunas de dado, por NOME:
+				            // MissingField.Error de proposito, porque coluna de
+				            // contrato que sumiu tem de derrubar a carga, nao
+				            // entrar como nula.
+				            Dados = Table.SelectColumns(Cab,
+				                {"Provedor","Ano","Rodada","Analito",
+				                 "Analito_Canonico","Amostra","Resultado",
+				                 "Valor_Alvo","SD","SDI","Limite_Inferior",
+				                 "Limite_Superior","Avaliacao_Original",
+				                 "Status_Padronizado","Unidade","Bias","Bias_Abs",
+				                 "Pagina_Fonte","Arquivo_Fonte","Uso_Analitico",
+				                 "Chave"}, MissingField.Error),
+				            ComArea = Table.AddColumn(Dados, "Area", each area, type text),
+				            // linha sem provedor e sobra de formatacao da aba
+				            Limpo = Table.SelectRows(ComArea,
+				                each [Provedor] <> null and [Provedor] <> "")
+				        in
+				            Limpo,
+				    Bio = Bruto(pCaminhoQC, "Bioquimica"),
+				    Hem = Bruto(pCaminhoHema, "Hematologia"),
+				    Junto = Table.Combine({Bio, Hem}),
+				    Tipado = Table.TransformColumnTypes(Junto, {
+				        {"Provedor", type text}, {"Ano", Int64.Type},
+				        {"Rodada", type text}, {"Analito", type text},
+				        {"Analito_Canonico", type text}, {"Amostra", type text},
+				        {"Resultado", type number}, {"Valor_Alvo", type number},
+				        {"SD", type number}, {"SDI", type number},
+				        {"Limite_Inferior", type number},
+				        {"Limite_Superior", type number},
+				        {"Avaliacao_Original", type text},
+				        {"Status_Padronizado", type text}, {"Unidade", type text},
+				        {"Bias", type number}, {"Bias_Abs", type number},
+				        {"Pagina_Fonte", type text}, {"Arquivo_Fonte", type text},
+				        {"Uso_Analitico", type text}, {"Area", type text}})
+				in
+				    Tipado
+
+	annotation PBI_ResultType = Table

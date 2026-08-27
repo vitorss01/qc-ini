@@ -137,6 +137,78 @@ def main():
         reg('10x nao aparece como dado da dimensao', '10x' not in dados)
 
     print()
+    print('=== Eventos_Westgard como fato de EVENTO ===')
+    fev = os.path.join(MOD, 'tables', 'Fato_Eventos_Westgard.tmdl')
+    reg('Fato_Eventos_Westgard existe', os.path.exists(fev))
+    reg('registrada no model.tmdl', 'ref table Fato_Eventos_Westgard' in mt)
+    if os.path.exists(fev):
+        e = ler(fev)
+        for m in ('N_Eventos_Violacao', 'N_Resultados_Marcados',
+                  'N_Corridas_Com_Violacao'):
+            reg('medida %s' % m, ('measure %s' % m) in e)
+        reg('separa evento de resultado marcado (N x R)',
+            'N_Niveis' in e and 'R_Corridas' in e)
+        reg('declara o grao por produto', 'Grao' in e and 'LEGADO_1N' in e)
+        reg('grao legado nao entra na contagem de eventos',
+            'Grao] = "EVENTO"' in e)
+        reg('expoe quanto ficou fora', 'Eventos_sem_grao_de_evento' in e)
+    # as duas abas existem e tem dado
+    import openpyxl as _op
+    for arq, prod in (('QC_Bioquimica.xlsm', 'Bioquimica'),
+                      ('QC_Hematologia.xlsm', 'Hematologia')):
+        wb = _op.load_workbook(os.path.join(BASE, arq), read_only=True)
+        tem = 'Eventos_Westgard' in wb.sheetnames
+        n = 0
+        if tem:
+            ws = wb['Eventos_Westgard']
+            n = max(0, ws.max_row - 3)
+        wb.close()
+        reg('%s: aba de eventos com dado' % prod, tem and n > 0, '%d linha(s)' % n)
+
+    print()
+    print('=== EQA integrada ===')
+    feq = os.path.join(MOD, 'tables', 'Fato_EQA.tmdl')
+    reg('Fato_EQA existe', os.path.exists(feq))
+    reg('registrada no model.tmdl', 'ref table Fato_EQA' in mt)
+    if os.path.exists(feq):
+        q_ = ler(feq)
+        for c in ('Provedor', 'Ano', 'Rodada', 'Analito', 'Area'):
+            reg('filtro disponivel: %s' % c, ('column %s' % c) in q_ or
+                ('sourceColumn: %s' % c) in q_)
+        for m in ('N_EQA_Resultados', 'N_EQA_Rodadas', 'SDI_Medio',
+                  'Bias_EQA_pct', 'Bias_Abs_EQA_pct', 'N_Nao_Conformidades',
+                  'Aceitabilidade_pct'):
+            reg('medida %s' % m, ('measure %s' % m) in q_)
+        reg('SDI preservado separado do Bias',
+            'column SDI' in q_ and 'column Bias_pct' in q_)
+        reg('|Bias| consolidado em dois estagios',
+            q_.count('AVERAGEX (') >= 2 and 'VALUES ( Fato_EQA[Rodada] )' in q_)
+        reg('aceitabilidade sem resultado devolve BLANK', 'BLANK ( )' in q_ or 'BLANK ()' in q_)
+    import openpyxl as _o
+    for arq, prod in (('QC_Bioquimica.xlsm', 'Bioquimica'),
+                      ('QC_Hematologia.xlsm', 'Hematologia')):
+        wb = _o.load_workbook(os.path.join(BASE, arq), read_only=True)
+        tem = 'EQA_Base' in wb.sheetnames
+        n = 0
+        cab = []
+        if tem:
+            ws = wb['EQA_Base']
+            cab = [str(c.value or '') for c in next(ws.iter_rows(min_row=1, max_row=1))]
+            n = sum(1 for r in ws.iter_rows(min_row=2, values_only=True) if r and r[0])
+        wb.close()
+        reg('%s: EQA_Base com dado' % prod, tem and n > 0, '%d linha(s)' % n)
+        # as 21 primeiras sao o dado; o que vem depois e bloco lateral
+        # (mapa de nomes do provedor e carimbo), e o M recorta por nome.
+        ESPERADO = ['Provedor', 'Ano', 'Rodada', 'Analito', 'Analito_Canonico',
+                    'Amostra', 'Resultado', 'Valor_Alvo', 'SD', 'SDI',
+                    'Limite_Inferior', 'Limite_Superior', 'Avaliacao_Original',
+                    'Status_Padronizado', 'Unidade', 'Bias', 'Bias_Abs',
+                    'Pagina_Fonte', 'Arquivo_Fonte', 'Uso_Analitico', 'Chave']
+        reg('%s: 21 colunas de contrato na ordem' % prod,
+            cab[:21] == ESPERADO,
+            'difere em %s' % [c for a_, c in zip(ESPERADO, cab[:21]) if a_ != c][:3])
+
+    print()
     print('=== caminhos das fontes ===')
     ex = ler(os.path.join(MOD, 'expressions.tmdl'))
     reg('parametros apontam para o repositorio', 'vitor.santos' not in ex,
