@@ -67,7 +67,7 @@ try {
             "' Senha das abas tecnicas, uma vez so neste modulo. As rotinas que",
             "' escrevem em aba protegida usam LiberarEscrita/RestaurarProtecao e",
             "' nao repetem o literal.",
-            "Private Const SENHA_PROT As String = ""$SENHA"""
+            "Public Const SENHA_PROT As String = ""$SENHA"""
         ) -join "`r`n"
         # depois do Option Explicit, ainda na area de declaracoes
         $linhaDecl = 1

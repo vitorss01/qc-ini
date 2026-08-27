@@ -599,7 +599,7 @@ proxima2:
     ' --- escrita, com a protecao tratada (mesma licao do ADR-025) ---------
     prot = ws.ProtectContents
     On Error GoTo restaura
-    If prot Then ws.Unprotect Password:="qcini2025"
+    If prot Then ws.Unprotect Password:=SENHA_PROT
 
     LimparCorpo ws
     If k > 0 Then
@@ -623,7 +623,7 @@ restaura:
     nErr = Err.Number: sErr = Err.Description
     On Error Resume Next
     If prot Then
-        ws.Protect Password:="qcini2025", UserInterfaceOnly:=True, _
+        ws.Protect Password:=SENHA_PROT, UserInterfaceOnly:=True, _
                    DrawingObjects:=False, Contents:=True, Scenarios:=True
     End If
     On Error GoTo 0

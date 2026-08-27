@@ -79,7 +79,9 @@ Public Const CAP_LINHAS As Long = 120000
 ' A mesma senha de mSeguranca.ReprotectAll. Literal aqui, como ja e literal la:
 ' centraliza-la agora criaria dependencia nova entre modulos por um ganho
 ' estetico, e o ADR-025 nao e lugar para isso.
-Private Const SENHA_ABAS As String = "qcini2025"
+' Senha vem de mSeguranca.SENHA_PROT (ADR-052): o modulo dono da
+' protecao e o unico que a guarda como literal.
+Private Const SENHA_ABAS As String = SENHA_PROT
 
 ' Colunas derivadas do banco. Ficam aqui, e nao em mDados, porque agora sao
 ' MANTIDAS aqui: quem escreve a coluna e quem define onde ela fica.

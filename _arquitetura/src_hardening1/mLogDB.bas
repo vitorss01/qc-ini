@@ -124,7 +124,7 @@ restauraLog:
     nErrL = Err.Number: sErrL = Err.Description
     On Error Resume Next
     If prot Then
-        ws.Protect Password:="qcini2025", UserInterfaceOnly:=True, _
+        ws.Protect Password:=SENHA_PROT, UserInterfaceOnly:=True, _
                    DrawingObjects:=False, Contents:=True, Scenarios:=True, _
                    AllowFiltering:=True, AllowSorting:=True
     End If

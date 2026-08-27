@@ -393,7 +393,7 @@ End Function
 ' permissoes a tabela vira um bloco morto e o objetivo se perde.
 Public Sub ProtegerAudit(ByVal ws As Worksheet)
     On Error Resume Next
-    ws.Protect Password:="qcini2025", UserInterfaceOnly:=True, _
+    ws.Protect Password:=SENHA_PROT, UserInterfaceOnly:=True, _
                DrawingObjects:=False, Contents:=True, Scenarios:=True, _
                AllowFiltering:=True, AllowSorting:=True, AllowFormattingColumns:=True
 End Sub
