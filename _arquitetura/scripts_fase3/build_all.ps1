@@ -518,6 +518,16 @@ if ($Produto -eq 'Hematologia') {
 }
 
 Encerrar-Excel
+"== 7z. ADR-051: Eventos_Westgard e EQA_Base viram tabela nomeada"
+# DEPOIS do motor: as tabelas sao dimensionadas pelo historico ja gravado.
+# Antes dele, Eventos_Westgard estaria vazia e a tabela nasceria com uma linha
+# em branco que so a proxima execucao corrigiria.
+#
+# ANTES da etapa 8: dali em diante a estrutura fica travada, e criar
+# ListObject exige a pasta destravada.
+Etapa 'criar_listobjects_dados.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 5
+
+Encerrar-Excel
 "== 8. trava a estrutura (abas so pelo Modo Desenvolvedor)"
 Etapa 'travar_estrutura.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 3
 

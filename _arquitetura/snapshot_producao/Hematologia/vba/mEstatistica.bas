@@ -1713,6 +1713,7 @@ Public Sub RegistrarEventosWestgard()
         ws.Range(ws.Cells(4, 1), ws.Cells(3 + nEv, EV_NCOL)).Value = outp
     End If
     ws.Range("J2").Value = nEv
+    AjustarTabelaEventos ws, nEv
 
     ' Teto de eventos: descartar em silencio esconderia violacao de Westgard do
     ' analista e do auditor. Eventos_Westgard e DERIVADA -- pode ser
@@ -1740,6 +1741,31 @@ restaura:
     RestaurarProtecao ws, prot
     On Error GoTo 0
     If nErr <> 0 Then Err.Raise nErr, "mEstatistica.RegistrarEventosWestgard", sErr
+End Sub
+
+
+' Mantem tblEventos_Westgard cobrindo exatamente os eventos gravados.
+'
+' A rotina escreve num Range, nao na tabela. Sem este ajuste o ListObject
+' ficaria do tamanho da execucao ANTERIOR: sobrando, traria linhas vazias
+' para o Power Query (as "linhas fantasma"); faltando, cortaria eventos reais
+' do ETL sem nenhum sinal -- a aba mostraria tudo e o BI leria menos.
+'
+' Tabela do Excel exige ao menos UMA linha de dado, entao com zero eventos ela
+' fica com a linha 4 vazia. E o minimo que o formato permite, e o ETL a
+' descarta por vir sem chave.
+Private Sub AjustarTabelaEventos(ByVal ws As Worksheet, ByVal nEv As Long)
+    On Error Resume Next
+    Dim lo As ListObject, ultima As Long
+    Set lo = Nothing
+    Dim t As ListObject
+    For Each t In ws.ListObjects
+        If t.Name = "tblEventos_Westgard" Then Set lo = t: Exit For
+    Next t
+    If lo Is Nothing Then Exit Sub          ' ainda nao instalada: nada a fazer
+    ultima = 3 + nEv
+    If ultima < 4 Then ultima = 4
+    lo.Resize ws.Range(ws.Cells(3, 1), ws.Cells(ultima, EV_NCOL))
 End Sub
 
 
