@@ -43,7 +43,9 @@ Public Const IMP_C_NIVEL As Long = 3       ' C
 Public Const IMP_C_LOTE As Long = 4        ' D
 Public Const IMP_C_AN0 As Long = 5         ' E: primeira coluna de analito
 
-Private Const IMP_SENHA As String = "qcini2025"
+' Senha vem de mSeguranca.SENHA_PROT (ADR-052): o modulo dono da
+' protecao e o unico que a guarda como literal.
+Private Const IMP_SENHA As String = SENHA_PROT
 
 ' Quantas colunas de analito o cabecalho tem (varre ate achar celula vazia).
 Private Function NColunasAnalito(ByVal ws As Worksheet) As Long
