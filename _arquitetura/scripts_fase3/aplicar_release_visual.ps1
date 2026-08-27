@@ -50,8 +50,22 @@ try {
         }
         if ($null -ne $bioIni) {
             if ($null -ne $bioCfg) {
-                $bioIni.Range('C7').Formula = "='$($bioCfg.Name)'!C9"
-                $bioIni.Range('C8').Formula = "='$($bioCfg.Name)'!C11"
+                # CELULA VAZIA REFERENCIADA VIRA ZERO.
+                #
+                # O artefato sai SEM identidade preenchida (C9:C11 acabaram de
+                # ser limpas acima), e "=Configuracao!C9" apontando para vazio
+                # renderiza 0. A tela de abertura exibia "Equipamento: 0" e
+                # "Controle: 0" -- e era isso que testar_release_visual_bio.ps1
+                # acusava a cada build, corretamente.
+                #
+                # O par de aspas vem de [char]34 e nao de aspas escapadas: numa
+                # string do PowerShell cada aspa literal exige duas, e a conta
+                # sai errada com facilidade -- foi o que aconteceu na primeira
+                # tentativa, que gravou formula invalida em silencio.
+                $vz = [string][char]34 + [string][char]34
+                $nc = $bioCfg.Name
+                $bioIni.Range('C7').Formula = "=IF('$nc'!C9=$vz,$vz,'$nc'!C9)"
+                $bioIni.Range('C8').Formula = "=IF('$nc'!C11=$vz,$vz,'$nc'!C11)"
             }
             else {
                 $bioIni.Range('C7:C8').ClearContents()
