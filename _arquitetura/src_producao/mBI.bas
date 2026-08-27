@@ -864,7 +864,31 @@ Public Function ReconciliarComCalc() As String
             zB = CDbl(wsB.Cells(idx(chave), 21).Value)
             vC = Trim$(CStr(wsC.Cells(i, colV).Value))
             vB = Trim$(CStr(wsB.Cells(idx(chave), 37).Value))
-            If Abs(zC - zB) > 0.000001 Or vC <> vB Then
+            ' ALERTA no Calc x OK no BI NAO E DIVERGENCIA -- e o contrato.
+            '
+            ' O Eng_Saida guarda no Veredicto apenas REJEITADO/OK e publica o
+            ' alerta 1_2s em campo proprio (A_1_2s, coluna 36), de proposito:
+            ' o Calc usa o veredicto para separar as series do grafico, e
+            ' publicar "ALERTA" ali migraria ponto de alerta para a serie de
+            ' rejeitados, mudando o grafico sem ninguem decidir.
+            '
+            ' Onde o Calc ainda calcula por conta propria -- Hematologia, que
+            ' nao foi redirecionada -- ele produz os tres estados. A informacao
+            ' e a MESMA, repartida em duas colunas; exigir string identica
+            ' reprovaria um contrato correto. A equivalencia so vale com o
+            ' alerta efetivamente marcado no BI.
+            Dim vOk As Boolean
+            vOk = (vC = vB)
+            ' O veredicto do motor tem DOIS estados, o do Calc legado tem tres.
+            ' Por contrato do Eng_Saida, ALERTA nunca aparece no campo do motor,
+            ' entao um ALERTA do Calc so pode corresponder a OK no BI. A
+            ' informacao do alerta nao se perde: viaja na coluna A_1_2s.
+            ' Discordancia que importa continua pega -- ALERTA contra REJEITADO,
+            ' ou OK contra REJEITADO, seguem sendo divergencia.
+            If Not vOk Then
+                vOk = (UCase$(vC) = "ALERTA" And UCase$(vB) = "OK")
+            End If
+            If Abs(zC - zB) > 0.000001 Or Not vOk Then
                 div = div + 1
                 If Len(prim) = 0 Then
                     prim = "RUN " & wsC.Cells(i, 2).Value & " N" & nv & _

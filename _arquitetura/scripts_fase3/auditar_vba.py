@@ -151,6 +151,63 @@ def main():
 
     achados = defaultdict(list)
 
+    # ---- J. identificador que colide com nome nativo do VBA ----------------
+    #
+    # VBA nao distingue caixa, entao um identificador so precisa COINCIDIR com
+    # um nome da linguagem para causar estrago. Duas formas, ambas ja vistas
+    # neste projeto:
+    #
+    #   PALAVRA RESERVADA  Dim aM As Double, aS As Double
+    #                      'aS' E 'As'. O modulo inteiro para com "Erro de
+    #                      sintaxe" -- a mEstatistica da Hematologia nunca
+    #                      compilou por causa disso.
+    #
+    #   FUNCAO NATIVA      Dim vAl As Variant   ...   x = Val(CStr(y))
+    #                      'vAl' E 'Val'. A chamada a funcao vira indexacao da
+    #                      variavel e devolve "Erro 13: tipos incompativeis",
+    #                      longe da declaracao que causou o problema.
+    #
+    # A auditoria nao analisa gramatica, entao nao encontraria nenhum dos dois
+    # pelos outros criterios. Este e barato e pega os dois.
+    RESERVADAS = set("""as if then else elseif end sub function property let get set
+        dim redim static const public private friend option explicit for next each in
+        do loop while wend with select case to step exit goto gosub on error resume
+        byval byref optional paramarray new nothing true false empty null me stop
+        call type enum declare lib alias implements withevents raiseevent event
+        and or not xor eqv imp mod is like typeof preserve""".split())
+    NATIVAS = set("""abs asc atn cbool cbyte ccur cdate cdbl cdec chr cint clng
+        cos csng cstr cvar cvdate cverr date dateadd datediff datepart dateserial
+        datevalue day ddb dir doevents environ eof erl err error exp filelen fix
+        format fv hex hour iif imestatus input instr instrrev int ipmt irr isarray
+        isdate isempty iserror ismissing isnull isnumeric isobject join lbound lcase
+        left len loc lof log ltrim mid minute mirr month monthname msgbox now nper
+        npv oct partition pmt ppmt pv qbcolor rate rgb right rnd round rtrim second
+        seek sgn sin sln space spc split sqr str strcomp strconv string strreverse
+        switch syd tab tan time timer timeserial timevalue trim typename ubound
+        ucase val vartype weekday weekdayname year""".split())
+    RXDECL = re.compile(
+        r'^\s*(?:Dim|ReDim|Static|Private|Public|Global|Const)\s+(.+)$', re.I)
+    for mod, linhas in mods.items():
+        for i, ln in enumerate(linhas):
+            corpo = ln.split("'")[0]
+            m = RXDECL.match(corpo)
+            if not m:
+                continue
+            for nome in re.findall(r'(?<![.\w])([A-Za-z_]\w*)\s+As\s',
+                                   m.group(1)):
+                b = nome.lower()
+                if b in RESERVADAS:
+                    achados['J. identificador colide com PALAVRA RESERVADA'
+                            ].append('%s l.%d: %s' % (mod, i + 1, nome))
+                elif b in NATIVAS:
+                    # so acusa se a funcao nativa e mesmo usada no modulo --
+                    # senao nao ha colisao de fato, so nome infeliz
+                    if re.search(r'(?<![.\w])%s\s*\(' % re.escape(b),
+                                 '\n'.join(linhas), re.I):
+                        achados['J. identificador colide com FUNCAO NATIVA usada'
+                                ].append('%s l.%d: %s (sombreia %s)'
+                                         % (mod, i + 1, nome, b.capitalize()))
+
     # ---- I. Option Explicit -------------------------------------------------
     for mod, linhas in mods.items():
         if not any(l.strip().lower().startswith('option explicit')
@@ -468,7 +525,13 @@ def main():
               'F. GoTo/On Error para label inexistente',
               'G. desprotege e NAO reprotege',
               'G. janela destrancada sem On Error (erro deixa aberta)',
-              'G. saida antecipada dentro da janela destrancada']
+              'G. saida antecipada dentro da janela destrancada',
+              # Os dois sao GRAVES porque impedem o codigo de rodar: a palavra
+              # reservada derruba a COMPILACAO do modulo inteiro, e a funcao
+              # sombreada troca uma chamada por indexacao de variavel, sempre
+              # com erro longe da declaracao que o causou.
+              'J. identificador colide com PALAVRA RESERVADA',
+              'J. identificador colide com FUNCAO NATIVA usada']
     nGraves = 0
     for chave in sorted(achados):
         itens = achados[chave]

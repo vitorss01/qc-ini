@@ -1310,7 +1310,7 @@ Public Sub AtualizarPainelEng()
     Dim ws As Worksheet, ca As Worksheet, analito As String, lote As String
     Dim t As Long, i As Long, n As Long, v() As Double, media As Double, dp As Double
     Dim cv As Double, bias As Double, et As Double, sg As Double, etp As Double
-    Dim aM As Double, aS As Double, rr As Long, rejTot As Long
+    Dim aM As Double, alvoS As Double, rr As Long, rejTot As Long
     Dim cnt(1 To 5) As Long, k2 As Long, bloco As Variant, blocoF As Variant
     Set ws = ThisWorkbook.Sheets("Painel")
     Set ca = ThisWorkbook.Sheets("Calc")
@@ -1339,7 +1339,7 @@ Public Sub AtualizarPainelEng()
         media = CalcularMedia(v, n)
         dp = CalcularDP(v, n, media)
         cv = CalcularCV(dp, media)
-        AlvoAnalito analito, t + 1, aM, aS, etp
+        AlvoAnalito analito, t + 1, aM, alvoS, etp
         bias = CalcularBias(media, aM)
         et = CalcularErroTotal(cv, bias)
         sg = CalcularSigma(etp, bias, cv)
@@ -1381,7 +1381,7 @@ Public Sub AtualizarEstatisticaAba()
     Dim ws As Worksheet, wa As Worksheet, i As Long, t As Long, er As Long
     Dim analito As String, anoDe As Long, anoAte As Long, loteF As String
     Dim st As Variant, n As Long, media As Double, dp As Double, cv As Double
-    Dim aM As Double, aS As Double, etp As Double, bias As Double, et As Double, sg As Double
+    Dim aM As Double, alvoS As Double, etp As Double, bias As Double, et As Double, sg As Double
     Dim outp() As Variant, linhas As Long
     Set ws = ThisWorkbook.Sheets("Estatística")
     Set wa = ThisWorkbook.Sheets("Analitos")
@@ -1406,7 +1406,7 @@ Public Sub AtualizarEstatisticaAba()
                 st = EstatBasica(analito, t, loteF, anoDe, anoAte)
                 n = st(0): media = st(1): dp = st(2)
                 cv = CalcularCV(dp, media)
-                AlvoAnalito analito, t, aM, aS, etp
+                AlvoAnalito analito, t, aM, alvoS, etp
                 bias = CalcularBias(media, aM)
                 et = CalcularErroTotal(cv, bias)
                 sg = CalcularSigma(etp, bias, cv)
@@ -1577,12 +1577,12 @@ Public Sub RegistrarEventosWestgard()
             Dim analitoN As String
             analitoN = CStr(nomeDe(ch))
 
-            Dim aM() As Double, aS() As Double
-            ReDim aM(0 To NLV - 1): ReDim aS(0 To NLV - 1)
+            Dim aM() As Double, alvoS() As Double
+            ReDim aM(0 To NLV - 1): ReDim alvoS(0 To NLV - 1)
             Dim mm As Double, ss As Double, ee As Double
             For t = 0 To NLV - 1
                 AlvoAnalito analitoN, t + 1, mm, ss, ee
-                aM(t) = mm: aS(t) = ss
+                aM(t) = mm: alvoS(t) = ss
             Next t
 
             For j = 1 To col.Count
@@ -1593,7 +1593,7 @@ Public Sub RegistrarEventosWestgard()
                     td(t, i) = True
                     vl(t, i) = CDbl(item(2))
                     dtv(t, i) = CDbl(item(3))
-                    If aS(t) > 0 Then zz(t, i) = CalcularZ(vl(t, i), aM(t), aS(t))
+                    If alvoS(t) > 0 Then zz(t, i) = CalcularZ(vl(t, i), aM(t), alvoS(t))
                 End If
             Next j
 

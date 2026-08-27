@@ -148,14 +148,14 @@ for ($i = 0; $i -lt $out.Count; $i++) {
 }
 if ($nLotesNormalizados -lt 1) { throw 'Nenhuma comparacao de lote foi normalizada no motor.' }
 
-# --- correcao de compilacao: aS/aM como identificadores ---
-# VBA e insensivel a maiusculas, entao o identificador "aS" e o mesmo token que
+# --- correcao de compilacao: alvoS/aM como identificadores ---
+# VBA e insensivel a maiusculas, entao o identificador "alvoS" e o mesmo token que
 # a palavra reservada "As" e o modulo NAO COMPILA. Como o VBA compila sob
 # demanda, procedimento a procedimento, isso passava despercebido: AtualizarCalc
 # rodava e AtualizarPainelEng, AtualizarEstatisticaAba e RegistrarEventosWestgard
 # morriam em tempo de execucao com "nao foi possivel executar a macro".
 # Foi tambem o gatilho da destruicao das formulas: quando a Fase 3A corrigiu o
-# aS, esses tres procedimentos ganharam vida e sobrescreveram Painel e
+# alvoS, esses tres procedimentos ganharam vida e sobrescreveram Painel e
 # Estatistica, que ate entao sobreviviam por o motor nao conseguir compilar.
 # -creplace (case-sensitive) de proposito: "As" reservado nao pode ser tocado.
 $nRenomeadas = 0
@@ -186,7 +186,7 @@ for ($i = 0; $i -lt $out.Count; $i++) {
 
 "producao : $($L.Count) linhas"
 "gerado   : $($out.Count) linhas"
-"aS/aM renomeados em $nRenomeadas linhas"
+"alvoS/aM renomeados em $nRenomeadas linhas"
 "lotes normalizados por NucleoLote em $nLotesNormalizados linhas"
 if ($achados.Count -gt 0) {
     "LINT: identificador colidindo com palavra reservada -- o modulo nao vai compilar:"
