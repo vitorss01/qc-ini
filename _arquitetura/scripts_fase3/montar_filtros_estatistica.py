@@ -325,7 +325,13 @@ def main(caminho):
                     k = i + len(marca)
                     j = novo.find(')', k)
                     if j > k:
-                        novo = novo[:k] + alvo_lote + novo[j:]
+                        # DB_Carimbo entra como 8o argumento (ADR-049). Ele nao
+                        # participa da conta: serve para a celula DECLARAR que
+                        # depende do banco, senao so um rebuild completo
+                        # atualizaria a Estatistica -- e o fluxo real do
+                        # sistema chama Application.Calculate, que nao faz
+                        # rebuild.
+                        novo = novo[:k] + alvo_lote + ',DB_Carimbo' + novo[j:]
                 if novo != f:
                     ws.Cells(r, c).Formula = novo
                     trocadas += 1

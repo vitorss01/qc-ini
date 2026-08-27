@@ -67,7 +67,8 @@ Private Function Carimbo(ByVal dtIni As Double, ByVal dtFim As Double, _
     For i = 1 To nEx
         s = s & "|" & Trim$(Str$(ex(i, 1))) & "-" & Trim$(Str$(ex(i, 2)))
     Next i
-    Carimbo = s & "|" & UCase$(Trim$(lote)) & "|" & Trim$(Str$(ultima))
+    Carimbo = s & "|" & UCase$(Trim$(lote)) & "|" & Trim$(Str$(ultima)) & _
+              "|" & CarimboBanco()
 End Function
 
 ' ---------------------------------------------------------------------------
@@ -114,6 +115,32 @@ Private Function LerExclusoes(ByVal exclusoes As Variant, ByRef ex() As Double) 
 fim:
     LerExclusoes = n
 End Function
+
+' Impressao digital do CONTEUDO do banco, mantida pelo Excel (ADR-049).
+'
+' O carimbo dependia so da ULTIMA LINHA. Inclusao nova invalidava o cache;
+' edicao EM LINHA nao -- e marcar um resultado como nao conforme grava Status
+' na propria linha. Com o cache quente a Estatistica seguia contando o
+' resultado excluido, inclusive apos CalculateFullRebuild. Medido:
+' n ficou em 25 nos quatro cenarios, quando devia cair para 24.
+'
+' A celula DB_Carimbo concentra CONT.SE(Status), SOMA(valor), SOMA(nivel),
+' SOMA(data), CONT.NUM(data) e o comprimento total de analito e lote. Quem a
+' recalcula e o Excel, e so quando o intervalo muda; aqui se le UMA celula.
+' Fazer as mesmas contas dentro da UDF triplicaria o recalculo (0,199s ->
+' 0,645s em 320 chamadas sobre 6.808 linhas, medido).
+'
+' Lida pelo NOME: mover a coluna passa a quebrar alto, em vez de devolver um
+' carimbo constante que congelaria o cache para sempre.
+Private Function CarimboBanco() As String
+    On Error Resume Next
+    CarimboBanco = CStr(ThisWorkbook.Names("DB_Carimbo").RefersToRange.Value)
+    On Error GoTo 0
+    ' Ausente: devolve vazio e o carimbo passa a depender so da ultima linha --
+    ' o comportamento de antes, que e degradacao e nao silencio, porque
+    ' testar_carimbo_banco.py falha quando a celula nao existe.
+End Function
+
 
 Private Function UltimaLinhaEP() As Long
     Dim ws As Worksheet
@@ -230,7 +257,16 @@ Public Function EstatPeriodo(ByVal analito As String, ByVal nivel As Variant, _
                              ByVal metrica As String, _
                              ByVal dtIni As Variant, ByVal dtFim As Variant, _
                              ByVal exclusoes As Variant, _
-                             Optional ByVal lote As Variant = "") As Variant
+                             Optional ByVal lote As Variant = "", _
+                             Optional ByVal carimbo As Variant = "") As Variant
+    ' carimbo NAO e usado no calculo. Existe para que a CELULA declare que
+    ' depende do banco: a formula passa DB_Carimbo, o Excel poe a celula no
+    ' grafo de calculo e um F9 comum (Application.Calculate, que e o que
+    ' mDados dispara depois de gravar) volta a refrescar a Estatistica.
+    '
+    ' Sem ele, so CalculateFullRebuild atualizava -- e o fluxo real do sistema
+    ' nao faz rebuild completo. Medido: apos excluir um resultado, F9 mantinha
+    ' n=25 e so o rebuild dava 24.
     Dim k As String, reg As Variant, n As Double, soma As Double, somaQ As Double
     Dim media As Double, dp As Double, cv As Double, bias As Variant
 
