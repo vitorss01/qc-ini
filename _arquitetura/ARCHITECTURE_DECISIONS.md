@@ -1770,3 +1770,738 @@ mantém `6X` e `3-1S` como regras de rejeição em `qc_engine.py`, com testes
 próprios em `test_westgard.py`. Diverge do conjunto de cinco regras do ADR-038.
 Não foi alterado: esta etapa era validação, e mudar o motor dele exigiria decidir
 o que fazer com os testes que hoje cobrem `6X`. Fica para decisão do gestor.
+
+---
+
+## ADR-040 — O pior nível governa o plano de CQ também no BI
+
+**Status:** aceito · **Sucede:** ADR-038
+
+### O defeito
+
+O ADR-038 estabeleceu `Sigma_Plano = MIN` entre os níveis **na planilha**. O
+contrato do BI ficou para trás: `mBI` preenchia regras, N e run size a partir do
+Sigma da **própria linha** — ou seja, do nível daquela linha.
+
+Lactato tem Sigma 7,14 no nível 1 e 1,86 no nível 2. As linhas do nível 1
+publicavam *"1_3s, N=2, run size 1000"*: o CQ mais leve que existe, num analito
+cujo nível 2 não sustenta nem 3 Sigma. Mil pacientes entre eventos de controle.
+Excel e Power BI diriam coisas diferentes sobre o mesmo analito.
+
+### Por que no motor e não em DAX
+
+A regra é decisão de negócio e o motor é a única camada de cálculo (ADR-019). O
+`MIN` entre níveis reimplementado em DAX seria a segunda cópia, que diverge no
+primeiro ajuste de faixa — o que o ADR-027 passou uma sessão eliminando.
+
+### Contrato 76 → 84
+
+`Sigma_Plano`, `Nivel_Governante`, `Classificacao_Sigma_Plano`, `Usar_1_3s`,
+`Usar_2_2s`, `Usar_R_4s`, `Usar_4_1s`, `Usar_8x`.
+
+As booleanas existem para o BI **não procurar substring** dentro de
+`"1_3s / 2_2s / R_4s / 4_1s / 8x"`. Busca ingênua por `1_3s` casaria dentro de
+`11_3s`, e no dia em que alguém escrevesse `4-1s` a flag viraria `FALSE` em
+silêncio — apagando a regra da tela. `mPlanoQC.RegraNoPlano` compara por token
+normalizado, no mesmo módulo que produz a cadeia.
+
+`SigmaValidoBI` **rejeita zero**: Sigma exatamente zero não existe num método que
+produziu resultado — ele nasce de ETp, bias e CV. Zero é ausência de dado
+disfarçada, e aceitá-lo jogaria o analito em "reavaliar método" por falta de
+informação, conclusão diferente de "o método é ruim".
+
+### Recomendada e violada são dimensões separadas
+
+A primeira versão somava `W_*` sobre o histórico inteiro e marcava **todas** as
+regras como violadas — com 110 resultados por analito em seis meses qualquer
+regra dispara em algum momento, e a tela ficava vermelha sem informar nada.
+`[Violada X]` passou a ser da **última corrida**; a contagem do período vive em
+`[Violações X no período]`.
+
+E colapsava as duas dimensões num rótulo só: uma regra violada **fora** do plano
+aparecia como "VIOLADA", indistinguível de uma regra do plano. Passaram a ser
+quatro estados — `RECOMENDADA`, `RECOMENDADA - VIOLADA`, `FORA DO PLANO -
+VIOLADA`, `fora do plano` — com cor derivada do mesmo lugar, para cor e texto
+nunca discordarem.
+
+### Validação
+
+| Produto | Resultado |
+|---|---|
+| Bioquímica | 304 PASS, 0 FAIL |
+| Hematologia | 147 PASS, 0 FAIL |
+
+| Analito | N1 | N2 | Plano | Governa | Regras |
+|---|---|---|---|---|---|
+| Lactato | 7,136 | 1,863 | 1,863 | nível 2 | cinco; N e run size **vazios** |
+| Ácido úrico | 6,445 | 10,377 | 6,445 | nível 1 | `1_3s`, N=2, Run=1000 |
+| Fixação do ferro | 2,656 | 2,209 | 2,209 | nível 2 | cinco |
+
+Fronteiras corretas nos dois sentidos: 2,99 inadequado / 3,00 Marginal; 5,99
+Excelente / 6,00 Classe mundial.
+
+### Dois achados alheios à mudança
+
+`montar_plano_qc.py` tinha `Regras = ''` na faixa abaixo de 3 Sigma enquanto a
+planilha já declara as cinco — **re-executá-lo reverteria o ADR-038**.
+
+`padronizar_run.ps1` derrubava o build exigindo título de eixo `RUN` nos gráficos
+de `EQA.*`, que são indexados por **rodada** do provedor. A exceção é nomeada e
+contada no relatório, para não confundir "não se aplica" com "passou".
+
+---
+
+## ADR-041 — Duas matrizes de Westgard, uma fonte de verdade
+
+### Regra de negócio
+
+A seleção das regras é específica da configuração do controle interno.
+
+| Produto | Níveis | Matriz |
+|---|---|---|
+| Bioquímica | 2 | `1_3s / 2_2s / R_4s / 4_1s / 8x` |
+| Hematologia | 3 | `1_3s / 2of3_2s / R_4s / 3_1s / 6x` |
+
+As matrizes **não são intercambiáveis**, e regra da outra família na matriz ativa
+é erro de configuração.
+
+### O defeito
+
+Os dois produtos rodavam o **mesmo** código de Westgard — só `NLV` diferia. A
+Hematologia, que mede três níveis, era avaliada pelas regras de dois. As faixas
+existem para casar com a probabilidade de detecção daquele desenho de controle; a
+matriz errada muda sensibilidade e taxa de falsa rejeição **sem produzir nenhum
+sintoma visível**.
+
+### 10x corrigido para 8x na Bioquímica
+
+`Cfg_PlanoQC` e `mPlanoQC` declaravam `8x`; o motor contava 10. Nomes batendo,
+limiares não — e `CoberturaWestgard` respondendo TOTAL porque só comparava
+rótulos.
+
+Efeito medido no banco real: as violações de tendência passaram de **1.965 para
+2.374** — 409 sequências de oito resultados do mesmo lado da média que passavam
+sem ser denunciadas.
+
+### Semântica, não renomeação
+
+| Regra | O que conta |
+|---|---|
+| `2of3_2s` | quantos dos três níveis da corrida passam o mesmo 2s |
+| `3_1s` | duas leituras: três níveis na corrida, ou três corridas no nível |
+| `6x` | seis corridas consecutivas do mesmo lado, no mesmo nível |
+
+A variante consecutiva da `2_2s` foi **desligada** para `NLV=3`: somá-la a
+`2of3_2s` faria a Hematologia rodar seis regras em vez de cinco, aumentando a
+rejeição falsa.
+
+### Uma fonte
+
+`MatrizWestgard()` decide a partir de `NLV` e publica os nomes. `mPlanoQC` consome
+dela **por vínculo tardio** — chamada direta criaria dependência de *compilação*,
+e numa pasta sem a função o projeto VBA inteiro deixaria de compilar, o que
+`On Error` não captura. A lista fixa `"1_3s;2_2s;R_4s;4_1s;8x"` saiu do `mPlanoQC`.
+
+### Fail-fast
+
+`ValidarMatrizWestgard` confere os **dois** sentidos: regra alheia presente e
+regra própria faltando. `CoberturaWestgard` deixou de comparar só nomes — o motor
+publica `LimiarSequencialWestgard` e `LimiarUmSigmaWestgard`, e divergência entre
+o número que o nome promete e o que o motor conta devolve **erro de cobertura**.
+
+`gerar_mEstatistica.ps1` recortava por **índice fixo** (299, 512, 679, 750, 799).
+Acrescentar linhas ao motor deslocava tudo e o build parava. Passou a localizar
+por marcador.
+
+### Testes funcionais
+
+Séries de z-score injetadas no motor por uma ponte VBA. Provam o disparo **e o
+não-disparo**, que é o que evidencia o limiar.
+
+| Produto | Resultado | Evidência |
+|---|---|---|
+| Bioquímica | 22 PASS, 0 FAIL | 7 corridas não acendem `8x`; 8 acendem |
+| Hematologia | 23 PASS, 0 FAIL | 5 não acendem `6x`; 6 acendem; `2of3_2s` +2,3/+2,4/+0,5 dispara; `3_1s` +1,2/+1,4/+1,1 dispara |
+
+---
+
+## ADR-042 — Motor Westgard por detector e escopo
+
+### O defeito central
+
+O ADR-041 acertou os **nomes** das regras e errou as **janelas**. `8x` era
+avaliado como oito *corridas* consecutivas do mesmo lado num único nível — o
+detector longitudinal. A matriz Sigma da Bioquímica pede N=2, R=4: dois níveis,
+quatro corridas, oito **observações**. Duas regras diferentes dividindo o mesmo
+nome. Idem `6x`, que na matriz de três níveis é N=3, R=2.
+
+### Escopos explícitos
+
+`WITHIN_RUN`, `ACROSS_RUN`, `WITHIN_MATERIAL`, `ACROSS_MATERIALS`. Cada violação
+declara o seu.
+
+`R_4s` ficou rígida: só dentro da corrida, todos os pares (N1×N2, N1×N3, N2×N3),
+com o par normalizado para N1×N3 e N3×N1 não virarem duas violações. Amplitude de
+4 DP entre a corrida de ontem e a de hoje **não é `R_4s`** — é deriva, e aplicar
+`R_4s` ali inventa rejeição que o método não cometeu. Teste negativo obrigatório
+incluído.
+
+### Oficial × complementar
+
+A tabela `DETECTORES` é a única fonte, e `DetectorAtivo()` é a única porta. Os
+longitudinais (`SAME_LEVEL_R8/R6/R4/R3`) são calculados e registrados no trace, e
+**não consolidados**. Somar longitudinal com N/R multiplicaria as oportunidades de
+rejeição e subiria a probabilidade de falsa rejeição sem ninguém decidir.
+
+### `NAO_AVALIAVEL` × `FALSE`
+
+`FALSE` quer dizer *"avaliei e não violou"*. Janela sem os dados que a regra exige
+passou a ser contada em `NaoAvaliaveisWestgard`, por detector. Um `6x` N3/R2 com
+um nível faltando numa das duas corridas **não é aprovação**.
+
+### Contagens antes × depois
+
+| Regra | Produto | Antes | Depois | Motivo |
+|---|---|---|---|---|
+| `4_1s` | Bioq. | 1.474 | 1.148 | longitudinal → N2/R2 |
+| `8x` | Bioq. | 2.374 | 2.088 | longitudinal → N2/R4 |
+| `3_1s` | Hema. | 20 | 6 | longitudinal saiu da decisão |
+| `R_4s` | Hema. | 24 | 16 | marca só o par que violou |
+
+A queda contraria a intuição de que janela mais curta dispara mais: N2/R4 é mais
+curta **e** mais exigente, porque pede que os **dois níveis concordem** durante as
+quatro corridas. Manter um nível do mesmo lado por oito corridas é mais fácil do
+que fazer dois concordarem por quatro.
+
+`1_3s`, `2_2s`, `R_4s` (Bioq.), `6x` e alertas: inalterados.
+
+### Testes
+
+Bioquímica 26 PASS · Hematologia 29 PASS, 0 FAIL. Cobrem: `R_4s` nunca cruza
+corridas; `2of3_2s` falso e `R_4s` verdadeiro com lados opostos; `6x` N3/R2 com
+sequência interrompida não dispara; corrida sem N3 devolve `NAO_AVALIAVEL` e não
+`FALSE`.
+
+### Declarações de módulo
+
+`gTrace` e `gNaoAval` tinham ficado no **meio** do arquivo depois da substituição
+do motor. Em VBA declaração de módulo vem antes da primeira procedure; o resultado
+foi *"variável não definida"* em `gNaoAval`. Compilação conferida com
+**Debug > Compile**, não só por leitura.
+
+---
+
+## ADR-043 — Uma escada de classificação Sigma para todo o QC_INI
+
+### Três implementações da mesma coisa
+
+| Onde | O quê |
+|---|---|
+| `mQualidade.ClassificarSigma` | canônica, lê as faixas de `Cfg_PlanoQC` |
+| `mEstatistica.ClassificarSigma` | duplicata, com a escada **errada** |
+| célula da Estatística (Hema.) | terceira escada, fixa na fórmula |
+
+A duplicata do `mEstatistica` **vencia** a canônica: `AtualizarEstatisticaAba`
+chamava `ClassificarSigma` **sem qualificar**, e chamada não qualificada resolve
+para a função do próprio módulo. A coluna de classificação dos **dois** produtos
+vinha dali, não de `mQualidade`.
+
+### Três defeitos na escada errada
+
+- `>=6` devolvia *"Excelente"*; a faixa é *"Classe mundial"*
+- a faixa 5 a <6 **não existia**: Sigma 5,5 caía em *"Bom"*
+- abaixo de 3 dizia *"Inaceitável"*; o projeto diz *"Desempenho inadequado"*
+
+Um método de Sigma 5,5 — excelente — aparecia como apenas bom, e um de 6,7
+aparecia como excelente em vez de classe mundial.
+
+### Conflito de arquitetura resolvido
+
+Classificação de **desempenho** e faixa do **plano** são perguntas diferentes e
+estavam na mesma tabela. A matriz de três níveis não muda de regra entre 3 e 4
+Sigma, então `PLANO_HEMATOLOGIA` tinha quatro faixas — e `ClassificarSigma`, que
+lê a classificação dessa tabela, chamaria um método de Sigma 3,5 de *"Desempenho
+inadequado"*, divergindo da Bioquímica **para o mesmo número**.
+
+A Hematologia passou a ter cinco faixas: 3 a <4 *"Marginal"* e <3 *"Desempenho
+inadequado"*, **ambas com as mesmas cinco regras**. O conjunto de regras não muda;
+muda o rótulo e o tratamento de N/R abaixo de 3, onde entra reavaliar método.
+Assim continua havendo **uma** escada de classificação, sem tabela paralela.
+
+### Fronteiras provadas nos dois produtos
+
+2,99 Desempenho inadequado · 3,00 e 3,99 Marginal · 4,00 e 4,99 Bom · 5,00 e 5,99
+Excelente · 6,00 e 6,01 Classe mundial.
+
+Hematologia: 40 fórmulas trocadas, 9 fronteiras PASS. Bioquímica: 0 trocadas, 80
+já centralizadas, 9 fronteiras PASS.
+
+O script **recusa salvar** se qualquer fronteira falhar — e recusou na primeira
+execução, quando a tabela de faixas ainda tinha quatro linhas.
+
+---
+
+## ADR-044 — Cobertura confere contrato, e os slots deixam de mentir
+
+### Cobertura estrutural × QA funcional
+
+`CoberturaWestgard` não tem como saber se a suíte de testes passou, e fingir que
+sabe faria a função parecer mais forte do que é. As duas garantias ficam separadas
+e declaradas:
+
+| Garantia | O que prova |
+|---|---|
+| `CoberturaWestgard` | **contrato**: regra, detector oficial, ativo, N, R, escopo |
+| `testar_westgard_*` | **comportamento**: dispara, não dispara, fronteira, ausência |
+
+### O plano não declara detector
+
+`Cfg_PlanoQC` continua dizendo **quais** regras são necessárias — `8x`, não
+`8x / N2_R4`. Fazer o plano conhecer detectores criaria a segunda fonte que esta
+série de ADRs existe para eliminar.
+
+A resolução é derivada: o plano pede a regra, `CONTRATO` diz qual é a
+implementação oficial dela naquela área, e `DETECTORES` diz o que o motor declara
+implementar. Cobertura compara os dois. Isso **não é duplicar a verdade**:
+`CONTRATO` é especificação e `DETECTORES` é declaração — o mesmo papel de um teste
+que afirma o valor esperado. Se fossem o mesmo texto lido do mesmo lugar, a
+conferência não provaria nada.
+
+### Testes negativos reais
+
+`ConferirContrato(regras, tabela)` recebe a tabela **por parâmetro** para o QA
+poder passar uma versão mutada. Sem isso os testes negativos seriam encenação —
+não há como alterar uma `Const` em execução.
+
+| Produto | Cenários que devem reprovar |
+|---|---|
+| Bioquímica (5 PASS) | `8x` oficial trocado pelo longitudinal · `8x` com R=8 · `4_1s` sem detector oficial ativo · `R_4s` com escopo `ACROSS_RUN` |
+| Hematologia (5 PASS) | `6x` e `3_1s` trocados pelos longitudinais · `6x` com N=2 |
+
+As mensagens são específicas: *"8x: detector oficial é SAME_LEVEL_R8, esperado
+N2_R4"*.
+
+### Slots legados renomeados
+
+`r22 → r2sMulti`, `r41 → r1sMulti`, `r10 → rSeq` (e os `q*` correspondentes). 92
+ocorrências. São nomes locais e as chamadas são posicionais, então nada muda de
+comportamento — o que muda é o código **deixar de mentir**: `r10` se lê como 10x,
+e 10x não existe mais em lugar nenhum operacional.
+
+Regressão: Bioquímica 26 PASS · Hematologia 29 PASS, contagens **idênticas**.
+
+`CONTRATO` nasceu no meio do `mPlanoQC` e a pasta parou de compilar — mesma
+armadilha de `gNaoAval`.
+
+---
+
+## ADR-045 — `EVENTOS_WESTGARD` é um fato de evento
+
+### O defeito
+
+A aba tinha granularidade de (corrida × analito × nível) com as regras
+concatenadas numa célula (`"13s+22s"`), e era produzida por `AvaliarWestgard1N`:
+uma **segunda implementação** das regras, escrita para uma série de um nível.
+
+Consequências, todas medidas:
+
+- `R_4s`, `2of3_2s`, `3_1s` e `6x` eram **estruturalmente invisíveis** (exigem
+  visão multi-nível);
+- a aba materializava *"10 corridas seguidas do mesmo lado"* — o `10x` que o
+  ADR-041 aposentou;
+- a Hematologia mostrava **9 eventos** onde a camada de BI via **80 marcações**.
+
+`AvaliarWestgard1N` foi **removida**. A aba passou a vir do trace de
+`AvaliarWestgard`. Hematologia foi de 9 para **116 eventos**; Bioquímica registra
+**7.003** — acima do teto antigo de 5.000, que teria abortado o registro.
+
+`Evid` ganhou `niveis=` e `runIni=`, para o trace ser **fato** e não texto livre.
+Sem eles o consumidor teria de adivinhar por arqueologia de string quais
+resultados o evento marcou.
+
+### Evento e marca são números diferentes
+
+Um `6x` N3/R2 é **um** evento e marca **seis** resultados. O Painel dizia "3x",
+que não distinguia as duas coisas. `MetricasWestgard` devolve os três:
+
+| Medida | O que conta |
+|---|---|
+| `N_Eventos_Violacao` | quantas vezes a **regra** disparou |
+| `N_Resultados_Marcados` | quantos **resultados** ficaram marcados |
+| `N_Corridas_Envolvidas` | união das janelas dos eventos oficiais |
+
+Exemplo real da fixture: BASO# N2 = 3 eventos / 2 marcados / 3 corridas.
+
+### Buffer sem teto
+
+A premissa de `buffer_dinamico.ps1` (*"eventos nunca excedem as linhas do
+banco"*) morreu com granularidade de evento: dez detectores podem emitir
+evidência sobre a mesma corrida. O buffer cresce por `ReDim Preserve`, com a
+matriz orientada em **coluna × evento** — VBA só preserva a última dimensão.
+
+### Achado registrado e não remendado
+
+`mEstatPeriodo.AlvoDoLote` varria até a linha 200 do `LotesStore`. O bloco tem 40
+linhas por lote (`mBI.LS_CAP`), então do **5º lote em diante devolvia vazio** —
+sem Z, sem bias, sem erro. Num sistema dimensionado para 60 meses, chega lá dentro
+da vida útil. O teto passou a vir do dado.
+
+A duplicação em si **não foi unificada**: `mBI.AlvoDoLote` lê o mesmo alvo por
+aritmética de bloco, `mEstatPeriodo` por varredura. Concordam hoje por
+coincidência de duas leituras corretas. Unificar exige mexer na Estatística por
+período, que não tem prova automatizada — e `instalar_estat_periodo.ps1` **nem é
+chamado pelo `build_all`**, então esse módulo hoje é ingerenciado pelo build.
+
+---
+
+## ADR-046 — Escrita em aba protegida fecha a própria janela
+
+### A causa é uma só, e não é a proteção estar errada
+
+Dois erros 1004 relatados em produção. `ReprotectAll` aplica
+`UserInterfaceOnly:=True`, que é a configuração certa, mas **o Excel não persiste
+essa flag ao salvar**. Reaberto o arquivo, a aba volta protegida também para o VBA
+até `Workbook_Open` rodar `LockApp` — e `Workbook_Open` **não roda em automação**,
+porque todo script de build e de QA abre com `EnableEvents = False`.
+
+Logo, "aplicar `UserInterfaceOnly`" não corrige (já é aplicado) e "desproteger"
+reduziria a proteção. Cada rotina trata a própria janela, com restauro garantido —
+o que `mBI`, `mBanco` e `mImportar` já faziam.
+
+### A auditoria estática achou oito pontos sem guarda, não dois
+
+| Módulo | Rotinas |
+|---|---|
+| `mEstatistica` | `AtualizarCalc`, `AtualizarPainelEng`, `AtualizarEstatisticaAba`, `RegistrarEventosWestgard` |
+| `mAuditoria` | `Auditar` |
+| `mConfig` | `SincronizarSombraCfg`, `AuditarMudancaCfg` |
+| `mLogDB` | `RegistrarLogDB` |
+| `mRegistros` | `MarcarNaoConforme`, `ExcluirRegistroNC` |
+| `mImportar` | `MostrarErros`, `LimparAreaImport` |
+
+O par `LiberarEscrita`/`RestaurarProtecao` mora em `mSeguranca`, **não no motor**:
+a Imunologia ainda não tem `mEstatistica`, e um primitivo compartilhado ali a
+deixaria sem ele. `mEstatistica` ficou com **zero** ocorrências da senha.
+
+`Auditar` e `RegistrarLogDB` mantêm a reproteção própria
+(`AllowFiltering`/`AllowSorting`): trocar pelo genérico reduziria permissão sem
+aviso.
+
+### Onde a correção quase se perdeu
+
+Três vezes, todas na mesma família — tratar o gerador como se preservasse o que se
+escreve:
+
+1. helpers colocados **depois** do banner `MOTOR: MONTAR Calc`, que é a fronteira
+   inicial do splice: sumiam do módulo gerado (*"Sub ou Function não definida"*);
+2. o comentário de aviso **citava** o banner, e a busca por substring o elegeu
+   como marcador — apagou os helpers de novo;
+3. correções feitas em `src_hardening1/<Produto>/`, que é **saída** de build:
+   `build_all` copia `src_hardening1/*.bas` por cima a cada execução. Compilava,
+   passava no teste, e desapareceria no build seguinte **sem sinal**.
+
+### A prova de que a auditoria enxerga
+
+`auditar_vba.py` cobre 10 categorias sobre o projeto **inteiro** exportado do
+artefato (65 módulos), porque duplicata entre módulo gerado e módulo legado da
+produção só aparece olhando o conjunto.
+
+`testar_auditar_vba.py` injeta um defeito de cada categoria e exige que a
+categoria apareça: **11 PASS**. Sem isso *"nada encontrado"* seria indistinguível
+de cegueira — e foi cegueira duas vezes:
+
+- `RE_DECL` exigia `Dim`/`Const` e não via `Private gTrace As Object`, que é a
+  forma exata do defeito que já quebrou este projeto três vezes;
+- `exportar_vba.py` gravava `\r\r\n` (o VBE já devolve `\r\n`) e a releitura em
+  modo texto contava cada `\r` solto como quebra: os módulos apareciam com o
+  **dobro** de linhas e fronteiras de procedure deslocadas. O *"0 graves"*
+  anterior foi calculado sobre lixo.
+
+A verificação de identificador não declarado só entrou depois de sair de **959
+para 0** falsos positivos (continuação `_`, intrínsecos, chamadas com `(`,
+argumentos nomeados `:=`, `Declare` de API, hexadecimal `&H`, controles de
+UserForm que vivem no designer).
+
+### Regressão (artefatos de build limpo)
+
+| Verificação | Bioquímica | Hematologia |
+|---|---|---|
+| compilação (11 sondas) | 0 FAIL | 0 FAIL |
+| auditoria estática | 0 graves | 0 graves |
+| Westgard por módulo | 26 PASS | 29 PASS |
+| cobertura × contrato | 5 PASS | 5 PASS |
+| eventos (grão de evento) | 0 FAIL | 0 FAIL |
+| proteção × escrita | 0 FAIL | 0 FAIL |
+| Painel exibe o do motor | 0 FAIL | 0 FAIL |
+| `Cfg_Westgard_Escopo` | sincronizada | sincronizada |
+| pior nível com 3 níveis | — | 8 PASS |
+
+Proteção preservada: `ProtectContents` True, células `Locked`,
+`UserInterfaceOnly` reaplicado, estrutura travada.
+
+**O teste de teclado (usuário digitando) continua sendo humano** — escrita por COM
+é programática e `UserInterfaceOnly` a autoriza por definição, então usá-la como
+prova de bloqueio reprovava código correto.
+
+---
+
+## ADR-047 — O último módulo fora do build, e a correção que nunca embarcou
+
+**Status:** aceito · **Sucede:** ADR-045 · **Mesma família:** ADR-025, ADR-034
+
+### O achado
+
+O ADR-045 registrou a correção do teto do `LotesStore` em
+`mEstatPeriodo.AlvoDoLote` e deixou dito, de passagem, que
+`instalar_estat_periodo.ps1` *"nem é chamado pelo `build_all`"*. A consequência
+não tinha sido medida. Ela é esta: **a correção nunca chegou ao arquivo.**
+
+Comparando `src_producao/mEstatPeriodo.bas` com a cópia dentro de
+`QC_Bioquimica.xlsm`:
+
+| | fonte | dentro da pasta |
+|---|---|---|
+| `AlvoDoLote` | teto de `End(xlUp)` | `For i = 2 To 200` |
+| `LimEspec` | presente | **ausente** |
+
+A produção seguiu varrendo até a linha 200. Com 40 linhas por lote
+(`mBI.LS_CAP`), isso cobre quatro blocos e meio: **do 5º lote em diante o alvo
+cai fora da varredura** e a função devolve vazio — sem Z, sem bias, sem erro.
+
+### Por que passou despercebido por uma série inteira de ADRs
+
+Porque `build_all` **parte da produção e só adiciona módulos**. A cópia velha
+que já vivia dentro do arquivo sobrevivia intacta, e não havia `#NOME?` para
+denunciar a falta. Um módulo ausente grita; um módulo **desatualizado** é mudo.
+
+É a terceira vez nesta família — `mBanco` (ADR-025) e `mCEQ` (ADR-034) —, e a
+única das três que não deu sintoma nenhum.
+
+### O que impedia a importação
+
+`LimEspec` chama `EspecCVtp`/`EspecBIAStp`/`EspecETp`, que vivem no
+`mEspecificacoes` — módulo que **não existe em nenhum dos dois produtos**.
+Chamada direta cria dependência de **compilação**: numa pasta sem o módulo, o
+projeto VBA inteiro deixa de compilar, e `On Error` não captura erro de
+compilação. O sintoma é um diálogo modal invisível que trava qualquer automação.
+
+Resolvido pelo vínculo tardio do ADR-041: `Application.Run`. A ausência vira
+erro de **execução**, capturado, e `LimEspec` degrada para vazio. `StatusCV` e
+`StatusETP` já tratam ausência de limite como **não-aprovação** (ADR-023), então
+ninguém se vê aprovado por um critério que não foi avaliado.
+
+### O portão do instalador estava velho em quatro pontos
+
+Ele existia e era bom; tinha envelhecido junto com a planilha.
+
+| Defeito | Sintoma | Correção |
+|---|---|---|
+| janela `linha 7 a 86` fixa | o cabeçalho desceu para a 13; `[double]"n"` estourava | cabeçalho localizado pelo rótulo `Analito` |
+| fim pela última linha da coluna A | invadia o bloco de margem crítica; `[double]"Margem critica"` estourava | tabela termina na **primeira linha vazia** |
+| assinatura de 8 argumentos | exclusões viraram um intervalo N×2; COM recusava | 7 argumentos, exclusões como bloco |
+| comparação circular | comparava `EstatPeriodo` com células que **chamam** `EstatPeriodo` | referência passa a ser o estado **anterior ao import** |
+
+O quarto é o mais importante. O cabeçalho do script prometia *"conferência
+contra o caminho antigo"*, e era verdade na migração: `C..F` guardavam as
+fórmulas velhas. Hoje `C14` é `=EstatPeriodo(...)`. O portão parecia provar, e
+não provava.
+
+Somou-se um piso: **conferir zero linha não é aprovar**. Sem ele, uma mudança de
+layout que fizesse o laço não casar nada passaria como sucesso.
+
+### Falhou fechado, três vezes
+
+Todas as três recusas aconteceram **depois** do import e **antes** do `Save`. O
+arquivo ficou intacto em todas — verificado por hash contra o backup. A ordem
+importa: importar é barato de desfazer, salvar não é.
+
+### A prova de alcance, e as duas versões dela que mentiam
+
+`testar_alvo_do_lote.py` escreve um lote além da linha 200 e exige que
+`AlvoDoLote` o encontre. As duas primeiras versões deram falso resultado:
+
+1. **analito inventado** — `AlvoDoLote` não procura pelo nome no `LotesStore`:
+   resolve o nome para um **índice** na aba `Analitos` e procura pelo par
+   lote+idx. Nome que não existe ali faz a função sair antes de varrer. A versão
+   1 ainda assim marcou OK, porque aceitava "qualquer valor" — e o valor que
+   veio era o do lote ativo lá em cima, sem ter tocado na linha 240.
+2. **linha isolada em 240** — a varredura sai no primeiro branco (`Exit For`), e
+   o vão de 42 a 239 a fazia parar em 42. Reprovava código correto por simular
+   um layout que não acontece: no dado real os lotes são blocos contíguos.
+
+A versão que prova: neutraliza o casamento antigo mudando **só a coluna `idx`**
+daquela linha — a coluna 1 continua preenchida, então não abre buraco —,
+preenche o bloco de forma contígua até 240 e põe o par lote+idx no fim.
+
+```
+linha 2 responde hoje          : 4,767727272727272
+bloco contiguo de 42 ate 240
+varredura alcanca a linha 240  esp 4,321  obt 4,321      OK
+desfeito: volta a responder o de antes    obt 4,767727…  OK
+```
+
+**6 OK, 0 FALHA.** Nada é salvo: o teste fecha o arquivo sem gravar.
+
+### O VBE reescreve a caixa dos identificadores
+
+A asserção do vínculo tardio reprovou na primeira execução procurando
+`Application.Run("EspecCVtp"`. Dentro do arquivo está `Application.run`. É a
+mesma normalização que já aparecia no diff como `Str$` → `stR$` e `ws.Rows` →
+`ws.rows`: identificador VBA é caso-insensível e o editor reescreve a caixa ao
+importar. **Toda busca estrutural sobre código devolvido pelo VBE tem de ser
+sem caixa** — a versão sensível reprova código correto.
+
+### A etapa no build
+
+`build_all.ps1`, etapa **7a**, depois do motor e só para a Bioquímica:
+
+- **depois do motor** porque o portão lê `n`, média, DP e CV da Estatística
+  antes de importar; com a aba vazia não haveria o que conferir;
+- **só a Bioquímica** porque é o único produto cujas células chamam
+  `EstatPeriodo` — 323 delas. Na Hematologia, nenhuma.
+
+### O que continua registrado e não remendado
+
+`mBI.AlvoDoLote` lê o **mesmo** alvo por aritmética de bloco; `mEstatPeriodo`,
+por varredura. Duas implementações do mesmo contrato de layout, que concordam
+hoje por coincidência de duas leituras corretas. Unificar exige mexer na
+Estatística por período — que agora tem um portão de regressão, mas ainda não
+tem suíte própria. Fica para uma decisão do gestor, não para um remendo aqui.
+
+E `mEspecificacoes` não existe em nenhum dos dois produtos. Enquanto for assim,
+`LimEspec` devolve vazio e o status diz `SEM LIMITE` — correto pelo ADR-023, e
+declarado pelo portão em vez de silencioso. Ligar o banco de especificações da
+Bioquímica é decisão de escopo, não consequência desta correção.
+
+---
+
+## ADR-048 — O artefato híbrido da Bioquímica, e as abas que o módulo exigia
+
+**Status:** aceito · **Mesma família:** ADR-025, ADR-034, ADR-046, ADR-047
+
+### O defeito
+
+`QC_Bioquimica.xlsm` recebeu o `mEstatistica` da Fase 3 **sem receber o que ele
+exige**. Quatro dependências faltavam:
+
+| Dependência | Consequência |
+|---|---|
+| `mWestgardKnowledge` | `mEstatistica` chama `RegraClassificacao`, `RegraInterpretacao`, `RegraCausas` e `RegraSugestoes` — *"Sub ou Function não definida"*, erro de **compilação** |
+| `Eng_Saida` | `Sheets("Eng_Saida")` sem `On Error` em `AtualizarCalc`, `AtualizarPainelEng` e `AtualizarEstatisticaAba` — **erro 9** |
+| `Eventos_Westgard` | `RegistrarEventosWestgard` — erro 9 |
+| `Cfg_Status` | cai no *fallback* "somente Ativo", em silêncio |
+
+Com o Excel invisível, os dois primeiros viram **caixa de diálogo modal** que
+ninguém vê e que trava a automação indefinidamente. O motor estatístico inteiro
+estava inalcançável no arquivo de produção.
+
+A aba `Estatística` continuava mostrando números — porque são fórmulas de célula
+(`EstatPeriodo`, `BiasEQ`), não o motor. Números na tela com o motor morto atrás:
+o sintoma mais enganoso possível.
+
+### O que não era
+
+Duas leituras minhas foram derrubadas por medição, e ficam registradas para não
+serem refeitas:
+
+1. **"A duplicata de `AtualizarEstatistica` trava a cadeia."** Existiam de fato
+   duas cópias públicas (`mUI`, um *stub* de 4 linhas; `mEstatistica`, o motor).
+   Removido o *stub* em memória, `AtualizarOperacao` continuou sem responder por
+   360s. A duplicata é defeito real — `Application.Run("AtualizarEstatistica")`
+   falha com *"macro não disponível"* — **mas não era a causa do travamento**.
+2. **"É erro de compilação."** O código COM `0x800A9C68` sugeria isso. O texto do
+   diálogo, lido por enumeração de janelas, dizia
+   `Erro em tempo de execução '9': Subscrito fora do intervalo`. **O código COM
+   não identifica o erro; o texto do diálogo identifica.**
+
+### Como o diálogo invisível foi lido
+
+`ler_dialogo_vba.py`: a macro roda numa *thread* e, enquanto ela está bloqueada,
+a *thread* principal varre as janelas de classe `#32770` e lê os controles
+`Static`. É a única forma de obter a mensagem real sem sessão interativa — e o
+que transformou "trava sem dizer nada" em um diagnóstico em uma tentativa.
+
+### A varredura que antecipa o erro 9 sem abrir o Excel
+
+`checar_abas_citadas.py` cruza cada literal `Sheets("X")` do VBA com a lista real
+de abas, e separa **quem está sob `On Error`** de quem não está — porque só o
+segundo grupo vira diálogo modal. Foi ela que apontou `Eng_Saida` nas três
+rotinas.
+
+### A correção
+
+Cirúrgica, não reconstrução pelo `build_all`. O `build_all` grava fora do
+repositório e regeraria por cima do que **só existe na produção**: o layout do
+Painel ajustado à mão pelo gestor (ADR-036), os 455 resultados reais do CAP na
+`EQA_Base` e o `mEstatPeriodo` do ADR-047.
+
+| Passo | Como |
+|---|---|
+| `Eng_Saida` | `criar_eng_saida.ps1 -NLV 2` |
+| `Cfg_Status`, `Eventos_Westgard` | `criar_abas_motor.ps1` (idempotente) |
+| `mWestgardKnowledge` | importado inteiro de `snapshot_producao/Hematologia/vba/`, a mesma fonte do `build_all` |
+| *stub* duplicado | removido de `mUI` |
+
+**A unidade de correção é o módulo inteiro.** Copiar só `RegraClassificacao`
+faria o compilador parar na próxima — e são quatro.
+
+### O achado G do ADR-046 também não tinha chegado à produção
+
+`mImportar.MostrarErros` e `LimparAreaImport` desprotegem, escrevem e reprotegem
+**sem `On Error`**: um erro no meio deixa a aba destrancada em silêncio.
+
+O trecho pronto em `src_producao/mSeguranca_GUARDA.txt` **não servia**: usa a
+constante `SENHA_PROT`, que não existe no `mSeguranca` de produção (299 linhas,
+senha em literal). Importá-lo derrubaria o projeto inteiro, não só a importação.
+
+A linhagem de produção já tem o idioma dela — captura `prot`, desprotege com
+`IMP_SENHA`, reprotege com as mesmas *flags*. Faltava só o caminho de erro, e foi
+ele que se acrescentou, com `Err.Raise` depois de reproteger para não trocar um
+defeito por um silêncio.
+
+### O COM precisa de um Excel vivo antes do `DispatchEx`
+
+Depois de vários ciclos de `Stop-Process`, o DCOM passou a devolver
+`CO_E_SERVER_EXEC_FAILURE` (`0x80080005`) e não se recuperava. Medido: sem
+nenhum `EXCEL.EXE` vivo o `DispatchEx` falha; com um Excel já em execução,
+`DispatchEx`, `Dispatch` e `GetActiveObject` funcionam os três. O *priming*
+passou a vir **antes** da primeira tentativa, e não como reação à falha.
+
+### Validação, no arquivo que será entregue
+
+| Verificação | Antes | Depois |
+|---|---|---|
+| auditoria estática — Bioquímica | 3 graves | **0** |
+| auditoria estática — Hematologia / Imunologia | 0 | **0** |
+| nomes de aba citados e ausentes | 4 sem `On Error` | **0 nos três** |
+| `AtualizarCalc` | travava | **11,9s** |
+| `RegistrarEventosWestgard` | travava | **0,1s** |
+| `AtualizarPainelEng` | travava | **0,0s** |
+| `AtualizarEstatisticaAba` | travava | **0,3s** |
+| `AtualizarEstatistica` | travava | **0,5s** |
+| `AtualizarOperacao` (cadeia pós-gravação) | travava | **0,6s** |
+| `ScreenUpdating` ao fim | — | `True` nos dois |
+
+Integridade contra o backup anterior à intervenção, **12 de 12**: `DB_Resultados`
+6.811 linhas, `EQA_Base` 546, `LotesStore` 41, `Analitos` 74 — todas idênticas;
+nenhuma aba sumiu; nenhum módulo perdido; rótulos, larguras e 13 mesclagens do
+Painel intactos; nenhuma célula em erro.
+
+### Continua aberto
+
+**`ScreenUpdating` sem finalização garantida.** `AtualizarEstatistica` desliga no
+início e não tem bloco de restauro: no caminho de erro o Excel fica parecendo
+congelado. Medido `True` no caminho feliz; o caminho de erro **não foi
+corrigido**.
+
+**Achado #4 da Fase 1 — referência absoluta fixa no `Calc`.** Aberto nos três, e
+nunca resolvido: apenas mudou de endereço (`$BT$1`/`$BU$1` na Hematologia,
+`$AX$1`/`$AY$1` nos outros dois). A primeira inspeção deu falso negativo por
+procurar o endereço antigo — cometendo o próprio defeito que o achado descreve.
+São ~13.000 usos na Hematologia e ~8.600 em cada um dos outros.
+
+**Achado #6 — módulos de classe de planilha sem código.** Não é defeito: toda
+planilha do Excel tem um módulo de classe, com ou sem código. Cabe reclassificar
+na documentação da Fase 1, não corrigir.
+
+**Coluna H (`NC`) do schema da Fase 1** está sem cabeçalho e sem dado nos três.

@@ -347,7 +347,13 @@ End Function
 Private Sub MostrarErros(ByVal ws As Worksheet, ByVal nC As Long, ByVal erros As Collection)
     Dim cErr As Long, i As Long, prot As Boolean
     cErr = IMP_C_AN0 + nC + 1
+    ' ADR-046: a janela destrancada tem de fechar tambem no erro.
+    ' Sem o On Error, uma excecao entre o Unprotect e o Protect deixa a aba
+    ' aberta para edicao e ninguem fica sabendo. O erro original e relancado
+    ' depois de reproteger, para nao trocar um defeito por um silencio.
+    Dim nErrP As Long, sErrP As String
     prot = ws.ProtectContents
+    On Error GoTo restaura
     If prot Then ws.Unprotect Password:=IMP_SENHA
     ws.Range(ws.Cells(IMP_CAB, cErr), ws.Cells(IMP_RN, cErr)).ClearContents
     ws.Cells(IMP_CAB, cErr).Value = "Inconsistencias"
@@ -360,19 +366,40 @@ Private Sub MostrarErros(ByVal ws As Worksheet, ByVal nC As Long, ByVal erros As
         Next i
     End If
     ws.Columns(cErr).ColumnWidth = 58
-    If prot Then ws.Protect Password:=IMP_SENHA, UserInterfaceOnly:=True, _
-                            DrawingObjects:=False, Contents:=True, Scenarios:=True
+
+restaura:
+    nErrP = Err.Number: sErrP = Err.Description
+    If prot Then
+        On Error Resume Next
+        ws.Protect Password:=IMP_SENHA, UserInterfaceOnly:=True, _
+                   DrawingObjects:=False, Contents:=True, Scenarios:=True
+    End If
+    On Error GoTo 0
+    If nErrP <> 0 Then Err.Raise nErrP, "mImportar.MostrarErros", sErrP
 End Sub
 
 Private Sub LimparAreaImport(ByVal ws As Worksheet, ByVal nC As Long)
     Dim prot As Boolean, cErr As Long
     cErr = IMP_C_AN0 + nC + 1
+    ' ADR-046: mesma guarda do MostrarErros. Aqui pesa mais, porque a rotina
+    ' APAGA a area de colagem: um erro no meio deixaria a aba destrancada logo
+    ' depois de uma limpeza.
+    Dim nErrP As Long, sErrP As String
     prot = ws.ProtectContents
+    On Error GoTo restaura
     If prot Then ws.Unprotect Password:=IMP_SENHA
     ws.Range(ws.Cells(IMP_R0, IMP_C_DATA), ws.Cells(IMP_RN, IMP_C_AN0 + nC - 1)).ClearContents
     ws.Range(ws.Cells(IMP_CAB, cErr), ws.Cells(IMP_RN, cErr)).ClearContents
-    If prot Then ws.Protect Password:=IMP_SENHA, UserInterfaceOnly:=True, _
-                            DrawingObjects:=False, Contents:=True, Scenarios:=True
+
+restaura:
+    nErrP = Err.Number: sErrP = Err.Description
+    If prot Then
+        On Error Resume Next
+        ws.Protect Password:=IMP_SENHA, UserInterfaceOnly:=True, _
+                   DrawingObjects:=False, Contents:=True, Scenarios:=True
+    End If
+    On Error GoTo 0
+    If nErrP <> 0 Then Err.Raise nErrP, "mImportar.LimparAreaImport", sErrP
 End Sub
 
 ' Navegacao: o botao da aba Resultados leva para ca.
