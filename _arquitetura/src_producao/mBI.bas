@@ -71,7 +71,12 @@ Private Declare Sub GetSystemTime Lib "kernel32" (ByRef lpSystemTime As BI_SYSTE
 #End If
 
 Private Function Cab() As Variant
-    Cab = Array( _
+    ' O array vai para uma variavel local, NAO para o nome da funcao.
+    ' Em VBA, referenciar o nome da propria Function do lado direito de uma
+    ' expressao e CHAMADA RECURSIVA, nao leitura do retorno: "a = Cab" dentro
+    ' de Cab estoura a pilha.
+    Dim a As Variant, k As Long, j As Long, nome As String
+    a = Array( _
         "ID_Result", "ID_Corrida", "Data", "Ano", "Mes", "Trimestre", "Competencia", _
         "ID_Analito", "Analito", "Area", "Unidade", _
         "ID_Lote", "Lote", "Nivel", "RUN", _
@@ -95,6 +100,48 @@ Private Function Cab() As Variant
         "Cobertura_Motor_Westgard", "Referencia_Plano_QC", _
         "Sigma_Plano", "Nivel_Governante", "Classificacao_Sigma_Plano", _
         "Usar_1_3s", "Usar_2_2s", "Usar_R_4s", "Usar_4_1s", "Usar_8x")
+
+    ' NOME DE REGRA VEM DO MOTOR, NAO DE LITERAL (ADR-041, ADR-049)
+    '
+    ' Os literais acima sao esqueleto: descrevem a POSICAO, nao a regra. A
+    ' matriz ativa depende do numero de niveis do produto -- Bioquimica roda
+    ' 1_3s/2_2s/R_4s/4_1s/8x e Hematologia roda 1_3s/2of3_2s/R_4s/3_1s/6x --
+    ' e publicar o nome errado no BI cria ambiguidade operacional: uma coluna
+    ' W_2_2s que na verdade carrega 2of3_2s, ou W_4_1s carregando 3_1s.
+    '
+    ' O caso mais grave era W_10x: a coluna anunciava 10x enquanto a flag do
+    ' plano ao lado dizia Usar_8x. Nome e regra discordando na mesma tabela.
+    ' 10x nao existe mais em lugar nenhum operacional desde o ADR-041.
+    k = IdxCab(a, "W_1_3s")
+    If k >= 0 Then
+        For j = 1 To 5
+            nome = mEstatistica.NomeRegraWestgard(j)
+            If Len(nome) > 0 Then a(k + j - 1) = "W_" & nome
+        Next j
+    End If
+    k = IdxCab(a, "Usar_1_3s")
+    If k >= 0 Then
+        For j = 1 To 5
+            nome = mEstatistica.NomeRegraWestgard(j)
+            If Len(nome) > 0 Then a(k + j - 1) = "Usar_" & nome
+        Next j
+    End If
+    Cab = a
+End Function
+
+
+' Posicao de um rotulo no cabecalho, ou -1. Buscar pelo rotulo em vez de fixar
+' o indice evita que acrescentar uma coluna no meio desloque o bloco em
+' silencio -- que e como a coluna RUN ja ganhou formato de data neste projeto.
+Private Function IdxCab(ByRef a As Variant, ByVal alvo As String) As Long
+    Dim i As Long
+    IdxCab = -1
+    For i = LBound(a) To UBound(a)
+        If StrComp(CStr(a(i)), alvo, vbTextCompare) = 0 Then
+            IdxCab = i
+            Exit Function
+        End If
+    Next i
 End Function
 
 Private Function AgoraUTC() As Date
@@ -912,11 +959,15 @@ Public Sub PreencherPlanoDoPiorNivel(ByRef saida As Variant, ByVal n As Long)
             saida(k, 74) = mPlanoQC.PlanoQC(sp, "FREQUENCIA")
             saida(k, 75) = mPlanoQC.CoberturaWestgard(sp)
             saida(k, 76) = mPlanoQC.PlanoQC(sp, "REFERENCIA")
-            saida(k, 80) = mPlanoQC.RegraNoPlano(sp, "1_3s")
-            saida(k, 81) = mPlanoQC.RegraNoPlano(sp, "2_2s")
-            saida(k, 82) = mPlanoQC.RegraNoPlano(sp, "R_4s")
-            saida(k, 83) = mPlanoQC.RegraNoPlano(sp, "4_1s")
-            saida(k, 84) = mPlanoQC.RegraNoPlano(sp, "8x")
+            ' A regra PERGUNTADA vem do motor, pelo mesmo motivo do cabecalho.
+            ' Com literal, a Hematologia perguntaria por "2_2s" -- que nao esta
+            ' no plano dela -- e a flag voltaria FALSE em silencio, apagando da
+            ' tela uma regra que o Sigma exige.
+            Dim jj As Long
+            For jj = 1 To 5
+                saida(k, 79 + jj) = mPlanoQC.RegraNoPlano( _
+                    sp, mEstatistica.NomeRegraWestgard(jj))
+            Next jj
         Else
             ' Sem Sigma valido em nenhum nivel: o plano fica VAZIO e o rotulo
             ' diz SEM DADOS. Nao ha faixa a aplicar, e escolher a mais rigorosa
