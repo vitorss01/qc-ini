@@ -61,7 +61,18 @@ try {
     # A constante da senha vem antes das rotinas que a usam. Declaracao de
     # modulo TEM de preceder a primeira procedure -- regra que ja custou tres
     # quebras de compilacao neste projeto.
-    if ($txt -notmatch '\bSENHA_PROT\b') {
+    # A DECLARACAO, nao qualquer mencao ao nome.
+    #
+    # \bSENHA_PROT\b contra o modulo INTEIRO casava com um COMENTARIO que so
+    # CITAVA a constante -- "ja existia" virava verdade sem a linha Public
+    # Const nunca ter sido escrita. mBI/mAuditoria/mLogDB passaram a
+    # referenciar um nome que o projeto nao declarava em lugar nenhum, e VBA
+    # nao compila com identificador indefinido: TODA macro do projeto fica
+    # inalcancavel por Application.Run, nao so as que usam a senha. Mesma
+    # familia do marcador em comentario que ja confundiu um splice nesta
+    # obra -- texto que descreve o codigo sendo lido como se fosse o codigo.
+    $jaDeclarada = ($txt -match '(?m)^\s*(Public|Private)\s+Const\s+SENHA_PROT\b')
+    if (-not $jaDeclarada) {
         $decl = @(
             "",
             "' Senha das abas tecnicas, uma vez so neste modulo. As rotinas que",
@@ -77,8 +88,13 @@ try {
         $cm.InsertLines($linhaDecl + 1, $decl)
         "  constante SENHA_PROT declarada em mSeguranca"
     }
+    elseif ($Matches[1] -eq 'Private') {
+        throw ("SENHA_PROT existe em mSeguranca mas como Private -- os demais " +
+               "modulos nao a enxergam. Promova a mao para Public Const antes " +
+               "de rodar de novo (nao mudo declaracao existente por script).")
+    }
     else {
-        "  constante SENHA_PROT ja existia"
+        "  constante SENHA_PROT ja existia (Public)"
     }
 
     $txt = $cm.Lines(1, $cm.CountOfLines)
