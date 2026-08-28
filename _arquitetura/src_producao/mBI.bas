@@ -246,6 +246,11 @@ Public Sub AtualizarBIData()
     idxAnalito.CompareMode = 1: area.CompareMode = 1: unid.CompareMode = 1
     especET.CompareMode = 1: especFonte.CompareMode = 1: especAno.CompareMode = 1
     especID.CompareMode = 1: especSituacao.CompareMode = 1
+    ' Colunas resolvidas por rotulo (ver nota adiante).
+    Dim cET As Long, cCV As Long, cFonte As Long
+    cET = ColunaAnalitos(wsA, "etp", "final", 20)
+    cCV = ColunaAnalitos(wsA, "cvtp", "", 0)
+    cFonte = ColunaAnalitos(wsA, "fonte", "", 19)
     For i = 4 To 43
         Dim nm As String
         nm = Trim$(CStr(wsA.Cells(i, 1).Value))
@@ -265,9 +270,28 @@ Public Sub AtualizarBIData()
                 '   S (19) = ETp fonte           CLIA | VB | FAB
                 '   T (20) = ETp em uso final %  <- a meta oficial
                 '   U (21) = CVTp%
-                If IsNumeric(wsA.Cells(i, 20).Value) Then especET.Add nm, wsA.Cells(i, 20).Value
-                If IsNumeric(wsA.Cells(i, 21).Value) Then especCVA.Add nm, wsA.Cells(i, 21).Value
-                especFonte.Add nm, CStr(wsA.Cells(i, 19).Value)
+                '
+                ' E MUDARAM DE NOVO -- AGORA ENTRE PRODUTOS.
+                '
+                ' O bloco acima descreve a Bioquimica. Na Hematologia o mesmo
+                ' campo mora em OUTRA coluna:
+                '
+                '   Bioquimica    R=ETp VB   S=ESPQ FONTE  T=ETp em uso final %
+                '   Hematologia   Q=ETp fonte  R=ETp final %  T=Lim CV VB %
+                '
+                ' Lendo T fixo, a Hematologia recebia "Lim CV VB %" como se
+                ' fosse a meta de erro total. Para o PLT isso trocava 15% por
+                ' 5,625% e derrubava o Sigma de 2,98 para 0,25 -- numero
+                ' plausivel, errado, e direto no painel.
+                '
+                ' A cura e a mesma de sempre neste projeto: achar a coluna pelo
+                ' ROTULO, nao pela letra. O indice antigo fica de reserva, para
+                ' uma planilha sem cabecalho reconhecivel nao ficar sem meta.
+                If IsNumeric(wsA.Cells(i, cET).Value) Then especET.Add nm, wsA.Cells(i, cET).Value
+                If cCV > 0 Then
+                    If IsNumeric(wsA.Cells(i, cCV).Value) Then especCVA.Add nm, wsA.Cells(i, cCV).Value
+                End If
+                especFonte.Add nm, CStr(wsA.Cells(i, cFonte).Value)
                 especAno.Add nm, ValorNomeBI("espAno")
                 especID.Add nm, ""
                 especSituacao.Add nm, "ANALITOS_VIGENTE"
@@ -1052,4 +1076,32 @@ Private Function UsuarioSistema() As String
     On Error GoTo 0
     If v = "" Then v = "(sem login)"
     UsuarioSistema = v
+End Function
+
+
+' Coluna da aba Analitos pelo ROTULO do cabecalho (linha 3), nao pela letra.
+'
+' Recebe dois pedacos de texto que o rotulo tem de conter (o segundo pode ser
+' vazio) e um indice de reserva. Comparacao sem caixa e sem acento nao e
+' necessaria aqui: os rotulos relevantes sao ASCII.
+Private Function ColunaAnalitos(ByVal wsA As Worksheet, _
+                                ByVal parte1 As String, _
+                                ByVal parte2 As String, _
+                                ByVal reserva As Long) As Long
+    Dim c As Long, t As String
+    For c = 1 To 40
+        t = LCase$(Trim$(CStr(wsA.Cells(3, c).Value)))
+        If Len(t) > 0 Then
+            If InStr(t, LCase$(parte1)) > 0 Then
+                If Len(parte2) = 0 Then
+                    ColunaAnalitos = c
+                    Exit Function
+                ElseIf InStr(t, LCase$(parte2)) > 0 Then
+                    ColunaAnalitos = c
+                    Exit Function
+                End If
+            End If
+        End If
+    Next c
+    ColunaAnalitos = reserva
 End Function
