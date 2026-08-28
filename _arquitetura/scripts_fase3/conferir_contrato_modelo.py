@@ -148,10 +148,10 @@ def main():
             reg('medida %s' % m, ('measure %s' % m) in e)
         reg('separa evento de resultado marcado (N x R)',
             'N_Niveis' in e and 'R_Corridas' in e)
-        reg('declara o grao por produto', 'Grao' in e and 'LEGADO_1N' in e)
-        reg('grao legado nao entra na contagem de eventos',
-            'Grao] = "EVENTO"' in e)
-        reg('expoe quanto ficou fora', 'Eventos_sem_grao_de_evento' in e)
+        reg('LEGADO_1N eliminado do produto', 'LEGADO_1N' not in e)
+        reg('nomeia por POSICAO, nao por rotulo', 'List.Zip' in e)
+        reg('separa oficial de complementar', 'N_Eventos_Oficiais' in e)
+        reg('publica a janela do evento', 'RUN_Final' in e and 'RUN_Inicial' in e)
     # as duas abas existem e tem dado
     import openpyxl as _op
     for arq, prod in (('QC_Bioquimica.xlsm', 'Bioquimica'),
@@ -163,7 +163,58 @@ def main():
             ws = wb['Eventos_Westgard']
             n = max(0, ws.max_row - 3)
         wb.close()
+        # o CABECALHO nao prova o grao -- a largura do DADO prova
+        larg = 0
+        regras = set()
+        if tem:
+            ws = wb2['Eventos_Westgard'] if False else None
         reg('%s: aba de eventos com dado' % prod, tem and n > 0, '%d linha(s)' % n)
+
+    print()
+    print('=== grao de evento medido no DADO, e a matriz por area ===')
+    MATRIZ = {'Bioquimica': {'1_3s', '2_2s', 'R_4s', '4_1s', '8x'},
+              'Hematologia': {'1_3s', '2of3_2s', 'R_4s', '3_1s', '6x'}}
+    for arq, prod in (('QC_Bioquimica.xlsm', 'Bioquimica'),
+                      ('QC_Hematologia.xlsm', 'Hematologia')):
+        wb = _op.load_workbook(os.path.join(BASE, arq), read_only=True)
+        ws = wb['Eventos_Westgard']
+        linhas = list(ws.iter_rows(min_row=4, max_row=4, values_only=True))
+        larg = 0
+        if linhas:
+            for i, v in enumerate(linhas[0][:14], start=1):
+                if v not in (None, ''):
+                    larg = i
+        regras = set()
+        for r in ws.iter_rows(min_row=4, max_row=8000, values_only=True):
+            if r and len(r) > 4 and r[4]:
+                regras.add(str(r[4]).strip())
+        wb.close()
+        reg('%s: dado com 14 colunas (grao de evento)' % prod, larg == 14,
+            '%d coluna(s)' % larg)
+        reg('%s: matriz correta e so ela' % prod, regras == MATRIZ[prod],
+            'obtido %s' % sorted(regras))
+        reg('%s: sem regra concatenada' % prod,
+            not any('+' in x for x in regras))
+        reg('%s: 10x ausente' % prod, '10x' not in regras)
+
+    print()
+    print('=== a regra vira DADO, nao nome de coluna ===')
+    fm = os.path.join(MOD, 'tables', 'Fato_Westgard_Marcacao.tmdl')
+    reg('Fato_Westgard_Marcacao existe', os.path.exists(fm))
+    reg('registrada no model.tmdl', 'ref table Fato_Westgard_Marcacao' in mt)
+    if os.path.exists(fm):
+        f = ler(fm)
+        reg('despivota as cinco posicoes', 'UnpivotOtherColumns' in f)
+        reg('liga pelo par Produto+Slot', 'ChaveRegra' in f)
+        reg('violada e recomendada sao dimensoes separadas',
+            'column Violou' in f and 'column Recomendada' in f)
+        reg('prioridade violacao > recomendacao > neutro',
+            'FORA DO PLANO - VIOLADA' in f and 'RECOMENDADA - VIOLADA' in f)
+    rel = ler(os.path.join(MOD, 'relationships.tmdl'))
+    for nome in ('Marcacao_Regra', 'Marcacao_Resultado', 'Eventos_Data'):
+        reg('relacionamento %s' % nome, ('relationship %s' % nome) in rel)
+    dimtxt = ler(os.path.join(MOD, 'tables', 'Dim_Regra_Westgard.tmdl'))
+    reg('dimensao tem a chave do par', 'column ChaveRegra' in dimtxt)
 
     print()
     print('=== EQA integrada ===')

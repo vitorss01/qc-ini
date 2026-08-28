@@ -125,6 +125,19 @@ $xl.AutomationSecurity = 1
 
 $wb = $xl.Workbooks.Open($Workbook)
 
+# Sheets.Add falha com "nao e possivel obter a propriedade Add da classe Sheets"
+# quando a ESTRUTURA da pasta esta protegida, e a mensagem nao diz isso.
+# Destravar numa sessao separada nao resolve: o estado volta no save. Tem de ser
+# na MESMA sessao, e o estado anterior e restaurado no fim.
+$estruturaEstava = $false
+try {
+    if ($wb.ProtectStructure) {
+        $estruturaEstava = $true
+        try { $wb.Unprotect("qcini2025") } catch { $wb.Unprotect() }
+        "estrutura destravada"
+    }
+} catch { }
+
 # AutoRecuperacao DESLIGADA nesta copia de trabalho.
 #
 # O build encerra o Excel a forca varias vezes. Cada encerramento deixa um
@@ -218,6 +231,9 @@ try {
     $lg.Protect($SENHA, $true, $true, $true)
 
     $wb.Worksheets.Item('Painel').Activate()
+    if ($estruturaEstava) {
+        try { $wb.Protect("qcini2025", $true, $false); "estrutura retravada" } catch { }
+    }
     $wb.Save()
 
     "Audit_Log criada  : $($colunas.Count) colunas, tabela tblAuditoria, dados a partir da linha $AUDIT_R0"

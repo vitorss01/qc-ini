@@ -6,17 +6,18 @@ table Fato_Eventos_Westgard
 	/// marca SEIS resultados; um painel que soma marcacoes e chama de eventos
 	/// infla a contagem sem que ninguem perceba (ADR-045).
 	///
-	/// GRAO DIFERENTE POR PRODUTO, E ISSO ESTA DECLARADO
+	/// Os dois produtos publicam o MESMO grao, com as mesmas 14 posicoes. Antes
+	/// da migracao do motor, a Bioquimica gravava as regras CONCATENADAS numa
+	/// celula ("13s+22s+41s+10x") e a Hematologia gravava
+	/// (corrida x analito x nivel) -- formato em que R_4s, 2of3_2s, 3_1s e 6x
+	/// sao estruturalmente invisiveis, porque exigem ver os niveis juntos.
 	///
-	/// A Bioquimica publica o grao de evento: 14 campos, com detector, escopo,
-	/// N, R, corrida inicial e evidencia. A Hematologia de producao ainda roda
-	/// o RegistrarEventosWestgard legado, que grava (corrida x analito x nivel)
-	/// com 8 campos -- e nesse formato R_4s, 2of3_2s, 3_1s e 6x sao
-	/// estruturalmente invisiveis, porque exigem visao multi-nivel.
+	/// NOMES POR POSICAO, NAO POR ROTULO
 	///
-	/// A coluna Grao diz qual e qual. As medidas que dependem de N e R
-	/// devolvem BLANK para o grao legado em vez de um numero errado: dado que
-	/// nao sustenta a conta nao vira conta.
+	/// EV_NCOL = 14 e contrato do motor: as posicoes sao fixas. O rotulo da
+	/// linha 3 nao e: ja veio como "NÍveis" e "Evidéncia" com o acento
+	/// corrompido, e casar por nome falharia sem dizer por que. Le-se pela
+	/// ordem, que e o que o motor garante.
 
 	column Data
 		dataType: dateTime
@@ -78,6 +79,11 @@ table Fato_Eventos_Westgard
 		summarizeBy: none
 		sourceColumn: RUN_Inicial
 
+	column Evidencia
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Evidencia
+
 	column Classificacao
 		dataType: string
 		summarizeBy: none
@@ -88,112 +94,86 @@ table Fato_Eventos_Westgard
 		summarizeBy: none
 		sourceColumn: Z_Max
 
-	column Produto
+	column Area
 		dataType: string
 		summarizeBy: none
-		sourceColumn: Produto
+		sourceColumn: Area
 
-	column Grao
-		dataType: string
+	column RUN_Final
+		dataType: int64
+		formatString: 0
 		summarizeBy: none
-		sourceColumn: Grao
+		sourceColumn: RUN_Final
 
 	measure N_Eventos_Violacao =
-			/// Quantas vezes a REGRA disparou. So conta onde o grao e de evento.
-			CALCULATE (
-			    COUNTROWS ( Fato_Eventos_Westgard ),
-			    Fato_Eventos_Westgard[Grao] = "EVENTO"
-			)
+			/// Quantas vezes a REGRA disparou.
+			COUNTROWS ( Fato_Eventos_Westgard )
 		formatString: #,0
 		displayFolder: 05 Westgard
 
 	measure N_Resultados_Marcados =
-			/// Quantos RESULTADOS ficaram marcados. Um evento N niveis x R
+			/// Quantos RESULTADOS ficaram marcados. Um evento de N niveis por R
 			/// corridas marca N*R resultados -- e por isso que este numero e
 			/// maior que o de eventos, e por isso que os dois precisam existir.
-			CALCULATE (
-			    SUMX (
-			        Fato_Eventos_Westgard,
-			        COALESCE ( Fato_Eventos_Westgard[N_Niveis], 1 )
-			            * COALESCE ( Fato_Eventos_Westgard[R_Corridas], 1 )
-			    ),
-			    Fato_Eventos_Westgard[Grao] = "EVENTO"
+			SUMX (
+			    Fato_Eventos_Westgard,
+			    COALESCE ( Fato_Eventos_Westgard[N_Niveis], 1 )
+			        * COALESCE ( Fato_Eventos_Westgard[R_Corridas], 1 )
 			)
 		formatString: #,0
 		displayFolder: 05 Westgard
 
 	measure N_Corridas_Com_Violacao =
-			/// Corridas distintas com pelo menos um evento. Vale nos dois graos,
-			/// porque so depende do RUN.
+			/// Corridas distintas com pelo menos um evento. Nao e a uniao das
+			/// JANELAS: um evento 6x N3/R2 envolve seis corridas, e o que se
+			/// conta aqui e onde o evento foi registrado.
 			DISTINCTCOUNT ( Fato_Eventos_Westgard[RUN] )
 		formatString: #,0
 		displayFolder: 05 Westgard
 
-	measure Eventos_sem_grao_de_evento =
-			/// Quantas linhas vem do registro legado. Diferente de zero, as tres
-			/// medidas acima nao cobrem o produto inteiro -- e melhor ver isso
-			/// num cartao do que descobrir depois.
+	measure N_Eventos_Oficiais =
+			/// So os detectores oficiais decidem rejeicao. Os longitudinais
+			/// (SAME_LEVEL_R*) sao COMPLEMENTAR: entram no trace para explicar,
+			/// e nao na conta, porque soma-los multiplicaria as oportunidades de
+			/// rejeicao e subiria a falsa rejeicao sem ninguem decidir (ADR-042).
 			CALCULATE (
 			    COUNTROWS ( Fato_Eventos_Westgard ),
-			    Fato_Eventos_Westgard[Grao] <> "EVENTO"
+			    Fato_Eventos_Westgard[Classe] = "OFICIAL"
 			)
 		formatString: #,0
-		displayFolder: 09 Diagnostico
+		displayFolder: 05 Westgard
 
 	partition Fato_Eventos_Westgard = m
 		mode: import
 		source =
 				let
-				    // A aba NAO e ListObject: le-se a planilha e promove-se a
-				    // linha 3, porque as duas primeiras sao titulo e totalizador.
-				    Bruto = (caminho) =>
+				    // 14 POSICOES FIXAS (EV_NCOL). Le-se por ORDEM, nao por
+				    // rotulo: o cabecalho da linha 3 ja veio com acento
+				    // corrompido, e casar por nome falharia em silencio.
+				    NOMES = {"Data","RUN","Analito","Niveis","Regra","Detector",
+				             "Escopo","Classe","N_Niveis","R_Corridas",
+				             "RUN_Inicial","Evidencia","Classificacao","Z_Max"},
+
+				    Bruto = (caminho, area) =>
 				        let
 				            F = Excel.Workbook(File.Contents(caminho), null, true),
 				            Aba = F{[Item="Eventos_Westgard", Kind="Sheet"]}[Data],
-				            SemTopo = Table.Skip(Aba, 2),
-				            ComCab = Table.PromoteHeaders(SemTopo, [PromoteAllScalars=true])
+				            // linhas 1 a 3 sao titulo, totalizador e cabecalho
+				            Dados = Table.Skip(Aba, 3),
+				            Primeiras = Table.SelectColumns(Dados,
+				                List.FirstN(Table.ColumnNames(Dados), 14)),
+				            Renomeada = Table.RenameColumns(Primeiras,
+				                List.Zip({Table.ColumnNames(Primeiras), NOMES})),
+				            ComArea = Table.AddColumn(Renomeada, "Area",
+				                each area, type text),
+				            // linha sem RUN e sobra de formatacao da aba
+				            Limpa = Table.SelectRows(ComArea,
+				                each [RUN] <> null and [RUN] <> "")
 				        in
-				            ComCab,
+				            Limpa,
 
-				    // NORMALIZACAO DOS DOIS GRAOS PARA UM ESQUEMA SO.
-				    //
-				    // O que o legado nao tem vira null, nao zero: zero afirmaria
-				    // que o detector rodou e nao achou nada, e o que aconteceu e
-				    // que ele nem existe naquele formato.
-				    Padrao = (t, produto, grao) =>
-				        let
-				            temNiveis = List.Contains(Table.ColumnNames(t), "Níveis"),
-				            comNiveis = if temNiveis
-				                then Table.RenameColumns(t, {{"Níveis","Niveis"}})
-				                else Table.RenameColumns(t, {{"Nível","Niveis"}}),
-				            comZ = Table.RenameColumns(comNiveis,
-				                {{"Z_Max","Z_Max"}}, MissingField.Ignore),
-				            comZ2 = if List.Contains(Table.ColumnNames(comZ), "Z-Score")
-                                then Table.RenameColumns(comZ, {{"Z-Score","Z_Max"}})
-                                else comZ,
-				            comCls = Table.RenameColumns(comZ2,
-				                {{"Classificação","Classificacao"}}, MissingField.Ignore),
-				            comEv = Table.RenameColumns(comCls,
-				                {{"N","N_Niveis"}, {"R","R_Corridas"}}, MissingField.Ignore),
-				            faltantes = List.Difference(
-				                {"Data","RUN","Analito","Niveis","Regra","Detector",
-				                 "Escopo","Classe","N_Niveis","R_Corridas","RUN_Inicial",
-				                 "Classificacao","Z_Max"},
-				                Table.ColumnNames(comEv)),
-				            completo = List.Accumulate(faltantes, comEv,
-				                (est, c) => Table.AddColumn(est, c, each null)),
-				            comProd = Table.AddColumn(completo, "Produto", each produto, type text),
-				            comGrao = Table.AddColumn(comProd, "Grao", each grao, type text),
-				            so = Table.SelectColumns(comGrao,
-				                {"Data","RUN","Analito","Niveis","Regra","Detector",
-				                 "Escopo","Classe","N_Niveis","R_Corridas","RUN_Inicial",
-				                 "Classificacao","Z_Max","Produto","Grao"}),
-				            semVazias = Table.SelectRows(so, each [RUN] <> null)
-				        in
-				            semVazias,
-
-				    Bio = Padrao(Bruto(pCaminhoQC), "Bioquimica", "EVENTO"),
-				    Hem = Padrao(Bruto(pCaminhoHema), "Hematologia", "LEGADO_1N"),
+				    Bio = Bruto(pCaminhoQC, "Bioquimica"),
+				    Hem = Bruto(pCaminhoHema, "Hematologia"),
 				    Junto = Table.Combine({Bio, Hem}),
 				    Tipado = Table.TransformColumnTypes(Junto, {
 				        {"Data", type datetime}, {"RUN", Int64.Type},
@@ -201,10 +181,14 @@ table Fato_Eventos_Westgard
 				        {"Regra", type text}, {"Detector", type text},
 				        {"Escopo", type text}, {"Classe", type text},
 				        {"N_Niveis", Int64.Type}, {"R_Corridas", Int64.Type},
-				        {"RUN_Inicial", Int64.Type}, {"Classificacao", type text},
-				        {"Z_Max", type number}, {"Produto", type text},
-				        {"Grao", type text}})
+				        {"RUN_Inicial", Int64.Type}, {"Evidencia", type text},
+				        {"Classificacao", type text}, {"Z_Max", type number},
+				        {"Area", type text}}),
+				    // A JANELA DO EVENTO, PARA O USUARIO NAO TER DE CALCULAR.
+				    // RUN_Inicial e o comeco; o RUN da linha e o fim.
+				    ComFinal = Table.AddColumn(Tipado, "RUN_Final",
+				        each [RUN], Int64.Type)
 				in
-				    Tipado
+				    ComFinal
 
 	annotation PBI_ResultType = Table

@@ -14,3 +14,15 @@ relationship Fato_Nivel
 	fromColumn: Fato_QC.Nivel
 	toColumn: Dim_Nivel.Nivel
 
+
+relationship Marcacao_Regra
+	fromColumn: Fato_Westgard_Marcacao.ChaveRegra
+	toColumn: Dim_Regra_Westgard.ChaveRegra
+
+relationship Marcacao_Resultado
+	fromColumn: Fato_Westgard_Marcacao.ID_Result
+	toColumn: Fato_QC.ID_Result
+
+relationship Eventos_Data
+	fromColumn: Fato_Eventos_Westgard.Data
+	toColumn: Dim_Data.Data

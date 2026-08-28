@@ -1,0 +1,158 @@
+table Fato_Westgard_Marcacao
+
+	/// UMA LINHA = UM RESULTADO x UMA REGRA.
+	///
+	/// POR QUE ESTA TABELA EXISTE
+	///
+	/// Na Fato_QC as cinco regras sao COLUNAS, e tres delas tem nome diferente
+	/// em cada area. Isso obriga o visual a escolher entre duas coisas ruins:
+	/// mostrar o nome fisico (W_R2, que nao diz nada ao analista) ou fixar o
+	/// nome de uma das areas (W_2_2s, que na Hematologia seria FALSO -- ali a
+	/// posicao 2 e 2of3_2s).
+	///
+	/// Despivotando, a regra vira DADO em vez de nome de coluna. O visual filtra
+	/// por Dim_Regra_Westgard[Regra] e cada area mostra a sua matriz sem que
+	/// nenhuma medida precise saber disso.
+	///
+	/// A ligacao e por Produto+Slot, nao por nome da regra: e o par que e unico.
+	///
+	/// Violou e Recomendada sao DIMENSOES SEPARADAS. Uma regra pode estar no
+	/// plano e nao ter disparado, ter disparado estando fora do plano, as duas
+	/// coisas, ou nenhuma. Colapsar isso num rotulo so apaga a diferenca entre
+	/// "o Sigma exige" e "o metodo violou".
+
+	column ID_Result
+		dataType: string
+		summarizeBy: none
+		sourceColumn: ID_Result
+
+	column Produto
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Produto
+
+	column Slot
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Slot
+
+	column ChaveRegra
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: ChaveRegra
+
+	column Violou
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: Violou
+
+	column Recomendada
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: Recomendada
+
+	measure Violacoes_por_Regra =
+			SUM ( Fato_Westgard_Marcacao[Violou] )
+		formatString: #,0
+		displayFolder: 05 Westgard
+
+	measure Regra_no_Plano =
+			/// Quantos resultados estao sob uma regra que o Sigma exige.
+			SUM ( Fato_Westgard_Marcacao[Recomendada] )
+		formatString: #,0
+		displayFolder: 05 Westgard
+
+	measure Estado_da_Regra =
+			/// VIOLACAO > RECOMENDACAO > NEUTRO, a mesma prioridade do Painel do
+			/// Excel: uma regra violada e violada mesmo quando o plano nao a
+			/// exige, e ver isso importa mais do que ver que ela era esperada.
+			VAR v = SUM ( Fato_Westgard_Marcacao[Violou] )
+			VAR r = SUM ( Fato_Westgard_Marcacao[Recomendada] )
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        ISBLANK ( v ) && ISBLANK ( r ), BLANK (),
+			        v > 0 && r > 0, "RECOMENDADA - VIOLADA",
+			        v > 0, "FORA DO PLANO - VIOLADA",
+			        r > 0, "RECOMENDADA",
+			        "fora do plano"
+			    )
+		displayFolder: 05 Westgard
+
+	partition Fato_Westgard_Marcacao = m
+		mode: import
+		source =
+				let
+				    // Os mesmos renames posicionais da Fato_QC: as posicoes 1 e 3
+				    // ja se chamam igual nas duas areas; 2, 4 e 5 divergem.
+				    RenBio = {{"W_2_2s","R2"}, {"W_4_1s","R4"}, {"W_8x","R5"},
+				              {"W_1_3s","R1"}, {"W_R_4s","R3"},
+				              {"Usar_2_2s","U2"}, {"Usar_4_1s","U4"},
+				              {"Usar_8x","U5"}, {"Usar_1_3s","U1"},
+				              {"Usar_R_4s","U3"}},
+				    RenHem = {{"W_2of3_2s","R2"}, {"W_3_1s","R4"}, {"W_6x","R5"},
+				              {"W_1_3s","R1"}, {"W_R_4s","R3"},
+				              {"Usar_2of3_2s","U2"}, {"Usar_3_1s","U4"},
+				              {"Usar_6x","U5"}, {"Usar_1_3s","U1"},
+				              {"Usar_R_4s","U3"}},
+
+				    Bruto = (caminho, mapa) =>
+				        let
+				            F = Excel.Workbook(File.Contents(caminho), null, true),
+				            T = F{[Item="tblBI_Fato", Kind="Table"]}[Data],
+				            Ren = Table.RenameColumns(T, mapa, MissingField.Ignore),
+				            So = Table.SelectColumns(Ren,
+				                {"ID_Result","Produto","R1","R2","R3","R4","R5",
+				                 "U1","U2","U3","U4","U5"}, MissingField.Error),
+				            // despivota as violacoes e as recomendacoes em
+				            // separado, e junta pelo par (resultado, slot)
+				            V = Table.UnpivotOtherColumns(
+				                    Table.SelectColumns(So,
+				                        {"ID_Result","Produto","R1","R2","R3","R4","R5"}),
+				                    {"ID_Result","Produto"}, "Slot", "Violou"),
+				            U = Table.UnpivotOtherColumns(
+				                    Table.SelectColumns(So,
+				                        {"ID_Result","Produto","U1","U2","U3","U4","U5"}),
+				                    {"ID_Result","Produto"}, "SlotU", "Recomendada"),
+				            Un = Table.TransformColumns(U,
+				                {{"SlotU", each Text.Replace(_, "U", "R"), type text}}),
+				            Ch = Table.AddColumn(V, "k",
+				                each [ID_Result] & "|" & [Slot], type text),
+				            ChU = Table.AddColumn(Un, "k",
+				                each [ID_Result] & "|" & [SlotU], type text),
+				            Jun = Table.NestedJoin(Ch, {"k"}, ChU, {"k"},
+				                "r", JoinKind.LeftOuter),
+				            Exp = Table.ExpandTableColumn(Jun, "r",
+				                {"Recomendada"}, {"Rec"}),
+				            Fim = Table.SelectColumns(Exp,
+				                {"ID_Result","Produto","Slot","Violou","Rec"}),
+				            Ren2 = Table.RenameColumns(Fim, {{"Rec","Recomendada"}})
+				        in
+				            Ren2,
+
+				    Bio = Bruto(pCaminhoQC, RenBio),
+				    Hem = Bruto(pCaminhoHema, RenHem),
+				    Junto = Table.Combine({Bio, Hem}),
+				    // a chave da dimensao e o PAR produto+slot
+				    ComChave = Table.AddColumn(Junto, "ChaveRegra",
+				        each [Produto] & "|" & [Slot], type text),
+				    Tipado = Table.TransformColumnTypes(ComChave, {
+				        {"ID_Result", type text}, {"Produto", type text},
+				        {"Slot", type text}, {"ChaveRegra", type text}}),
+				    // logico do Excel vira 0/1; nulo vira 0
+				    Num = Table.TransformColumns(Tipado, {
+				        {"Violou", each if _ = null then 0
+				                        else if _ = true then 1
+                                        else if _ = false then 0
+                                        else Number.From(_), Int64.Type},
+				        {"Recomendada", each if _ = null then 0
+                                        else if _ = true then 1
+                                        else if _ = false then 0
+                                        else Number.From(_), Int64.Type}})
+				in
+				    Num
+
+	annotation PBI_ResultType = Table

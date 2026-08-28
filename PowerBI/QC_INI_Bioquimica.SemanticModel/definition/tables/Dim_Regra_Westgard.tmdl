@@ -34,24 +34,33 @@ table Dim_Regra_Westgard
 		summarizeBy: none
 		sourceColumn: Regra
 
+	/// Produto|Slot. A ligacao e pelo PAR: "R2" sozinho existe nas duas areas e
+	/// significa regras diferentes em cada uma.
+	column ChaveRegra
+		dataType: string
+		isHidden
+		isKey
+		summarizeBy: none
+		sourceColumn: ChaveRegra
+
 	partition Dim_Regra_Westgard = m
 		mode: import
 		source =
 				let
 				    Linhas = #table(
 				        type table [Produto = text, Posicao = Int64.Type,
-				                    Slot = text, Regra = text],
+				                    Slot = text, Regra = text, ChaveRegra = text],
 				        {
-                            {"Bioquimica", 1, "R1", "1_3s"},
-                            {"Hematologia", 1, "R1", "1_3s"},
-                            {"Bioquimica", 2, "R2", "2_2s"},
-                            {"Hematologia", 2, "R2", "2of3_2s"},
-                            {"Bioquimica", 3, "R3", "R_4s"},
-                            {"Hematologia", 3, "R3", "R_4s"},
-                            {"Bioquimica", 4, "R4", "4_1s"},
-                            {"Hematologia", 4, "R4", "3_1s"},
-                            {"Bioquimica", 5, "R5", "8x"},
-                            {"Hematologia", 5, "R5", "6x"}
+                            {"Bioquimica", 1, "R1", "1_3s", "Bioquimica|R1"},
+                            {"Hematologia", 1, "R1", "1_3s", "Hematologia|R1"},
+                            {"Bioquimica", 2, "R2", "2_2s", "Bioquimica|R2"},
+                            {"Hematologia", 2, "R2", "2of3_2s", "Hematologia|R2"},
+                            {"Bioquimica", 3, "R3", "R_4s", "Bioquimica|R3"},
+                            {"Hematologia", 3, "R3", "R_4s", "Hematologia|R3"},
+                            {"Bioquimica", 4, "R4", "4_1s", "Bioquimica|R4"},
+                            {"Hematologia", 4, "R4", "3_1s", "Hematologia|R4"},
+                            {"Bioquimica", 5, "R5", "8x", "Bioquimica|R5"},
+                            {"Hematologia", 5, "R5", "6x", "Hematologia|R5"}
 				        })
 				in
 				    Linhas

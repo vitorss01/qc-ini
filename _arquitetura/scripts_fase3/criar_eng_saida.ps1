@@ -119,6 +119,23 @@ $xl.AutomationSecurity = 3
 
 $wb = $xl.Workbooks.Open($Workbook)
 
+# A ESTRUTURA DA PASTA PRECISA ESTAR DESTRAVADA PARA Sheets.Add.
+#
+# Com ela protegida, o Add falha com "O metodo Add da classe Sheets falhou" --
+# mensagem que nao diz qual e o problema. Destravar numa sessao separada nao
+# resolve: alguma coisa reprotege no save, e o arquivo volta travado. Tem de ser
+# na MESMA sessao que cria a aba.
+#
+# O estado anterior e restaurado no fim: quem chegou protegido sai protegido.
+$estruturaEstava = $false
+try {
+    if ($wb.ProtectStructure) {
+        $estruturaEstava = $true
+        try { $wb.Unprotect("qcini2025") } catch { $wb.Unprotect() }
+        "estrutura destravada para criar a aba"
+    }
+} catch { }
+
 # AutoRecuperacao DESLIGADA nesta copia de trabalho.
 #
 # O build encerra o Excel a forca varias vezes. Cada encerramento deixa um
@@ -249,6 +266,9 @@ $eng.Visible = 2      # xlSheetVeryHidden: nao aparece nem no menu de reexibir
 "  parametros  linhas $LINHA_EST..$($LINHA_EST + $LINHAS_EST - 1), colunas 1..13"
 "Nomes: engDados, engRUN, engChave, engPainel, engEstat, engAnalito, engLote, engCarimbo, engNRun"
 
+if ($estruturaEstava) {
+    try { $wb.Protect("qcini2025", $true, $false); "estrutura retravada" } catch { }
+}
 $wb.Save()
 $wb.Close($true)
 $xl.Quit()
