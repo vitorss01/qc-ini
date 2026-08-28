@@ -721,11 +721,31 @@ Private Function GarantirAba() As Worksheet
         Set ws = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
         ws.Name = BI_ABA
     End If
+
+    ' O CABECALHO TAMBEM E ESCRITA (ADR-046).
+    '
+    ' Esta rotina ficou de fora da guarda de protecao que AtualizarBIData ja
+    ' tinha: a guarda abre DEPOIS, para o corpo da tabela. Nunca falhou no
+    ' build porque ali as abas ainda nao estao protegidas -- so quebrava no
+    ' artefato pronto, aberto sem Workbook_Open, com 1004 apontando para a
+    ' linha do cabecalho. Foi o erro relatado em producao.
+    Dim protEstava As Boolean
+    On Error GoTo restauraCab
+    protEstava = LiberarEscrita(ws)
+
     cb = Cab()
     For i = 0 To UBound(cb)
         ws.Cells(BI_CAB, i + 1).Value = cb(i)
     Next i
     ws.Rows(BI_CAB).Font.Bold = True
+
+restauraCab:
+    Dim nErrC As Long, sErrC As String
+    nErrC = Err.Number: sErrC = Err.Description
+    RestaurarProtecao ws, protEstava
+    On Error GoTo 0
+    If nErrC <> 0 Then Err.Raise nErrC, "mBI.GarantirAba", sErrC
+
     Set GarantirAba = ws
 End Function
 
