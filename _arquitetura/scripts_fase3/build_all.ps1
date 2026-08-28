@@ -470,6 +470,25 @@ else {
     "  (sem analito de referencia definido para $Produto - etapa pulada)"
 }
 
+if ($Produto -eq 'Hematologia') {
+    Encerrar-Excel
+    "== 7b1z. ADR-053: Z do Calc para de calcular sozinho (Hematologia)"
+    # redirecionar_calc.ps1 (linha ~376) so cobre os 6 campos de regra
+    # Westgard -- nunca cobriu Z. A Bioquimica reconcilia porque seu Calc
+    # NASCEU com formula viva ancorada em Analitos (o alvo do lote ativo, a
+    # mesma fonte que AlvoAnalito le no motor); a Hematologia tinha valor
+    # ESTATICO congelado numa execucao passada -- nunca ia bater com o
+    # recalculo. So Bioquimica: e o unico produto com o defeito, medido.
+    Mostrar (& python (Join-Path $s 'redirecionar_calc_hematologia.py') $alvo) -Ultimas 8
+    # Mostrar so formata saida, nao verifica codigo de saida -- ao contrario
+    # de Etapa, que e so para .ps1. Sem este teste, um erro no script Python
+    # passaria em silencio e a reconciliacao seguinte reprovaria sem dizer
+    # por que o Calc nao foi corrigido.
+    if ($LASTEXITCODE -ne 0) {
+        throw "redirecionar_calc_hematologia.py falhou (codigo $LASTEXITCODE)"
+    }
+}
+
 Encerrar-Excel
 # A reconciliacao precisa ocorrer DEPOIS do redirecionamento e da execucao do
 # motor. Antes disso, Calc ainda contem a implementacao antiga por formulas e
@@ -537,7 +556,7 @@ Etapa 'blindar_artefato.ps1' -Argumentos @('-Workbook', $alvo) -Ultimas 5
 
 Encerrar-Excel
 if ($Produto -eq 'Hematologia' -and -not $SemFixtures) {
-    "== 8c. nao regressao das especificacoes (1.575 Westgard / 1.125 Sigma)"
+    "== 8c. nao regressao das especificacoes (Westgard/Sigma == referencia, fallback == invariante)"
     Etapa 'testar_especificacoes_hematologia.ps1' -Argumentos @(
         '-Referencia', $refEspec,
         '-Candidato', $alvo,

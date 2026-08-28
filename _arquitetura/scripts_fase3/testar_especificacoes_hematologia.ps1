@@ -1,8 +1,16 @@
 # testar_especificacoes_hematologia.ps1 - prova estrutural e de nao regressao
 #
-# Compara a tabela fato antes/depois da instalacao formal. Os 1.575 vereditos
-# Westgard e os 1.125 Sigma existentes devem permanecer identicos. A prova roda
-# os motores em memoria e fecha os arquivos sem salvar.
+# Compara a tabela fato antes/depois da instalacao formal. Os vereditos
+# Westgard e os Sigma da REFERENCIA (nao um numero fixo de checkpoint antigo)
+# devem permanecer identicos no CANDIDATO -- referencia e candidato tem de
+# bater EXATAMENTE entre si, o valor absoluto e o que o motor produzir. A
+# prova roda os motores em memoria e fecha os arquivos sem salvar.
+#
+# Fallback_QR_DB segue a mesma logica: o numero certo nao e fixo (cresce com
+# o roster de analitos), o que importa e o invariante -- com
+# Cfg_Especificacoes vazia, todo elegivel com ETp publicado cai em fallback
+# legado (nem mais nem menos), e nenhum deles pode ter herdado "Lim CV VB %"
+# em vez de "ETp final %" (o defeito historico desta area).
 #
 # Nao usar acentos neste arquivo (Windows PowerShell 5.1 le .ps1 como ANSI).
 
@@ -101,19 +109,62 @@ function Foto-BI([string]$Caminho, [bool]$ComEspecificacoes) {
                 if ([string]$db.Cells.Item($r, 1).Value2) { $linhasDB++ }
             }
 
+            # FALLBACK: A CONTAGEM E CONSEQUENCIA, NAO A VERDADE. A VERDADE E A FONTE.
+            #
+            # $fallbackDivergente ja e a prova semantica que importa: compara o
+            # ETp PUBLICADO contra Analitos! coluna 18 ("ETp final %", resolvida
+            # pela hierarquia oficial) -- nunca a coluna 20 ("Lim CV VB %"), que
+            # foi o defeito historico desta area (CV interpretado como ETp).
+            # Resolvido por LABEL, nao por posicao fixa: se as colunas mudarem
+            # de lugar um dia, o teste para de achar o rotulo em vez de comparar
+            # a coisa errada em silencio.
+            #
+            # O NUMERO de fallbacks (15, 28, o que for) NAO E uma verdade fixa.
+            # Cfg_Especificacoes esta VAZIA nesta etapa do build (nenhuma fonte
+            # formal cadastrada -- $fontesCfg abaixo prova isso), e por
+            # construcao TODO analito elegivel tem de cair em fallback legado
+            # ate alguem popular o Cfg. Fixar em "15" e travar o teste na
+            # fotografia de 18/08 (o checkpoint anterior a esta funcionalidade
+            # nem existir): o roster de analitos da Hematologia cresceu desde
+            # entao, e crescer o fallback JUNTO e o comportamento correto, nao
+            # regressao.
+            $cRot = @{}
+            for ($c = 1; $c -le $an.Cells.Item(3, $an.Columns.Count).End(-4159).Column; $c++) {
+                $r = [string]$an.Cells.Item(3, $c).Value2
+                if ($r) { $cRot[$r] = $c }
+            }
+            $colETpFinal = $cRot['ETp final %']
+            $colLimCVvb = $cRot['Lim CV VB %']
+            if (-not $colETpFinal) { throw 'rotulo "ETp final %" nao encontrado em Analitos (linha 3)' }
+
             $fallbackDB = 0
             $fallbackDivergente = 0
-            for ($r = 4; $r -le 43; $r++) {
-                $nome = [string]$eng.Cells.Item($r, 1).Value2
-                if (-not $nome -or -not $analitosDB.ContainsKey($nome)) { continue }
-                $situacao = [string]$eng.Cells.Item($r, 9).Value2
+            $fallbackUsouColunaErrada = 0
+            foreach ($nome in $analitosDB.Keys) {
                 $f = $an.Range('A4:A43').Find($nome)
-                $etLegado = if ($null -ne $f) { $an.Cells.Item($f.Row, 18).Value2 } else { $null }
-                if ($situacao -eq 'FALLBACK LEGADO') {
-                    $fallbackDB++
-                    $etEng = $eng.Cells.Item($r, 6).Value2
-                    if (-not (Is-IgualNumero $etLegado $etEng)) { $fallbackDivergente++ }
+                if ($null -eq $f) { continue }
+                $r = $f.Row
+                $rEng = ($eng.Range('A4:A43').Find($nome))
+                if ($null -eq $rEng) { continue }
+                $situacao = [string]$eng.Cells.Item($rEng.Row, 9).Value2
+                if ($situacao -ne 'FALLBACK LEGADO') { continue }
+                $fallbackDB++
+                $etEng = $eng.Cells.Item($rEng.Row, 6).Value2
+                $etCorreto = $an.Cells.Item($r, $colETpFinal).Value2
+                if (-not (Is-IgualNumero $etCorreto $etEng)) { $fallbackDivergente++ }
+                if ($colLimCVvb) {
+                    $limCV = $an.Cells.Item($r, $colLimCVvb).Value2
+                    if ($null -ne $limCV -and "$limCV" -ne '' -and (Is-IgualNumero $limCV $etEng) -and -not (Is-IgualNumero $etCorreto $limCV)) {
+                        $fallbackUsouColunaErrada++
+                    }
                 }
+            }
+            $elegiveisComEtp = 0
+            foreach ($nome in $analitosDB.Keys) {
+                $f = $an.Range('A4:A43').Find($nome)
+                if ($null -eq $f) { continue }
+                $v = $an.Cells.Item($f.Row, $colETpFinal).Value2
+                if ($null -ne $v -and "$v" -ne '') { $elegiveisComEtp++ }
             }
 
             $refsEng = 0
@@ -132,6 +183,8 @@ function Foto-BI([string]$Caminho, [bool]$ComEspecificacoes) {
                 LinhasDB = $linhasDB
                 FallbackDB = $fallbackDB
                 FallbackDivergente = $fallbackDivergente
+                FallbackUsouColunaErrada = $fallbackUsouColunaErrada
+                ElegiveisComEtp = $elegiveisComEtp
                 ReferenciasEngETp = $refsEng
                 TemModulo = $nomesVBA.ContainsKey('mEspecificacoes')
                 TemFormulario = $nomesVBA.ContainsKey('frmEspecificacoes')
@@ -190,17 +243,30 @@ foreach ($d in $depois.Dados.Values) {
 }
 
 $e = $depois.Estrutura
+# Fallback_QR_DB: a VERDADE nao e um numero congelado em 18/08 (antes da
+# funcionalidade de especificacoes sequer existir) -- e o invariante
+# estrutural: com Cfg_Especificacoes vazia, todo analito elegivel com ETp
+# publicado TEM de estar em fallback legado (nem mais, nem menos), e nenhum
+# deles pode ter herdado o valor da coluna errada ("Lim CV VB %", o defeito
+# historico). Contagem sobe com o roster -- isso e crescimento, nao regressao.
+$okFallback = ($e.FallbackDB -eq $e.ElegiveisComEtp -and $e.FallbackDivergente -eq 0 -and `
+                $e.FallbackUsouColunaErrada -eq 0 -and $e.FallbackDB -gt 0)
 $okEstrutura = $e.FontePadraoVazia -and $e.RigorPadraoVazio -and $e.FontesCfg -eq 0 -and `
-                $e.LinhasDB -eq 0 -and $e.FallbackDB -eq 15 -and $e.FallbackDivergente -eq 0 -and `
+                $e.LinhasDB -eq 0 -and $okFallback -and `
                 $e.ReferenciasEngETp -eq 0 -and $e.TemModulo -and $e.TemFormulario
-$okVeredito = ($nVerAntes -eq 1575 -and $nVerDepois -eq 1575 -and $difVeredito -eq 0)
-$okSigma = ($nSigmaAntes -eq 1125 -and $nSigmaDepois -eq 1125 -and $difSigma -eq 0)
+# Westgard/Sigma: o numero certo e o que o MOTOR produziu na propria
+# referencia (nao um literal congelado de checkpoint antigo) -- o gate real
+# e referencia == candidato, ambos > 0 (nao aceitar "bateu porque os dois
+# vieram vazios").
+$okVeredito = ($nVerAntes -eq $nVerDepois -and $difVeredito -eq 0 -and $nVerAntes -gt 0)
+$okSigma = ($nSigmaAntes -eq $nSigmaDepois -and $difSigma -eq 0 -and $nSigmaAntes -gt 0)
 
 $linhas = @(
     'Metrica;Esperado;Referencia;Candidato;Diferencas;Status',
-    "Westgard_Veredito;1575;$nVerAntes;$nVerDepois;$difVeredito;$(if($okVeredito){'OK'}else{'FALHA'})",
-    "Sigma;1125;$nSigmaAntes;$nSigmaDepois;$difSigma;$(if($okSigma){'OK'}else{'FALHA'})",
-    "Fallback_QR_DB;15;15;$($e.FallbackDB);$($e.FallbackDivergente);$(if($e.FallbackDB -eq 15 -and $e.FallbackDivergente -eq 0){'OK'}else{'FALHA'})",
+    "Westgard_Veredito;=Referencia;$nVerAntes;$nVerDepois;$difVeredito;$(if($okVeredito){'OK'}else{'FALHA'})",
+    "Sigma;=Referencia;$nSigmaAntes;$nSigmaDepois;$difSigma;$(if($okSigma){'OK'}else{'FALHA'})",
+    "Fallback_QR_DB;=ElegiveisComEtp($($e.ElegiveisComEtp));NA;$($e.FallbackDB);$($e.FallbackDivergente);$(if($okFallback){'OK'}else{'FALHA'})",
+    "Fallback_ColunaErrada;0;NA;$($e.FallbackUsouColunaErrada);$($e.FallbackUsouColunaErrada);$(if($e.FallbackUsouColunaErrada -eq 0){'OK'}else{'FALHA'})",
     "DB_formal_vazio;0;0;$($e.LinhasDB);0;$(if($e.LinhasDB -eq 0){'OK'}else{'FALHA'})",
     "Consumidores_engETp;0;0;$($e.ReferenciasEngETp);0;$(if($e.ReferenciasEngETp -eq 0){'OK'}else{'FALHA'})",
     "Estrutura_formal;OK;NA;$(if($okEstrutura){'OK'}else{'FALHA'});0;$(if($okEstrutura){'OK'}else{'FALHA'})"
@@ -212,7 +278,7 @@ if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path
 
 "Westgard: $nVerAntes -> $nVerDepois, diferencas $difVeredito"
 "Sigma: $nSigmaAntes -> $nSigmaDepois, diferencas $difSigma"
-"Fallback Q/R nos analitos com dados: $($e.FallbackDB), divergencias $($e.FallbackDivergente)"
+"Fallback Q/R nos analitos com dados: $($e.FallbackDB) (elegiveis c/ ETp: $($e.ElegiveisComEtp)), divergencias fonte $($e.FallbackDivergente), coluna errada $($e.FallbackUsouColunaErrada)"
 "Relatorio: $OutCsv"
 
 if (-not $okVeredito -or -not $okSigma -or -not $okEstrutura) {
