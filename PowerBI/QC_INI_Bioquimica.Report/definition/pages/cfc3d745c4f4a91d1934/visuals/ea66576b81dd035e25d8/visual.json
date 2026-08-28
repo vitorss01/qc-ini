@@ -121,11 +121,11 @@
                       "Entity": "Fato_QC"
                     }
                   },
-                  "Property": "Viol 2_2s"
+                  "Property": "Viol R2"
                 }
               },
-              "queryRef": "Fato_QC.Viol 2_2s",
-              "nativeQueryRef": "Viol 2_2s"
+              "queryRef": "Fato_QC.Viol R2",
+              "nativeQueryRef": "2of3_2s"
             },
             {
               "field": {
@@ -149,11 +149,11 @@
                       "Entity": "Fato_QC"
                     }
                   },
-                  "Property": "Viol 4_1s"
+                  "Property": "Viol R4"
                 }
               },
-              "queryRef": "Fato_QC.Viol 4_1s",
-              "nativeQueryRef": "Viol 4_1s"
+              "queryRef": "Fato_QC.Viol R4",
+              "nativeQueryRef": "3_1s"
             },
             {
               "field": {
@@ -163,11 +163,11 @@
                       "Entity": "Fato_QC"
                     }
                   },
-                  "Property": "Viol 10x"
+                  "Property": "Viol R5"
                 }
               },
-              "queryRef": "Fato_QC.Viol 10x",
-              "nativeQueryRef": "Viol 10x"
+              "queryRef": "Fato_QC.Viol R5",
+              "nativeQueryRef": "6x"
             },
             {
               "field": {

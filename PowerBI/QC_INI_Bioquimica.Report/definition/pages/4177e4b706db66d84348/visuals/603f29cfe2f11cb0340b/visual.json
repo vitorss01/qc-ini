@@ -1,0 +1,41 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "603f29cfe2f11cb0340b",
+  "position": {
+    "x": 16,
+    "y": 12,
+    "z": "CONTROLE EXTERNO DA QUALIDADE  ·  CAP e Controllab",
+    "height": 34,
+    "width": 800,
+    "tabOrder": "CONTROLE EXTERNO DA QUALIDADE  ·  CAP e Controllab"
+  },
+  "visual": {
+    "visualType": "textbox",
+    "query": {
+      "queryState": {}
+    },
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "16pt",
+                    "textStyle": {
+                      "fontSize": "12pt",
+                      "fontWeight": "bold",
+                      "color": "#1F3864",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

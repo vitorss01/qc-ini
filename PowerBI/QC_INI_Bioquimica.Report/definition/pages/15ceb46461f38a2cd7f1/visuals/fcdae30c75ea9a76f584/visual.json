@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "fcdae30c75ea9a76f584",
+  "position": {
+    "x": 224,
+    "y": 86,
+    "z": 1100,
+    "height": 150,
+    "width": 200,
+    "tabOrder": 1100
+  },
+  "visual": {
+    "visualType": "slicer",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "Analito"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.Analito",
+              "nativeQueryRef": "Analito",
+              "active": true
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "155de807a1504ecfaa0c",
+  "position": {
+    "x": 848,
+    "y": 86,
+    "z": 1400,
+    "height": 150,
+    "width": 200,
+    "tabOrder": 1400
+  },
+  "visual": {
+    "visualType": "slicer",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Analito"
+                }
+              },
+              "queryRef": "Fato_EQA.Analito",
+              "nativeQueryRef": "Analito",
+              "active": true
+            }
+          ]
+        }
+      }
+    }
+  }
+}

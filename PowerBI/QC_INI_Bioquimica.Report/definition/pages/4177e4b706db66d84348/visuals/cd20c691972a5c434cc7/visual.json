@@ -1,0 +1,56 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "cd20c691972a5c434cc7",
+  "position": {
+    "x": 852,
+    "y": 344,
+    "z": 3200,
+    "height": 200,
+    "width": 412,
+    "tabOrder": 3200
+  },
+  "visual": {
+    "visualType": "lineChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Rodada"
+                }
+              },
+              "queryRef": "Fato_EQA.Rodada",
+              "nativeQueryRef": "Rodada",
+              "active": true
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Bias_Abs_EQA_pct"
+                }
+              },
+              "queryRef": "Fato_EQA.Bias_Abs_EQA_pct",
+              "nativeQueryRef": "|Bias| %"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

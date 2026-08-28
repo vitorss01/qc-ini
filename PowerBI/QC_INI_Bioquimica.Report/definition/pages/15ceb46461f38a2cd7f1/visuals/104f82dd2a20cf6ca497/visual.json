@@ -1,0 +1,205 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "104f82dd2a20cf6ca497",
+  "position": {
+    "x": 16,
+    "y": 552,
+    "z": 4000,
+    "height": 156,
+    "width": 1248,
+    "tabOrder": 4000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "Data"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.Data",
+              "nativeQueryRef": "Data"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "RUN"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.RUN",
+              "nativeQueryRef": "RUN"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "Analito"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.Analito",
+              "nativeQueryRef": "Analito"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "Regra"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.Regra",
+              "nativeQueryRef": "Regra"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "Detector"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.Detector",
+              "nativeQueryRef": "Detector"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "Escopo"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.Escopo",
+              "nativeQueryRef": "Escopo"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "Niveis"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.Niveis",
+              "nativeQueryRef": "Níveis"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "N_Niveis"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.N_Niveis",
+              "nativeQueryRef": "N"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "R_Corridas"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.R_Corridas",
+              "nativeQueryRef": "R"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "RUN_Inicial"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.RUN_Inicial",
+              "nativeQueryRef": "RUN inicial"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "RUN_Final"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.RUN_Final",
+              "nativeQueryRef": "RUN final"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "Evidencia"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.Evidencia",
+              "nativeQueryRef": "Evidência"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "Z_Max"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.Z_Max",
+              "nativeQueryRef": "Z máximo"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

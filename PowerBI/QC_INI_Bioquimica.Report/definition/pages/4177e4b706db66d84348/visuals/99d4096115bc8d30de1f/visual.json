@@ -1,0 +1,41 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "99d4096115bc8d30de1f",
+  "position": {
+    "x": 16,
+    "y": 46,
+    "z": "O |Bias| consolidado e a media DENTRO da rodada e depois entre rodadas. A avaliacao original do provedor e preservada ao lado do status padronizado.",
+    "height": 30,
+    "width": 1248,
+    "tabOrder": "O |Bias| consolidado e a media DENTRO da rodada e depois entre rodadas. A avaliacao original do provedor e preservada ao lado do status padronizado."
+  },
+  "visual": {
+    "visualType": "textbox",
+    "query": {
+      "queryState": {}
+    },
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "9pt",
+                    "textStyle": {
+                      "fontSize": "12pt",
+                      "fontWeight": "bold",
+                      "color": "#1F3864",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

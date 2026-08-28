@@ -1,0 +1,41 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "c1f3cbfa340b489c517c",
+  "position": {
+    "x": 16,
+    "y": 46,
+    "z": "Um evento pode marcar varios resultados: 6x N3/R2 e UM evento e marca SEIS. Por isso eventos, resultados marcados e corridas sao numeros diferentes.",
+    "height": 30,
+    "width": 1248,
+    "tabOrder": "Um evento pode marcar varios resultados: 6x N3/R2 e UM evento e marca SEIS. Por isso eventos, resultados marcados e corridas sao numeros diferentes."
+  },
+  "visual": {
+    "visualType": "textbox",
+    "query": {
+      "queryState": {}
+    },
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "9pt",
+                    "textStyle": {
+                      "fontSize": "12pt",
+                      "fontWeight": "bold",
+                      "color": "#1F3864",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

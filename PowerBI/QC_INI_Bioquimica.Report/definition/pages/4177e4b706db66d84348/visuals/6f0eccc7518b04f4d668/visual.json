@@ -1,0 +1,219 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "6f0eccc7518b04f4d668",
+  "position": {
+    "x": 16,
+    "y": 552,
+    "z": 4000,
+    "height": 156,
+    "width": 1248,
+    "tabOrder": 4000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Provedor"
+                }
+              },
+              "queryRef": "Fato_EQA.Provedor",
+              "nativeQueryRef": "Provedor"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Ano"
+                }
+              },
+              "queryRef": "Fato_EQA.Ano",
+              "nativeQueryRef": "Ano"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Rodada"
+                }
+              },
+              "queryRef": "Fato_EQA.Rodada",
+              "nativeQueryRef": "Rodada"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Analito"
+                }
+              },
+              "queryRef": "Fato_EQA.Analito",
+              "nativeQueryRef": "Analito"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Amostra"
+                }
+              },
+              "queryRef": "Fato_EQA.Amostra",
+              "nativeQueryRef": "Amostra"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Resultado"
+                }
+              },
+              "queryRef": "Fato_EQA.Resultado",
+              "nativeQueryRef": "Resultado"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Valor_Alvo"
+                }
+              },
+              "queryRef": "Fato_EQA.Valor_Alvo",
+              "nativeQueryRef": "Valor alvo"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Bias_pct"
+                }
+              },
+              "queryRef": "Fato_EQA.Bias_pct",
+              "nativeQueryRef": "Bias %"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Bias_Abs_pct"
+                }
+              },
+              "queryRef": "Fato_EQA.Bias_Abs_pct",
+              "nativeQueryRef": "|Bias| %"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "SDI"
+                }
+              },
+              "queryRef": "Fato_EQA.SDI",
+              "nativeQueryRef": "SDI"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Limite_Inferior"
+                }
+              },
+              "queryRef": "Fato_EQA.Limite_Inferior",
+              "nativeQueryRef": "Limite inf."
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Limite_Superior"
+                }
+              },
+              "queryRef": "Fato_EQA.Limite_Superior",
+              "nativeQueryRef": "Limite sup."
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Avaliacao_Original"
+                }
+              },
+              "queryRef": "Fato_EQA.Avaliacao_Original",
+              "nativeQueryRef": "Avaliação do provedor"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Status"
+                }
+              },
+              "queryRef": "Fato_EQA.Status",
+              "nativeQueryRef": "Status"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

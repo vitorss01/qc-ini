@@ -1,0 +1,56 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "29bbcc916d34e654a967",
+  "position": {
+    "x": 16,
+    "y": 344,
+    "z": 3000,
+    "height": 200,
+    "width": 480,
+    "tabOrder": 3000
+  },
+  "visual": {
+    "visualType": "clusteredBarChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "Regra"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.Regra",
+              "nativeQueryRef": "Regra",
+              "active": true
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_Eventos_Westgard"
+                    }
+                  },
+                  "Property": "N_Eventos_Violacao"
+                }
+              },
+              "queryRef": "Fato_Eventos_Westgard.N_Eventos_Violacao",
+              "nativeQueryRef": "Eventos"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

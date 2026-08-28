@@ -1,0 +1,56 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "b744aeb5f07139bb4365",
+  "position": {
+    "x": 434,
+    "y": 344,
+    "z": 3100,
+    "height": 200,
+    "width": 410,
+    "tabOrder": 3100
+  },
+  "visual": {
+    "visualType": "clusteredBarChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "Analito"
+                }
+              },
+              "queryRef": "Fato_EQA.Analito",
+              "nativeQueryRef": "Analito",
+              "active": true
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fato_EQA"
+                    }
+                  },
+                  "Property": "N_Nao_Conformidades"
+                }
+              },
+              "queryRef": "Fato_EQA.N_Nao_Conformidades",
+              "nativeQueryRef": "Não aceitáveis"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
