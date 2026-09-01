@@ -11,13 +11,17 @@ Login de teste:  INILAB / TESTE05
 import io
 from datetime import datetime, date
 
+import base64
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 
 import database as db
 import qc_engine as qc
 import seed_data as seed
+import horus
 
 st.set_page_config(page_title="QC-INI · Controle de Qualidade",
                    page_icon="🧪", layout="wide", initial_sidebar_state="expanded")
@@ -32,9 +36,13 @@ CSS = """
 <style>
 :root{ --mint:#5fe3c2; --mint2:#7af0d4; --bg:#0f2a2e; --card:#1b3f45; --card2:#16383d;
        --ok:#46d39a; --warn:#f4c430; --bad:#ff5d6c; --txt:#e7f3f1; --muted:#8fb3ad; }
-.block-container{ padding-top:3rem !important; max-width:1400px; }
+.block-container{ padding-top:3rem !important; padding-left:2.2rem; padding-right:2.2rem;
+                  max-width:100% !important; }
 /* Barra superior do Streamlit com fundo sólido para nunca cobrir o título */
 [data-testid="stHeader"]{ background:var(--bg) !important; }
+/* Título de página destacado (ex.: Painel Analítico · QC) */
+.page-title{ font-size:32px; font-weight:900; letter-spacing:.4px; color:var(--mint);
+             line-height:1.15; margin:.1rem 0 .1rem; }
 /* Cabeçalhos: altura de linha e espaço suficientes para não cortar o texto */
 h1,h2,h3,h4{ letter-spacing:.3px; line-height:1.6 !important; overflow:visible !important;
              white-space:normal !important; padding-top:.12em; padding-bottom:.18em;
@@ -47,7 +55,9 @@ h1,h2,h3,h4{ letter-spacing:.3px; line-height:1.6 !important; overflow:visible !
 /* Barra lateral mais larga (SÓ em tablet/desktop; no celular o Streamlit a
    transforma em overlay e forçar largura quebra o layout) */
 @media (min-width: 769px){
-  section[data-testid="stSidebar"]{ min-width:300px !important; width:300px !important; }
+  /* só reserva largura quando ABERTA; ao recolher, o conteúdo preenche a tela */
+  section[data-testid="stSidebar"][aria-expanded="true"]{
+       min-width:300px !important; width:300px !important; }
 }
 section[data-testid="stSidebar"] .stRadio label{ white-space:normal !important; }
 section[data-testid="stSidebar"] .stRadio label p{ font-size:15px; line-height:1.5;
@@ -183,160 +193,227 @@ def carregar_series(analyte, lote=None, months=None, year=None):
 
 
 # --------------------------------------------------------------------------- #
-# Painel (dashboard)
+# Painel Analítico - QC (dashboard)
 # --------------------------------------------------------------------------- #
+def _lj_fig(analyte, ref_mean, ref_sd, rows, pts, eixo, height=380):
+    """
+    Gráfico de Levey-Jennings compacto (3 níveis lado a lado).
+    Cada linha-limite é uma trace (mostra o valor no hover) e tem o valor
+    rotulado ao lado direito, alinhado. Os pontos mostram valor/Z/regra no hover.
+    """
+    lim = qc.control_limits(ref_mean, ref_sd)
+    xs = [r["seq"] for r in rows] if eixo == "Sequência" else [r["run_date"] for r in rows]
+    if not xs:
+        xs = [0, 1]
+    xmin, xmax = xs[0], xs[-1]
+    by_seq = {p.seq: p for p in pts}
+    colors, texts = [], []
+    for r in rows:
+        if r["is_nc"]:
+            colors.append("#9aa7a4")
+        else:
+            p = by_seq.get(r["seq"]); s = p.status if p else "OK"
+            colors.append({"OK": "#46d39a", "ALERTA": "#f4c430",
+                           "REJEITADO": "#ff5d6c"}.get(s, "#46d39a"))
+        p = by_seq.get(r["seq"])
+        flag = ", ".join(p.flags) if (p and p.flags) else "OK"
+        zt = f"{p.z:+.2f}s" if (p and p.z is not None) else ""
+        texts.append(f"#{r['seq']} - {r['run_date']}<br>Valor: {fmt(analyte, r['value'])} "
+                     f"({zt})<br>{flag}")
+    fig = go.Figure()
+    band = [("+3s", "#ff5d6c", "+3s"), ("+2s", "#f4c430", "+2s"), ("+1s", "#46d39a", "+1s"),
+            ("media", "#5fe3c2", "Média"), ("-1s", "#46d39a", "−1s"),
+            ("-2s", "#f4c430", "−2s"), ("-3s", "#ff5d6c", "−3s")]
+    for key, col, rot in band:
+        yv = lim[key]
+        # linha-limite como trace (hover mostra o valor)
+        fig.add_trace(go.Scatter(
+            x=[xmin, xmax], y=[yv, yv], mode="lines", opacity=.85, showlegend=False,
+            line=dict(color=col, width=2 if key == "media" else 1,
+                      dash="solid" if key in ("media", "+3s", "-3s") else "dash"),
+            hovertemplate=f"{rot}: {fmt(analyte, yv)}<extra></extra>"))
+        # rótulo com o valor ao lado (todos alinhados à direita do gráfico)
+        fig.add_annotation(xref="paper", x=1.012, y=yv, yref="y", xanchor="left",
+                           yanchor="middle", showarrow=False,
+                           text=f"{rot} = {fmt(analyte, yv)}",
+                           font=dict(color=col, size=10))
+    fig.add_trace(go.Scatter(x=xs, y=[r["value"] for r in rows], mode="lines+markers",
+                  line=dict(color="#cfeee7", width=1.3),
+                  marker=dict(size=7, color=colors, line=dict(color="#0f2a2e", width=1)),
+                  text=texts, hoverinfo="text", showlegend=False, name="Resultado"))
+    fig.update_layout(height=height, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                      font_color="#e7f3f1", margin=dict(l=8, r=86, t=16, b=6),
+                      showlegend=False, hovermode="closest")
+    fig.update_yaxes(showgrid=False, zeroline=False, tickfont=dict(size=10))
+    fig.update_xaxes(showgrid=False, zeroline=False, tickfont=dict(size=9))
+    return fig
+
+
+def _auto_download(data_bytes, filename, mime="image/png"):
+    """Dispara o download do arquivo automaticamente no navegador (1 clique)."""
+    b64 = base64.b64encode(data_bytes).decode()
+    components.html(
+        f'<a id="qcdl" download="{filename}" href="data:{mime};base64,{b64}"></a>'
+        '<script>const a=document.getElementById("qcdl");'
+        'if(a){a.click();}</script>', height=0)
+
+
+def _panel_image_png(figs, indic_df):
+    """Combina os 3 gráficos + a tabela de indicadores numa única imagem PNG.
+    Usa scale=1 (mais rápido) com boa resolução."""
+    import io
+    from PIL import Image
+    cw, ch, sc = 560, 420, 1
+    imgs = [Image.open(io.BytesIO(f.to_image(format="png", width=cw, height=ch, scale=sc)))
+            .convert("RGBA") for f in figs]
+    cols_t = list(indic_df.columns)
+    tfig = go.Figure(go.Table(
+        header=dict(values=[f"<b>{c}</b>" for c in cols_t], fill_color="#16383d",
+                    font=dict(color="#e7f3f1", size=12), align="left", height=30),
+        cells=dict(values=[indic_df[c].astype(str).tolist() for c in cols_t],
+                   fill_color="#13343a", font=dict(color="#cfeee7", size=12),
+                   align="left", height=26)))
+    n = max(1, len(figs))
+    tw = cw * n
+    th = 34 + 26 * (len(indic_df) + 1)
+    tfig.update_layout(margin=dict(l=2, r=2, t=2, b=2), paper_bgcolor="#0f2a2e")
+    timg = Image.open(io.BytesIO(tfig.to_image(format="png", width=tw, height=th, scale=sc))) \
+        .convert("RGBA")
+    canvas = Image.new("RGBA", (cw * sc * n, ch * sc + timg.height), "#0f2a2e")
+    for i, im in enumerate(imgs):
+        canvas.paste(im, (i * cw * sc, 0), im)
+    canvas.paste(timg, (0, ch * sc), timg)
+    out = io.BytesIO()
+    canvas.convert("RGB").save(out, format="PNG")
+    return out.getvalue()
+
+
 def page_dashboard():
     cfg = db.get_config()
-    st.markdown(f"### Painel · {cfg.get('setor','')}")
-    st.markdown(f"<span class='small'>{cfg.get('instituicao','')} · "
-                f"{cfg.get('equipamento','')} · Controle {cfg.get('controle','')}</span>",
-                unsafe_allow_html=True)
-
     analytes = db.get_analytes(with_reference=True) or db.get_analytes()
-    c1, c2, c3 = st.columns([2, 1, 1])
-    analyte = c1.selectbox("Analito (ensaio)", analytes, index=0)
-    level = c2.selectbox("Nível de controle", [1, 2, 3],
-                         format_func=lambda x: f"Nível {x}")
-    eixo = c3.selectbox("Eixo X", ["Sequência", "Data"])
 
-    # ---- Filtros de Período e Lote ----
-    todos_rows = db.query_results(analyte=analyte)
-    datas = sorted({r["run_date"] for r in todos_rows if r["run_date"]})
-    meses_disp = sorted({d[:7] for d in datas}, reverse=True)
-    anos_disp = sorted({d[:4] for d in datas}, reverse=True)
-    lotes_disp = sorted({r["lote"] for r in todos_rows if r["lote"]}, reverse=True)
+    # ---- Cabeçalho: título destacado à esquerda + filtros (☰) à direita ----
+    htit, _hgap, hfil = st.columns([0.66, 0.16, 0.18])
+    htit.markdown("<div class='page-title'>Painel Analítico · QC</div>",
+                  unsafe_allow_html=True)
+    # ---- Filtros recolhíveis (hamburger ☰ que abre as opções para o lado) ----
+    with hfil.popover("☰  Filtros", use_container_width=True):
+        analyte = st.selectbox("Analito (ensaio)", analytes, key="dash_analyte")
+        eixo = st.selectbox("Eixo X", ["Sequência", "Data"], key="dash_eixo")
+        todos_rows = db.query_results(analyte=analyte)
+        datas = sorted({r["run_date"] for r in todos_rows if r["run_date"]})
+        meses_disp = sorted({d[:7] for d in datas}, reverse=True)
+        anos_disp = sorted({d[:4] for d in datas}, reverse=True)
+        lotes_disp = sorted({r["lote"] for r in todos_rows if r["lote"]}, reverse=True)
+        periodo = st.selectbox("Período", ["Todos", "Por mês", "Meses combinados", "Por ano"],
+                               key="dash_periodo")
+        months_sel = year_sel = None
+        if periodo == "Por mês":
+            m = st.selectbox("Mês (AAAA-MM)", meses_disp or ["—"], key="dash_mes")
+            months_sel = {m} if meses_disp else None
+        elif periodo == "Meses combinados":
+            sel = st.multiselect("Meses (AAAA-MM)", meses_disp,
+                                 default=meses_disp[:2] if meses_disp else [], key="dash_meses")
+            months_sel = set(sel) if sel else None
+        elif periodo == "Por ano":
+            year_sel = st.selectbox("Ano", anos_disp or ["—"], key="dash_ano")
+        lote_sel = st.selectbox("Lote", ["Todos"] + lotes_disp, key="dash_lote")
+        lote = None if lote_sel == "Todos" else lote_sel
 
-    f1, f2, f3 = st.columns([1.1, 1.5, 1.1])
-    periodo = f1.selectbox("Período", ["Todos", "Por mês", "Meses combinados", "Por ano"])
-    months_sel = year_sel = None
-    if periodo == "Por mês":
-        m = f2.selectbox("Mês (AAAA-MM)", meses_disp or ["—"])
-        months_sel = {m} if meses_disp else None
-    elif periodo == "Meses combinados":
-        sel = f2.multiselect("Meses (AAAA-MM)", meses_disp,
-                             default=meses_disp[:2] if meses_disp else [])
-        months_sel = set(sel) if sel else None
-    elif periodo == "Por ano":
-        year_sel = f2.selectbox("Ano", anos_disp or ["—"])
-    lote_sel = f3.selectbox("Lote", ["Todos"] + lotes_disp)
-    lote = None if lote_sel == "Todos" else lote_sel
+    st.caption(f"**{analyte}** · {cfg.get('equipamento','')} · período: {periodo.lower()} · "
+               f"lote: {lote or 'todos'}")
 
     series_valid, series_all, refs, ids = carregar_series(
         analyte, lote=lote, months=months_sel, year=year_sel)
-    if level not in refs:
-        st.warning("Sem média/DP de referência cadastrados para este analito/nível.")
+    if not refs:
+        st.warning("Sem média/DP de referência cadastrados para este analito.")
         return
-    if not ids.get(level):
-        st.info("Nenhum resultado para os filtros selecionados (período/lote). "
-                "Ajuste os filtros acima.")
-        return
+    niveis = sorted(refs.keys())
 
-    ref_mean, ref_sd = refs[level]
-    # Conjunto de seqs marcadas como NC (por nível) — contam na janela mas
-    # não geram rejeição nova.
+    # Pontos NC contam na janela das regras, mas não geram rejeição nova.
     nc_by_level = {lvl: {seq for seq, row in ids.get(lvl, {}).items() if row["is_nc"]}
                    for lvl in ids}
-    # avaliação Westgard sobre a SÉRIE CRONOLÓGICA COMPLETA (inclui NC), para
-    # que as regras de tendência (6X, 3-1S, etc.) contem resultados realmente
-    # consecutivos.
     aval = qc.evaluate_levels(series_all, refs, setor=cfg.get("setor", ""),
                               nc_by_level=nc_by_level)
-    pts = aval.get(level, [])
 
-    # estatística + sigma
-    vals = [v for _, v in series_valid.get(level, [])]
-    # Viés: Indicador de Bias Anual (Controle Externo) quando houver rodadas;
-    # senão, fallback para o viés isolado antigo (external_qc).
+    # Viés: Indicador de Bias Anual (QCE) quando houver rodadas; senão fallback.
     bias_anual, bias_year, bias_nrod = annual_bias_for(analyte)
     if bias_anual is not None:
-        bias = bias_anual / 100.0                  # % -> fração
-        bias_origem = f"Indicador Anual {bias_year} · {bias_nrod} rodada(s)"
+        bias_frac = bias_anual / 100.0
+        bias_origem = f"Indicador Anual {bias_year} ({bias_nrod} rodadas)"
     else:
-        bias = abs(db.get_external_bias(analyte, level) or 0.0)
-        bias_origem = "CQ externo (valor isolado)"
-    stats = qc.build_stats(analyte, level, vals, bias, db.get_spec(analyte))
+        bias_frac = abs(db.get_external_bias(analyte, niveis[0]) or 0.0)
+        bias_origem = "CQ externo isolado"
 
-    # --------- KPIs ----------
-    def card(label, value, cls=""):
-        return f"<div class='kpi {cls}'><div class='v'>{value}</div><div class='l'>{label}</div></div>"
+    # ===== Pré-computa status, figuras e indicadores (p/ botão + render) ===== #
+    spec = db.get_spec(analyte)
+    niveis_info, figs, linhas = [], [], []
+    for lvl in niveis:
+        pts = aval.get(lvl, [])
+        n_rej = sum(1 for p in pts if p.status == "REJEITADO" and not p.is_nc)
+        n_alt = sum(1 for p in pts if p.status == "ALERTA" and not p.is_nc)
+        cor = "#ff5d6c" if n_rej else "#f4c430" if n_alt else "#46d39a"
+        est = "REJEITADO" if n_rej else "ALERTA" if n_alt else "OK"
+        fig = None
+        if ids.get(lvl):
+            rows = [ids[lvl][s] for s in sorted(ids[lvl])]
+            rm, rsd = refs[lvl]
+            fig = _lj_fig(analyte, rm, rsd, rows, pts, eixo)
+            figs.append(fig)
+        niveis_info.append((lvl, cor, est, fig))
+        vals = [v for _, v in series_valid.get(lvl, [])]
+        s = qc.build_stats(analyte, lvl, vals, bias_frac, spec)
+        linhas.append({
+            "Nível": f"N{lvl}", "n": s.n,
+            "Média": round(s.mean_obs, 4) if s.mean_obs is not None else None,
+            "CV%": pct(s.cv_obs),
+            "Lim CV CLIA": pct(s.cv_limite_clia), "Lim CV VB": pct(s.cv_limite_vb),
+            "Lim CV FB": pct(s.cv_limite_fb),
+            "Bias": pct(s.es), "ET": pct(s.et),
+            "ETp CLIA": pct(s.etp_clia), "ETp VB": pct(s.etp_vb),
+            "Sigma": round(s.sigma, 2) if s.sigma else None})
+    dfi = pd.DataFrame(linhas)
 
-    n_rej = sum(1 for p in pts if p.status == "REJEITADO" and not p.is_nc)
-    status_geral = ("REJEITADO", "bad") if n_rej else \
-                   ("ALERTA", "warn") if any(p.status == "ALERTA" and not p.is_nc for p in pts) else ("OK", "ok")
-    sigma_cls = "ok" if (stats.sigma or 0) >= 4 else "warn" if (stats.sigma or 0) >= 3 else "bad"
+    # ---- Botão (abaixo do filtro): gera a imagem e BAIXA automaticamente ----
+    if st.button("📷 Baixar imagem do painel (gráficos + indicadores)", key="dash_img_btn"):
+        with st.spinner("Gerando imagem…"):
+            try:
+                _auto_download(_panel_image_png(figs, dfi), f"painel_{analyte}.png")
+            except Exception as e:        # noqa
+                st.error(f"Não foi possível gerar a imagem: {e}")
 
-    html = "<div class='kpi-grid'>"
-    html += card("Status Westgard", status_geral[0], status_geral[1])
-    html += card("Média observada", fmt(analyte, stats.mean_obs))
-    html += card("CV%", pct(stats.cv_obs), stats.cv_status.lower().replace("não", "bad").replace("ok", "ok"))
-    html += card("Six Sigma", f"{stats.sigma:.2f}" if stats.sigma else "—", sigma_cls)
-    html += card("Erro Total Permitido", f"{pct(stats.etp)} · {stats.etp_fonte}")
-    html += card("Erro Sistemático - Bias", pct(stats.es))
-    html += card("Erro Aleatório", pct(stats.ea))
-    html += card("Erro Total", pct(stats.et))
-    html += card("Limite CV CLIA", pct(stats.cv_limite_clia))
-    html += card("Limite CV VB", pct(stats.cv_limite_vb))
-    html += card("Pontos (n)", str(stats.n))
-    html += card("Rejeições", str(n_rej), "bad" if n_rej else "ok")
-    html += "</div>"
-    st.markdown(html, unsafe_allow_html=True)
-    st.caption(f"Erro Sistemático (viés) · origem: {bias_origem} · "
-               f"ETp: {stats.etp_fonte} · fator do erro aleatório = 1,65.")
-
-    st.write("")
-    gcol, scol = st.columns([2.4, 1])
-
-    # --------- Gráfico de Levey-Jennings ----------
-    with gcol:
-        st.markdown(f"**Gráfico de Levey-Jennings — {analyte} · Nível {level}**")
-        lim = qc.control_limits(ref_mean, ref_sd)
-        # usa os resultados já filtrados (período/lote)
-        rows = [ids[level][s] for s in sorted(ids[level])]
-        seqs = [r["seq"] for r in rows]
-        x = seqs if eixo == "Sequência" else [r["run_date"] for r in rows]
-        status_by_seq = {p.seq: p for p in pts}
-
-        colors, texts = [], []
-        for r in rows:
-            if r["is_nc"]:
-                colors.append("#9aa7a4")
+    # ============ FOCO: 3 gráficos de controle lado a lado ============ #
+    cols = st.columns(len(niveis_info))
+    for col, (lvl, cor, est, fig) in zip(cols, niveis_info):
+        with col:
+            st.markdown(f"<b>Nível {lvl}</b> · "
+                        f"<span style='color:{cor};font-weight:700'>{est}</span>",
+                        unsafe_allow_html=True)
+            if fig is not None:
+                st.plotly_chart(fig, use_container_width=True)
             else:
-                p = status_by_seq.get(r["seq"])
-                s = p.status if p else "OK"
-                colors.append({"OK": "#46d39a", "ALERTA": "#f4c430", "REJEITADO": "#ff5d6c"}.get(s, "#46d39a"))
-            p = status_by_seq.get(r["seq"])
-            flagtxt = ", ".join(p.flags) if (p and p.flags) else "OK"
-            ztxt = f"{p.z:+.2f}s" if (p and p.z is not None) else ""
-            texts.append(f"#{r['seq']} · {r['run_date']}<br>valor {fmt(analyte, r['value'])} ({ztxt})<br>{flagtxt}")
+                st.info("Sem dados no filtro.")
 
-        fig = go.Figure()
-        # (chave, cor, rótulo legível)
-        band = [("+3s", "#ff5d6c", "+3 DP"), ("+2s", "#f4c430", "+2 DP"),
-                ("+1s", "#46d39a", "+1 DP"), ("media", "#5fe3c2", "Média"),
-                ("-1s", "#46d39a", "−1 DP"), ("-2s", "#f4c430", "−2 DP"),
-                ("-3s", "#ff5d6c", "−3 DP")]
-        for key, col, rotulo in band:
-            valor = fmt(analyte, lim[key])
-            fig.add_hline(y=lim[key], line=dict(color=col, width=2 if key == "media" else 1,
-                          dash="solid" if key in ("media", "+3s", "-3s") else "dash"),
-                          annotation_text=f"{rotulo} = {valor}", annotation_position="right",
-                          annotation_font_color=col, annotation_font_size=12, opacity=.85)
-        fig.add_trace(go.Scatter(x=x, y=[r["value"] for r in rows], mode="lines+markers",
-                      line=dict(color="#cfeee7", width=1.4),
-                      marker=dict(size=10, color=colors, line=dict(color="#0f2a2e", width=1)),
-                      text=texts, hoverinfo="text", name=analyte))
-        fig.update_layout(height=430, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                          font_color="#e7f3f1", margin=dict(l=10, r=120, t=10, b=10),
-                          showlegend=False)
-        fig.update_yaxes(showgrid=False, zeroline=False)
-        fig.update_xaxes(showgrid=False, zeroline=False, title=eixo)
-        st.plotly_chart(fig, use_container_width=True)
+    # ====== Especificações de Qualidade - Indicadores (tabela compacta) ====== #
+    st.markdown("#### Especificações de Qualidade - Indicadores")
 
-    # --------- Resumo WR + regras ----------
-    with scol:
-        st.markdown("**Resumo de Westgard (todos os níveis)**")
+    def sig_color(v):
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            return ""
+        return ("color:#46d39a;font-weight:700" if v >= 4 else
+                "color:#f4c430;font-weight:700" if v >= 3 else
+                "color:#ff5d6c;font-weight:700")
+    st.dataframe(dfi.style.map(sig_color, subset=["Sigma"]),
+                 use_container_width=True, hide_index=True)
+    st.caption(f"Bias = {bias_origem} · ET = CV%×1,65 + Bias · Sigma = (ETp − Bias)/CV% · "
+               "Limites CV%: CLIA (TEa/3), VB (imprecisão desejável), FB (CV fabricante).")
+
+    # ============ Westgard (secundário, recolhível) ============ #
+    with st.expander("🔎 Regras de Westgard — ocorrências e status por nível"):
         items = ""
-        for lvl in (1, 2, 3):
+        for lvl in niveis:
             for p in aval.get(lvl, []):
                 if p.status != "OK" and not p.is_nc:
                     cls = "bad" if p.status == "REJEITADO" else "warn"
@@ -346,32 +423,22 @@ def page_dashboard():
             items = "<div class='row'>Sem violações nos níveis avaliados ✅</div>"
         st.markdown(f"<div class='wrlist'>{items}</div>", unsafe_allow_html=True)
 
-    # --------- Tabela de regras por nível ----------
-    st.markdown("**Análise das regras de Westgard por nível**")
-
-    # Colunas (código interno → rótulo) conforme o setor
-    is_hemat = "HEMAT" in cfg.get("setor", "").upper() or len(refs) == 3
-    if is_hemat:
-        cols_regras = [("1-3S", "1-3s"), ("2of3-2S", "2 de 3-2s"),
-                       ("R4S", "R4s"), ("3-1S", "3-1s"), ("6X", "6x")]
-        niveis = sorted(refs.keys())
-    else:
-        cols_regras = [("1-3S", "1-3s"), ("2-2S", "2-2s"),
-                       ("R4S", "R4s"), ("4-1S", "4-1s"), ("8X", "8x")]
-        niveis = sorted(refs.keys())
-
-    linhas = []
-    for lvl in niveis:
-        rs = qc.summarize_rules(aval.get(lvl, []))
-        linha = {"Nível": f"N{lvl}"}
-        for code, label in cols_regras:
-            linha[label] = rs.get(code, "OK")
-        linhas.append(linha)
-    dfr = pd.DataFrame(linhas).set_index("Nível")
-
-    def color_cell(v):
-        return "color:#ff5d6c;font-weight:700" if v != "OK" else "color:#46d39a"
-    st.dataframe(dfr.style.map(color_cell), use_container_width=True)
+        is_hemat = "HEMAT" in cfg.get("setor", "").upper() or len(refs) == 3
+        cols_regras = ([("1-3S", "1-3s"), ("2of3-2S", "2 de 3-2s"), ("R4S", "R4s"),
+                        ("3-1S", "3-1s"), ("6X", "6x")] if is_hemat else
+                       [("1-3S", "1-3s"), ("2-2S", "2-2s"), ("R4S", "R4s"),
+                        ("4-1S", "4-1s"), ("8X", "8x")])
+        linhas_r = []
+        for lvl in niveis:
+            rs = qc.summarize_rules(aval.get(lvl, []))
+            linha = {"Nível": f"N{lvl}"}
+            for code, label in cols_regras:
+                linha[label] = rs.get(code, "OK")
+            linhas_r.append(linha)
+        dfr = pd.DataFrame(linhas_r).set_index("Nível")
+        st.dataframe(dfr.style.map(
+            lambda v: "color:#ff5d6c;font-weight:700" if v != "OK" else "color:#46d39a"),
+            use_container_width=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -740,7 +807,7 @@ def annual_bias_for(analyte, year=None):
 # --------------------------------------------------------------------------- #
 # Controle Externo da Qualidade (EQC)
 # --------------------------------------------------------------------------- #
-PROVIDERS = ["CAP", "Controllab", "PNCQ", "SBPC/ML", "ControlLab", "Outro"]
+PROVIDERS = ["CAP", "Controllab", "PNCQ"]
 EQC_STATUS = ["Aceitável", "Alerta", "Inaceitável", "Fora de critério"]
 ETP_SOURCES = ["CLIA", "Variação biológica", "Fabricante",
                "Especificação interna validada", "Outra"]
@@ -812,26 +879,19 @@ def page_controle_externo():
                 st.warning(f"⚠️ Limite de {db.MAX_ROUNDS_POR_ANO} rodadas/ano já atingido "
                            f"para {analito} em {ano}. Exclua uma rodada para cadastrar outra.")
             else:
-                st.caption(f"Rodadas já cadastradas em {ano}: "
-                           f"{taken or '—'} · disponíveis: {livres}")
-                d1, d2, d3 = st.columns(3)
-                rnum = d1.selectbox("Nº da rodada", livres, key="eqc_rnum")
-                rdata = d2.date_input("Data da rodada", value=date.today(), key="eqc_data")
-                prov = d3.selectbox("Provedor", PROVIDERS, key="eqc_prov")
-                if prov == "Outro":
-                    prov = d3.text_input("Qual provedor?", key="eqc_prov_outro") or "Outro"
-
-                e1, e2, e3 = st.columns(3)
+                st.caption(f"Rodadas em {ano}: {taken or '—'} · disponíveis: {livres}")
                 ainfo = db.get_analyte_info(analito)
+                d1, d2, d3, d4 = st.columns(4)
+                rnum = d1.selectbox("Nº rodada", livres, key="eqc_rnum")
+                rdata = d2.date_input("Data", value=date.today(), key="eqc_data")
+                prov = d3.selectbox("Provedor", PROVIDERS, key="eqc_prov")
+                status = d4.selectbox("Status", EQC_STATUS, key="eqc_status")
+                e1, e2 = st.columns(2)
                 unidade = e1.text_input("Unidade", value=ainfo.get("unit", ""), key="eqc_unid")
                 lote = e2.text_input("Lote / amostra", key="eqc_lote")
-                status = e3.selectbox("Status de desempenho", EQC_STATUS, key="eqc_status")
 
-                report_ref = st.text_input("Referência ao relatório (PDF)", key="eqc_pdf")
-                notes = st.text_area("Observações técnicas", key="eqc_notes", height=70)
-
-                st.markdown("**Amostras da rodada** (o CAP costuma trazer ~5 espécimes). "
-                            "Preencha resultado do laboratório e média do grupo:")
+                st.markdown("**Amostras** — resultado do laboratório e média do grupo "
+                            "(o CAP traz ~5 espécimes):")
                 edited = st.data_editor(
                     _editor_default(5), num_rows="dynamic", hide_index=True,
                     use_container_width=True, key="eqc_samples_editor",
@@ -858,6 +918,10 @@ def page_controle_externo():
                     cmet.metric("|Bias| da rodada",
                                 "—" if round_bias is None else f"{round_bias:.3f}%")
                     cmet.caption("Média dos |bias| das amostras válidas.")
+
+                with st.expander("Detalhes adicionais (relatório PDF, observações)"):
+                    report_ref = st.text_input("Referência ao relatório (PDF)", key="eqc_pdf")
+                    notes = st.text_area("Observações técnicas", key="eqc_notes", height=68)
 
                 if st.button("💾 Salvar rodada", key="eqc_save", disabled=not amostras):
                     rid, err = db.eqc_add_round(
@@ -1087,7 +1151,52 @@ def page_config():
     st.markdown("### Configurações do serviço")
     cfg = db.get_config()
     for k, v in cfg.items():
+        if k.startswith("horus_"):
+            continue
         st.text_input(k.replace("_", " ").title(), value=v, disabled=True)
+
+    st.divider()
+    # ---- Hórus: relatório diário por IA ----
+    st.markdown("#### 🦅 Hórus — Relatório diário por IA (e-mail)")
+    st.caption("Hórus lê os gráficos, as Especificações de Qualidade e as regras de "
+               "Westgard; a IA (Groq, grátis) escreve uma conclusão de especialista "
+               "e envia por e-mail no horário escolhido.")
+    seg = horus.status_segredos()
+    s1, s2 = st.columns(2)
+    s1.markdown(f"Chave Gemini (IA): {'✅ configurada' if seg['gemini'] else '❌ não configurada'}")
+    s2.markdown(f"E-mail remetente (SMTP): "
+                f"{'✅ configurado' if seg['smtp'] else '❌ não configurado'}")
+
+    hc1, hc2, hc3 = st.columns([2, 1, 1])
+    email = hc1.text_input("E-mail que receberá o relatório",
+                           value=cfg.get("horus_email", ""), key="horus_email_in")
+    hora = hc2.text_input("Hora (HH:MM)", value=cfg.get("horus_hora", "10:00"),
+                          key="horus_hora_in")
+    ativo = hc3.checkbox("Ativar envio", value=cfg.get("horus_enabled", "0") == "1",
+                         key="horus_enabled_in")
+
+    b1, b2, b3 = st.columns(3)
+    if b1.button("💾 Salvar configuração"):
+        db.set_config("horus_email", email.strip())
+        db.set_config("horus_hora", hora.strip() or "10:00")
+        db.set_config("horus_enabled", "1" if ativo else "0")
+        st.success("Configuração do Hórus salva.")
+        st.rerun()
+    if b2.button("🗑️ Excluir / desativar"):
+        db.set_config("horus_enabled", "0")
+        db.set_config("horus_email", "")
+        st.success("Envio automático desativado e e-mail removido.")
+        st.rerun()
+    if b3.button("✉️ Enviar relatório de teste agora"):
+        with st.spinner("Hórus analisando e enviando…"):
+            ok, msg = horus.run_report(force=True)
+        (st.success if ok else st.error)(msg)
+
+    if not (seg["gemini"] and seg["smtp"]):
+        st.info("Para enviar, configure as variáveis de ambiente **GEMINI_API_KEY**, "
+                "**HORUS_SMTP_USER** e **HORUS_SMTP_PASS** (passo a passo em "
+                "`HORUS_SETUP.md`).")
+
     st.divider()
     st.markdown("#### Administração")
     if st.button("↺ Recriar banco de demonstração (apaga dados lançados)"):
@@ -1109,9 +1218,9 @@ with st.sidebar:
     st.markdown(f"<span class='small'>{user['name']} · {user['role']}</span>", unsafe_allow_html=True)
     st.divider()
     pagina = st.radio("Navegação", [
-        "Painel", "Lançar resultados", "Não conformidades",
-        "Controle Externo", "Média e DP", "Especificação da qualidade",
-        "Configurações"],
+        "Painel Analítico - QC", "Lançar resultados de QCI",
+        "Resultados não conforme do QCI", "Média e DP do QCI", "QCE",
+        "Especificação da qualidade", "Configurações"],
         label_visibility="collapsed")
     st.divider()
     if st.button("Sair", use_container_width=True):
@@ -1119,11 +1228,11 @@ with st.sidebar:
         st.rerun()
 
 {
-    "Painel": page_dashboard,
-    "Lançar resultados": page_lancar,
-    "Não conformidades": page_nc,
-    "Controle Externo": page_controle_externo,
-    "Média e DP": page_referencia,
+    "Painel Analítico - QC": page_dashboard,
+    "Lançar resultados de QCI": page_lancar,
+    "Resultados não conforme do QCI": page_nc,
+    "Média e DP do QCI": page_referencia,
+    "QCE": page_controle_externo,
     "Especificação da qualidade": page_specs,
     "Configurações": page_config,
 }[pagina]()

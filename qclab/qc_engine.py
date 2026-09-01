@@ -89,9 +89,12 @@ class AnalyteLevelStats:
     et: Optional[float] = None
     etp: Optional[float] = None
     etp_fonte: str = "-"
+    etp_clia: Optional[float] = None       # ETp pela TEa CLIA
+    etp_vb: Optional[float] = None          # ETp pela Variação Biológica
     sigma: Optional[float] = None
     cv_limite_clia: Optional[float] = None
     cv_limite_vb: Optional[float] = None
+    cv_limite_fb: Optional[float] = None    # limite de CV% do fabricante
     cv_status: str = "-"
     rule_summary: dict = field(default_factory=dict)
 
@@ -461,7 +464,7 @@ def vb_specs(cvw, cvg, perf):
 
 
 def compute_sigma(cv_obs, bias_obs, clia_tea, cvw, cvg, perf,
-                  etp_pct=None, etp_source=None):
+                  etp_pct=None, etp_source=None, fab_cv=None):
     """
     Retorna dict com etp, etp_fonte, es, ea, et, sigma,
     cv_limite_clia, cv_limite_vb, cv_status.
@@ -485,6 +488,11 @@ def compute_sigma(cv_obs, bias_obs, clia_tea, cvw, cvg, perf,
 
     cv_lim_clia = (float(clia_tea) / 3.0) if clia_tea not in (None, "", "-") else None
     cv_lim_vb = impr_vb
+    cv_lim_fb = float(fab_cv) if fab_cv not in (None, "", "-") else None
+
+    # ETp por fonte (frações) — exibidos lado a lado no painel
+    etp_clia = float(clia_tea) if clia_tea not in (None, "", "-") else None
+    etp_vb = te_vb
 
     es = bias_obs
     ea = (EA_Z * cv_obs) if cv_obs not in (None, "") else None
@@ -497,9 +505,10 @@ def compute_sigma(cv_obs, bias_obs, clia_tea, cvw, cvg, perf,
     else:
         cv_status = "OK" if cv_obs <= min(limites) else "NÃO"
 
-    return dict(etp=etp, etp_fonte=fonte, es=es, ea=ea, et=et, sigma=sigma,
+    return dict(etp=etp, etp_fonte=fonte, etp_clia=etp_clia, etp_vb=etp_vb,
+                es=es, ea=ea, et=et, sigma=sigma,
                 cv_limite_clia=cv_lim_clia, cv_limite_vb=cv_lim_vb,
-                cv_status=cv_status)
+                cv_limite_fb=cv_lim_fb, cv_status=cv_status)
 
 
 def build_stats(analyte, level, values, bias_obs, specs) -> AnalyteLevelStats:
@@ -512,7 +521,8 @@ def build_stats(analyte, level, values, bias_obs, specs) -> AnalyteLevelStats:
                             specs.get("clia_tea"), specs.get("cvw"),
                             specs.get("cvg"), specs.get("perf"),
                             etp_pct=specs.get("etp_pct"),
-                            etp_source=specs.get("etp_source"))
+                            etp_source=specs.get("etp_source"),
+                            fab_cv=specs.get("fab_cv"))
         for k, v in sig.items():
             setattr(s, k, v)
     return s

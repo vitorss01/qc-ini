@@ -188,6 +188,10 @@ def _seed_incremental(conn, demo: bool):
     dados do usuário.
     """
     cur = conn.cursor()
+    # config padrão do Hórus (relatório diário por IA) — só cria se não existir
+    for k, v in (("horus_email", "natallisantos1995@gmail.com"),
+                 ("horus_hora", "10:00"), ("horus_enabled", "0")):
+        cur.execute("INSERT OR IGNORE INTO config(key, value) VALUES (?,?)", (k, v))
     # analitos extras por área (Bioquímica, Imunologia, Coagulação...) — não toca
     # nos que já existem (INSERT OR IGNORE).
     base_ord = 1000
@@ -325,6 +329,14 @@ def authenticate(login: str, password: str):
 def get_config():
     conn = get_conn()
     return {r["key"]: r["value"] for r in conn.execute("SELECT * FROM config")}
+
+
+def set_config(key, value):
+    """Salva/atualiza uma chave de configuração."""
+    conn = get_conn()
+    conn.execute("INSERT OR REPLACE INTO config(key, value) VALUES (?,?)",
+                 (key, "" if value is None else str(value)))
+    conn.commit()
 
 
 def get_analytes(area=None, with_reference=False):
