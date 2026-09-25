@@ -2505,3 +2505,527 @@ planilha do Excel tem um módulo de classe, com ou sem código. Cabe reclassific
 na documentação da Fase 1, não corrigir.
 
 **Coluna H (`NC`) do schema da Fase 1** está sem cabeçalho e sem dado nos três.
+
+---
+
+## ADR-049 — Multi-lote: o lote é chave, não tela
+
+**Data:** 19/09/2026
+**Status:** aceito (Etapa 1)
+**Relaciona-se a:** ADR-013 (armazém por lote), ADR-019 (motor calcula), ADR-024
+(núcleo do lote), ADR-025 (capacidade de 60 meses), ADR-045 (eventos)
+
+### Contexto
+
+O sistema precisa absorver cinco anos de uso e vários lotes de material de
+controle, cada um com a sua média, o seu DP e os seus limites. A auditoria do
+arquivo de produção (`QC_Bioquimica.xlsm`, 10.342 resultados, lotes 8973 e
+8974) mostrou que a arquitetura **tinha** um armazém por lote (`LotesStore`,
+ADR-013), mas quase ninguém lia dele:
+
+| Quem interpreta | De onde tirava média/DP | Consequência |
+|---|---|---|
+| Gráfico (`Calc!AX1:BA1`) | `Analitos!E:H`, a tela do lote carregado | limites do lote em tela, qualquer que fosse o lote plotado |
+| Motor (`AlvoAnalito`) | a mesma tela | z e Westgard de um lote com a média de outro |
+| Estatística / BI | `LotesStore` | certo, mas por duas aritméticas diferentes (idx e bloco) |
+
+E o lote de cada camada vinha de um lugar diferente: o `Calc` filtrava pelo
+**lote ativo**, o motor deduzia o lote **pelo ano** (`LoteDoAnoOuAtivo`), a
+Estatística somava **todos** os lotes. No arquivo real, o lote 8973 (jan–fev/2025)
+não tem média/DP cadastrados, e o Painel em 2025 interpretava os seus resultados
+com a média/DP do 8974 — sem aviso.
+
+Defeitos adicionais encontrados na mesma trilha:
+
+1. **Troca de lote destruía fórmulas.** `mLotes.CarregarBlocoNaView` escrevia 12
+   colunas guardadas sobre `aInput` (`Analitos!E4:R43`, 14 colunas): as fórmulas
+   de especificação K:P viravam valor velho e Q:R viravam `#N/D`. Latente só
+   porque ninguém trocou de lote desde que `aInput` cresceu.
+2. **Lote novo herdava média/DP do anterior** ("para não redigitar 40 analitos").
+   Média e DP são do material; herdados, geram gráfico plausível e errado.
+3. **Lote sem média/DP saía verde.** `CalcularZ` devolve 0 com DP 0; z = 0 é
+   "no alvo", e todas as corridas viravam OK.
+4. **O RUN não é cronológico.** É único por (data, lote), mas o histórico
+   importado depois ganhou RUN maior: março/2025 do lote 8974 tem RUN 151–168,
+   depois de junho/2026 (RUN ~114). O motor ordenava por RUN, então as regras de
+   sequência (4_1s, 8x) liam uma série fora do tempo.
+5. **Teto silencioso de 180 corridas.** A descoberta de corridas parava nas 180
+   primeiras na ordem do banco; um lote longo perderia as mais **novas** do
+   gráfico e do Westgard.
+6. **Estatística misturava lotes.** Filtro de lote vazio (= todos): CV de lotes
+   com médias diferentes somados, e bias contra o alvo do lote ativo.
+7. `AlvoAnalito` lia o ETp da coluna R ("ETp VB"), não da T ("ETp em uso").
+8. **O spinner de analito não refazia o motor** (`OnAction = AtualizarEixos`).
+   Provado no arquivo real: Lactato → Glicose pelo spinner mostrava
+   "Sem violação" nos dois níveis, com 0 veredictos, quando a Glicose reprova
+   com 3 e 4 violações. Só um recálculo posterior corrigia a tela.
+9. **Toda escrita de célula custava ~12 s.** `lstAnosCIQ`/`lstAnosCEQ` eram
+   `OFFSET` (volátil); `Estatística!N4` depende de `lstAnosCEQ` e alimenta ~400
+   chamadas de UDF de EQA. Qualquer célula alterada — inclusive cada bloco que
+   o motor grava — recalculava a aba Estatística inteira (16,4 s medidos).
+   Trocado por intervalo dinâmico com `ÍNDICE` (não volátil): **0,00 s**.
+10. **"Atualizar BI" travava no arquivo de produção.** `mBI.GarantirAba`
+    gravava o cabeçalho da `BI_Data` protegida sem destrancar (erro 1004, macro
+    parada no depurador). Com a guarda `LiberarEscrita`/`RestaurarProtecao`:
+    16 s no arquivo real. Aproveitando: o plano de CQ e o bias de EP passaram a
+    ser calculados uma vez por grupo, não por linha do banco.
+11. **O filtro de período do gráfico comparava data com hora.** Resultado gravado
+    às 03:00 (a importação de 2025 veio assim) saía do último dia do período.
+    Agora é por dia, como já era na Estatística.
+
+### Decisão
+
+**1. Três papéis de lote, três nomes.**
+
+| Nome | Célula | Papel |
+|---|---|---|
+| `loteAtivo` | `Configuração!C20` | lote **em uso**: só o resultado novo e as views operacionais (Registros, Liberação) |
+| `loteSel` / `loteAnalise` | `Painel!E3` | lote **em análise**: chave de tudo que interpreta |
+| `loteParam` | `Configuração!G2` | lote cujos parâmetros estão na tela `Analitos!E:J` (editor); segue o `loteSel` |
+
+Escolher um lote antigo para análise **não** muda o lote em que o próximo
+resultado é gravado. Trocar o lote em uso leva o Painel junto (quem troca o lote
+de trabalho quer vê-lo), mas o caminho inverso não existe.
+
+**2. Uma fonte, uma chave.** `LotesStore` passa a ter uma linha por
+(lote, analito) com a chave `LOTE|ANALITO` na coluna P. `mLotes.ParametrosLote`
+é a única leitura em VBA (motor, eventos, Estatística, BI); as fórmulas do
+`Calc` usam a mesma chave (`lsChave`, `lsMedN*`, `lsDPN*`). Nada depende da
+posição do lote no cadastro nem da ordem dos analitos. Os limites (±1, 2, 3 DP
+e o eixo) são **derivados** da média/DP do lote — não há como o gráfico ter a
+média de um lote e os limites de outro.
+
+**3. Sem parâmetro, sem interpretação.** Lote novo nasce vazio. Média ausente,
+texto, DP ≤ 0: `ParametrosLote` devolve False, o nível não entra no Westgard, o
+veredicto é `SEM PARAMETROS`, o gráfico não desenha limites nem classifica
+pontos, e o Painel diz "SEM MÉDIA/DP DO LOTE — não avaliado" no lugar de "Sem
+violação".
+
+**4. O gráfico mostra o que o motor calculou, e só isso.** `Calc!B` lê a lista
+de corridas do motor (`engRUN`) e fica **vazio** se o motor for de outro
+analito ou de outro lote. Não existe mais "memória" do lote anterior: ou o
+gráfico está coerente, ou está vazio.
+
+**5. Série cronológica e janela explícita.** Corridas ordenadas por (data, RUN)
+num comparador único (`CorridaAntes`) usado pelo motor, pelos eventos e pelo BI.
+O gráfico mostra as 180 corridas mais recentes **até o fim do período**; o
+contexto anterior fica para as regras de sequência; se o período tiver mais de
+180 corridas, a faixa do Painel diz quantas ficaram de fora.
+
+**6. Edição de parâmetro é gravada na hora e auditada.** `Analitos!E:J` é o
+editor do lote em tela; cada alteração vai para a `LotesStore` no
+`Worksheet_Change` e para o `Audit_Log` (`PARAMETRO_LOTE_ALTERADO`, lote, nível,
+analito, antes, depois).
+
+**7. Desempenho que o uso contínuo exige.** Nomes dinâmicos por `ÍNDICE`, não
+`OFFSET`; o motor grava com o cálculo em manual e recalcula **uma** vez no fim
+(`RecalcularAnalitoAtual`, `AtualizarEstatistica`), restaurando o modo também
+no caminho de erro; o spinner e De/Até refazem o motor.
+
+### Regra de alteração de parâmetro (Teste 9) — o que o sistema faz hoje
+
+Não havia regra definida: o motor sempre reinterpretou o histórico com o
+parâmetro vigente, e nenhum veredicto é congelado (o único registro "congelado"
+é a assinatura na Liberação). A Etapa 1 **mantém** esse comportamento — mudar a
+média/DP de um lote reinterpreta imediatamente todo o histórico **daquele**
+lote, e só dele — e passa a deixar rastro de cada mudança. Versionar parâmetros
+com data de vigência (para que resultados antigos continuem avaliados pelo
+parâmetro da época) é decisão do gestor e fica para a Etapa 2.
+
+### Fora do escopo (Etapa 2)
+
+Reestruturar o banco e a ligação banco → gráfico; views operacionais
+(Registros/Liberação) ainda por posição do lote no cadastro; Hematologia e
+Imunologia (mesmo `mLotes`, mesmos defeitos 1–3); versionamento de parâmetros.
+
+---
+
+## ADR-050 — Cinco anos com o clique imediato: o motor é indexado e o Calc lê o motor
+
+**Data:** 19/09/2026 · **Status:** aceito · **Relaciona-se a:** ADR-019, ADR-025, ADR-049
+
+### Contexto
+
+O gestor fixou o horizonte em **cinco anos** de uso contínuo, com **4 lotes/ano na
+Bioquímica (20 lotes)** e **8 lotes/ano na Hematologia (40 lotes)**. O requisito de
+uso: "clicou no spinner, trocou de analito, quase imediatamente". O teto combinado é
+de **3 s por troca**.
+
+Com a Etapa 1 instalada e cinco anos de banco (~100 mil resultados), as medições
+foram:
+
+| Operação | Antes |
+|---|---|
+| clique no spinner (troca de analito) | 1,9 s (26 s antes da correção do spinner) |
+| troca de lote em análise | 3,7–4,8 s |
+| troca de lote em uso | ~15 s (`CalculateFull`) |
+| importar **uma** corrida | 25–33 s |
+| abrir o arquivo | 14 s |
+| recálculo completo | 15,6 s |
+
+A troca de analito, medida por componente, se decompunha em três custos:
+
+1. **Eventos de Westgard refeitos a cada clique.** Eles são do **lote** (todos os
+   analitos), não do analito: 0,8 s perdidos por clique.
+2. **Varredura do banco inteiro** (100 mil linhas) para achar as ~150 linhas do
+   analito no lote: 0,5 s.
+3. **540 fórmulas do `Calc`** (`MAXIFS`/`SUMIFS`) sobre o banco para buscar data e valor
+   de cada corrida. O motor já tinha esses valores.
+
+A importação somava mais três causas:
+
+- **600 fórmulas na `Liberação`**, com `AGGREGATE`/`MINIFS` sobre o banco.
+- **A lista de anos (`Configuração!Z:AA`) regravada a cada importação.** Ela invalidava
+  o ano de EQA da Estatística e forçava o recálculo de **482 funções de EQA, cada uma
+  relendo a `EQA_Base` inteira (10,6 s)**.
+- **Cálculo automático durante a gravação.** Cada bloco escrito disparava um recálculo.
+
+### Decisão
+
+1. **Índice do banco por (analito, lote)** no `mEstatistica`: montado uma vez por
+   versão do banco (qualquer gravação chama `InvalidarCache`), só com linhas elegíveis.
+   Usam o índice `AtualizarCalc`, `EstatBasica`, `AnalisarViolacoes`,
+   `RegistrarEventosWestgard` e `LotesNoPeriodo`.
+2. **Eventos de Westgard em cache por lote** (`mEvLote`): trocar de analito não os
+   refaz. Trocar de lote ou de parâmetro, ou gravar, invalida o cache.
+3. **O `Calc` lê o motor.** O motor publica a data da corrida em `Eng_Saida!AC`
+   (`engData`) e os valores por nível em `engValN1..3`. `Calc!C`, `F`, `AB` e `AX` leem
+   por posição: o gráfico plota **exatamente** o que o motor avaliou. Nenhuma fórmula
+   do `Calc`, do `Painel`, da `Estatística` ou da `Liberação` varre mais o banco.
+   ADR-019 cumprido também no `Calc`.
+4. **`Liberação!A:B` é valor**, escrito por `mLotes.AtualizarListaLiberacao`, que é
+   chamada por `AtualizarFlagsBanco` (toda gravação e exclusão) e por `TrocarLote`. A
+   regra e a ordem são as mesmas das fórmulas, porque as assinaturas estão presas à
+   posição da linha.
+5. **Casca de operação (`mApp.Inicio`/`Fim`):** tela congelada, cálculo manual, eventos
+   desligados e **um** recálculo no fim, com aninhamento. Usada no spinner, nas trocas de
+   lote, na edição de parâmetro, na importação e na cadeia pós-gravação.
+6. **EQA em cache** (`mCEQ`): a `EQA_Base` é lida uma vez, agrupada por analito. A
+   validade do cache é o carimbo gravado por `AtualizarEQABase`, a única rotina que
+   escreve na base.
+7. **Lista de anos só é regravada se mudou.**
+8. **`TrocarLote` usa `Calculate`**, e não `CalculateFull`.
+9. Detalhes do motor:
+   - resposta de `DetectorAtivo`/`EscalaDoDetector` memorizada;
+   - `TraceWestgard` com `Join` (antes, concatenação quadrática);
+   - ordenação de eventos por índice (antes, moviam-se 14 colunas por deslocamento).
+10. **Capacidade:**
+    - Bioquímica passa de 120.000 para **150.000 linhas**. No cenário pesado de cinco
+      anos, o teste chegou a 115.196 linhas, com só 4% de folga no teto antigo.
+    - Hematologia: **200.000 linhas**. São 28 analitos × 3 níveis × 1 corrida/dia × 5
+      anos = 153.300.
+
+### Prova de equivalência
+
+`testes/prova_v2.py` fotografa, antes e depois, o `Calc` inteiro, o `Painel`, a
+`Eng_Saida`, os `Eventos_Westgard` (até 9.000 linhas), a `Estatística` e a
+`Liberação`. A comparação é célula a célula, em 6 combinações de lote × analito ×
+período. Os resultados:
+
+- **Arquivo real (lotes 8973/8974):** idêntico. A única diferença é o carimbo de hora do motor.
+- **Arquivo de 100 mil linhas:** também idêntico.
+
+### Resultado (cinco anos, `testes/t_cinco_anos.py`)
+
+| | Bioquímica (20 lotes, 115 mil) | Hematologia (40 lotes, 153 mil) |
+|---|---|---|
+| clique no spinner | 0,05–0,13 s | 0,06–0,13 s |
+| trocar lote em análise | 0,6–0,7 s | 0,2–0,3 s |
+| trocar lote em uso | 1,3 s | 1,6 s |
+| lançar a corrida do dia | 3,5 s (62 resultados) | 5,2 s (84 resultados) |
+| abrir o arquivo | 2,7 s | 2,5 s |
+| recálculo completo | 0,6 s | 0,1 s |
+
+---
+
+## ADR-051 — O Excel com uso de aplicativo
+
+**Data:** 19/09/2026 · **Status:** aceito
+
+**Contexto.** O pedido do gestor: *"um usuário que nunca viu o sistema saberia mexer
+por intuição?"*. A navegação era por guias. O lote em análise não tinha rótulo na tela
+de parâmetros. Trocar de analito exigia até 39 cliques no spinner. Nada avisava que o
+lote em uso estava vencido.
+
+**Decisão (`ux.py` + `mApp`; nada aqui calcula):**
+
+- **Barra de navegação** em toda tela de uso: Início, Painel, + Lançar, Média/DP,
+  Lotes, Estatística, Liberação, Registros e Westgard, com a tela atual destacada. As
+  guias ficam ocultas no visual de sistema; um botão no Início as mostra de volta.
+- **Início** vira a tela de um aplicativo:
+  - 8 botões de tarefa;
+  - **"Situação agora"**: lote em uso com validade (**⛔ vencido**, **⚠ vence em N
+    dias**), lote em análise, última corrida, ocupação do banco, lotes cadastrados,
+    analitos sem média/DP no lote em uso;
+  - **"Como usar" em 3 passos**.
+- **Analito também pela lista** (Painel!C3), além do spinner.
+- **Faixa de status do lote** colorida: verde (lote com alvo), âmbar (sem corrida no
+  período) e vermelho (lote sem média/DP).
+- **Atalhos:**
+  - "✎ Média/DP deste lote" (Painel → linha do analito na aba Analitos);
+  - "Trocar lote ▸" (Analitos → seletor do Painel).
+- **Novo lote guiado:** cadastra (recusa duplicado e data inválida), pergunta se passa a
+  lote em uso e abre a digitação de média/DP do lote novo, que nasce vazio (ADR-049).
+  O núcleo (`CadastrarLote`) é testável sem diálogo.
+
+---
+
+## ADR-052 — A Hematologia volta a calcular, no mesmo motor da Bioquímica
+
+**Data:** 19/09/2026 · **Status:** aceito
+
+**Contexto.** A produção da Hematologia rodou o `mEstatistica` antigo, que gravava
+direto nas abas de interface. A medição de 19/09/2026 mostrou:
+
+- **`Calc`:** 12.614 fórmulas viraram valor. O gráfico estava congelado em agosto.
+- **`Painel`:** 45 fórmulas viraram valor.
+- **`Estatística`:** 1.320 fórmulas viraram valor. Depois, um script aplicou por cima,
+  pela metade, o layout da Bioquímica: cabeçalho no meio dos dados, e a coluna K com
+  bias onde o título dizia ET.
+- **A seção de Sigma do Painel** apontava para linhas de 2 níveis inexistentes.
+- **Multi-lote e capacidade:** nada. O banco tinha teto fixo de 15.000 linhas, com
+  flags BA:BC em fórmula O(n²).
+
+**Decisão (`portar_hema.py`).** Um só código-fonte (`src/`) para os dois produtos. Na
+Hematologia:
+
+- **VBA:** `NLV = 3`, as células de filtro da Estatística dela e o seletor de lote em
+  `Painel!H3`. O núcleo do lote passa a ser derivado por comprimento (ADR-024).
+- **`Calc`:** reconstruído a partir da última versão íntegra (`build_h1`), já no
+  desenho da Etapa 1 e do ADR-050.
+- **`Painel`:** indicadores lendo `engPainel`. As colunas de Westgard são mapeadas pelo
+  rótulo, porque a ordem do motor difere da ordem das colunas.
+- **`Estatística`:** refeita no desenho da Bioquímica, com 3 níveis (linhas 14–133):
+  - n, média, DP e CV vêm do motor, sempre do lote em análise;
+  - bias, ET e Sigma vêm do controle externo (EP), como na Bioquímica.
+- **Seção de Sigma:** passa a 3 níveis.
+- **Banco:** flags viram valor, teto de 200.000 linhas.
+
+**Prova:**
+
+- **Arquivo real:** o Calc e o Painel reproduzem os valores de agosto (por exemplo, a
+  média N3 de RBC é 5,11962) e há zero fórmulas em erro.
+- **Cinco anos, 40 lotes, 153 mil resultados:** 34/34 verificações e a navegação conferida.
+
+---
+
+## ADR-053 — Nenhuma tela some debaixo do usuário, e nenhum dado novo some da tela
+
+**Data:** 20/09/2026 · **Status:** aceito · **Relaciona-se a:** ADR-025, ADR-050, ADR-051
+
+### Contexto
+
+Primeiro relato de uso depois da entrega: *"ao clicar na caixinha para filtrar por
+trimestre, deu erro e me levou para uma aba com o título EVENTOS DE WESTGARD —
+HISTÓRICO AUDITÁVEL"*.
+
+A investigação não reproduziu o erro por automação (o clique simulado aplica o filtro e
+permanece no Painel), mas encontrou o que **tornava o sintoma possível** e o que o
+**tornava grave**:
+
+1. **O filtro chamava o motor inteiro.** `FiltroMudou` chamava
+   `RecalcularAnalitoAtual`, que refaz os **eventos de Westgard** — que são do lote,
+   não do período, e portanto não mudam com o filtro. Trabalho jogado fora numa aba que
+   a tela do filtro não deveria tocar.
+2. **Erro virava silêncio.** `On Error Resume Next` engolia qualquer falha: o usuário
+   via "algo estranho" e nenhuma mensagem dizia o quê.
+3. **A tela não voltava.** Com as guias ocultas (ADR-051), terminar uma operação noutra
+   aba deixa o usuário sem rumo.
+4. **Estado preso.** Se uma operação anterior morresse no meio — por exemplo, o usuário
+   apertando "Finalizar" numa caixa de erro do VBA —, o contador da casca `mApp` ficava
+   aberto: cálculo em manual, eventos desligados e tela congelada. O clique seguinte
+   herdava esse estado e parecia dar erro.
+
+Uma hipótese foi **descartada por medição**: a de que, com os dois produtos abertos, o
+clique pudesse disparar a macro do outro arquivo (as duas pastas têm macros de mesmo
+nome). O Excel devolve o `OnAction` do controle já qualificado com o arquivo que o
+contém (`QC_Hematologia.xlsm!FiltroMudou`) — ele resolve na pasta dona. O código que
+"amarrava" os controles foi removido por ser inútil.
+
+### Decisão
+
+1. **O filtro faz só o que é do filtro:** `AtualizarCalc` (janela e filtro por corrida),
+   `AtualizarPainelEng` (n, média, DP, CV e contagens do período), um `Calculate` e os
+   eixos. Nada de eventos de Westgard.
+2. **A tela do usuário é guardada e devolvida** (`mApp.TelaAtual` / `mApp.VoltarPara`),
+   inclusive no caminho de erro — no filtro e na troca de analito.
+3. **Falha vira mensagem**, com número e descrição do erro, e a orientação de desmarcar
+   os trimestres para ver o período inteiro.
+4. **`mApp.InicioUsuario`:** toda operação disparada por clique zera um contador preso
+   antes de começar. Clique só acontece com o VBA parado; contador aberto ali é resto.
+
+### Junto, quatro defeitos que a revisão adversarial da entrega levantou
+
+- **A aba Resultados mostrava as 3.000 linhas mais ANTIGAS** do lote e descartava o
+  resto em silêncio — ou seja, escondia justamente os resultados novos. Passa a mostrar
+  as mais recentes. (Com cinco anos e um lote de três meses na Bioquímica, o teto de
+  3.000 fica a um passo.)
+- **`ExigirCapacidade` rodava depois** de gravar a faixa atualizada, enquanto a mensagem
+  dizia "nenhum dado foi gravado". Passa a rodar antes de qualquer escrita.
+- **`ExcluirLogico` era o único caminho de gravação fora da casca `mApp`**: escrevia
+  célula a célula com o cálculo em automático. Agora é uma escrita em bloco dentro da
+  casca.
+- **A lista da Liberação cabe 200 corridas** e não dizia nada quando o lote passava
+  disso. Agora avisa na própria aba.
+
+### Fica aberto (muda semântica de dado — decisão do gestor)
+
+- **Reimportar ressuscita resultado excluído.** `UpsertResultados` marca `Ativo` ao
+  atualizar uma chave existente, mesmo que ela estivesse `Excluído`, sem registro
+  nominal. A linhagem de build tinha a barreira ("bloqueados"); a de produção, não.
+- **As assinaturas da Liberação estão presas à POSIÇÃO da linha** (`libView` C:F), e não
+  ao RUN. Excluir uma corrida desloca as assinaturas das seguintes. Vale rever para
+  chavear por RUN.
+
+## ADR-054 — O Painel dos dois produtos no mesmo desenho
+
+**Data:** 20/09/2026 · **Status:** implantado · **Origem:** pedido do gestor após usar
+os dois arquivos lado a lado.
+
+### Contexto
+
+O gestor comparou as duas telas e resumiu: *"A ABA PAINEL DA HEMATOLOGIA ESTÁ MELHOR DO
+QUE A DA BIOQUÍMICA — ACHEI MELHOR A VISUALIZAÇÃO SUPERIOR, ESTÁ MAIS LIMPA"*, e pediu:
+o filtro de trimestre/mês que só a Bioquímica tinha; o bloco de desempenho na coluna A
+nos dois; o Controle Externo fora de cima das caixas de trimestre; o menu de navegação
+começando em I1; a última violação (que só a Hematologia mostrava) também na Bioquímica;
+a mesma largura de coluna nos dois; e o gráfico ocupando a largura visível em qualquer
+zoom. Fechou com o critério de aceite: *"APÓS CONCLUIR — TESTAR E VER SE ISSO DÁ CERTO E
+NÃO DÁ ERROS AO TROCAR DE ANALITOS"*.
+
+A leitura por trás dos pedidos: as duas telas **divergiram**. A Bioquímica tinha o
+spinner por cima do rótulo "Ano", as caixas de trimestre por cima do seletor de Controle
+Externo, os títulos das seções desalinhados das tabelas que nomeavam (herança de um
+layout copiado da Hematologia sem mover o conteúdo), e o bloco de Sigma na coluna R —
+fora da tela sem rolar para o lado.
+
+### Decisão
+
+**Um só desenho de Painel, construído pelo mesmo código (`painel.py`) para os dois
+produtos.** O que varia é declarado: número de níveis, rótulos das cinco regras de
+Westgard, células do Calc com média/DP, última linha da aba Estatística.
+
+| | Antes (Bioquímica) | Antes (Hematologia) | Agora (os dois) |
+|---|---|---|---|
+| Lote em análise | E3 | H3:I3 | **H3:I3** |
+| Spinner | sobre H3 ("Ano") | sobre E3 | **sobre E3** |
+| Ano / Período | H3/I3 e H4/I4 | não existia | **J3:K3 e J4:K4** |
+| Trimestre | 4 caixas (qsel1..4) | 4 caixas sem uso | **não existe mais** |
+| Indicadores | A6:E8 (5 colunas) | A6:J9 (10 colunas) | **A6:J — 10 colunas** |
+| Westgard | F6:M8 | L6:U9 | **L6:U** |
+| Última violação | não tinha | S6:U6 | **S6:U6 nos dois** |
+| Desempenho Sigma | R6:Y35 | J41:Q84 | **coluna A, linha 42** |
+| Faixa de status | O3:X4 | O3:R4 | Bio: **A39:U40** · Hema: **O3:U4** |
+| Largura das colunas | C..Q = 13,9 | variável | **A..U iguais nos dois** |
+| Gráfico | largura fixa | largura fixa | **acompanha a janela** |
+
+A faixa de status é a única diferença que sobrou, e é deliberada: o gestor pediu
+explicitamente para descer a da Bioquímica ("colocar na linha 39"). A da Hematologia
+ficou onde estava, porque ele aprovou aquele topo.
+
+### Um filtro de período, um dono
+
+O período tinha **três** implementações: as caixas de trimestre (`qsel1..4`, lidas pelo
+motor em `CarregarFiltro`), a lista Ano+Período (que escreve De/Até) e — descoberto
+durante a mudança — uma cláusula de trimestre dentro da fórmula de `Calc!D` (a coluna que
+decide que corrida entra no gráfico).
+
+Três caminhos para a mesma pergunta produzem respostas que se anulam: com "2º Tri"
+marcado e "T1" escolhido na lista, o Painel ficava vazio e nada na tela explicava por quê.
+Ficou **um**: `Ano` + `Período` escrevem `filtroDe`/`filtroAte`, e todo o resto lê essas
+duas datas.
+
+Os rótulos mudaram porque "(todos)" era ambíguo ao lado de um seletor de ano — todos os
+anos, ou o ano inteiro? Agora são **"Tudo (sem filtro)"** (limpa as datas: mostra os cinco
+anos) e **"Ano inteiro"**, além de T1..T4, S1/S2 e Jan..Dez.
+
+### O bloco de desempenho na coluna A
+
+As colunas de cima são estreitas (são tabelas de números curtos); o bloco precisa de
+largura para "Classificação" e "Frequência de CQ". A saída foi **grupos de colunas
+mescladas**: cada coluna lógica do bloco ocupa 1 a 4 colunas físicas (`G_SIGMA`,
+`G_PLANO`, `G_ERRO`, `G_REF`). Assim o bloco começa na coluna A, cabe na largura da tela e
+não força as tabelas de cima a engordar.
+
+### Gráfico elástico
+
+`mUI.AjustarGraficos` põe a largura do gráfico igual à largura **visível** da janela:
+`UsableWidth × 100 / Zoom` (UsableWidth vem em pontos de tela, já com o zoom aplicado; a
+largura de um objeto da planilha é em pontos de planilha). Roda no `Worksheet_Activate`,
+no `Worksheet_SelectionChange` (o Excel não avisa quando o zoom muda — o primeiro clique
+depois reajusta) e ao fim de `AtualizarGraficos`.
+
+### Consequências
+
+- A Bioquímica ganhou, de graça, quatro indicadores por nível que só a Hematologia
+  mostrava (ETp %, Bias %, ET %, Sigma) e a última violação — o motor já os calculava
+  (`engPainel`, colunas 19..21); só a interface não lia.
+- Cinco fórmulas `SUMPRODUCT` sobre 180 linhas × 2 níveis saíram do Painel da Bioquímica
+  (as contagens de Westgard passam a vir do motor, por posição).
+- Quem procurar o lote em E3 não acha mais: o nome `loteSel` mudou de alvo, e todo o VBA
+  lê pelo nome. Testes e documentação foram atualizados junto.
+
+### Três defeitos que a mudança revelou
+
+1. **`Calc!D` em `#NOME?`.** Apagar os nomes `qsel1..4` sem mexer na fórmula do Calc fez
+   a coluna de filtro virar erro — e erro ali é **zero corrida no gráfico, sem nada na
+   tela dizendo isso**. O instalador agora corta a cláusula (`painel.sem_trimestre`),
+   confere que nenhuma fórmula da pasta ainda cita `qsel` (`conferir_sem_qsel`) e recusa
+   salvar se o filtro não deixar passar nenhuma corrida.
+
+2. **O VBA compila procedimento a procedimento.** A Hematologia não tem o módulo
+   `mEstatPeriodo`; `mApp.AplicarFiltroAnoMes` chamava `mEstatPeriodo.JanelaInicio`. O
+   instalador rodou inteiro sem acusar nada — VBA só compila uma rotina quando alguém a
+   chama. O erro apareceu no primeiro clique: *"variável não definida"*, e com ele o
+   arquivo inteiro parou de responder. Correção: a conta de trimestre/semestre/mês virou
+   o módulo puro **`mPeriodo`** (sem célula, sem produto), instalado nos dois;
+   `mEstatPeriodo.Janela` delega a ele — uma conta, um lugar. E os instaladores ganharam
+   um **teste de fumaça** que CHAMA as rotinas novas, que é a única forma de forçar a
+   compilação delas.
+
+3. **`IsNumeric(Empty)` é VERDADEIRO em VBA.** Célula de ano vazia passava por "ano
+   válido", virava 0, e a rotina saía calada: o usuário escolhia "T1" e não acontecia
+   nada. Agora, sem ano, o sistema assume o ano da última corrida do banco e **escreve
+   na tela** qual ano assumiu.
+
+### Provas
+
+`testes/prova_ux.py` — **61/61 nos dois produtos** · `testes/prova_painel.py` (desenho) — **33/33** na Bioquímica e **30/30** na Hematologia, incluindo: filtro de trimestre
+(Bioquímica 110 → 52 corridas em T1; Hematologia 25 → 13), "Tudo (sem filtro)" limpando
+as datas, ano vazio preenchido sozinho, bloco na coluna A, última violação presente,
+barra de navegação começando em I1, gráfico acompanhando o zoom (1617 pt em 70%, 868 pt
+em 130%) e — o critério de aceite do gestor — **trocar de analito depois de tudo isso,
+sem erro**.
+
+## ADR-055 — Legenda, linha 1 e a auditoria de paridade entre os dois produtos
+
+**Data:** 20/09/2026 · **Status:** implantado · Detalhe em
+`_arquitetura/etapa1_multilote/ADR-055.md`.
+
+**A legenda cortava o rótulo** porque tinha 14 entradas numa caixa de 80 pt: seis são as
+linhas de limite (−3s..+3s), que se leem pela posição no gráfico, e "Repetição" aparecia
+três vezes (as três réplicas de Registros). Ficam seis entradas, embaixo e em linha — e o
+gráfico recupera os 80 pt do lado direito, onde ficam os pontos mais recentes. O critério
+é estrutural, não uma lista de nomes: sai o que é limite e sai todo nome repetido.
+
+**A barra de navegação cobria o título** da linha 1 em 61,5 pt na Bioquímica, porque
+`barra_navegacao` ESTIMAVA a largura do texto por `len × tamanho × 0,62` — conta que erra
+mais de 15% em fonte proporcional. Agora a largura é medida (caixa de texto com
+`AutoSize`), o título é Segoe UI 16 nos dois (era Calibri 22 e 18: o mesmo título em dois
+tamanhos) e a barra começa na coluna seguinte à que o título termina, pulando uma coluna
+vazia. Dá **K1 nos dois**.
+
+**A auditoria de paridade achou um defeito meu.** O realce "esta regra é a recomendada
+pelo Sigma" existia só na Bioquímica — e lá estava morto desde o ADR-054: `sigmaDoPlano`
+lia `Painel!V10:V11`, células que o Painel novo esvaziou. O arquivo mostrava `SEM DADOS`,
+nenhuma regra iluminada e as duas notas do bloco de desempenho em branco. Agora lê a
+coluna Sigma do Painel e existe nos dois produtos.
+
+Continuam diferentes, e cada um por um motivo: importação em massa (aba `Importar` na
+Bioquímica × `frmMassa` na Hematologia — duas implementações do mesmo recurso), o período
+da Estatística (`frmConfigEstatistica` só na Bioquímica) e a fonte do ETp (diferença
+científica deliberada, commit `a109495`).
+
+**Provas:** `testes/prova_painel.py` — **51/51 nos dois** (eram 33 e 30). A prova da
+legenda mede: a caixa tem de ser mais larga que a soma dos rótulos que sobraram, cada um
+com o espaço do seu marcador — com as 14 entradas em 80 pt, reprova.

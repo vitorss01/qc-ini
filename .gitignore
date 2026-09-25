@@ -57,3 +57,9 @@ _arquitetura/_backup_producao/
 # cache.abf e copia dos dados do laboratorio; localSettings guarda caminhos
 # desta maquina. Nada disso e fonte -- e estado de uma instalacao.
 PowerBI/**/.pbi/
+
+# Backups automaticos do instalador (copias .xlsm inteiras, uma por instalacao)
+_backup_pre_5anos_*/
+
+# Saida das baterias de teste (um JSON por execucao)
+_arquitetura/etapa1_multilote/resultados/
