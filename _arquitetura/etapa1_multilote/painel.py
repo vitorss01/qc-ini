@@ -27,6 +27,7 @@ Tudo aqui e apresentacao. Nenhuma conta muda: os numeros continuam vindo de
 Eng_Saida (engPainel) e da aba Estatistica.
 """
 
+import tema
 import ux
 
 # ---------------------------------------------------------------- larguras
@@ -35,12 +36,14 @@ import ux
 LARGURAS = [8.2, 5.2, 12.2, 7.2, 8.2, 6.2, 13.2, 8.2, 8.2, 8.9, 14.9, 15.9,
             14.9, 12.9, 21.9, 23.9, 17.9, 6.2, 18.0, 18.0, 22.0]      # A..U
 
-AZUL = 0x2C2813        # #13282C  texto de titulo
-VERDE = 0x6B6F1F       # #1F6F6B  fundo de cabecalho
-CLARO = 0xF4F6ED       # #EDF6F4  fundo de faixa
-BRANCO = 0xFFFFFF
-CINZA = 0x595959
-BORDA = 0xD8C8C8       # #C8C8D8
+# ADR-056: as cores vem do tema. Os nomes antigos ficam como apelido para o
+# resto do arquivo nao virar um diff de mil linhas.
+AZUL = tema.TINTA
+VERDE = tema.MARCA
+CLARO = tema.FAIXA
+BRANCO = tema.PAPEL
+CINZA = tema.TEXTO_FRACO
+BORDA = tema.REGUA
 
 # grupos de colunas mescladas do bloco de desempenho (coluna inicial = A)
 G_SIGMA = [('A', 'B'), ('C', 'D'), ('E', 'G'), ('H', 'I'), ('J', 'J'), ('K', 'L'), ('M', 'N'), ('O', 'O')]
@@ -259,7 +262,26 @@ def _est(c, ult, nivel):
 
 
 def _borda(rg, cor=BORDA):
-    for i in (7, 8, 9, 10):        # esquerda, topo, base, direita
+    """Uma regua horizontal embaixo, e mais nada (ADR-056).
+
+    A caixa em volta de cada linha era o maior denunciador de "isto e uma
+    planilha": tabela de sistema separa linhas com um fio, nunca desenha a
+    grade inteira. Tira esquerda, topo, direita e as verticais internas.
+    """
+    for i in (7, 8, 10, 11):       # esquerda, topo, direita, vertical interna
+        try:
+            rg.Borders(i).LineStyle = -4142        # xlNone
+        except Exception:
+            pass
+    b = rg.Borders(9)              # base
+    b.LineStyle = 1
+    b.Weight = 2
+    b.Color = cor
+
+
+def _caixa(rg, cor=tema.CONTORNO):
+    """Contorno fino nos quatro lados -- so para cartao e campo editavel."""
+    for i in (7, 8, 9, 10):
         b = rg.Borders(i)
         b.LineStyle = 1
         b.Weight = 2
@@ -331,7 +353,10 @@ def tabela(ws, r, grupos, cabecalhos, linhas, formatos=None):
     _borda(cab, VERDE)
     ws.Rows(r).RowHeight = 26
     r += 1
-    for lin in linhas:
+    # ADR-056: faixa alternada, so onde ha linha suficiente para o olho usar a
+    # listra como guia. Em tabela de 2 ou 3 linhas a zebra vira sujeira.
+    zebra = len(linhas) >= 4
+    for i_lin, lin in enumerate(linhas):
         for (c0, c1) in grupos:
             rg = ws.Range(f'{c0}{r}:{c1}{r}')
             if c0 != c1:
@@ -351,8 +376,10 @@ def tabela(ws, r, grupos, cabecalhos, linhas, formatos=None):
             c.Font.Name = 'Segoe UI'
             c.HorizontalAlignment = -4108
         faixa = ws.Range(f'A{r}:{col(fim)}{r}')
+        if zebra and i_lin % 2 == 1:
+            faixa.Interior.Color = tema.ZEBRA
         _borda(faixa)
-        ws.Rows(r).RowHeight = 16
+        ws.Rows(r).RowHeight = 17
         r += 1
     return r
 
@@ -461,6 +488,78 @@ def bloco_desempenho(ws, r0, nlv, ult, extras=(), fonte_etp=None):
     return r
 
 
+# --------------------------------------------------------------- cartoes
+# Tres cartoes no espaco que ja estava vazio (linhas 3-4, colunas O..U): nada
+# do topo aprovado pelo gestor muda de celula. Eles respondem, sem ler tabela,
+# as tres perguntas do dia: o metodo aguenta? a corrida passou? quanto violou?
+#
+# Sao CELULAS, nao shapes. Um shape com numero dentro nao acompanha a troca de
+# analito sem VBA; uma celula com formula acompanha sozinha.
+#
+# O rotulo vai na linha 3 e o numero na linha 4, porque celula mesclada tem uma
+# fonte so -- e o que faz o cartao e justamente o contraste entre o rotulo
+# miudo e o numero grande.
+CARTOES = [(('O', 'P'), 'SIGMA DO PLANO'),
+           (('Q', 'S'), 'STATUS DA CORRIDA'),
+           (('T', 'U'), 'VIOLAÇÕES NO PERÍODO')]
+
+
+def cartoes(ws, nlv):
+    """Cartoes de indicador nas linhas 3-4, a direita (ADR-056)."""
+    ult = 6 + nlv
+    ws.Rows(3).RowHeight = 19
+    ws.Rows(4).RowHeight = 23
+    valores = [
+        # o Sigma que governa o plano e o do PIOR nivel -- o mesmo criterio de
+        # Cfg_PlanoQC!B1, que ja o calcula (ADR-055)
+        ('=IF(NOT(ISNUMBER(sigmaDoPlano)),"",sigmaDoPlano)', '0,00" σ"'),
+        (f'=IF(COUNTIF($J$7:$J${ult},"REJEITADO")>0,"REJEITADO",'
+         f'IF(COUNTIF($J$7:$J${ult},"SEM MÉDIA/DP")>0,"SEM MÉDIA/DP",'
+         f'IF(COUNTIF($J$7:$J${ult},"OK")>0,"OK","—")))', 'Geral'),
+        (f'=IF(COUNT($R$7:$R${ult})=0,"",SUM($R$7:$R${ult}))', '#.##0'),
+    ]
+    for (c0, c1), rotulo in CARTOES:
+        i = [c for c, _ in CARTOES].index((c0, c1))
+        formula, fmt = valores[i]
+        for linha, texto, tam, negrito, cor_txt in (
+                (3, rotulo, tema.NOTA, False, tema.TEXTO_FRACO),
+                (4, formula, tema.CARTAO, True, tema.TINTA)):
+            rg = ws.Range(f'{c0}{linha}:{c1}{linha}')
+            rg.UnMerge()
+            rg.Merge()
+            c = ws.Range(f'{c0}{linha}')
+            if texto.startswith('='):
+                c.NumberFormatLocal = fmt
+                c.Formula = texto
+            else:
+                c.Value = texto
+            c.Font.Name = tema.FONTE
+            c.Font.Size = tam
+            c.Font.Bold = negrito
+            c.Font.Color = cor_txt
+            c.HorizontalAlignment = -4131        # esquerda: o olho le a coluna
+            c.VerticalAlignment = -4108
+            c.IndentLevel = 1
+        cartao = ws.Range(f'{c0}3:{c1}4')
+        cartao.Interior.Color = tema.FUNDO_CARTAO
+        _caixa(cartao)
+    # ---- cor que diz o estado, no proprio numero ----
+    sg = ws.Range('O4')
+    sg.FormatConditions.Delete()
+    _fc(sg, 1, 7, '=4', cor=tema.OK_TXT, negrito=True)        # >= 4 Sigma
+    _fc(sg, 1, 6, '=3', cor=tema.ERRO_TXT, negrito=True)      # < 3 Sigma
+    st = ws.Range('Q4')
+    st.FormatConditions.Delete()
+    _fc(st, 1, 3, '="OK"', cor=tema.OK_TXT, fundo=tema.OK_FUNDO, negrito=True)
+    _fc(st, 1, 3, '="REJEITADO"', cor=tema.ERRO_TXT, fundo=tema.ERRO_FUNDO, negrito=True)
+    _fc(st, 1, 3, '="SEM MÉDIA/DP"', cor=tema.FALTA_TXT, fundo=tema.FALTA_FUNDO, negrito=True)
+    vi = ws.Range('T4')
+    vi.FormatConditions.Delete()
+    _fc(vi, 1, 5, '=0', cor=tema.ERRO_TXT, negrito=True)      # qualquer violacao
+    _fc(vi, 1, 3, '=0', cor=tema.OK_TXT, negrito=True)        # nenhuma: verde
+    return len(CARTOES)
+
+
 # ------------------------------------------------------------------- cabecalho
 def _rotulo(ws, cel, texto, tam=9):
     c = ws.Range(cel)
@@ -484,8 +583,8 @@ def _campo(ws, faixa, lista, titulo_ajuda, msg):
     c.Font.Name = 'Segoe UI'
     c.HorizontalAlignment = -4108
     c.VerticalAlignment = -4108
-    rg.Interior.Color = 0xF2F2F2
-    _borda(rg, 0xA6A6A6)
+    rg.Interior.Color = tema.CAMPO
+    _caixa(rg, tema.CAMPO_BORDA)      # campo editavel MANTEM caixa: diz 'aqui se digita'
     rg.Locked = False
     try:
         c.Validation.Delete()
@@ -540,13 +639,13 @@ def cabecalho(ws, produto, nlv, ult, param, rotulos_regras, falta_media, alvo):
         c.Font.Size = 10
         c.HorizontalAlignment = -4108
         c.Locked = False
-        _borda(ws.Range(cel), 0xA6A6A6)
+        _caixa(ws.Range(cel), tema.CAMPO_BORDA)
     _campo(ws, 'H3:I3', '=lstLotes', 'Lote em análise',
            'Escolha o lote. Média, DP, limites, gráfico, Westgard e Estatística passam a usar SÓ os '
            'parâmetros deste lote.')
     ws.Range('H3:I3').NumberFormatLocal = '"Lote "0;;;"Lote "@'
     ws.Range('H3:I3').Font.Color = 0xFF0000
-    ws.Range('H3:I3').Interior.Color = 0xF2F2F2
+    ws.Range('H3:I3').Interior.Color = tema.CAMPO
     c = ws.Range('H4')
     c.Value = '▲ lote em análise'
     c.Font.Size = 8
@@ -820,6 +919,9 @@ def padronizar(wb, produto, nlv, ult, param, rotulos_regras, faixa, faixa_formul
                'Provedor do EQA deste analito. Trocar aqui grava na aba Analitos e refaz bias, ET e Sigma.')
         ws.Range('M4').Formula = prov
         ws.Range('M4').HorizontalAlignment = -4131
+
+    # ---- cartoes de indicador (ADR-056), no espaco vazio da direita ----
+    cartoes(ws, nlv)
 
     # ---- formatacao condicional das duas tabelas ----
     ult_lin = 6 + nlv

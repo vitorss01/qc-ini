@@ -288,7 +288,7 @@ def main(caminho, ref_h1, ref_bio):
         painel.padronizar(wb, 'Hematologia', NLV, EST_ULT,
                           ['BT', 'BV', 'BX'],
                           [('1-3S', 13), ('3-1S', 16), ('6X', 17), ('2of3-2S', 14), ('R4S', 15)],
-                          'O3:U4', faixa_f, LINHA_BLOCO)
+                          'A39:U40', faixa_f, LINHA_BLOCO)
         print('Painel: desenho padrao (topo, filtro Ano/Periodo, bloco de desempenho na coluna A)')
 
         # ================= Estatistica: tabela no desenho da Bioquimica, 3 niveis =================
@@ -313,7 +313,7 @@ def main(caminho, ref_h1, ref_bio):
         print('ADR-050: Calc lendo o motor, Liberacao A:B por valor')
         col_nav = painel.coluna_da_barra(pai)
         print(f'ADR-055: barra de navegacao comeca em {col_nav}1 (depois do titulo + 1 coluna)')
-        ux.aplicar(wb, 'Hematologia', 'H3', 'O3:U4', CAP_HEMA, col_nav + '1')
+        ux.aplicar(wb, 'Hematologia', 'H3', 'A39:U40', CAP_HEMA, col_nav + '1')
         print('ADR-051: navegacao, Inicio de aplicativo, status do lote colorido, Novo lote')
 
         # ================= roda =================
@@ -340,7 +340,7 @@ def main(caminho, ref_h1, ref_bio):
             'BT1': calc.Range('BT1').Value, 'BU1': calc.Range('BU1').Value, 'BX1': calc.Range('BX1').Value,
             'engLote': eng.Range('E1').Value, 'engNRun': eng.Range('I1').Value,
             'CalcB3': calc.Range('B3').Value, 'CalcF3': calc.Range('F3').Value, 'CalcAX3': calc.Range('AX3').Value,
-            'PainelB7': pai.Range('B7').Value, 'PainelC9': pai.Range('C9').Value, 'O3': pai.Range('O3').Value,
+            'PainelB7': pai.Range('B7').Value, 'PainelC9': pai.Range('C9').Value, 'faixa': pai.Range('A39').Value,
             'EstC14': est.Range('C14').Value, 'EstD16': est.Range('D16').Value, 'EstL14': est.Range('L14').Value,
             'erros_formula': contar_erros(wb),
             'filtroCalc': ex.xl.WorksheetFunction.CountIf(calc.Range('D3:D182'), 1),

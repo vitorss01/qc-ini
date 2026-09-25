@@ -194,6 +194,29 @@ um commit, para poder reverter. Fica para um commit próprio.
 
 **Provas:** `testes/prova_painel.py` — **51/51 nos dois** (eram 33 e 30).
 
+## 4e. O Excel com cara de sistema — ADR-056
+
+*Commit separado, para poder ser revertido se o gestor não gostar.*
+
+**Três cartões** no alto do Painel, no espaço que já estava vazio: **Sigma do plano**,
+**Status da corrida** e **Violações no período** — as três perguntas do dia, sem ler
+tabela. São células com fórmula (acompanham a troca de analito sozinhas) e a cor sai do
+próprio valor: Sigma ≥ 4 verde e < 3 vermelho, Status em pílula verde ou vermelha.
+
+**Uma família de fonte** em todas as telas — o Painel já estava em Segoe UI, as outras
+continuavam em Calibri e a troca entre elas denunciava que são abas, não páginas.
+**Tabela sem grade**: só uma régua fina entre as linhas, como em tela de sistema; campo
+editável mantém a caixa, porque ali a borda diz onde se digita.
+
+**Os dois Painéis ficaram idênticos.** A faixa de status da Hematologia era a única
+diferença que restava e morava justamente onde os cartões entram (O3:U4); desceu para
+A39:U40, como a da Bioquímica.
+
+**Não foi tocado:** o gráfico. Formatar elemento de gráfico abre um modal que o Excel não
+deixa suprimir (§4d).
+
+**Provas:** `testes/prova_painel.py` — **69/69** na Bioquímica e **71/71** na Hematologia.
+
 ## 5. Riscos que permanecem
 
 1. **Versionamento de parâmetro.** Mudar a média/DP de um lote reinterpreta todo o

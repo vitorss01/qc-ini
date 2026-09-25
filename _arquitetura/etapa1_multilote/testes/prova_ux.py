@@ -21,7 +21,7 @@ import xlh     # noqa: E402
 RES = []
 
 # ADR-054: a faixa de status desceu para baixo do grafico na Bioquimica
-FAIXA = {'bio': 'A39', 'hema': 'O3'}
+FAIXA = {'bio': 'A39', 'hema': 'A39'}
 
 
 def chk(n, ok, d=''):

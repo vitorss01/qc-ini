@@ -3029,3 +3029,39 @@ científica deliberada, commit `a109495`).
 **Provas:** `testes/prova_painel.py` — **51/51 nos dois** (eram 33 e 30). A prova da
 legenda mede: a caixa tem de ser mais larga que a soma dos rótulos que sobraram, cada um
 com o espaço do seu marcador — com as 14 entradas em 80 pt, reprova.
+
+## ADR-056 — O Excel com cara de sistema: cartões, uma fonte, sem grade
+
+**Data:** 20/09/2026 · **Status:** implantado, em **commit próprio e reversível** (pedido
+do gestor) · Detalhe em `_arquitetura/etapa1_multilote/ADR-056.md`.
+
+Não existe skill que faça isto — a que o gestor anexou (`excel-to-web-system`) não é de
+visual: ela orienta substituir a planilha por uma aplicação web. É ofício, e o limite é
+real: o Excel não tem hover, foco nem painel lateral. O que ele tem, e quase ninguém usa,
+é **tirar coisa**.
+
+**Três cartões de indicador** no Painel (Sigma do plano, Status da corrida, Violações no
+período), nas linhas 3–4 das colunas O..U — espaço que já estava vazio. São **células com
+fórmula**, não shapes: shape com número dentro não acompanha a troca de analito sem VBA.
+Rótulo na linha 3 e número na linha 4, porque célula mesclada tem uma fonte só e o cartão
+existe pelo contraste entre os dois. A cor sai da formatação condicional do próprio número.
+
+**Uma família de fonte** em todas as telas (`ux.tipografia`), só a família — tamanho, cor e
+alinhamento ficam, porque são eles que carregam a hierarquia aprovada. **Tabela sem grade**:
+`painel._borda` passa a pôr só a régua de baixo; campo editável mantém a caixa, onde a borda
+tem função. Faixa alternada só em tabela de quatro linhas ou mais. E `tema.py` reúne a
+paleta e a escala tipográfica, com a armadilha documentada: **o Excel guarda cor em BGR**.
+
+**Consequência com nome:** a faixa de status da Hematologia, que era a única diferença que
+sobrava entre os dois Painéis, morava exatamente em O3:U4. Desceu para A39:U40, como a da
+Bioquímica — agora os dois Painéis são idênticos, que era o objetivo declarado do gestor.
+
+**Três defeitos que a troca de fonte revelou**, todos da mesma família (Segoe UI é mais
+larga que Calibri, e as folgas do layout eram para Calibri): a barra de navegação voltou a
+cobrir o título na aba Analitos, porque a fonte era trocada DEPOIS de posicionar a barra —
+a mesma lição do ADR-055 por outro caminho; duas famílias de fonte na mesma aba, porque
+desenhar a barra pinta colunas que ainda não estavam no `UsedRange` (daí serem duas
+passadas de `tipografia`); e rótulos cortados no Início e na aba Analitos, resolvidos
+medindo o maior rótulo e com `ShrinkToFit`.
+
+**Fica de fora:** qualquer formatação de gráfico, pelo modal descrito no ADR-055 §4.

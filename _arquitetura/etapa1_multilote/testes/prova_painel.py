@@ -17,7 +17,9 @@ import painel  # noqa: E402
 import xlh     # noqa: E402
 
 RES = []
-FAIXA = {'bio': 'A39:U40', 'hema': 'O3:U4'}
+# ADR-056: a faixa de status desceu tambem na Hematologia -- os cartoes de
+# indicador ocupam O3:U4, e os dois Paineis passam a ser identicos.
+FAIXA = {'bio': 'A39:U40', 'hema': 'A39:U40'}
 
 
 def chk(n, ok, d=''):
@@ -150,6 +152,38 @@ def main(src, prod):
                 ch.Legend.Height >= len(fica) * 12, (ch.Legend.Height, len(fica)))
             chk(f'{co.Name}: legenda cabe na altura do grafico',
                 ch.Legend.Height <= co.Height, (ch.Legend.Height, co.Height))
+        # ---- cartoes de indicador (ADR-056) ----
+        for (c0, c1), rotulo in painel.CARTOES:
+            chk(f'cartao "{rotulo}" em {c0}3', str(ws.Range(f'{c0}3').Value) == rotulo,
+                ws.Range(f'{c0}3').Value)
+            v = ws.Range(f'{c0}4')
+            chk(f'cartao "{rotulo}" tem formula (acompanha a troca de analito)',
+                str(v.Formula).startswith('='), str(v.Formula)[:60])
+            chk(f'cartao "{rotulo}" ocupa {c0}3:{c1}4',
+                ws.Range(f'{c0}3').MergeArea.Address.replace('$', '') == f'{c0}3:{c1}3'
+                and v.MergeArea.Address.replace('$', '') == f'{c0}4:{c1}4',
+                (ws.Range(f'{c0}3').MergeArea.Address, v.MergeArea.Address))
+        chk('cartao do Sigma traz numero', isinstance(ws.Range('O4').Value, (int, float)),
+            ws.Range('O4').Value)
+        chk('cartao do Status traz um dos estados previstos',
+            str(ws.Range('Q4').Value) in ('OK', 'REJEITADO', 'SEM MÉDIA/DP', '—'),
+            ws.Range('Q4').Value)
+        chk('cartao de violacoes traz numero', isinstance(ws.Range('T4').Value, (int, float)),
+            ws.Range('T4').Value)
+        chk('cartoes nao invadiram o seletor de EQA nem os filtros',
+            str(ws.Range('J3').Value) == 'Ano' and str(ws.Range('J4').Value) == 'Período',
+            (ws.Range('J3').Value, ws.Range('J4').Value))
+        # ---- uma familia de fonte em todas as telas de uso ----
+        fora = []
+        for aba in ('Início', 'Painel', 'Analitos', 'Configuração', 'Estatística',
+                    'Liberação', 'Registros'):
+            try:
+                f = wb.Sheets(aba).UsedRange.Font.Name
+            except Exception:
+                continue
+            if str(f) != painel.tema.FONTE:
+                fora.append(f'{aba}={f}')
+        chk('todas as telas de uso na mesma fonte', not fora, fora)
         # ---- realce da regra recomendada pelo Sigma ----
         for nome in ('sigmaDoPlano', 'regrasAtivas', 'regrasRotulos'):
             chk(f'nome {nome} existe (realce da regra recomendada)',

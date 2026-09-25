@@ -40,7 +40,7 @@ P = {
                 val=('F', 'AB'), z=('G', 'AC'), st=('P', 'AL'),
                 lim=(('Q', 'T', 'W'), ('AM', 'AP', 'AS')),
                 par=(('AX', 'AY'), ('AZ', 'BA')), inicio=dt.date(2026, 1, 5)),
-    'hema': dict(nlv=3, lotes_ano=8, todo_dia=True, seg=0.0, cel_lote='H3', faixa='O3',
+    'hema': dict(nlv=3, lotes_ano=8, todo_dia=True, seg=0.0, cel_lote='H3', faixa='A39',
                  val=('F', 'AB', 'AX'), z=('G', 'AC', 'AY'), st=('P', 'AL', 'BH'),
                  lim=(('Q', 'T', 'W'), ('AM', 'AP', 'AS'), ('BI', 'BL', 'BO')),
                  par=(('BT', 'BU'), ('BV', 'BW'), ('BX', 'BY')), inicio=dt.date(2026, 1, 1)),

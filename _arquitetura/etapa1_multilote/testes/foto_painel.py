@@ -53,7 +53,23 @@ def main(src, saida, linhas=60):
         while ult < 40 and ws.Cells(1, ult).Left + ws.Cells(1, ult).Width < larg_max:
             ult += 1
         faixa = ws.Range(ws.Cells(1, 1), ws.Cells(linhas, ult))
-        faixa.CopyPicture(1, -4147)           # xlScreen, xlBitmap: sai como esta na tela
+        # xlScreen+xlBitmap sai igualzinho a tela, mas EXIGE que a janela esteja
+        # sendo desenhada de verdade -- com a sessao bloqueada, ou com outro
+        # Excel segurando a area de transferencia, ele falha com "o metodo
+        # CopyPicture falhou". xlPicture (metarquivo) nao depende da tela.
+        erro = None
+        for apar, fmt, nome in ((1, -4147, 'tela/bitmap'), (1, -4142, 'tela/metarquivo'),
+                                (2, -4142, 'impressao/metarquivo')):
+            try:
+                faixa.CopyPicture(apar, fmt)
+                print('copia:', nome)
+                erro = None
+                break
+            except Exception as e:                # pode ser transitorio: espera e tenta o proximo
+                erro = e
+                time.sleep(1.0)
+        if erro is not None:
+            raise erro
         co = ws.ChartObjects().Add(0, 0, faixa.Width, faixa.Height)
         ch = co.Chart
         # o quadro vazio desenha eixos proprios; eles apareciam por baixo da

@@ -17,6 +17,8 @@ aberta. Nada aqui calcula -- so apresenta e navega:
   Configuracao        botao "Novo lote" (cadastro guiado).
 """
 
+import tema
+
 NAV = [  # chave, macro, rotulo
     ('inicio', 'IrInicio', 'Início'),
     ('painel', 'IrPainel', 'Painel'),
@@ -110,6 +112,22 @@ def larg_texto(ws, texto, fonte, tam, negrito):
             pass
 
 
+def largura_coluna(ws, letra, pontos):
+    """Deixa a coluna com ~`pontos` de largura.
+
+    `ColumnWidth` e medido em CARACTERES da fonte padrao da pasta, e `Width` em
+    pontos -- nao ha formula exata entre os dois (depende da fonte). Converge em
+    duas ou tres tentativas, que e barato e nao depende de constante magica.
+    """
+    c = ws.Columns(letra)
+    for _ in range(4):
+        atual = float(c.Width)
+        if abs(atual - pontos) < 1.5:
+            break
+        c.ColumnWidth = max(1.0, float(c.ColumnWidth or 8.43) * pontos / max(atual, 1.0))
+    return float(c.Width)
+
+
 def barra_navegacao(ws, extras=(), inicio=None):
     """Botoes de navegacao no alto da tela, alinhados a direita da faixa de titulo.
     extras: [(nome, macro, texto, largura)] -- atalhos proprios da tela, a esquerda.
@@ -153,13 +171,47 @@ def barra_navegacao(ws, extras=(), inicio=None):
         c = c0
         while ws.Cells(1, c).Left < fim_barra and c < c0 + 60:
             c += 1
-        linhas = a1.Rows.Count if alt == a1.Height else 2
         cor = ws.Range('A1').Interior.Color
+        # Quantas linhas tem a faixa? Nao da para deduzir da mescla de A1: na
+        # Liberacao ela e so A1:F1, mas a faixa escura cobre o titulo E o
+        # subtitulo (linha 2). Pintando so a linha 1, a metade de baixo dos
+        # botoes ficava sobre branco. Pergunta a propria linha 2 (ADR-056).
+        linhas = 1
+        try:
+            if ws.Range('A2').Interior.Color == cor:
+                linhas = 2
+        except Exception:
+            pass
+        linhas = max(linhas, a1.Rows.Count)
+        # Pintar estas celulas alarga o UsedRange da aba -- ver o comentario
+        # sobre a segunda passada de tipografia() em aplicar().
         ws.Range(ws.Cells(1, c0), ws.Cells(linhas, c)).Interior.Color = cor
 
 
 def telas_de_uso(wb):
     return [ws for ws in wb.Worksheets if ws.Name not in TECNICAS]
+
+
+def tipografia(wb):
+    """Uma familia de fonte em todas as telas de uso (ADR-056).
+
+    O Painel ja estava em Segoe UI; as outras telas continuavam em Calibri, e
+    passar de uma para outra pela barra de navegacao denunciava que sao abas de
+    planilha, nao paginas do mesmo sistema. Troca so a FAMILIA -- tamanho, cor,
+    negrito e alinhamento de cada tela ficam como estao, porque sao eles que
+    carregam a hierarquia que ja foi aprovada.
+
+    Mexe so no intervalo USADO: `Cells.Font.Name` numa aba inteira reescreve
+    1 048 576 linhas e infla o arquivo.
+    """
+    n = 0
+    for ws in telas_de_uso(wb):
+        try:
+            ws.UsedRange.Font.Name = tema.FONTE
+            n += 1
+        except Exception:
+            continue
+    return n
 
 
 def inicio(ws, produto):
@@ -233,6 +285,12 @@ def inicio(ws, produto):
         ws.Range(f'B{r}').Font.Bold = True
         ws.Range(f'C{r}').HorizontalAlignment = -4131
         ws.Range(f'B{r}:G{r}').Borders(9).Color = rgb(200, 220, 216)
+    # A coluna do rotulo tem de caber o rotulo. Segoe UI e ~5% mais larga que
+    # Calibri no mesmo corpo, e "Analitos sem média/DP no lote em uso" passou a
+    # ser cortado pela celula seguinte (ADR-056). Mede, nao estima.
+    tam = float(ws.Range(f'B{r0 + 1}').Font.Size or 11)
+    maior = max(larg_texto(ws, rot, tema.FONTE, tam, True) for rot, _ in linhas)
+    largura_coluna(ws, 'B', maior + 12)
     ultima = r0 + len(linhas)
     # alerta: analitos sem parametro em vermelho
     c = ws.Range(f'C{ultima}')
@@ -298,16 +356,40 @@ def painel(ws, cel_lote, faixa, inicio_nav='I1'):
     o3.Font.Bold = True
     o3.WrapText = True
     o3.VerticalAlignment = -4108
-    barra_navegacao(ws, [('nav_mediadp', 'IrParametrosDoAnalito', '✎ Média/DP deste lote',
-                          EXTRA_PAINEL)], inicio=inicio_nav)
+
+
+# Atalhos proprios de cada tela, a esquerda da barra. Ficam num mapa porque a
+# barra e desenhada NUMA passada so, depois da fonte (ADR-056): e a largura do
+# titulo que diz onde a barra comeca, e a fonte muda essa largura.
+EXTRAS = {
+    'Painel': [('nav_mediadp', 'IrParametrosDoAnalito', '✎ Média/DP deste lote', EXTRA_PAINEL)],
+    'Analitos': [('nav_trocarlote', 'IrLotePainel', 'Trocar lote ▸', 96)],
+    'Configuração': [('nav_novolote', 'NovoLote', '+ Novo lote', 96)],
+}
+
+
+def barras(wb, inicio_nav):
+    """Desenha a barra de navegacao de todas as telas. No Inicio nao vai: la os
+    botoes grandes JA sao a navegacao."""
+    for ws in telas_de_uso(wb):
+        if ws.Name == 'Início':
+            continue
+        barra_navegacao(ws, EXTRAS.get(ws.Name, ()),
+                        inicio=inicio_nav if ws.Name == 'Painel' else None)
 
 
 def analitos(ws):
-    barra_navegacao(ws, [('nav_trocarlote', 'IrLotePainel', 'Trocar lote ▸', 96)])
+    """Nome de analito longo passou a ser cortado com a fonte nova.
+
+    "Capacidade de fixação do ferro" aparecia como "acidade de fixação do fe":
+    a celula e centralizada, entao o excesso e cortado dos DOIS lados, e Segoe
+    UI e mais larga que Calibri no mesmo corpo. ShrinkToFit encolhe apenas o
+    que nao cabe -- os outros 30 nomes continuam no tamanho da tabela.
+    """
+    ws.Range('A4:A43').ShrinkToFit = True
 
 
 def configuracao(ws):
-    barra_navegacao(ws, [('nav_novolote', 'NovoLote', '+ Novo lote', 96)])
     alvo = ws.Range('D23')
     _botao(ws, 'nav_novolote2', 'NovoLote', '+ Novo lote', alvo.Left + alvo.Width + 6, alvo.Top - 2, 96, 20,
            rgb(31, 111, 60), BRANCO, tam=9)
@@ -327,9 +409,6 @@ def aplicar(wb, produto, cel_lote, faixa, cap, inicio_nav='I1'):
         pass
     wb.Names.Add(nm, f'={cap}')
     sh = {s.Name: s for s in wb.Worksheets}
-    for ws in telas_de_uso(wb):
-        if ws.Name != 'Início':               # no Inicio os botoes grandes ja sao a navegacao
-            barra_navegacao(ws)
     inicio(sh['Início'], produto)
     painel(sh['Painel'], cel_lote, faixa, inicio_nav)
     analitos(sh['Analitos'])
@@ -345,3 +424,18 @@ def aplicar(wb, produto, cel_lote, faixa, cap, inicio_nav='I1'):
     c3.Validation.InputTitle = 'Analito'
     c3.Validation.InputMessage = 'Escolha o analito na lista (ou use o spinner ▲▼).'
     c3.MergeArea.Locked = False
+    # ORDEM IMPORTA, e sao DUAS passadas de fonte, por dois motivos diferentes.
+    #
+    # A primeira vem ANTES das barras porque a fonte muda a LARGURA do titulo, e
+    # e a largura do titulo que diz onde a barra pode comecar: trocar a fonte
+    # depois de posicionar punha a barra por cima do titulo outra vez -- foi o
+    # que aconteceu na aba Analitos ("...ESPECIFICAÇÕES (até" cortado).
+    #
+    # A segunda vem DEPOIS porque desenhar a barra pinta a faixa escura em
+    # colunas que ainda nao estavam no UsedRange; elas entram com a fonte padrao
+    # da pasta, e a aba fica com duas familias (Liberacao e Registros ficaram
+    # com 400 celulas em Calibri). A segunda passada nao mexe em largura nenhuma
+    # -- o titulo ja esta na fonte nova.
+    tipografia(wb)
+    barras(wb, inicio_nav)
+    tipografia(wb)
