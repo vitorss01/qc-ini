@@ -63,3 +63,10 @@ _backup_pre_5anos_*/
 
 # Saida das baterias de teste (um JSON por execucao)
 _arquitetura/etapa1_multilote/resultados/
+
+# Backups automaticos do instalador da integracao DB_SEAC (ADR-057)
+_backup_pre_integracao_*/
+
+# Copia local do DB_SEAC (dados do laboratorio) usada como fonte do Power Query.
+# O remoto e publico: a copia e os backups dela nunca sao versionados.
+INTERFACEAMENTO_DB_COPIA/

@@ -1,0 +1,589 @@
+[
+ {
+  "teste": "T01b Botões: cada aba de dados tem os botões DB · Inativar · Digitar Resultados · Principal - Resultados (mesmo nome das abas)",
+  "resultado": "PASS",
+  "evidencia": {
+   "DB": [
+    "DB",
+    "Inativar",
+    "Digitar Resultados",
+    "Principal - Resultados"
+   ],
+   "Inativar": [
+    "DB",
+    "Inativar",
+    "Digitar Resultados",
+    "Principal - Resultados"
+   ],
+   "Digitar Resultados": [
+    "DB",
+    "Inativar",
+    "Digitar Resultados",
+    "Principal - Resultados"
+   ],
+   "Principal - Resultados": [
+    "DB",
+    "Inativar",
+    "Digitar Resultados",
+    "Principal - Resultados"
+   ]
+  }
+ },
+ {
+  "teste": "T01 Estrutura: abas novas presentes; LEGADO/IMPORTAR/Resultados/DB_Resultados/Cfg_Status removidas; Rep 1-3 removidas; módulos legados removidos",
+  "resultado": "PASS",
+  "evidencia": {
+   "abas_novas": [
+    "DB",
+    "DB_ORGANIZADO",
+    "Digitar Resultados",
+    "Inativar",
+    "COMENTARIOS_TECNICOS",
+    "Principal - Resultados",
+    "QA_INTEGRACAO",
+    "Cfg_Integracao"
+   ],
+   "legado_restante": [],
+   "modulos_legados_restantes": [],
+   "cabecalho_Registros": [
+    "Nº",
+    "Data",
+    "Analito",
+    "Nível",
+    "Corrida (Seq)",
+    "Foi calibrado?",
+    "Observação",
+    "Responsável",
+    "Assinatura",
+    "Status"
+   ]
+  }
+ },
+ {
+  "teste": "T02 DB_RECEBIMENTO recebe o DB_SEAC com as colunas do DB_SEAC + ID_REGISTRO + RECEBIDO_EM",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas": 44392,
+   "colunas": [
+    "ID_REGISTRO",
+    "EQUIPAMENTO",
+    "LOTE",
+    "NIVEL",
+    "NIVEL_DESC",
+    "DATA",
+    "DATA_HORA",
+    "ANALITO",
+    "VALOR",
+    "FLAG",
+    "ID_ORIGEM",
+    "ID_AMOSTRA",
+    "ITEM_ID",
+    "UNIDADE",
+    "RECEBIDO_EM"
+   ],
+   "ids_unicos": 44392
+  }
+ },
+ {
+  "teste": "T03 DB_ORGANIZADO horizontal (uma coluna por analito)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas": 1413,
+   "colunas": [
+    "DATA",
+    "DATA_HORA",
+    "EQUIPAMENTO",
+    "LOTE",
+    "NIVEL",
+    "NIVEL_DESC",
+    "WBC",
+    "RBC",
+    "HGB",
+    "HCT",
+    "MCV",
+    "MCH",
+    "..."
+   ],
+   "n_colunas": 39
+  }
+ },
+ {
+  "teste": "T04 DB_CQ_FINAL: uma linha por resultado, ID único, campos obrigatórios, <=1 participante por corrida/nível",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas": 44392,
+   "colunas": 39,
+   "ids_unicos": 44392,
+   "status": {
+    "ATIVO": 43710,
+    "DUPLICIDADE_ORIGEM": 589,
+    "SEM_VALOR": 93
+   },
+   "plotagem": {
+    "NORMAL": 43710,
+    "NAO_PLOTAR": 682
+   },
+   "tempo_atualizacao_s": 85.6,
+   "resumo": "Atualização concluída.\r\n\r\nResultados recebidos: 44.392 (novos nesta atualização: 0)\r\nPrincipal - Resultados: 44.392 resultados\r\nQA da integração: 0 erro(s), 589 alerta(s), 42 informativo(s).\r\n\r\nTempo: tblDB_Recebimento 10,9s · tblDB_Organizado 6,8s · tblCQ_Final 43,7s · tblQA_Integracao 17,4s · motor 5,8s"
+  }
+ },
+ {
+  "teste": "T05 Resultado real escolhido no LJ em tela (analito/lote/RUN)",
+  "resultado": "PASS",
+  "evidencia": {
+   "analito": "BASO#",
+   "lote": "522611",
+   "equip": null,
+   "slot": [
+    55,
+    25103103,
+    0.15
+   ],
+   "candidato": {
+    "ID_REGISTRO": "HEM-213735",
+    "ORIGEM_RESULTADO": "INTERFACEAMENTO",
+    "SETOR": "HEMATOLOGIA",
+    "EQUIPAMENTO": "XN1000",
+    "MATRIZ": "SANGUE TOTAL",
+    "BLOCO": null,
+    "DATA": "2025-10-31 00:00:00",
+    "HORA": 0.5919444444444445,
+    "DATA_HORA": "2025-10-31 14:12:24",
+    "CORRIDA_NO_DIA": 3.0,
+    "RUN": 25103103.0,
+    "NIVEL": 1.0,
+    "NIVEL_DESC": "1 - NORMAL",
+    "LOTE": "522611",
+    "ANALITO": "BASO#",
+    "ANALITO_ORIGEM": "BASO#",
+    "ANALITO_CADASTRADO": "SIM",
+    "RESULTADO": 0.15,
+    "UNIDADE": "10*3/uL",
+    "FLAG": null,
+    "STATUS_ANALITICO": "ATIVO",
+    "PARTICIPA_ESTATISTICA": "SIM",
+    "REGISTRAR_RESULTADO_NO_LJ": "SIM",
+    "TIPO_PLOTAGEM_LJ": "NORMAL",
+    "INATIVACAO_REGISTRADA": "NÃO",
+    "COMENTARIO_TECNICO": null,
+    "TEM_JUSTIFICATIVA": "NÃO",
+    "GOVERNANCA": "OK",
+    "DATA_INATIVACAO": null,
+    "USUARIO_INATIVACAO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null,
+    "ID_RELACIONADO": null,
+    "ID_ORIGEM": 213735.0,
+    "ID_AMOSTRA": "QC-52261101",
+    "ITEM_ID": 37.0,
+    "PRIMEIRO_DO_DIA": null,
+    "MOTIVO_MANUAL": null,
+    "USUARIO_MANUAL": null,
+    "RECEBIDO_EM": "2026-10-02 15:04:40.600000"
+   }
+  }
+ },
+ {
+  "teste": "T06 ID estável: mesmos IDs e mesmo RUN após 3 atualizações",
+  "resultado": "PASS",
+  "evidencia": {
+   "ids": 44392,
+   "ids_base": 44392,
+   "exemplo": [
+    "HEM-213735",
+    25103103.0
+   ]
+  }
+ },
+ {
+  "teste": "T07 Inativação por ID: soft-delete (origem intacta, registro continua, PARTICIPA=NÃO), checkbox padrão SIM, carimbo automático",
+  "resultado": "PASS",
+  "evidencia": {
+   "linha_inativacao": {
+    "ID_REGISTRO": "HEM-213735",
+    "REGISTRAR - LJ": true,
+    "DATA_INATIVACAO": "2026-10-02 15:24:46",
+    "USUARIO": "QCINI",
+    "ANALITO": "=IF(tblInativacao_NaoConformes[[#This Row],[ID_REGISTRO]]=\"\",\"\",IFERROR(XLOOKUP(tblInativacao_NaoConformes[[#This Row],[ID_REGISTRO]],tblCQ_Final[ID_REGISTRO],tblCQ_Final[ANALITO]),\"—\"))",
+    "NIVEL": 1.0,
+    "LOTE": "=IF(tblInativacao_NaoConformes[[#This Row],[ID_REGISTRO]]=\"\",\"\",IFERROR(XLOOKUP(tblInativacao_NaoConformes[[#This Row],[ID_REGISTRO]],tblCQ_Final[ID_REGISTRO],tblCQ_Final[LOTE]),\"—\"))",
+    "DATA_HORA": "2025-10-31 14:12:24",
+    "RUN": 25103103.0,
+    "RESULTADO": 0.15,
+    "PLOTAGEM_LJ": "=IF(tblInativacao_NaoConformes[[#This Row],[ID_REGISTRO]]=\"\",\"\",IFERROR(XLOOKUP(tblInativacao_NaoConformes[[#This Row],[ID_REGISTRO]],tblCQ_Final[ID_REGISTRO],tblCQ_Final[TIPO_PLOTAGEM_LJ]),\"—\"))",
+    "JUSTIFICATIVA": "=IF(tblInativacao_NaoConformes[[#This Row],[ID_REGISTRO]]=\"\",\"\",IF(COUNTIF(tblComentariosTecnicos[ID_REGISTRO],tblInativacao_NaoConformes[[#This Row],[ID_REGISTRO]])>0,\"OK\",\"FALTA — ver COMENTARIOS_TECNICOS\"))"
+   },
+   "final": {
+    "ID_REGISTRO": "HEM-213735",
+    "STATUS_ANALITICO": "INATIVADO",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "REGISTRAR_RESULTADO_NO_LJ": "SIM",
+    "TIPO_PLOTAGEM_LJ": "X_VERMELHO",
+    "RESULTADO": 0.15
+   },
+   "origem_identica": true
+  }
+ },
+ {
+  "teste": "T08 Governança: inativado SEM comentário = QA ERRO E01 (FAIL de governança detectado)",
+  "resultado": "PASS",
+  "evidencia": {
+   "achado": {
+    "SEVERIDADE": "ERRO",
+    "CODIGO": "E01",
+    "TESTE": "Resultado inativado sem justificativa tecnica",
+    "ID_REGISTRO": "HEM-213735",
+    "ANALITO": "BASO#",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2025-10-31 14:12:24",
+    "DETALHE": "ERRO DE GOVERNANÇA: HEM-213735 | BASO# | nivel 1 | 31/10/2025 14:12 -- inativado sem COMENTARIO_TECNICO; registrar a justificativa na aba COMENTARIOS_TECNICOS"
+   }
+  }
+ },
+ {
+  "teste": "T09 LJ: inativado com REGISTRAR-LJ=SIM aparece como X na posição da corrida, fora da série normal e do Westgard",
+  "resultado": "PASS",
+  "evidencia": {
+   "slot": 55,
+   "RUN": 25103103,
+   "engXN1": 0.15,
+   "engValN1": null,
+   "Calc_X": 0.15,
+   "Calc_valor": "",
+   "veredicto_Westgard_N1": null
+  }
+ },
+ {
+  "teste": "T09b Principal - Resultados -> Levey-Jennings: todo resultado que participa está no ponto da sua corrida/nível, nenhum ponto sem origem, todo inativado com REGISTRAR-LJ aparece como X",
+  "resultado": "PASS",
+  "evidencia": {
+   "pontos_conferidos": 151,
+   "divergentes": [],
+   "pontos_sem_origem": 0,
+   "X_ausentes": [],
+   "janela_corridas": 56
+  }
+ },
+ {
+  "teste": "T09c Imagem do gráfico com o X exportada para conferência visual",
+  "resultado": "PASS",
+  "evidencia": {
+   "arquivo": "C:\\Users\\VITOR~1.SAN\\AppData\\Local\\Temp\\claude\\C--Users-vitor-santos-OneDrive---MSFT-INI-DB-AJUSTES-OneDrive---MSFT-Desktop-QC-INI-PRONTO\\cc5cf662-a93c-4a60-a8b5-23064798503c\\scratchpad\\bench\\final\\LJ_Hematologia_X_vermelho.png"
+  }
+ },
+ {
+  "teste": "T10 X sem impacto estatístico: n/média/DP do Painel = população SIM (recalculada à parte); n caiu 1",
+  "resultado": "PASS",
+  "evidencia": {
+   "antes": [
+    1.0,
+    50.0,
+    0.1454,
+    0.0057888,
+    3.981292904
+   ],
+   "depois": [
+    1.0,
+    49.0,
+    0.145306122,
+    0.005810207,
+    3.998597397
+   ],
+   "independente": [
+    49,
+    0.14530612244897959,
+    0.005810206829482101
+   ]
+  }
+ },
+ {
+  "teste": "T11 Gráfico: série \"Não conforme (X)\" com marcador X vermelho e SEM linha ligando à série",
+  "resultado": "PASS",
+  "evidencia": {
+   "series": [
+    "Não conforme (X)",
+    "Não conforme (X)",
+    "Não conforme (X)"
+   ],
+   "marcador": [
+    -4168,
+    -4168,
+    -4168
+   ],
+   "cor_BGR": 255,
+   "tamanho": [
+    6,
+    6,
+    6
+   ]
+  }
+ },
+ {
+  "teste": "T12 Comentário técnico: com justificativa o QA passa (E01 some), TEM_JUSTIFICATIVA=SIM",
+  "resultado": "PASS",
+  "evidencia": {
+   "COMENTARIO_TECNICO": "QA automatizado: resultado fora do esperado, repetido.",
+   "GOVERNANCA": "OK"
+  }
+ },
+ {
+  "teste": "T13 REGISTRAR-LJ desmarcado: não plota, não participa, continua auditável; estatística igual ao estado X",
+  "resultado": "PASS",
+  "evidencia": {
+   "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+   "slot_no_LJ": 55,
+   "painel_X": [
+    1.0,
+    49.0,
+    0.145306122,
+    0.005810207,
+    3.998597397
+   ],
+   "painel_nao_plotar": [
+    1.0,
+    49.0,
+    0.145306122,
+    0.005810207,
+    3.998597397
+   ]
+  }
+ },
+ {
+  "teste": "T14 Reabilitação: apagar o ID volta ATIVO/NORMAL, mesmo ID, sem duplicar, estatística volta ao valor inicial",
+  "resultado": "PASS",
+  "evidencia": {
+   "final": {
+    "ID_REGISTRO": "HEM-213735",
+    "STATUS_ANALITICO": "ATIVO",
+    "PARTICIPA_ESTATISTICA": "SIM",
+    "TIPO_PLOTAGEM_LJ": "NORMAL",
+    "RUN": 25103103.0
+   },
+   "linhas": 44392,
+   "painel_inicial": [
+    1.0,
+    50.0,
+    0.1454,
+    0.0057888,
+    3.981292904
+   ],
+   "painel_reabilitado": [
+    1.0,
+    50.0,
+    0.1454,
+    0.0057888,
+    3.981292904
+   ]
+  }
+ },
+ {
+  "teste": "T15 Resultado manual MAN_0001: ORIGEM=MANUAL, PARTICIPA=SIM, RUN pela mesma regra, aparece no LJ",
+  "resultado": "PASS",
+  "evidencia": {
+   "linha_manual": {
+    "ID_REGISTRO": "MAN_0001",
+    "DATA": "2025-10-31 03:00:00",
+    "HORA": 0.9993055555555556,
+    "EQUIPAMENTO": "XN1000",
+    "MATRIZ": "SANGUE TOTAL",
+    "LOTE": "522611",
+    "NIVEL": 1.0,
+    "ANALITO": "BASO#",
+    "RESULTADO": 0.15,
+    "UNIDADE": null,
+    "MOTIVO": "Falha do interfaceamento",
+    "USUARIO": "QCINI",
+    "REGISTRADO_EM": "2026-10-02 15:34:49",
+    "RUN": "—",
+    "STATUS": "=IF(tblResultados_Manuais[[#This Row],[ID_REGISTRO]]=\"\",\"\",IFERROR(XLOOKUP(tblResultados_Manuais[[#This Row],[ID_REGISTRO]],tblCQ_Final[ID_REGISTRO],tblCQ_Final[STATUS_ANALITICO]),\"—\"))",
+    "DETALHE": "=IF(tblResultados_Manuais[[#This Row],[ID_REGISTRO]]=\"\",\"\",IFERROR(XLOOKUP(tblResultados_Manuais[[#This Row],[ID_REGISTRO]],tblCQ_Final[ID_REGISTRO],tblCQ_Final[MOTIVO_EXCLUSAO_AUTOMATICA]),\"atualize os dados\"))"
+   },
+   "final": {
+    "ID_REGISTRO": "MAN_0001",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "STATUS_ANALITICO": "ATIVO",
+    "PARTICIPA_ESTATISTICA": "SIM",
+    "RUN": 25103104.0,
+    "RESULTADO": 0.15
+   },
+   "no_LJ": true
+  }
+ },
+ {
+  "teste": "T16 Duplicidade manual x interfaceamento: chave (equip, matriz, lote, nível, analito, dia, ±30 min) -> CONFLITO_MANUAL; interfaceamento prevalece; QA A01; nada duplica em silêncio",
+  "resultado": "PASS",
+  "evidencia": {
+   "manual": {
+    "ID_REGISTRO": "MAN_0002",
+    "STATUS_ANALITICO": "CONFLITO_MANUAL",
+    "ID_RELACIONADO": "HEM-212368",
+    "MOTIVO_EXCLUSAO_AUTOMATICA": "coincide com resultado do interfaceamento (4 min)"
+   },
+   "interface": {
+    "ID_REGISTRO": "HEM-212368",
+    "STATUS_ANALITICO": "ATIVO"
+   },
+   "alerta": {
+    "SEVERIDADE": "ALERTA",
+    "CODIGO": "A01",
+    "TESTE": "Possivel duplicidade de resultado manual",
+    "ID_REGISTRO": "MAN_0002",
+    "ANALITO": "BASO#",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2025-10-29 14:19:00",
+    "DETALHE": "coincide com resultado do interfaceamento (4 min) -> HEM-212368. O manual ficou FORA da estatistica; confirme e inative um deles ou corrija o manual."
+   }
+  }
+ },
+ {
+  "teste": "T17 Estatística: bloco RESULTADOS NÃO CONFORMES / REPETIÇÕES conta {'WBC': 3, 'RBC': 2, 'HGB': 1}",
+  "resultado": "PASS",
+  "evidencia": {
+   "bloco": {
+    "WBC": 3.0,
+    "RBC": 2.0,
+    "HGB": 1.0
+   },
+   "outros_nao_zero": {},
+   "ids": {
+    "WBC": [
+     "HEM-202969",
+     "HEM-203266",
+     "HEM-203401"
+    ],
+    "RBC": [
+     "HEM-202970",
+     "HEM-203267"
+    ],
+    "HGB": [
+     "HEM-202971"
+    ]
+   },
+   "filtro": {
+    "lote": "522611",
+    "ini": 45658.0,
+    "fim": 46022.0,
+    "equip": null
+   }
+  }
+ },
+ {
+  "teste": "T18 Estatística usa só PARTICIPA=SIM da DB_CQ_FINAL: n caiu exatamente o número de inativados; n/média batem com o cálculo independente",
+  "resultado": "PASS",
+  "evidencia": {
+   "WBC": {
+    "antes": [
+     50.0,
+     3.044599999999999,
+     0.054928896525138604
+    ],
+    "depois": [
+     47.0,
+     3.0451063829787235,
+     0.05520209276221688
+    ],
+    "independente": [
+     47,
+     3.0451063829787235,
+     0.05520209276221688
+    ]
+   },
+   "RBC": {
+    "antes": [
+     50.0,
+     2.4022,
+     0.030256724669982107
+    ],
+    "depois": [
+     48.0,
+     2.400416666666667,
+     0.02953240797103037
+    ],
+    "independente": [
+     48,
+     2.4004166666666666,
+     0.02953240797103037
+    ]
+   },
+   "HGB": {
+    "antes": [
+     50.0,
+     5.629999999999996,
+     0.061445180478876066
+    ],
+    "depois": [
+     49.0,
+     5.630612244897956,
+     0.06192765144590468
+    ],
+    "independente": [
+     49,
+     5.630612244897959,
+     0.061927651445904695
+    ]
+   }
+  }
+ },
+ {
+  "teste": "T19 Refresh idempotente (4x): mesma contagem, mesmos IDs/RUN, inativações, comentários e manuais mantidos",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas": [
+    44394,
+    44394
+   ],
+   "tempos_s": [
+    111.2,
+    135.0,
+    119.1,
+    146.2
+   ],
+   "manuais": [
+    "MAN_0002",
+    "MAN_0001"
+   ]
+  }
+ },
+ {
+  "teste": "T20 Refresh síncrono: falha de camada PARA o processo, não diz \"concluída\", não atualiza gráfico/estatística",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro": "Etapa: atualizar tblDB_Recebimento\r\nErro 1004: [DataSource.NotFound] File or Folder: Não foi possível localizar o arquivo 'C:\\Users\\vitor.santos\\OneDrive - MSFT\\INI_DB_AJUSTES\\OneDrive - MSFT\\Desktop\\QC_INI_PRONTO\\qc-ini\\INTERFACEAMENTO_DB_COPIA\\DB_SEAC.xlsm.NAO_EXISTE'.",
+   "carimbo_motor_inalterado": true,
+   "linhas_final": 44394
+  }
+ },
+ {
+  "teste": "T21 Audit_Log: inativação, reativação, plotagem e manual registrados (ISO 15189 8.4)",
+  "resultado": "PASS",
+  "evidencia": {
+   "RESULTADO_INATIVADO": 7,
+   "PLOTAGEM_LJ_ALTERADA": 1,
+   "RESULTADO_REATIVADO": 1,
+   "RESULTADO_MANUAL_INCLUIDO": 2,
+   "ATUALIZACAO_FALHOU": 1
+  }
+ },
+ {
+  "teste": "T22 Fonte única: nenhum módulo analítico nem fórmula de LJ/Estatística lê DB_SEAC, DB_RECEBIMENTO, manual, inativação, Resultados, Importar ou DB_Resultados",
+  "resultado": "PASS",
+  "evidencia": []
+ },
+ {
+  "teste": "T23 VBA compila (Depurar > Compilar) e os formulários que ficaram abrem",
+  "resultado": "PASS",
+  "evidencia": {
+   "formularios": "frmAssinar;frmDev;"
+  }
+ },
+ {
+  "teste": "T24 Fechar, reabrir e atualizar: camadas, motor, LJ e Estatística funcionando",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_final": 44392,
+   "corridas_no_LJ": 56,
+   "tempo_1a_s": 104.7,
+   "tempo_apos_reabrir_s": 191.1,
+   "resumo": "Atualização concluída.\r\n\r\nResultados recebidos: 44.392 (novos nesta atualização: 0)\r\nPrincipal - Resultados: 44.392 resultados\r\nQA da integração: 0 erro(s), 589 alerta(s), 42 informativo(s).\r\n\r\nTempo: tblDB_Recebimento 17,5s · tblDB_Organizado 8,5s · tblCQ_Final 128,2s · tblQA_Integracao 29,7s · motor 5,9s"
+  }
+ }
+]
