@@ -156,23 +156,52 @@ End Function
 ' Refresh so devolver o controle quando a consulta terminou; um erro do Power
 ' Query sobe como erro de VBA. A conferencia de Refreshing e a garantia extra
 ' de que nada ficou pendente antes de a proxima camada ler esta.
+'
+' O DB_SEAC de producao e regravado pela tarefa agendada a cada 2 minutos. Ler no meio do Save
+' da "nao foi possivel reconhecer a entrada como um documento do Excel valido" (DataFormat.Error)
+' ou "arquivo em uso" -- medido no laboratorio em 05/10/2026. So esses erros de LEITURA DA ORIGEM
+' sao tentados de novo (ate REFRESH_TENTATIVAS, REFRESH_ESPERA_S entre elas); qualquer outro
+' erro sobe na hora, como antes.
 Public Sub Refrescar(ByVal nomeTabela As String)
-    Dim lo As ListObject, ws As Worksheet, prot As Boolean, nE As Long, sE As String
+    Const REFRESH_TENTATIVAS As Long = 4
+    Const REFRESH_ESPERA_S As Long = 15
+    Dim lo As ListObject, ws As Worksheet, prot As Boolean, nE As Long, sE As String, tentativa As Long
+    Dim sb As Variant
     Set lo = AcharTabela(nomeTabela)
     If lo Is Nothing Then Err.Raise vbObjectError + 570, "Refrescar", "tabela " & nomeTabela & " nao encontrada"
     Set ws = lo.Parent
     prot = LiberarEscrita(ws)
-    On Error GoTo restaura
-    With lo.QueryTable
-        .BackgroundQuery = False
-        .Refresh BackgroundQuery:=False
-        If .Refreshing Then Err.Raise vbObjectError + 572, "Refrescar", nomeTabela & " ainda em atualizacao"
-    End With
-restaura:
-    nE = Err.Number: sE = Err.Description
+    sb = Application.StatusBar
+    For tentativa = 1 To REFRESH_TENTATIVAS
+        nE = 0: sE = ""
+        On Error Resume Next
+        With lo.QueryTable
+            .BackgroundQuery = False
+            .Refresh BackgroundQuery:=False
+            If Err.Number = 0 Then
+                If .Refreshing Then Err.Raise vbObjectError + 572, "Refrescar", nomeTabela & " ainda em atualizacao"
+            End If
+        End With
+        nE = Err.Number: sE = Err.Description
+        On Error GoTo 0
+        If nE = 0 Then Exit For
+        If Not OrigemOcupada(sE) Or tentativa = REFRESH_TENTATIVAS Then Exit For
+        Application.StatusBar = "DB_SEAC sendo gravado pela atualizacao automatica -- nova tentativa em " & _
+                                REFRESH_ESPERA_S & " s (" & tentativa & "/" & REFRESH_TENTATIVAS - 1 & ")"
+        Application.Wait Now + TimeSerial(0, 0, REFRESH_ESPERA_S)
+    Next tentativa
+    Application.StatusBar = sb
+    If tentativa > 1 And nE = 0 Then mAuditoria.RegistrarLog "ORIGEM_OCUPADA", nomeTabela & ": lida na tentativa " & tentativa
     RestaurarProtecao ws, prot
     If nE <> 0 Then Err.Raise nE, "mIntegracao.Refrescar(" & nomeTabela & ")", sE
 End Sub
+
+Private Function OrigemOcupada(ByVal msg As String) As Boolean
+    Dim m As String
+    m = LCase$(msg)
+    OrigemOcupada = (InStr(m, "dataformat.error") > 0) Or (InStr(m, "sendo usado") > 0) Or _
+                    (InStr(m, "being used") > 0) Or (InStr(m, "em uso") > 0)
+End Function
 
 Public Function AcharTabela(ByVal nome As String) As ListObject
     Dim ws As Worksheet, lo As ListObject

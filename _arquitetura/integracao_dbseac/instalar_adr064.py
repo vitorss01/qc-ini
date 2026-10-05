@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""instalar_adr064.py -- ADR-064: INCERTEZA DE MEDICAO (ISO/TS 20914, top-down) na aba Estatistica e no
+"""instalar_adr064.py -- ADR-064/ADR-067: INCERTEZA DE MEDICAO (Nordtest TR 537: CIQ + CEQ) na aba Estatistica e no
 Painel, e correcoes do CEQ achadas no caminho.
 
 Uso:  python instalar_adr064.py <Bioquimica|Hematologia> <arquivo.xlsm> [--sem-salvar]
@@ -9,7 +9,8 @@ Idempotente. So:
      texto acentuado corrigido em mEQA/mPlanoQC); EXIGE compilacao;
   2. Hematologia: Estatistica R, S, T, AC, AD passam a usar o provedor do filtro (eqProvedor), como a G ja
      usava -- liam Analitos!AR, coluna que so existe na Bioquimica, e davam "SEM EP" sempre;
-  3. Analitos: campo de entrada "u(cal) % fabricante (k=1)" (nome ucalFabricante), desbloqueado;
+  3. Analitos: REMOVE o campo "u(cal) % fabricante" de instalacoes antigas (ADR-067: sem certificado de
+     calibrador; a incerteza e so CIQ + CEQ);
   4. Estatistica: janela de 12 meses (MU_Ini/MU_Fim) e as colunas AF:AU da incerteza na mesma tabela
      analito|nivel (nome MU_Faixa, usado por mIncerteza.RecalcularIncerteza);
   5. Painel: bloco "INCERTEZA DE MEDICAO -- analito selecionado" inserido ANTES de "MARGEM CRITICA"
@@ -36,7 +37,7 @@ MARCA_PAINEL = 'INCERTEZA DE MEDIÇÃO'
 # textos de mIncerteza.ClassificarIncerteza (com MU_MESES_MIN = 6 e MU_N_MIN = 60)
 STATUS_CORES = (('Não atende', 13551615), ('Mínimo', 10284031), ('Desejável', 13561798), ('Ótimo', 13561798),
                 ('Sem meta', 15921906), ('Insuficiente', 15921906))
-VIES_CORES = (('RELEVANTE: investigar/corrigir (U não cobre)', 13551615),
+VIES_CORES = (('RELEVANTE: investigar/corrigir', 13551615),
               ('detectável (relevância não avaliada)', 10284031), ('detectável, dentro do permitido', 10284031),
               ('não detectável', 13561798))
 
@@ -167,28 +168,21 @@ def corrigir_provedor_hema(e, ult):
     return n
 
 
-def campo_ucal(wb):
+def remover_ucal(wb):
+    """ADR-067: o laboratorio nao usa certificado de calibrador. Limpa o campo e o nome de instalacoes antigas
+    (a coluna fica vazia, nao e excluida: excluir deslocaria referencias de outras colunas da Analitos)."""
     a = wb.Worksheets('Analitos')
     c = achar_cabecalho(a, 3, 'u(cal) % fabricante (k=1)', 80)
-    if not c:
-        c = a.Cells(3, a.Columns.Count).End(-4159).Column + 2
-        a.Cells(3, c).Value = 'u(cal) % fabricante (k=1)'
-        a.Cells(3, c - 2).Copy()
-        a.Cells(3, c).PasteSpecial(XL_PASTE_FORMATS)
-        a.Cells(2, c).Value = 'ISO/TS 20914: incerteza-padrão do calibrador, do certificado do fabricante (se vier U, divida pelo k declarado). Vazio = não incluída.'
-        a.Cells(2, c).WrapText = False
-        a.Cells(2, c).Font.Size = 8
-        a.Cells(2, c).Font.Italic = True
-    rng = a.Range(a.Cells(4, c), a.Cells(43, c))
-    rng.Locked = False
-    rng.NumberFormatLocal = nf_local(a.Application, '0.00')
-    # so numero de 0 a 100 (texto colado com cara de numero era lido como "nao parcial" -- auditoria)
-    rng.Validation.Delete()
-    rng.Validation.Add(2, 1, 1, '0', '100')            # xlValidateDecimal, xlValidAlertStop, xlBetween
-    rng.Validation.ErrorMessage = 'u(cal) em % (0 a 100), do certificado do fabricante.'
-    a.Columns(c).ColumnWidth = 14
-    ii.nome(wb, 'ucalFabricante', f"=Analitos!${col(c)}$4:${col(c)}$43")
-    return col(c)
+    if c:
+        rng = a.Range(a.Cells(2, c), a.Cells(43, c))
+        rng.Validation.Delete()
+        rng.ClearContents()
+        rng.ClearFormats()
+        rng.Locked = True
+    for n in list(wb.Names):
+        if n.Name == 'ucalFabricante':
+            n.Delete()
+    return col(c) if c else None
 
 
 def coluna_cvi(wb):
@@ -212,32 +206,32 @@ def bloco_estatistica(wb, ult, exc, prov, cvi):
         ('gl\nΣ(n−1)', '=IF(OR($A{r}="",$A{r}=0),"",' + (ciq % 'GL') + ')', '0'),
         ('Lotes\n(n ≥ 20)', '=IF(OR($A{r}="",$A{r}=0),"",' + (ciq % 'LOTES') + ')', '0'),
         ('Dias\ncobertos', '=IF(OR($A{r}="",$A{r}=0),"",' + (ciq % 'DIAS') + ')', '0'),
-        ('u(cal) %\nfabricante', '=IF(OR($A{r}="",$A{r}=0),"",IFERROR(IF(INDEX(ucalFabricante,' + m + ')="","",INDEX(ucalFabricante,' + m + ')),""))', '0.00'),
-        ('uc %\n(k=1)', '=IF(ISNUMBER($AF{r}),SQRT($AF{r}^2+N($AJ{r})^2),"")', '0.00'),
+        ('u(bias) %\nCEQ (Nordtest)', '=IF(OR($A{r}="",$A{r}=0),"",IFERROR(' + (vies % 'UBIAS') + ',""))', '0.00'),
+        ('uc %\n(k=1)', '=IF(AND(ISNUMBER($AF{r}),ISNUMBER($AJ{r})),SQRT($AF{r}^2+$AJ{r}^2),"")', '0.00'),
         ('U %\n(k=2, ~95%)', '=IF(ISNUMBER($AK{r}),2*$AK{r},"")', '0.00'),
         ('U na unidade\n(média dos lotes)', '=IF(ISNUMBER($AL{r}),$AL{r}*' + (ciq % 'MEDIA') + '/100,"")', '0.000'),
         ('Meta u %\n(0,50 × CVI)', '=IF(OR($A{r}="",$A{r}=0),"",IFERROR(0.5*' + cvim + ',""))', '0.00'),
         ('Classe da\nincerteza', '=IF(OR($A{r}="",$A{r}=0),"",mIncerteza.ClasseIncerteza($AK{r},' + cvim + ',' + val + '))', None),
-        ('Situação', '=IF(OR($A{r}="",$A{r}=0),"",mIncerteza.SituacaoIncerteza(' + val + ',$AJ{r}))', None),
+        ('Situação', '=IF(OR($A{r}="",$A{r}=0),"",mIncerteza.SituacaoIncerteza(' + val + ',$AJ{r},' + (vies % 'SITUACAO') + ',' + (vies % 'N') + '))', None),
         ('Alertas', '=IF(OR($A{r}="",$A{r}=0),"",mIncerteza.AlertasIncerteza($A{r},$B{r},MU_Ini,MU_Fim,$AF{r},' + cvim + ',$AJ{r}' + exc + '))', None),
         ('Viés CEQ médio %\n(com sinal)', '=IF(OR($A{r}="",$A{r}=0),"",' + (vies % 'MEDIA') + ')', '0.00'),
         ('Viés do CEQ\n(triagem)', '=IF(OR($A{r}="",$A{r}=0),"",mCEQ.ViesEQ($A{r},eqAnoEP,"TRIAGEM",' + prov + ',eqRodada,' + bperm + '))', None),
-        ('U % Nordtest\n(k=2, informativo)', '=IF(OR($A{r}="",$A{r}=0),"",LET(ub,' + (vies % 'UBIAS') + ',IF(AND(ISNUMBER($AF{r}),ISNUMBER(ub)),2*SQRT($AF{r}^2+N($AJ{r})^2+ub^2),"")))', '0.00'),
+        ('RMS viés % / u(Cref) %\n(CEQ)', '=IF(OR($A{r}="",$A{r}=0),"",IFERROR(TEXT(' + (vies % 'RMS') + ',"0.00")&" / "&IFERROR(TEXT(' + (vies % 'UCREF') + ',"0.00"),"—"),""))', None),
         ('CEQ amostras\n/ rodadas', '=IF(OR($A{r}="",$A{r}=0),"",' + (vies % 'N') + '&" / "&' + (vies % 'NRODADAS') + ')', None),
     ]
     assert col(C0) == 'AF' and col(C0 + 4) == 'AJ' and col(C0 + 14) == 'AT', 'colunas fora do lugar'
     cl = col(C0 + len(cab) - 1)                                          # AU
     # cabecalho do bloco (linhas 9 a 12) e a janela de 12 meses
     e.Range(f'AF9:{cl}12').UnMerge()
-    e.Range('AF9').Value = 'INCERTEZA DE MEDIÇÃO — ISO/TS 20914:2019 (top-down)'
+    e.Range('AF9').Value = 'INCERTEZA DE MEDIÇÃO — Nordtest TR 537 (top-down: CIQ + CEQ)'
     e.Range('AF9').Font.Bold = True
     e.Range('AF9').Font.Size = 12
     e.Range('AF10').Value = ('u(Rw) = CIQ de longo prazo (12 meses): CV de cada lote de controle (n ≥ 20) agrupado pelos graus '
-                             'de liberdade · uc = raiz(u(Rw)² + u(cal)²) · U = 2 × uc · meta: u ≤ 0,50 × CVI (EFLM; ótimo 0,25, '
-                             'mínimo 0,75) · válida com ≥ 180 dias e gl ≥ 100; provisória com 90–179 dias ou gl 30–99; '
-                             'abaixo disso não exibida · sem u(cal) do fabricante a incerteza é PARCIAL · ALERTAS: lotes curtos = '
-                             'trocas de lote não entram em u(Rw); CV heterogêneo = CVmáx/CVmín > 2; inativados > 5% reduzem u(Rw); '
-                             'sem margem p/ u(cal) = u(Rw) > 0,87 × meta')
+                             'de liberdade · u(bias) = CEQ: raiz(RMS dos vieses² + u(Cref)²), u(Cref) = DP do grupo / raiz(nº de '
+                             'laboratórios), ≥ 6 amostras de ≥ 2 rodadas (preferível 10) · uc = raiz(u(Rw)² + u(bias)²) · U = 2 × uc · '
+                             'meta: u ≤ 0,50 × CVI (EFLM; ótimo 0,25, mínimo 0,75) · CIQ válido com ≥ 180 dias e gl ≥ 100; provisório '
+                             'com 90–179 dias ou gl 30–99 · sem u(bias) o U não é estimado (u(Rw) sozinha não é a incerteza) · '
+                             'ALERTAS: lotes curtos; CV heterogêneo = CVmáx/CVmín > 2; inativados > 5%; componente dominante')
     e.Range('AF10').Font.Size = 9
     e.Range('AF11').Value = 'Janela (12 m)'
     e.Range('AF11').Font.Bold = True
@@ -255,8 +249,8 @@ def bloco_estatistica(wb, ult, exc, prov, cvi):
         e.Range(a).NumberFormatLocal = fd
     if str(e.Range('AE3').Value or '').startswith('Início efetivo'):     # Hematologia: mesmo defeito, antigo
         e.Range('AF3:AF4').NumberFormatLocal = fd
-    e.Range('AJ11').Value = ('o viés do CEQ é TRIADO (média com sinal; ≥ 6 amostras de ≥ 2 rodadas; detectável se '
-                             '|média| > 2 EP), não somado à incerteza; o Nordtest (AT) inclui o viés contra o grupo par e é só informativo')
+    e.Range('AJ11').Value = ('o viés do CEQ ENTRA em U pelo RMS (Nordtest) e também é TRIADO (média com sinal; detectável se '
+                             '|média| > 2 EP): viés relevante se investiga/corrige')
     e.Range('AJ11').Font.Size = 9
     e.Range('AJ11').Font.Italic = True
     ii.nome(wb, 'MU_Ini', "='Estatística'!$AG$11")
@@ -343,7 +337,7 @@ def bloco_painel(wb, nlv):
     p.Range(f'M{r0 + 2}:N{r0 + 2}').Merge()
     for k in range(nlv):
         p.Range(f'M{r0 + 3 + k}:N{r0 + 3 + k}').Merge()
-    p.Cells(r0, 1).Value = 'INCERTEZA DE MEDIÇÃO — analito selecionado (ISO/TS 20914, top-down)'
+    p.Cells(r0, 1).Value = 'INCERTEZA DE MEDIÇÃO — analito selecionado (Nordtest: CIQ + CEQ)'
     p.Cells(r0 + 1, 1).Formula = '=mIncerteza.NotaIncerteza(MU_Ini,MU_Fim)'
     p.Cells(r0 + 1, 1).Font.Size = 8
     p.Cells(r0 + 1, 1).Font.Italic = True
@@ -363,10 +357,9 @@ def bloco_painel(wb, nlv):
                                           f"MATCH(selAnalito&\"|\"&{k},'Estatística'!$AB$14:$AB$133,0)),\"\")")
             if src in nf:
                 p.Range(f'{a}{r}').NumberFormatLocal = nf_local(p.Application, nf[src])
-    p.Cells(r0 + 3 + nlv, 1).Value = ('Alertas e U do modelo Nordtest (informativo: inclui o viés do CEQ contra o grupo par '
-                                      'CAP, não contra valor de referência) na aba Estatística, colunas AQ e AT. u(cal) entra '
-                                      'quando o fabricante informar (aba Analitos). Base: ISO/TS 20914:2019; Braga & Panteghini '
-                                      '2020; Coskun 2022.')
+    p.Cells(r0 + 3 + nlv, 1).Value = ('u(bias) do CEQ, RMS / u(Cref) e alertas na aba Estatística (AJ, AT, AQ). Base: Nordtest '
+                                      'TR 537; Magnusson 2012; Cui 2017; Hann 2017; Martinello 2020; Michaelis 2026; meta EFLM '
+                                      '(Braga & Panteghini 2020).')
     p.Cells(r0 + 3 + nlv, 1).Font.Size = 8
     p.Cells(r0 + 3 + nlv, 1).Font.Italic = True
     selecionar_a1(p)
@@ -443,8 +436,8 @@ def main(produto, caminho, salvar=True):
                 if tem_ar else 'eqProvedor')
         exc = ',Estat_Exclusoes' if any(n.Name == 'Estat_Exclusoes' for n in wb.Names) else ''
         cvi = coluna_cvi(wb)
-        ucal = campo_ucal(wb)
-        log(f'3. Analitos: u(cal) na coluna {ucal}; CVI em {cvi}; provedor {"por analito (AR)" if tem_ar else "eqProvedor"}; '
+        ucal = remover_ucal(wb)
+        log(f'3. Analitos: campo u(cal) {"removido da coluna " + ucal if ucal else "ausente"}; CVI em {cvi}; provedor {"por analito (AR)" if tem_ar else "eqProvedor"}; '
             f'exclusoes {"sim" if exc else "nao"}')
         cl = bloco_estatistica(wb, ult, exc, prov.replace('{r}', '{r}'), cvi)
         log(f'4. Estatistica: incerteza em AF:{cl}, janela MU_Ini/MU_Fim, MU_Faixa')
@@ -469,8 +462,11 @@ def main(produto, caminho, salvar=True):
             if st not in ('Ótimo', 'Desejável', 'Mínimo', 'Não atende', 'Sem meta', 'Insuficiente'):
                 ruins.append((r, an, 'classe', st))
             if isinstance(urw, float) and urw > 0:
-                if not (isinstance(uc, float) and isinstance(U, float) and abs(U - 2 * uc) < 1e-9 and uc >= urw - 1e-12):
-                    ruins.append((r, an, urw, uc, U))
+                if isinstance(uc, float):            # sem u(bias) do CEQ: uc e U ficam vazios (ADR-067)
+                    if not (isinstance(U, float) and abs(U - 2 * uc) < 1e-9 and uc >= urw - 1e-12):
+                        ruins.append((r, an, urw, uc, U))
+                elif uc not in (None, ''):
+                    ruins.append((r, an, 'uc', uc))
                 ok += 1
             if not st:
                 ruins.append((r, an, 'sem status'))

@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """instalar_modo_historico.py -- ADR-058: MODO_FONTE (SEAC | HISTORICO) num QC_INI ja integrado (ADR-057).
 
-Uso:  python instalar_modo_historico.py <Bioquimica|Hematologia> <arquivo.xlsm> [--modo SEAC|HISTORICO] [--sem-salvar]
+Uso:  python instalar_modo_historico.py <Bioquimica|Hematologia> <arquivo.xlsm> [--modo SEAC|HISTORICO]
+            [--caminho <DB_SEAC.xlsm>] [--sem-salvar]
+
+  --caminho grava CAMINHO_DB_SEAC (o arquivo tem de existir; 05/10/2026: ligar o DB_SEAC do laboratorio).
 
 Incremental -- nao refaz a instalacao do ADR-057. So:
   1. acrescenta a chave MODO_FONTE em tblConfigIntegracao (valor existente e preservado;
@@ -50,7 +53,16 @@ def gravar_modo(wb, modo):
     return str(lo.DataBodyRange.Cells(lin[0], 2).Value).strip().upper()
 
 
-def main(produto, caminho, modo=None, salvar=True):
+def gravar_caminho(wb, origem):
+    lo = pqlib.tabela(wb, 'tblConfigIntegracao')
+    ks = [str(r[0] or '').strip().upper() for r in lo.DataBodyRange.Value]
+    if 'CAMINHO_DB_SEAC' not in ks:
+        raise SystemExit('CAMINHO_DB_SEAC nao existe em tblConfigIntegracao')
+    lo.DataBodyRange.Cells(ks.index('CAMINHO_DB_SEAC') + 1, 2).Value = origem
+    return str(lo.DataBodyRange.Cells(ks.index('CAMINHO_DB_SEAC') + 1, 2).Value)
+
+
+def main(produto, caminho, modo=None, salvar=True, origem=None):
     caminho = os.path.abspath(caminho)
     ex = xlh.Excel()
     log(f'EXCEL_PID {ex.pid}')
@@ -67,6 +79,10 @@ def main(produto, caminho, modo=None, salvar=True):
         if final not in MODOS:
             raise SystemExit(f'MODO_FONTE invalido: {final!r} (aceitos: {MODOS})')
         log(f'   MODO_FONTE = {final}')
+        if origem:
+            if not os.path.isfile(origem):
+                raise SystemExit(f'--caminho: arquivo nao encontrado: {origem}')
+            log(f'   CAMINHO_DB_SEAC = {gravar_caminho(wb, origem)}')
         if not produto.startswith('Bio'):
             # ADR-066 (D12): sem seletor, a serie da Hematologia e a do EQUIPAMENTO_PADRAO do CFG. O nome
             # selEquipamento passa a ler o CFG (era ""): a guarda de Calc!B (engEquip = selEquipamento), o bloco
@@ -126,4 +142,5 @@ def main(produto, caminho, modo=None, salvar=True):
 if __name__ == '__main__':
     a = sys.argv[1:]
     m = a[a.index('--modo') + 1].upper() if '--modo' in a else None
-    main(a[0], a[1], m, salvar='--sem-salvar' not in a)
+    o = a[a.index('--caminho') + 1] if '--caminho' in a else None
+    main(a[0], a[1], m, salvar='--sem-salvar' not in a, origem=o)

@@ -175,7 +175,7 @@ def main(caminho):
         val.Cells(ult + 1, 1).Value = 2.4
         val.Cells(ult + 1, 2).Value = pywintypes.Time(datetime.datetime(hoje.year, hoje.month, hoje.day))
         val.Cells(ult + 1, 2).NumberFormat = 'dd/mm/yyyy'
-        val.Cells(ult + 1, 3).Value = 'VÃ­tor Santos da Silva'
+        val.Cells(ult + 1, 3).Value = 'Vítor Santos da Silva'
         val.Cells(ult + 1, 5).Value = (
             'Chave de origem preservada: DB_HEMATOLOGIA e DB_BIOQUIMICA passam a levar, NO FIM das tabelas, '
             'ID_ORIGEM (coluna id do CSV do SIPEC, unica por resultado), ID_AMOSTRA, ITEM_ID e UNIDADE. Nenhuma '

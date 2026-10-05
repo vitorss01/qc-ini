@@ -1,17 +1,21 @@
 Option Explicit
 ' ===== INCERTEZA DE MEDICAO (ADR-064) =====
 '
-' Modelo PRINCIPAL: ISO/TS 20914:2019, top-down.
-'     uc = raiz( u(Rw)^2 + u(cal)^2 )        U = 2 x uc  (~95%, bilateral)
+' Modelo: Nordtest TR 537, top-down por DESEMPENHO (ADR-067, 05/10/2026, decisao do
+' laboratorio: so CIQ + CEQ, sem certificado de calibrador; Magnusson 2012, Cui 2017,
+' Hann 2017, Martinello 2020, Michaelis 2026).
+'     uc = raiz( u(Rw)^2 + u(bias)^2 )       U = 2 x uc  (~95%, bilateral)
 ' u(Rw): imprecisao intermediaria de LONGO PRAZO do CIQ (janela de 12 meses), por
 ' analito x nivel x equipamento, com os lotes de controle SEPARADOS e agrupados
 ' pelos graus de liberdade:
 '     u(Rw)% = raiz( soma((n_i - 1) x CV_i^2) / soma(n_i - 1) ),  so lotes com n_i >= 20
 ' Um DP unico sobre lotes diferentes inflaria u(Rw) com a diferenca entre os alvos
 ' dos materiais; a media simples dos CVs so vale com n iguais (Coskun 2022).
-' u(cal): do certificado do fabricante (aba Analitos, ucalFabricante). Vazio =
-' NAO incluida: a incerteza e PARCIAL (limite inferior da real) e diz isso.
-' O vies do CEQ e VERIFICADO (mCEQ.ViesEQ), nao somado (ISO/TS 20914).
+' u(bias): do CEQ (mCEQ.ViesEQ "UBIAS") = raiz(RMS dos bias^2 + u(Cref)^2), com
+' u(Cref) = DP do grupo / raiz(n laboratorios). Exige >= 6 amostras de >= 2 rodadas
+' (preferencial 10) e u(Cref) informado. Sem u(bias) a incerteza NAO e estimada:
+' u(Rw) sozinha nao e a incerteza (Panteghini 2022) -- u(Rw) aparece, U nao.
+' A triagem do vies (mCEQ "TRIAGEM") continua: vies relevante se investiga.
 '
 ' Validade (regras INTERNAS documentadas no ADR-064; a norma nao fixa n):
 '   dias cobertos pelos lotes elegiveis >= 180 e gl >= 100  -> valida
@@ -43,7 +47,7 @@ Public Const MU_PEXCL As Double = 5           ' % de resultados inativados na ja
 Public Const MU_F_OTIMO As Double = 0.25
 Public Const MU_F_DESEJAVEL As Double = 0.5
 Public Const MU_F_MINIMO As Double = 0.75
-Public Const MU_F_MARGEM_CAL As Double = 0.87 ' raiz(1 - 0,5^2): reserva 50% do orcamento ao calibrador
+Public Const MU_CEQ_PREF As Long = 10        ' amostras de CEQ preferenciais (Nordtest TR 537)
 
 
 Public Sub InvalidarIncerteza()
@@ -347,16 +351,24 @@ Public Function ClasseIncerteza(ByVal uc As Variant, ByVal cviMeta As Variant, B
     End If
 End Function
 
-' Situacao da estimativa: valida/provisoria e se e parcial (sem u(cal)).
-Public Function SituacaoIncerteza(ByVal validade As Variant, ByVal ucal As Variant) As String
+' Situacao da estimativa. validade = do CIQ; ubias/sitCEQ/nCEQ = do CEQ (mCEQ.ViesEQ
+' "UBIAS", "SITUACAO", "N"). Sem u(bias) o U nao e calculado e o motivo aparece aqui.
+Public Function SituacaoIncerteza(ByVal validade As Variant, ByVal ubias As Variant, _
+                                  Optional ByVal sitCEQ As Variant = "", Optional ByVal nCEQ As Variant = "") As String
     Dim s As String
     Select Case UCase$(CStr(validade))
         Case "VALIDA":     s = "Válida"
-        Case "PROVISORIA": s = "PROVISÓRIA (< 180 dias ou gl < 100)"
-        Case Else:         SituacaoIncerteza = "Não exibida (< 90 dias ou gl < 30)": Exit Function
+        Case "PROVISORIA": s = "PROVISÓRIA (CIQ < 180 dias ou gl < 100)"
+        Case Else:         SituacaoIncerteza = "Não estimada: CIQ < 90 dias ou gl < 30": Exit Function
     End Select
-    If Not EhNumero(ucal) Then
-        s = s & " · parcial: sem u(cal) do fabricante"
+    If Not EhNumero(ubias) Then
+        If IsError(sitCEQ) Then sitCEQ = ""
+        If Len(Trim$(CStr(sitCEQ))) = 0 Then sitCEQ = "sem u(bias) do CEQ"
+        SituacaoIncerteza = "U não estimada: " & CStr(sitCEQ)
+        Exit Function
+    End If
+    If EhNumero(nCEQ) Then
+        If CDbl(nCEQ) < MU_CEQ_PREF Then s = s & " · CEQ com " & CStr(nCEQ) & " amostras (preferível >= " & MU_CEQ_PREF & ")"
     End If
     SituacaoIncerteza = s
 End Function
@@ -364,7 +376,7 @@ End Function
 ' Alertas que nao bloqueiam o valor.
 Public Function AlertasIncerteza(ByVal analito As String, ByVal nivel As Variant, _
                                  ByVal dtIni As Variant, ByVal dtFim As Variant, _
-                                 ByVal urw As Variant, ByVal cviMeta As Variant, ByVal ucal As Variant, _
+                                 ByVal urw As Variant, ByVal cviMeta As Variant, ByVal ubias As Variant, _
                                  Optional ByVal exclusoes As Variant) As String
     Dim s As String, v As Variant
     If Len(Trim$(analito)) = 0 Then Exit Function
@@ -392,10 +404,13 @@ Public Function AlertasIncerteza(ByVal analito As String, ByVal nivel As Variant
     If IsNumeric(v) And Len(CStr(v)) > 0 Then
         If CDbl(v) > MU_PEXCL Then s = s & Format$(v, "0.0") & "% inativados; "
     End If
-    If IsNumeric(urw) And IsNumeric(cviMeta) And Len(CStr(urw)) > 0 And Len(CStr(cviMeta)) > 0 Then
-        If (Not EhNumero(ucal)) And CDbl(cviMeta) > 0 Then
-            If CDbl(urw) > MU_F_MARGEM_CAL * MU_F_DESEJAVEL * CDbl(cviMeta) Then
-                s = s & "sem margem p/ u(cal); "
+    ' componente dominante: orienta a acao (precisao -> CIQ/manutencao; vies -> calibracao/rastreabilidade)
+    If EhNumero(urw) And EhNumero(ubias) Then
+        If CDbl(ubias) > 0 And CDbl(urw) > 0 Then
+            If CDbl(ubias) > 2# * CDbl(urw) Then
+                s = s & "u(bias) domina (" & Format$(CDbl(ubias) / CDbl(urw), "0.0") & "× u(Rw)): investigar vies/calibração; "
+            ElseIf CDbl(urw) > 2# * CDbl(ubias) Then
+                s = s & "u(Rw) domina: precisão é o componente principal; "
             End If
         End If
     End If
@@ -414,6 +429,6 @@ Public Function NotaIncerteza(ByVal ini As Variant, ByVal fim As Variant) As Str
     Else
         j = "Sem dados de CIQ na janela"
     End If
-    NotaIncerteza = j & "  ·  u(Rw) = CIQ de longo prazo, lotes (n >= 20) agrupados  ·  U = 2 × uc (~95%)  ·  " & _
-                    "meta: u <= 0,50 × CVI (EFLM)  ·  sem u(cal) a incerteza é PARCIAL  ·  o viés do CEQ é triado, não somado"
+    NotaIncerteza = j & "  ·  Nordtest: uc = raiz(u(Rw)² + u(bias)²)  ·  u(Rw) = CIQ de longo prazo, lotes (n >= 20) agrupados  ·  " & _
+                    "u(bias) = CEQ: raiz(RMS viés² + u(Cref)²), >= 6 amostras de >= 2 rodadas  ·  U = 2 × uc (~95%)  ·  meta: u <= 0,50 × CVI (EFLM)"
 End Function

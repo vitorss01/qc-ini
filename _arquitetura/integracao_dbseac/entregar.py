@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """entregar.py -- instala, TESTA e so entao entrega os .xlsm de producao (ADR-057/058/059).
 
-Uso:  python entregar.py [Hematologia] [Bioquimica] [--modo SEAC|HISTORICO] [--sem-testes]
+Uso:  python entregar.py [Hematologia] [Bioquimica] [--modo SEAC|HISTORICO] [--caminho <DB_SEAC.xlsm>] [--sem-testes]
+
+  --caminho ......... grava CAMINHO_DB_SEAC nos QCs (o DB_SEAC do laboratorio).
 
   --modo SEAC ....... rede do laboratorio (DB_SEAC acessivel). Padrao.
   --modo HISTORICO .. fora da rede: reprocessa so o historico ja recebido (ADR-058).
@@ -56,7 +58,7 @@ def rodar(log, cwd, *args):
     return r.returncode == 0, fim
 
 
-def entregar(produto, modo, testar, pasta):
+def entregar(produto, modo, testar, pasta, origem=None):
     prod = os.path.join(RAIZ, ARQ[produto])
     trab = os.path.join(pasta, produto)
     os.makedirs(trab, exist_ok=True)
@@ -65,7 +67,8 @@ def entregar(produto, modo, testar, pasta):
     print(f'\n## {produto}\n   producao sha256 {sha(prod)[:16]} -> copia de trabalho', flush=True)
 
     # cada instalador instala TODO o VBA atual (codigo_atual.py) e cuida da sua parte de planilha
-    passos = [('modo_fonte', ['instalar_modo_historico.py', produto, alvo, '--modo', modo]),
+    passos = [('modo_fonte', ['instalar_modo_historico.py', produto, alvo, '--modo', modo]
+               + (['--caminho', origem] if origem else [])),
               ('lotes', ['instalar_adr060.py', produto, alvo, '--registrar']),
               ('seguranca', ['instalar_seguranca_usuarios.py', produto, alvo]),
               ('graficos', ['instalar_adr063.py', produto, alvo]),
@@ -110,7 +113,8 @@ def main(argv):
     modo = argv[argv.index('--modo') + 1].upper() if '--modo' in argv else 'SEAC'
     produtos = [a for a in argv if a in ARQ] or ['Hematologia', 'Bioquimica']
     pasta = os.path.join(RAIZ, '_entrega_' + time.strftime('%Y-%m-%d_%H%M'))
-    res = {p: entregar(p, modo, '--sem-testes' not in argv, pasta) for p in produtos}
+    origem = argv[argv.index('--caminho') + 1] if '--caminho' in argv else None
+    res = {p: entregar(p, modo, '--sem-testes' not in argv, pasta, origem) for p in produtos}
     print(f'\nMODO_FONTE = {modo}. Logs e evidencias em {pasta}')
     for p, (ok, msg) in res.items():
         print(f'  {p}: {msg}')

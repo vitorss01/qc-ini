@@ -482,10 +482,12 @@ def executar(produto, caminho, saida):
             fin2 = q.final_por_id()
             tam6.append(len(fin2))
             est_k = {i: (r['RUN'], r['STATUS_ANALITICO']) for i, r in fin2.items()}
-            for i in set(base_ids) | set(est_k):
+            # MODO SEAC ao vivo: so IDs NOVOS podem aparecer (chegaram do DB_SEAC durante o teste); todo ID da
+            # base continua com o mesmo RUN e STATUS
+            for i in set(base_ids):
                 if base_ids.get(i) != est_k.get(i):
                     difs6.append({'atualizacao': k + 2, 'ID': i, 'antes': base_ids.get(i), 'depois': est_k.get(i)})
-        ok = not difs6 and all(n == len(base_ids) for n in tam6) and len(base_ids) > 0
+        ok = not difs6 and all(n >= len(base_ids) for n in tam6) and len(base_ids) > 0
         reg('T06 ID estável: mesmos IDs e mesmo RUN após 3 atualizações', ok,
             {'ids': len(fin2), 'ids_base': len(base_ids), 'linhas_por_atualizacao': tam6,
              'divergencias_RUN_STATUS': difs6[:10], 'n_divergencias': len(difs6), 'tempos_s': tempos6,
@@ -624,16 +626,23 @@ def executar(produto, caminho, saida):
         # ---------------------------------------------------------------- reabilitacao
         q.limpar_linha('tblInativacao_NaoConformes', 'ID_REGISTRO', xid)
         q.atualizar()
-        fin3 = q.final_por_id()
+        linhas3 = q.ler('tblCQ_Final')
+        fin3 = {r['ID_REGISTRO']: r for r in linhas3}
         f = fin3[xid]
+        # MODO SEAC com o DB_SEAC de producao (05/10/2026): resultados novos chegam entre as atualizacoes
+        # do teste -- "sem duplicar" e cada ID uma vez e nenhum ID da base perdido, nao contagem igual
+        n_ids = len([r for r in linhas3 if r['ID_REGISTRO'] not in (None, '')])
+        sem_dup = (n_ids == len({r['ID_REGISTRO'] for r in linhas3 if r['ID_REGISTRO'] not in (None, '')})
+                   and set(base_ids) <= set(fin3))
         st3 = q.painel_stats()
         e3 = q.eng_saida()
         sl3 = e3['runs'].index(alvo[1])
         ok = (f['STATUS_ANALITICO'] == 'ATIVO' and f['PARTICIPA_ESTATISTICA'] == 'SIM' and f['TIPO_PLOTAGEM_LJ'] == 'NORMAL'
-              and len(fin3) == len(base_ids) and f['RUN'] == alvo[1] and e3['val'][sl3][0] == xval and st3[0] == st0[0])
+              and sem_dup and f['RUN'] == alvo[1] and e3['val'][sl3][0] == xval and st3[0] == st0[0])
         reg('T14 Reabilitação: apagar o ID volta ATIVO/NORMAL, mesmo ID, sem duplicar, estatística volta ao valor inicial',
             ok, {'final': {k: f[k] for k in ('ID_REGISTRO', 'STATUS_ANALITICO', 'PARTICIPA_ESTATISTICA', 'TIPO_PLOTAGEM_LJ', 'RUN')},
-                 'linhas': len(fin3), 'painel_inicial': st0[0], 'painel_reabilitado': st3[0]})
+                 'linhas': len(fin3), 'linhas_base': len(base_ids), 'ids_unicos_e_base_contida': sem_dup,
+                 'painel_inicial': st0[0], 'painel_reabilitado': st3[0]})
 
         # ---------------------------------------------------------------- manual MAN_0001
         dts = sorted({r['DATA_HORA'] for r in fin3.values() if r['ANALITO'] == analito and str(r['LOTE']) == str(lote)

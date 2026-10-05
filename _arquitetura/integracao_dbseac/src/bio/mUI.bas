@@ -15,6 +15,7 @@ Private Const PAINEL_ZOOM_MIN As Long = 40
 Private Const PAINEL_ZOOM_MAX As Long = 150
 Private mVigiaUH As Double                        ' CACHE: ultima UsableHeight vista
 Private mCabZoom As Double                        ' CACHE dos cabecalhos (CabecalhosTela): zoom medido
+Private mCabRuim As Boolean                       ' ultima medida invalida: o vigia mede de novo no proximo tique
 Private mCabLx As Double                          '   largura dos cabecalhos de linha (pt de tela)
 Private mCabLy As Double                          '   altura dos cabecalhos de coluna (pt de tela)
 #If VBA7 Then
@@ -344,6 +345,9 @@ Public Sub GrafVigiaTique()               ' alvo do OnTime
                 mVigiaZoom = z            ' zoom do usuario: vale; so a largura acompanha
                 AjustarGraficos           ' escreve so se passar de 2 pt
             End If
+            If mCabRuim Then              ' cabecalho medido no meio do redesenho: refaz no proximo tique
+                If mVigiaZoom = z Then mVigiaZoom = 0
+            End If
         End If
     End If                                ' ocupado/copiando: tenta no proximo
     Err.Clear
@@ -377,7 +381,7 @@ Public Function PainelEncaixar() As String
     Dim topo As Double, larg As Double, legenda As Double, uw As Double, uh As Double
     Dim zW As Double, zH As Double, fundo As Double, fundoReal As Double
     Dim hLin As Double, passo As Double, alt As Double, rh As Variant, faixa As Range
-    Dim lx As Double, ly As Double, passada As Long
+    Dim lx As Double, ly As Double, passada As Long, ajuste As Long
     Dim salvo As Boolean, prot As Boolean, tela As Boolean, encaixou As Boolean
     If Not GrafNoPainel(w) Then PainelEncaixar = "FORA_DO_PAINEL": Exit Function
     If Not Application.Visible Then PainelEncaixar = "OCULTO": Exit Function
@@ -421,11 +425,24 @@ Public Function PainelEncaixar() As String
         CabecalhosTela w, lx, ly
     Next passada
     z = CLng(w.Zoom)
+    ' o Excel desenha cada coluna em pixels inteiros: em zoom baixo a soma arredondada passa da conta
+    ' e a coluna U fica cortada (tela pequena do laboratorio, 05/10/2026). Confere na tela: a coluna
+    ' seguinte a U tem de aparecer, nem que em parte -- senao desce o zoom de 1 em 1
+    w.ScrollColumn = 1
+    Do While z > PAINEL_ZOOM_MIN
+        If w.VisibleRange.Column + w.VisibleRange.Columns.Count - 1 > ws.Range(PAINEL_COL_FIM & "1").Column Then Exit Do
+        z = z - 1
+        w.Zoom = z
+    Loop
+    If CLng(w.Zoom) <> z Then w.Zoom = z
+    CabecalhosTela w, lx, ly
     fundo = (uh - ly) * 100# / z - legenda        ' a faixa acaba aqui: a legenda do lote fica na tela
     If (fundo - topo) / n - GRAF_VAO > GRAF_ALT_MAX Then fundo = topo + n * (GRAF_ALT_MAX + GRAF_VAO)
     If (fundo - topo) / n - GRAF_VAO < GRAF_ALT_MIN Then fundo = topo + n * (GRAF_ALT_MIN + GRAF_VAO)
     Set faixa = ws.Range(ws.Rows(r0), ws.Rows(PAINEL_FAIXA_FIM))
     nLin = PAINEL_FAIXA_FIM - r0 + 1
+    w.ScrollRow = 1
+    For ajuste = 1 To 4                           ' confere na tela: a linha depois da legenda aparece
     For tentativa = 1 To 2                        ' o Excel arredonda a altura da linha ao pixel
         hLin = (fundo - ws.Rows(r0).Top) / nLin
         If hLin > 409 Then hLin = 409
@@ -440,6 +457,10 @@ Public Function PainelEncaixar() As String
         If fundoReal <= fundo + 0.5 Then Exit For
         fundo = fundo - (fundoReal - fundo) - 1   ' arredondou para cima: tira o excesso
     Next tentativa
+        If w.VisibleRange.Row + w.VisibleRange.Rows.Count - 1 > PAINEL_FAIXA_FIM + 1 Then Exit For
+        If (fundo - topo) / n - GRAF_VAO - 4# < GRAF_ALT_MIN Then Exit For
+        fundo = fundo - 4#                        ' zoom baixo: as linhas arredondadas somam mais que a conta
+    Next ajuste
     passo = (fundoReal - topo) / n
     alt = passo - GRAF_VAO
     For Each co In ws.ChartObjects                ' indice = nivel (AtualizarEixos, HookCharts)
@@ -511,8 +532,16 @@ Private Sub CabecalhosTela(ByVal w As Window, ByRef lx As Double, ByRef ly As Do
     If salvo Then ThisWorkbook.Saved = True
     k = PxPorPt()
     lx = (x1 - x0) / k: ly = (y1 - y0) / k
-    If lx < 0 Or lx > 150 Then lx = 0             ' medida absurda: nao desconta
-    If ly < 0 Or ly > 150 Then ly = 0
+    ' cabecalho LIGADO tem largura > 0. Zero logo depois de trocar o zoom = o Excel ainda nao
+    ' redesenhou (medido no laboratorio, 05/10/2026: guardado no cache, os graficos ficavam
+    ' ~15 pt largos demais naquele zoom ate fechar a pasta). Nao guarda; o vigia mede de novo
+    If lx <= 0 Or lx > 150 Or ly <= 0 Or ly > 150 Then
+        lx = 0: ly = 0
+        mCabRuim = True
+        mCabZoom = 0
+        Exit Sub
+    End If
+    mCabRuim = False
     mCabZoom = w.Zoom: mCabLx = lx: mCabLy = ly
     Exit Sub
 sai:

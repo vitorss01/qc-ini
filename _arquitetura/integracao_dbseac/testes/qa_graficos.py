@@ -321,7 +321,8 @@ def _executar(produto, caminho, saida, ex, wb, run):
             return True
         win32gui.EnumWindows(cb, None)
     reg('G08 Fechar o arquivo com o vigia ligado (outra pasta aberta): o Excel NÃO reabre o arquivo (10 s depois)',
-        ligado and abertos == [outra.Name] if not abertos[0].startswith('Excel ocupado') else False,
+        # o que se prova e "nao reabriu": a outra pasta pode ja nao estar la (lista vazia quebrava a prova)
+        ligado and nome not in abertos and not any(str(a).startswith('Excel ocupado') for a in abertos),
         {'vigia_estava_ligado': ligado, 'close_levou_s': fechou_em, 'pastas_abertas_10s_depois': abertos})
 
     if saida:

@@ -231,10 +231,10 @@ def executar(produto, caminho, saida):
             if not an or an == 0 or '|' not in ch:
                 continue
             linhas.append((r, str(an), str(e.Range(f'B{r}').Value).replace('.0', '')))
-        dif, cont = [], {'VALIDA': 0, 'PROVISORIA': 0, 'INSUFICIENTE': 0}
+        dif, cont, cont_u = [], {'VALIDA': 0, 'PROVISORIA': 0, 'INSUFICIENTE': 0}, [0, 0]
         for r, an, nv in linhas:
             x = esp.get((an.upper(), nv))
-            vals = {c: e.Range(f'{c}{r}').Value for c in ('AF', 'AG', 'AH', 'AI', 'AK', 'AL', 'AM', 'AO', 'AP')}
+            vals = {c: e.Range(f'{c}{r}').Value for c in ('AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL', 'AM', 'AO', 'AP')}
             val = x['validade'] if x else 'INSUFICIENTE'
             cont[val] += 1
             if val == 'INSUFICIENTE':
@@ -246,16 +246,23 @@ def executar(produto, caminho, saida):
                 continue
             if vals['AG'] != x['gl'] or vals['AH'] != x['lotes'] or vals['AI'] != x['dias']:
                 dif.append((r, an, nv, 'gl/lotes/dias', (vals['AG'], vals['AH'], vals['AI']), (x['gl'], x['lotes'], x['dias'])))
-            if not (perto(vals['AK'], vals['AF']) and perto(vals['AL'], 2 * vals['AK'])):     # sem u(cal): uc = u(Rw)
-                dif.append((r, an, nv, 'uc/U', vals['AK'], vals['AL']))
-            if not perto(vals['AM'], vals['AL'] * x['media'] / 100):
-                dif.append((r, an, nv, 'U unidade', vals['AM'], vals['AL'] * x['media'] / 100))
             sit = str(vals['AP'])
-            if (val == 'PROVISORIA') != sit.startswith('PROVISÓRIA') or 'sem u(cal)' not in sit:
-                dif.append((r, an, nv, 'situacao', sit, val))
-        reg(f'I01 u(Rw), gl, lotes, dias, uc, U e U na unidade conferem com o recálculo INDEPENDENTE (lotes n ≥ 20 '
-            f'agrupados por gl) em todas as {len(linhas)} linhas; validade 90/180 dias e gl 30/100 respeitada',
-            not dif, {'linhas': len(linhas), 'validade': cont, 'divergencias': dif[:8]})
+            if num(vals['AJ']):                       # Nordtest: uc = raiz(u(Rw)^2 + u(bias)^2)
+                cont_u[0] += 1
+                if not (perto(vals['AK'], math.sqrt(vals['AF'] ** 2 + vals['AJ'] ** 2)) and perto(vals['AL'], 2 * vals['AK'])):
+                    dif.append((r, an, nv, 'uc/U', vals['AK'], vals['AL']))
+                elif not perto(vals['AM'], vals['AL'] * x['media'] / 100):
+                    dif.append((r, an, nv, 'U unidade', vals['AM'], vals['AL'] * x['media'] / 100))
+                if (val == 'PROVISORIA') != sit.startswith('PROVISÓRIA'):
+                    dif.append((r, an, nv, 'situacao', sit, val))
+            else:                                     # sem u(bias): U nao estimada, motivo na situacao
+                cont_u[1] += 1
+                if vals['AK'] not in ('', None) or vals['AL'] not in ('', None) or not sit.startswith('U não estimada: '):
+                    dif.append((r, an, nv, 'sem u(bias)', vals['AK'], vals['AL'], sit))
+        reg(f'I01 u(Rw), gl, lotes, dias conferem com o recálculo INDEPENDENTE (lotes n ≥ 20 agrupados por gl) em todas as '
+            f'{len(linhas)} linhas; uc = raiz(u(Rw)² + u(bias)²), U = 2 uc e U na unidade quando há u(bias) do CEQ; '
+            f'sem u(bias), U não estimada e o motivo na situação',
+            not dif, {'linhas': len(linhas), 'validade': cont, 'com_U_sem_U': cont_u, 'divergencias': dif[:8]})
 
         # meta e classe
         cvi_col = 'O' if bio else 'M'
@@ -280,25 +287,13 @@ def executar(produto, caminho, saida):
         reg('I02 Meta u = 0,50 × CVI (EFLM; só o CVI cadastrado na aba Analitos; nunca do TEa CLIA) e classe '
             'Ótimo/Desejável/Mínimo/Não atende pelos cortes 0,25/0,50/0,75 × CVI', not dif, {'divergencias': dif[:8]})
 
-        # u(cal): informar e ver o efeito
-        r, an, nv = next((x for x in linhas if num(e.Range(f'AF{x[0]}').Value)), linhas[0])
-        ucal_rng = q.wb.Names('ucalFabricante').RefersToRange
-        ia = [i for i in range(1, 41) if str(a.Range(f'A{i + 3}').Value or '').strip() == an][0]
-        urw = e.Range(f'AF{r}').Value
-        try:
-            a.Unprotect('qcini2025')
-        except Exception:
-            pass
-        ucal_rng.Cells(ia, 1).Value = 1.5
-        q.ex.esperar()
-        uc2, sit2 = e.Range(f'AK{r}').Value, str(e.Range(f'AP{r}').Value)
-        ucal_rng.Cells(ia, 1).Value = None
-        q.ex.esperar()
-        uc3, sit3 = e.Range(f'AK{r}').Value, str(e.Range(f'AP{r}').Value)
-        reg('I03 u(cal) do fabricante informada entra em quadratura (uc = raiz(u(Rw)² + u(cal)²)) e tira o rótulo '
-            '"parcial"; apagada, volta ao parcial',
-            perto(uc2, math.sqrt(urw ** 2 + 1.5 ** 2)) and 'sem u(cal)' not in sit2 and perto(uc3, urw) and 'sem u(cal)' in sit3,
-            {'analito': an, 'nivel': nv, 'u_rw': urw, 'uc_com_ucal_1_5': uc2, 'situacao': [sit2, sit3]})
+        # ADR-067: sem certificado de calibrador -- nenhum campo, nome ou formula de u(cal)
+        tem_nome = any(n_.Name == 'ucalFabricante' for n_ in q.wb.Names)
+        cab_ucal = [c for c in range(1, 80) if 'u(cal)' in str(a.Cells(3, c).Value or '')]
+        f_ucal = [c for c in range(32, 48) if 'ucal' in str(e.Cells(14, c).Formula).lower()]
+        reg('I03 Sem u(cal) (ADR-067): nome ucalFabricante, campo na Analitos e referências nas fórmulas removidos; '
+            'a incerteza usa só CIQ + CEQ', not tem_nome and not cab_ucal and not f_ucal,
+            {'nome': tem_nome, 'cabecalho_analitos': cab_ucal, 'formulas': f_ucal})
 
         # CEQ
         ano, prov_f, rod = e.Range('N4').Value, e.Range('L4').Value, e.Range('P4').Value
@@ -312,7 +307,7 @@ def executar(produto, caminho, saida):
                 rr = [i for i in range(4, 44) if str(a.Range(f'A{i}').Value or '').strip() == an]
                 prov = a.Range(f'AR{rr[0]}').Value if rr and a.Range(f'AR{rr[0]}').Value else 'CAP'
             x = esperado_ceq(q, an, ano, prov, rod)
-            mv, tri, un = e.Range(f'AR{r}').Value, str(e.Range(f'AS{r}').Value), e.Range(f'AT{r}').Value
+            mv, tri, ub = e.Range(f'AR{r}').Value, str(e.Range(f'AS{r}').Value), e.Range(f'AJ{r}').Value
             if x is None:
                 if num(mv) or not tri.startswith('não verificável'):
                     dif.append((an, 'sem CEQ', mv, tri))
@@ -327,13 +322,16 @@ def executar(produto, caminho, saida):
                 ok_tri = tri.startswith(('detectável', 'RELEVANTE'))
             if not ok_tri:
                 dif.append((an, 'triagem', tri, x))
-            if x['ubias'] is not None and num(e.Range(f'AF{r}').Value):
-                if not perto(un, 2 * math.sqrt(e.Range(f'AF{r}').Value ** 2 + x['ubias'] ** 2)):
-                    dif.append((an, 'Nordtest', un, x['ubias']))
+            if x['ubias'] is not None:
+                if not perto(ub, x['ubias']):
+                    dif.append((an, 'u(bias)', ub, x['ubias']))
+            elif ub not in ('', None):
+                dif.append((an, 'u(bias) sem criterio', ub))
             if len(amostra) < 4:
                 amostra[an] = {'media': round(x['media'], 3), 'n': x['n'], 'rodadas': x['rodadas'], 'triagem': tri}
         reg('I04 Viés do CEQ recalculado da EQA_Base: média com sinal, triagem (≥ 6 amostras de ≥ 2 rodadas; '
-            'detectável se |média| > 2 EP) e U Nordtest informativo (u(Cref) = DP do grupo / raiz(nº de laboratórios))',
+            'detectável se |média| > 2 EP) e u(bias) Nordtest = raiz(RMS² + u(Cref)²), u(Cref) = DP do grupo / raiz(nº de '
+            'laboratórios), só com o critério',
             not dif, {'analitos': len(vistos), 'exemplos': amostra, 'divergencias': dif[:6]})
 
         # Painel = Estatistica
@@ -389,21 +387,16 @@ def executar(produto, caminho, saida):
         reg('I10 Linhas sem analito cadastrado (A = 0) não calculam nem mostram incerteza', not cheias,
             {'linhas_sem_analito': len(fant), 'celulas_preenchidas': cheias[:6]})
 
-        # u(cal) colada como TEXTO: nao conta e continua "parcial" (formula e VBA concordam)
-        r, an, nv = next((x for x in linhas if num(e.Range(f'AF{x[0]}').Value)), linhas[0])
-        ia = [i for i in range(1, 41) if str(a.Range(f'A{i + 3}').Value or '').strip() == an][0]
-        cel = q.wb.Names('ucalFabricante').RefersToRange.Cells(ia, 1)
-        fmt = cel.NumberFormat
-        cel.NumberFormat = '@'
-        cel.Value = '1.5'
-        q.ex.esperar()
-        sit_t, uc_t, urw_t = str(e.Range(f'AP{r}').Value), e.Range(f'AK{r}').Value, e.Range(f'AF{r}').Value
-        cel.Value = None
-        cel.NumberFormat = fmt
-        q.ex.esperar()
-        reg('I11 u(cal) colada como texto não entra: uc continua = u(Rw) e a situação continua "parcial" '
-            '(antes a fórmula ignorava o texto e o VBA dizia que não era parcial)',
-            'sem u(cal)' in sit_t and perto(uc_t, urw_t), {'situacao': sit_t, 'uc': uc_t, 'u_rw': urw_t})
+        # sem u(bias): o motivo dito e o do CEQ (insuficiente / sem u(Cref) / sem CEQ)
+        motivos = {}
+        for r, an, nv in linhas:
+            s_ = str(e.Range(f'AP{r}').Value or '')
+            if s_.startswith('U não estimada: '):
+                motivos[s_[16:].split(' (')[0]] = motivos.get(s_[16:].split(' (')[0], 0) + 1
+        conhecidos = ('CEQ insuficiente', 'sem u(Cref): faltam DP do grupo e nº de laboratórios no CEQ',
+                      'sem CEQ para o analito', 'sem CEQ utilizável para o analito', 'sem u(bias) do CEQ')
+        reg('I11 Sem u(bias), a situação diz o motivo do CEQ (insuficiente, sem u(Cref), sem CEQ) -- U não é inventada '
+            'com u(Rw) sozinha', all(m_ in conhecidos for m_ in motivos), {'motivos': motivos})
 
         # decisao manual de Uso_Analitico na EQA_Base sobrevive a consolidacao
         b_ = q.wb.Worksheets('EQA_Base')

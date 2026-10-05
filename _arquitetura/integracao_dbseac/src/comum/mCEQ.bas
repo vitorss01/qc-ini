@@ -520,9 +520,9 @@ End Function
 ' Sigma, ADR-035), mas NAO e vies no sentido do VIM: com vies verdadeiro zero, a
 ' media de |bias| ainda da ~0,8 x a dispersao das amostras (media de |X| de uma
 ' normal = sigma x raiz(2/pi)). Para a incerteza o que vale e o bias COM SINAL de
-' cada amostra. ISO/TS 20914: o CEQ VERIFICA o vies -- vies significativo se
-' investiga ou corrige, nao se soma a U. Nordtest TR 537: componente opcional,
-' aqui so informativo.
+' cada amostra. ADR-067 (05/10/2026): a incerteza e Nordtest TR 537 (CIQ + CEQ,
+' Magnusson 2012): u(bias) = raiz(RMS^2 + u(Cref)^2) ENTRA em uc. A TRIAGEM continua
+' como monitoramento: vies relevante se investiga/corrige, alem de entrar em U.
 '
 ' Mesma selecao do BiasEQ: provedor, maior ano <= ano EP (AnoVigente), rodada,
 ' Uso_Analitico = SIM -- CAP e Controllab nunca se misturam (o provedor e filtro).
@@ -536,6 +536,8 @@ End Function
 '   "RMS"      raiz(media dos bias^2)            (Nordtest)
 '   "UCREF"    media de 100 x DP grupo / |alvo| / raiz(n labs)   (Nordtest)
 '   "UBIAS"    raiz(RMS^2 + UCREF^2)              (Nordtest; so com o criterio da triagem)
+'   "NREF"     amostras com u(Cref) (DP do grupo e n de laboratorios)
+'   "SITUACAO" "" se u(bias) e estimavel; senao o motivo (para a coluna Situacao)
 '   "ANO"      ano vigente usado
 ' Sem amostra utilizavel devolve SEM_EP -- nunca 0.
 Public Function ViesEQ(ByVal analito As String, ByVal anoRef As Variant, ByVal modo As String, _
@@ -558,6 +560,7 @@ Public Function ViesEQ(ByVal analito As String, ByVal anoRef As Variant, ByVal m
     md = UCase$(Trim$(modo))
     ViesEQ = SEM_EP
     If md = "TRIAGEM" Then ViesEQ = "não verificável (sem CEQ)"   ' analito sem nenhuma amostra tambem
+    If md = "SITUACAO" Then ViesEQ = "sem CEQ para o analito"
     If Len(Trim$(analito)) = 0 Then Exit Function
     On Error GoTo falhou
     d = LerBanco(analito)
@@ -612,7 +615,10 @@ prox:
         If passo = 0 Then ViesEQ = anoVig Else ViesEQ = CStr(anoVig - 1) & "-" & CStr(anoVig)
         Exit Function
     End If
-    If n = 0 Then Exit Function
+    If n = 0 Then
+        If md = "SITUACAO" Then ViesEQ = "sem CEQ utilizável para o analito"
+        Exit Function
+    End If
 
     media = soma / n
     If n >= 2 Then
@@ -637,7 +643,7 @@ prox:
                 ViesEQ = "não detectável"
             ElseIf IsNumeric(bperm) And Len(Trim$(CStr(bperm))) > 0 Then
                 If CDbl(bperm) > 0 And Abs(media) > CDbl(bperm) Then
-                    ViesEQ = "RELEVANTE: investigar/corrigir (U não cobre)"
+                    ViesEQ = "RELEVANTE: investigar/corrigir"
                 Else
                     ViesEQ = "detectável, dentro do permitido"
                 End If
@@ -646,6 +652,16 @@ prox:
             End If
         Case "RMS":      ViesEQ = rms
         Case "UCREF":    If nRef > 0 Then ViesEQ = ucref
+        Case "NREF":     ViesEQ = nRef
+        Case "SITUACAO"
+            If Not ok Then
+                ViesEQ = "CEQ insuficiente (" & n & " amostra(s), " & rods.Count & " rodada(s); mín. " & _
+                         VIES_M_MIN & " de " & VIES_ROD_MIN & ")"
+            ElseIf nRef = 0 Then
+                ViesEQ = "sem u(Cref): faltam DP do grupo e nº de laboratórios no CEQ"
+            Else
+                ViesEQ = ""
+            End If
         Case "UBIAS"
             If ok And nRef > 0 Then ViesEQ = Sqr(rms * rms + ucref * ucref)
         Case Else:       ViesEQ = CVErr(xlErrValue)
