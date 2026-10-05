@@ -1,6 +1,6 @@
 {
  "produto": "Hematologia",
- "gerado_em": "2026-10-05T03:53:30",
+ "gerado_em": "2026-10-05T17:05:15",
  "nota": "Só os IDs dos cenários do qa_etl e uma amostra fixa (semente 57) -- nunca a base inteira.",
  "recorte_estatistica": {
   "produto": "Hematologia",
@@ -1025,28 +1025,6 @@
    "CENARIOS": []
   },
   {
-   "ID": "HEM-327824",
-   "ORIGEM": "INTERFACEAMENTO",
-   "NO_RECEBIMENTO": true,
-   "LINHA_MANUAL": null,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26080601,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": []
-  },
-  {
    "ID": "HEM-327838",
    "ORIGEM": "INTERFACEAMENTO",
    "NO_RECEBIMENTO": true,
@@ -1201,7 +1179,7 @@
    "CENARIOS": []
   },
   {
-   "ID": "HEM-359640",
+   "ID": "HEM-360182",
    "ORIGEM": "INTERFACEAMENTO",
    "NO_RECEBIMENTO": true,
    "LINHA_MANUAL": null,
@@ -1213,7 +1191,7 @@
    "STATUS": "INATIVADO",
    "PARTICIPA": "NÃO",
    "TIPO_PLOTAGEM": "X_VERMELHO",
-   "RUN": 26100102,
+   "RUN": 26100203,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",

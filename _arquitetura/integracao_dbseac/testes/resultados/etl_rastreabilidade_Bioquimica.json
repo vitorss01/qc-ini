@@ -1,6 +1,6 @@
 {
  "produto": "Bioquimica",
- "gerado_em": "2026-10-05T02:24:07",
+ "gerado_em": "2026-10-05T18:51:25",
  "nota": "Só os IDs dos cenários do qa_etl e uma amostra fixa (semente 57) -- nunca a base inteira.",
  "recorte_estatistica": {
   "produto": "Bioquimica",
@@ -229,28 +229,6 @@
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
    "RUN": 25110601,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": []
-  },
-  {
-   "ID": "BIO-219343",
-   "ORIGEM": "INTERFACEAMENTO",
-   "NO_RECEBIMENTO": true,
-   "LINHA_MANUAL": null,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 25111701,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
@@ -1178,7 +1156,7 @@
    "CENARIOS": []
   },
   {
-   "ID": "BIO-359554",
+   "ID": "BIO-360151",
    "ORIGEM": "INTERFACEAMENTO",
    "NO_RECEBIMENTO": true,
    "LINHA_MANUAL": null,
@@ -1190,7 +1168,7 @@
    "STATUS": "INATIVADO",
    "PARTICIPA": "NÃO",
    "TIPO_PLOTAGEM": "X_VERMELHO",
-   "RUN": 26100102,
+   "RUN": 26100203,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
@@ -1202,6 +1180,28 @@
    "CENARIOS": [
     "E13b"
    ]
+  },
+  {
+   "ID": "BIO-360837",
+   "ORIGEM": "INTERFACEAMENTO",
+   "NO_RECEBIMENTO": true,
+   "LINHA_MANUAL": null,
+   "INATIVADO": false,
+   "LINHA_INAT": [],
+   "REGISTRAR_LJ": "SIM",
+   "STATUS": "ATIVO",
+   "PARTICIPA": "SIM",
+   "TIPO_PLOTAGEM": "NORMAL",
+   "RUN": 26100501,
+   "NA_ESTATISTICA": "NÃO",
+   "NO_RECORTE_ESTATISTICA": false,
+   "NO_LJ": "FORA_DA_TELA",
+   "ACHADOS_QA": [],
+   "DESTINO": [
+    "PARTICIPA"
+   ],
+   "MOTIVO": null,
+   "CENARIOS": []
   },
   {
    "ID": "BIO-999999999",
