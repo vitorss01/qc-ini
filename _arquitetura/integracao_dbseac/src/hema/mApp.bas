@@ -93,16 +93,21 @@ End Function
 ' celula volta a ser a formula (nome da posicao B3) e B3 recebe a posicao --
 ' o spinner continua valendo. Uma escolha substitui ate 39 cliques no spinner.
 Public Sub AnalitoEscolhido(ByVal Cel As Range)
-    Dim nome As String, idx As Variant, ws As Worksheet, prot As Boolean
+    Dim nome As String, idx As Variant, ws As Worksheet, prot As Boolean, calc As Long
     Set ws = Cel.Worksheet
     nome = Trim$(CStr(Cel.Value))
     Application.EnableEvents = False
+    ' ADR-062: as duas escritas (formula de C3 e posicao em B3) em calculo MANUAL -- cada uma
+    ' recalculava a cadeia inteira do analito em tela. Uma recalculacao so, ao religar.
+    calc = Application.Calculation
+    Application.Calculation = xlCalculationManual
     On Error Resume Next
-    prot = LiberarEscrita(ws)
+    prot = LiberarEscritaRapida(ws)
     idx = Application.Match(nome, ThisWorkbook.Sheets("Analitos").Range("A4:A43"), 0)
     Cel.Formula = "=IFERROR(INDEX(Analitos!$A$4:$A$43,$B$3),"""")"
     If Not IsError(idx) And Len(nome) > 0 Then ws.Range("B3").Value = CLng(idx)
     RestaurarProtecao ws, prot
+    Application.Calculation = calc
     Application.EnableEvents = True
     On Error GoTo 0
     mEstatistica.PainelMudou
@@ -177,6 +182,12 @@ End Sub
 ' ---------------------------------------------------------------------------
 Public Sub NovoLote()
     Dim cod As String, v As String, r As String, resp As VbMsgBoxResult
+    ' pela lista de macros (Alt+F8) na tela de login cadastrava o lote e trocava o lote em uso
+    ' com "(sem login)" na trilha (auditoria 04/10/2026)
+    If Not mSeguranca.SessaoAtiva() Then
+        MsgBox "Faca login para cadastrar um lote.", vbExclamation, "Novo lote"
+        Exit Sub
+    End If
     cod = Trim$(InputBox("Codigo do NOVO lote de controle" & vbLf & vbLf & _
                          "Somente o nucleo do lote -- sem o prefixo 'QC-' e sem os 2 digitos " & _
                          "finais de nivel (ex.: 8975).", "Novo lote -- 1 de 3"))
@@ -203,7 +214,8 @@ End Sub
 
 ' Nucleo do cadastro, sem dialogo (testavel). Devolve "OK|linha" ou "ERRO|motivo".
 Public Function CadastrarLote(ByVal cod As String, ByVal validade As String) As String
-    Dim ws As Worksheet, r As Long, Livre As Long, dtv As Variant, prot As Boolean
+    Dim ws As Worksheet, r As Long, Livre As Long, dtv As Variant, prot As Boolean, ev As Boolean
+    Dim nE As Long, sE As String
     cod = Trim$(cod)
     If cod = "" Then CadastrarLote = "ERRO|Codigo vazio.": Exit Function
     Set ws = ThisWorkbook.Sheets("Configuração")
@@ -211,22 +223,39 @@ Public Function CadastrarLote(ByVal cod As String, ByVal validade As String) As 
         If StrComp(Trim$(CStr(ws.Cells(r, 3).Value)), cod, vbTextCompare) = 0 Then
             CadastrarLote = "ERRO|O lote " & cod & " ja esta cadastrado (linha " & r & ").": Exit Function
         End If
-        If Livre = 0 And Trim$(CStr(ws.Cells(r, 3).Value)) = "" Then Livre = r
+        ' ADR-060: ANEXA depois da ultima linha usada. A posicao do lote enderecca os
+        ' blocos de Liberacao/Registros: reaproveitar um buraco herdaria os de outro lote.
+        If Trim$(CStr(ws.Cells(r, 3).Value)) <> "" Then Livre = r + 1
     Next r
-    If Livre = 0 Then CadastrarLote = "ERRO|O cadastro ja tem 100 lotes.": Exit Function
+    If Livre = 0 Then Livre = 26
+    If Livre > 125 Then CadastrarLote = "ERRO|O cadastro ja tem 100 lotes.": Exit Function
     If Trim$(validade) <> "" Then
         If Not IsDate(validade) Then CadastrarLote = "ERRO|Data invalida: " & validade & ". O lote NAO foi cadastrado.": Exit Function
         dtv = CDate(validade)
     End If
+    ev = Application.EnableEvents
     Application.EnableEvents = False
+    On Error GoTo restaura
     prot = LiberarEscrita(ws)
     ws.Cells(Livre, 3).NumberFormat = "@"
     ws.Cells(Livre, 3).Value = cod
-    If Not IsEmpty(dtv) Then ws.Cells(Livre, 4).Value = dtv
+    If Not IsEmpty(dtv) Then
+        ws.Cells(Livre, 4).Value = dtv
+        ws.Cells(Livre, 4).NumberFormat = "dd/mm/yyyy"
+        ws.Cells(Livre, 30).Value = dtv          ' AD: sombra da validade (ADR-060)
+    End If
+    ws.Cells(Livre, 5).Value = "manual em " & Format$(Date, "dd/mm/yyyy")
+restaura:
+    nE = Err.Number: sE = Err.Description
     RestaurarProtecao ws, prot
-    Application.EnableEvents = True
+    Application.EnableEvents = ev
+    On Error GoTo 0
+    If nE <> 0 Then CadastrarLote = "ERRO|" & sE: Exit Function
     On Error Resume Next
-    mAuditoria.RegistrarLog "LOTE_CADASTRADO", "Lote " & cod & IIf(IsEmpty(dtv), "", " validade " & Format(dtv, "dd/mm/yyyy"))
+    mAuditoria.Auditar mAuditoria.CAT_CONFIG, "LOTE_CADASTRADO", "mApp", 0, Empty, "", cod, 0, "", Empty, Empty, "", _
+        IIf(IsEmpty(dtv), "SEM_VALIDADE", "VALIDADE " & Format$(dtv, "dd/mm/yyyy")), "MANUAL", _
+        "Lote " & cod & " cadastrado pelo botao Novo lote" & IIf(IsEmpty(dtv), "; validade pendente", "")
+    mLotes.InvalidarLotes
     CadastrarLote = "OK|" & Livre
 End Function
 

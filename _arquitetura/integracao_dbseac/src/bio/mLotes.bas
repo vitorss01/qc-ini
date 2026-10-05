@@ -47,9 +47,23 @@ Private Const AN_ABA As String = "Analitos"
 Private Const AN_R0 As Long = 4
 Private Const AN_C_MED1 As Long = 5           ' Analitos!E
 
+' TrocarLote -> TrocarLoteAnalise: a chamada interna entra na operacao que ja esta aberta
+Private mDentroTrocaLote As Boolean
 Private mLS As Variant                        ' snapshot LotesStore A..P
 Private mLSIdx As Object                      ' chave -> linha do snapshot
 Private mLSok As Boolean
+
+' ---- cadastro de lotes (Configuracao) -- ADR-060 ----
+' Linha do lote = POSICAO no cadastro: BlocoDoLote/BlocoDoLoteBI enderecam por ela
+' os blocos de LiberStore/RegistrosStore. Lote novo e sempre ANEXADO depois da
+' ultima linha usada -- reaproveitar um buraco herdaria as assinaturas de outro lote.
+Private Const LCAD_ABA As String = "Configuração"
+Private Const LCAD_R0 As Long = 26
+Private Const LCAD_R1 As Long = 125
+Private Const LCAD_C_LOTE As Long = 3          ' C  codigo (regLoteCol)
+Private Const LCAD_C_VAL As Long = 4           ' D  validade (regValidadeCol)
+Private Const LCAD_C_ORIG As Long = 5          ' E  origem do cadastro (texto para o usuario)
+Private Const LCAD_C_SOMBRA As Long = 30       ' AD validade registrada (oculta) -- o "antes" da trilha
 
 ' ============================ CHAVE E LOTE EM ANALISE ============================
 Public Function ChaveLote(ByVal lote As String, ByVal analito As String) As String
@@ -71,7 +85,7 @@ End Function
 ' "010" o numero 10 -- e o nucleo gravado no banco continua "010". Casar pelo
 ' texto e, na falta, pelo valor devolve o codigo verdadeiro.
 Public Function LoteCanonico(ByVal v As Variant) As String
-    Dim s As String, rng As Range, c As Range, t As String, cand As String
+    Dim s As String, rng As Range, t As String, cand As String, vals As Variant, i As Long
     s = Trim$(CStr(v))
     LoteCanonico = s
     If s = "" Then Exit Function
@@ -79,15 +93,17 @@ Public Function LoteCanonico(ByVal v As Variant) As String
     Set rng = ThisWorkbook.Names("regLoteCol").RefersToRange
     On Error GoTo 0
     If rng Is Nothing Then Exit Function
-    For Each c In rng.Cells
-        t = Trim$(CStr(c.Value))
+    ' ADR-062: UMA leitura em bloco (era celula a celula por COM, ~6 vezes por clique)
+    vals = rng.Value
+    For i = 1 To UBound(vals, 1)
+        t = Trim$(CStr(vals(i, 1)))
         If t <> "" Then
             If t = s Then LoteCanonico = t: Exit Function
             If cand = "" And IsNumeric(s) And IsNumeric(t) Then
                 If CDbl(s) = CDbl(t) Then cand = t
             End If
         End If
-    Next c
+    Next i
     If cand <> "" Then LoteCanonico = cand
 End Function
 
@@ -293,8 +309,14 @@ End Sub
 ' falar do lote novo, e so dele.
 Public Sub TrocarLoteAnalise()
     Dim novo As String, atual As String
-    ' ADR-050: uma operacao so -- tela congelada, calculo manual, um recalculo
-    mApp.InicioUsuario "Carregando o lote " & LotePainel() & "..."
+    ' ADR-050: uma operacao so -- tela congelada, calculo manual, um recalculo. Chamada de DENTRO
+    ' do TrocarLote, entra na operacao dele: o InicioUsuario zerava o contador e o resto do
+    ' TrocarLote rodava com tela, eventos e calculo ligados (auditoria 04/10/2026).
+    If mDentroTrocaLote Then
+        mApp.Inicio "Carregando o lote " & LotePainel() & "..."
+    Else
+        mApp.InicioUsuario "Carregando o lote " & LotePainel() & "..."
+    End If
     On Error GoTo falha
     novo = LotePainel()
     If Len(novo) > 0 Then GravarLoteSel novo       ' canoniza o que o usuario escolheu
@@ -515,7 +537,9 @@ Public Sub TrocarLote()
     AtualizarListaLiberacao
     mEstatistica.InvalidarCache           ' Registros (repeticoes/calibracao) mudou de lote
     GravarLoteSel novo
+    mDentroTrocaLote = True
     TrocarLoteAnalise
+    mDentroTrocaLote = False
     ' ADR-050: Calculate, e nao CalculateFull. O CalculateFull refazia a pasta
     ' INTEIRA (~15 s com cinco anos de banco) para atualizar o que depende do
     ' lote em uso -- e isso o Calculate ja faz, porque so o que mudou fica sujo.
@@ -523,6 +547,7 @@ Public Sub TrocarLote()
     AtualizarEixos
     HookCharts
 fim:
+    mDentroTrocaLote = False
     If emOp Then mApp.fim
 End Sub
 
@@ -630,4 +655,304 @@ Public Sub FlushLoteAtual()
     If LoteParamTela() <> "" Then SalvarParametrosView LoteParamTela()
 End Sub
 
+' ============================================================================
+'  LOTES AUTOMATICOS E VALIDADE (ADR-060, 03/10/2026)
+'
+'  Pedido do usuario: "nao precisar cadastrar lotes". Todo lote que chega pelo
+'  INTERFACEAMENTO com analito cadastrado entra sozinho no cadastro (Configuracao,
+'  coluna C), anexado no fim, com a origem na coluna E e a validade VAZIA. Falta de
+'  validade nao e aprovacao: depois de cada login e de cada ATUALIZAR DADOS o
+'  sistema avisa e oferece levar o usuario ate a celula. Se ele adiar, o aviso volta
+'  na proxima abertura -- a pendencia e a propria celula vazia, nao um flag.
+'
+'  O que NAO entra sozinho (mesmo filtro do QA I03): resultado MANUAL (lote digitado
+'  errado viraria lote fantasma) e analito sem cadastro (TNIH, urina, FERR...).
+'  Media/DP continuam por lote e nao sao criadas aqui (ADR-049: lote novo nasce sem
+'  parametro e o Painel mostra SEM MEDIA/DP ate alguem digitar).
+' ============================================================================
 
+' Coluna inteira da tblCQ_Final como matriz 2D (1 linha tambem vira 2D).
+Private Function ColunaCQ(ByVal lo As ListObject, ByVal nome As String) As Variant
+    Dim v As Variant, u(1 To 1, 1 To 1) As Variant
+    v = lo.ListColumns(nome).DataBodyRange.Value
+    If IsArray(v) Then
+        ColunaCQ = v
+    Else
+        u(1, 1) = v
+        ColunaCQ = u
+    End If
+End Function
+
+' Mesma igualdade do LoteCanonico: texto (sem caixa) ou, na falta, valor numerico.
+Private Function LoteNoCadastro(ByVal lote As String, ByRef cad As Variant) As Boolean
+    Dim i As Long, t As String
+    For i = 1 To UBound(cad, 1)
+        t = Trim$(CStr(cad(i, 1)))
+        If Len(t) > 0 Then
+            If StrComp(t, lote, vbTextCompare) = 0 Then LoteNoCadastro = True: Exit Function
+            If IsNumeric(t) And IsNumeric(lote) Then
+                If CDbl(t) = CDbl(lote) Then LoteNoCadastro = True: Exit Function
+            End If
+        End If
+    Next i
+End Function
+
+' Ultima linha do cadastro com codigo (LCAD_R0 - 1 se vazio).
+Private Function UltimaLinhaCadastro(ByRef cad As Variant) As Long
+    Dim i As Long
+    UltimaLinhaCadastro = LCAD_R0 - 1
+    For i = UBound(cad, 1) To 1 Step -1
+        If Len(Trim$(CStr(cad(i, 1)))) > 0 Then UltimaLinhaCadastro = LCAD_R0 + i - 1: Exit Function
+    Next i
+End Function
+
+' Validade de verdade: data (ou numero de serie de data) positiva. Texto que
+' "parece data" nao vale -- as formulas do Inicio fariam conta com ele.
+Public Function ValidadeOk(ByVal v As Variant) As Boolean
+    Select Case VarType(v)
+        Case vbDate: ValidadeOk = (CDbl(v) > 0)
+        Case vbDouble, vbSingle, vbLong, vbInteger, vbCurrency: ValidadeOk = (CDbl(v) > 0)
+    End Select
+End Function
+
+Private Function DataTexto(ByVal v As Variant) As String
+    If ValidadeOk(v) Then DataTexto = Format$(CDate(CDbl(v)), "dd/mm/yyyy") Else DataTexto = Trim$(CStr(v))
+End Function
+
+' Le a tblCQ_Final e ANEXA ao cadastro os lotes que ainda nao estao nele.
+' Sem dialogo e sem levantar erro (roda dentro do ATUALIZAR DADOS).
+' Devolve "OK|<n>|<lote1;lote2>|<os que nao couberam>" ou "ERRO|<motivo>".
+Public Function RegistrarLotesRecebidos() As String
+    Dim lo As ListObject, ws As Worksheet, n As Long, i As Long, j As Long
+    Dim vL As Variant, vE As Variant, vA As Variant, vO As Variant, vD As Variant
+    Dim novos As Object, k As Variant, lote As String, eq As String, info As Variant
+    Dim cad As Variant, ult As Long, r As Long, chaves() As String, nn As Long, tmp As String
+    Dim gravados As String, fora As String, nGrav As Long, prot As Boolean, ev As Boolean
+    Dim dIni As Double, dFim As Double, origem As String, nE As Long, sE As String, abriu As Boolean
+
+    On Error GoTo falha
+    Set lo = mDados.TabelaCQ()
+    If lo Is Nothing Then RegistrarLotesRecebidos = "OK|0||": Exit Function
+    n = lo.ListRows.Count
+    If n = 0 Then RegistrarLotesRecebidos = "OK|0||": Exit Function
+    vL = ColunaCQ(lo, "LOTE"): vE = ColunaCQ(lo, "EQUIPAMENTO")
+    vA = ColunaCQ(lo, "ANALITO_CADASTRADO"): vO = ColunaCQ(lo, "ORIGEM_RESULTADO")
+    vD = ColunaCQ(lo, "DATA_HORA")
+
+    ' lote -> Array(1a data, ultima data, n, equipamentos)
+    Set novos = CreateObject("Scripting.Dictionary")
+    novos.CompareMode = 1
+    For i = 1 To n
+        If UCase$(Trim$(CStr(vO(i, 1)))) = "INTERFACEAMENTO" Then
+            If UCase$(Trim$(CStr(vA(i, 1)))) = "SIM" Then
+                lote = Trim$(CStr(vL(i, 1)))
+                If Len(lote) > 0 And IsDate(vD(i, 1)) Then
+                    eq = Trim$(CStr(vE(i, 1)))
+                    If Not novos.Exists(lote) Then
+                        novos.Add lote, Array(CDbl(CDate(vD(i, 1))), CDbl(CDate(vD(i, 1))), 0&, "")
+                    End If
+                    info = novos(lote)
+                    If CDbl(CDate(vD(i, 1))) < info(0) Then info(0) = CDbl(CDate(vD(i, 1)))
+                    If CDbl(CDate(vD(i, 1))) > info(1) Then info(1) = CDbl(CDate(vD(i, 1)))
+                    info(2) = info(2) + 1
+                    If Len(eq) > 0 And InStr(1, "|" & info(3) & "|", "|" & eq & "|", vbTextCompare) = 0 Then
+                        info(3) = info(3) & IIf(Len(info(3)) > 0, "|", "") & eq
+                    End If
+                    novos(lote) = info
+                End If
+            End If
+        End If
+    Next i
+
+    Set ws = ThisWorkbook.Sheets(LCAD_ABA)
+    cad = ws.Range(ws.Cells(LCAD_R0, LCAD_C_LOTE), ws.Cells(LCAD_R1, LCAD_C_LOTE)).Value
+    ' so os que nao estao no cadastro, em ordem do 1o resultado
+    ReDim chaves(1 To novos.Count + 1)
+    For Each k In novos.Keys
+        If Not LoteNoCadastro(CStr(k), cad) Then nn = nn + 1: chaves(nn) = CStr(k)
+    Next k
+    If nn = 0 Then RegistrarLotesRecebidos = "OK|0||": Exit Function
+    For i = 2 To nn
+        tmp = chaves(i): j = i - 1
+        Do While j >= 1
+            If novos(chaves(j))(0) <= novos(tmp)(0) Then Exit Do
+            chaves(j + 1) = chaves(j): j = j - 1
+        Loop
+        chaves(j + 1) = tmp
+    Next i
+
+    ult = UltimaLinhaCadastro(cad)
+    ev = Application.EnableEvents
+    Application.EnableEvents = False
+    prot = LiberarEscrita(ws): abriu = True
+    For i = 1 To nn
+        info = novos(chaves(i))
+        r = ult + 1
+        If r > LCAD_R1 Then
+            fora = fora & IIf(Len(fora) > 0, ";", "") & chaves(i)
+        Else
+            dIni = info(0): dFim = info(1)
+            origem = "automático em " & Format$(Date, "dd/mm/yyyy") & " · " & info(2) & " resultado(s) de " & _
+                     Format$(CDate(dIni), "dd/mm/yyyy") & " a " & Format$(CDate(dFim), "dd/mm/yyyy") & _
+                     IIf(Len(info(3)) > 0, " · " & Replace(info(3), "|", ", "), "")
+            ws.Cells(r, LCAD_C_LOTE).NumberFormat = "@"
+            ws.Cells(r, LCAD_C_LOTE).Value = chaves(i)
+            ws.Cells(r, LCAD_C_VAL).ClearContents
+            ws.Cells(r, LCAD_C_ORIG).Value = origem
+            ws.Cells(r, LCAD_C_SOMBRA).ClearContents
+            ult = r
+            nGrav = nGrav + 1
+            gravados = gravados & IIf(Len(gravados) > 0, ";", "") & chaves(i)
+        End If
+    Next i
+    RestaurarProtecao ws, prot: abriu = False
+    Application.EnableEvents = ev
+
+    ' trilha: um evento por lote (fora do bloco destravado -- Auditar cuida da propria aba)
+    On Error Resume Next
+    For i = 1 To nn
+        If InStr(1, ";" & gravados & ";", ";" & chaves(i) & ";", vbTextCompare) > 0 Then
+            info = novos(chaves(i))
+            mAuditoria.Auditar mAuditoria.CAT_CONFIG, "LOTE_CADASTRADO", "mLotes", 0, CDate(info(0)), _
+                Replace(info(3), "|", ", "), chaves(i), 0, "", Empty, Empty, "", "SEM_VALIDADE", "AUTOMATICO", _
+                "Lote recebido do interfaceamento (" & info(2) & " resultado(s), de " & Format$(CDate(info(0)), "dd/mm/yyyy") & _
+                " a " & Format$(CDate(info(1)), "dd/mm/yyyy") & ") registrado automaticamente; validade pendente."
+        End If
+    Next i
+    If Len(fora) > 0 Then mAuditoria.RegistrarLog "LOTE_NAO_CADASTRADO", "Cadastro cheio (100 lotes): " & fora
+    On Error GoTo 0
+    InvalidarLotes
+    RegistrarLotesRecebidos = "OK|" & nGrav & "|" & gravados & "|" & fora
+    Exit Function
+falha:
+    nE = Err.Number: sE = Err.Description
+    On Error Resume Next
+    If abriu Then RestaurarProtecao ws, prot
+    Application.EnableEvents = True
+    RegistrarLotesRecebidos = "ERRO|" & nE & ": " & sE
+End Function
+
+' Lotes do cadastro sem validade valida. "<n>|<lote1;lote2>" (so leitura).
+Public Function LotesSemValidade() As String
+    Dim ws As Worksheet, v As Variant, i As Long, n As Long, lista As String
+    On Error GoTo fim
+    Set ws = ThisWorkbook.Sheets(LCAD_ABA)
+    v = ws.Range(ws.Cells(LCAD_R0, LCAD_C_LOTE), ws.Cells(LCAD_R1, LCAD_C_VAL)).Value
+    For i = 1 To UBound(v, 1)
+        If Len(Trim$(CStr(v(i, 1)))) > 0 Then
+            If Not ValidadeOk(v(i, 2)) Then
+                n = n + 1
+                lista = lista & IIf(Len(lista) > 0, ";", "") & Trim$(CStr(v(i, 1)))
+            End If
+        End If
+    Next i
+fim:
+    LotesSemValidade = n & "|" & lista
+End Function
+
+Private Function PrimeiraLinhaSemValidade() As Long
+    Dim ws As Worksheet, v As Variant, i As Long
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets(LCAD_ABA)
+    v = ws.Range(ws.Cells(LCAD_R0, LCAD_C_LOTE), ws.Cells(LCAD_R1, LCAD_C_VAL)).Value
+    For i = 1 To UBound(v, 1)
+        If Len(Trim$(CStr(v(i, 1)))) > 0 And Not ValidadeOk(v(i, 2)) Then
+            PrimeiraLinhaSemValidade = LCAD_R0 + i - 1: Exit Function
+        End If
+    Next i
+End Function
+
+' Texto do aviso (o mesmo no login e depois do ATUALIZAR DADOS).
+Public Function TextoAvisoValidade() As String
+    Dim r As String, n As Long, lista As String
+    r = LotesSemValidade()
+    n = CLng(Val(Split(r, "|")(0)))
+    If n = 0 Then Exit Function
+    lista = Replace(Split(r, "|")(1), ";", ", ")
+    TextoAvisoValidade = IIf(n = 1, "Detectei um lote de controle SEM DATA DE VALIDADE:", _
+                                    "Detectei " & n & " lotes de controle SEM DATA DE VALIDADE:") & vbCrLf & vbCrLf & _
+        "     " & lista & vbCrLf & vbCrLf & _
+        "O cadastro do lote é automático, mas a validade precisa ser informada por você (bula/rótulo do controle)." & vbCrLf & _
+        "NÃO é recomendado — não devemos trabalhar sem registrar a data de validade." & vbCrLf & vbCrLf & _
+        "RECOMENDADO: vamos inserir agora?"
+End Function
+
+' Depois do login e do ATUALIZAR DADOS. Nunca em automacao (modal invisivel trava o
+' Excel) e nunca no meio de uma operacao.
+Public Sub AvisarLotesSemValidade()
+    Dim t As String, resp As VbMsgBoxResult
+    If Not Application.Interactive Then Exit Sub
+    If mApp.Ocupado() Then Exit Sub
+    t = TextoAvisoValidade()
+    If Len(t) = 0 Then Exit Sub
+    resp = MsgBox(t, vbYesNo + vbExclamation + vbDefaultButton1, "Lotes — validade pendente")
+    ResponderAvisoValidade (resp = vbYes)
+End Sub
+
+' Nucleo da resposta, sem a pergunta (o QA chama este).
+Public Sub ResponderAvisoValidade(ByVal inserirAgora As Boolean)
+    Dim lista As String
+    If inserirAgora Then
+        IrValidadeLotes
+        Exit Sub
+    End If
+    lista = Replace(Split(LotesSemValidade(), "|")(1), ";", ", ")
+    On Error Resume Next
+    mAuditoria.Auditar mAuditoria.CAT_CONFIG, "VALIDADE_LOTE_ADIADA", "mLotes", 0, Empty, "", "", 0, "", _
+                       Empty, Empty, "", "SEM_VALIDADE", "", "Usuario adiou o registro da validade: " & lista
+    On Error GoTo 0
+    If Application.Interactive Then
+        MsgBox "NÃO é recomendado trabalhar sem a data de validade do lote." & vbCrLf & vbCrLf & _
+               "Lote(s) sem validade: " & lista & vbCrLf & vbCrLf & _
+               "Este aviso vai aparecer de novo toda vez que o arquivo for aberto, até a validade ser registrada " & _
+               "(Configuração > cadastro de lotes, coluna Validade).", vbCritical, "Lotes — validade pendente"
+    End If
+End Sub
+
+' Leva o usuario a celula da validade do primeiro lote pendente.
+Public Sub IrValidadeLotes()
+    Dim r As Long
+    r = PrimeiraLinhaSemValidade()
+    If r = 0 Then r = LCAD_R0
+    mApp.Ir LCAD_ABA, "D" & r
+    Application.StatusBar = "Digite a VALIDADE (dd/mm/aaaa) na coluna D de cada lote sem validade — " & _
+                            "fica registrado na trilha de auditoria."
+End Sub
+
+' Worksheet_Change da Configuracao, coluna D do cadastro: confere e registra.
+' O valor ANTERIOR vem da coluna-sombra AD (oculta), que sobrevive a reset do VBA.
+Public Sub ValidadeEditada(ByVal Target As Range)
+    Dim ws As Worksheet, alvo As Range, c As Range, r As Long, lote As String
+    Dim antes As Variant, depois As Variant, prot As Boolean, ev As Boolean
+    Set ws = ThisWorkbook.Sheets(LCAD_ABA)
+    Set alvo = Intersect(Target, ws.Range(ws.Cells(LCAD_R0, LCAD_C_VAL), ws.Cells(LCAD_R1, LCAD_C_VAL)))
+    If alvo Is Nothing Then Exit Sub
+    ev = Application.EnableEvents
+    Application.EnableEvents = False
+    On Error GoTo fim
+    prot = LiberarEscrita(ws)
+    For Each c In alvo.Cells
+        r = c.Row
+        lote = Trim$(CStr(ws.Cells(r, LCAD_C_LOTE).Value))
+        antes = ws.Cells(r, LCAD_C_SOMBRA).Value
+        depois = c.Value
+        If Len(Trim$(CStr(depois))) > 0 And Not ValidadeOk(depois) Then
+            ' texto ou data invalida (colagem passa por cima da validacao de dados): volta
+            c.Value = antes
+            Avisar "Validade inválida para o lote " & lote & ": '" & CStr(depois) & "'." & vbCrLf & _
+                   "Digite uma data (dd/mm/aaaa).", vbExclamation
+        ElseIf DataTexto(antes) <> DataTexto(depois) Then
+            If ValidadeOk(depois) Then c.NumberFormat = "dd/mm/yyyy"
+            ws.Cells(r, LCAD_C_SOMBRA).Value = depois
+            If Len(lote) > 0 Then
+                mAuditoria.Auditar mAuditoria.CAT_CONFIG, "VALIDADE_LOTE_ALTERADA", "mLotes", 0, Empty, "", lote, 0, "", _
+                    DataTexto(antes), DataTexto(depois), "", "", "", _
+                    "Validade do lote " & lote & ": " & IIf(Len(DataTexto(antes)) = 0, "(vazia)", DataTexto(antes)) & _
+                    " -> " & IIf(Len(DataTexto(depois)) = 0, "(vazia)", DataTexto(depois))
+            End If
+        End If
+    Next c
+fim:
+    RestaurarProtecao ws, prot
+    Application.EnableEvents = ev
+End Sub

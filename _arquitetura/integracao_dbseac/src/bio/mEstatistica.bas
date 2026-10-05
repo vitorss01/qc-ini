@@ -91,6 +91,7 @@ End Function
 Public Sub InvalidarCache()
     mLotes.InvalidarLotes
     mCEQ.InvalidarEQ
+    mIncerteza.InvalidarIncerteza      ' ADR-064
     Set mCache = Nothing
     mDBok = False
     Set mIdxX = Nothing
@@ -1136,7 +1137,7 @@ Public Sub AtualizarCalc()
 
     ' Eng_Saida e aba tecnica e protegida. Ver o cabecalho de LiberarEscrita.
     On Error GoTo restaura
-    protEstava = LiberarEscrita(ws)
+    protEstava = LiberarEscritaRapida(ws)   ' ADR-062
 
     ' limpa a area de saida (colunas B em diante; a coluna A guarda os slots
     ' fixos). Vai ate o bloco do X vermelho (ADR-057): sem isso, o X do analito
@@ -1215,18 +1216,41 @@ Public Sub AtualizarCalc()
         Loop
     End If
     If fimJan < 1 Then GoTo restaura
-    iniJan = fimJan - NK + 1
-    If iniJan < 1 Then iniJan = 1
+    ' D10 (QA-ETL-001): a janela e das NK corridas ELEGIVEIS mais recentes. Corrida que so tem X nao consome
+    ' posicao -- antes, com a janela cheia, inativar com o X empurrava a corrida elegivel mais antiga para fora
+    ' e n/media/DP/CV/Sigma do Painel mudavam por causa do X. Corridas so-X dentro da janela entram enquanto
+    ' houver posicao; faltando, saem as mais antigas (o X nunca tira lugar de resultado elegivel).
+    Dim nEleg As Long, nSoX As Long, pularX As Long, j As Long
+    iniJan = 1
+    For i = fimJan To 1 Step -1
+        If elegivel.Exists(CStr(runsT(i))) Then nEleg = nEleg + 1
+        If nEleg >= NK Then iniJan = i: Exit For
+    Next i
+    If nEleg > NK Then nEleg = NK
+    For i = iniJan To fimJan
+        If Not elegivel.Exists(CStr(runsT(i))) Then nSoX = nSoX + 1
+    Next i
+    pularX = nSoX - (NK - nEleg)
+    If pularX < 0 Then pularX = 0
     For i = 1 To iniJan - 1
         If PassaFiltro(dtsT(i)) Then nCort = nCort + 1
     Next i
-    ws.Range("M1").Value = nCort
-    nRun = fimJan - iniJan + 1
+    ws.Range("M1").Value = nCort + pularX
     ReDim runs(1 To NK): ReDim dts(1 To NK)
-    For i = 1 To nRun
-        runs(i) = runsT(iniJan + i - 1)
-        dts(i) = dtsT(iniJan + i - 1)
+    nRun = 0
+    j = 0
+    For i = iniJan To fimJan
+        If elegivel.Exists(CStr(runsT(i))) Then
+            nRun = nRun + 1
+            runs(nRun) = runsT(i): dts(nRun) = dtsT(i)
+        ElseIf j < pularX Then
+            j = j + 1                                  ' so-X mais antiga sem posicao
+        Else
+            nRun = nRun + 1
+            runs(nRun) = runsT(i): dts(nRun) = dtsT(i)
+        End If
     Next i
+    If nRun < 1 Then GoTo restaura
 
     Set ordem = CreateObject("Scripting.Dictionary")
     For i = 1 To nRun
@@ -1652,7 +1676,7 @@ Public Sub AtualizarPainelEng()
     Next t
     Dim protEstava As Boolean
     On Error GoTo restaura
-    protEstava = LiberarEscrita(eng)
+    protEstava = LiberarEscritaRapida(eng)   ' ADR-062
     eng.Range(eng.Cells(LINHA_STAT, 1), eng.Cells(LINHA_STAT + NLV - 1, 21)).Value = outStat
 
 restaura:
@@ -1817,7 +1841,7 @@ Public Sub RegistrarEventosWestgard()
 
     ' Protecao tratada pelo par LiberarEscrita/RestaurarProtecao (ADR-046).
     On Error GoTo restaura
-    prot = LiberarEscrita(ws)
+    prot = LiberarEscritaRapida(ws)   ' ADR-062
 
     ' Limpa ate a ultima linha REALMENTE usada, com piso na area antiga.
     ' Fixar num numero deixava linhas orfas embaixo quando o historico crescia;
@@ -2273,8 +2297,9 @@ End Sub
 ' motor, UM recalculo no fim, e o modo anterior restaurado tambem no erro. O
 ' resultado e o mesmo: nenhuma rotina do motor le formula que ele mesmo altere.
 Public Sub RecalcularAnalitoAtual()
-    Dim calcAntes As Long, nE As Long, sE As String
+    Dim calcAntes As Long, nE As Long, sE As String, telaAntes As Boolean
     calcAntes = Application.Calculation
+    telaAntes = Application.ScreenUpdating      ' ADR-062: a tela e de quem chamou (ADR-050)
     Application.ScreenUpdating = False
     On Error GoTo fim
     Application.Calculation = xlCalculationManual
@@ -2290,7 +2315,7 @@ fim:
     Application.Calculate
     Application.Calculation = calcAntes
     AtualizarEixos
-    Application.ScreenUpdating = True
+    Application.ScreenUpdating = telaAntes   ' religar aqui redesenhava os graficos NO MEIO do clique
     On Error GoTo 0
     If nE <> 0 Then Err.Raise nE, "mEstatistica.RecalcularAnalitoAtual", sE
 End Sub
@@ -2367,10 +2392,11 @@ Public Sub PainelMudou()
     Set volta = mApp.TelaAtual()
     mApp.InicioUsuario "Carregando " & Trim$(CStr(ThisWorkbook.Names("selAnalito").RefersToRange.Value)) & "..."
     On Error GoTo falha
-    GarantirMotorDoPainel
-    AtualizarEixos
+    ' ADR-062: RecalcularAnalitoAtual ja ajusta os eixos; aqui so quando o motor estava em dia
+    If Not GarantirMotorDoPainel() Then AtualizarEixos
     mApp.fim
     mApp.VoltarPara volta
+    mUI.GrafVigiaLigar          ' ADR-061: uma troca longa pode ter pulado um tique (idempotente)
     Exit Sub
 falha:
     Dim nE As Long, sE As String
@@ -2415,7 +2441,7 @@ End Sub
 
 ' Painel ativado: se o motor ficou para tras (outro analito ou outro lote),
 ' refaz antes de mostrar.
-Public Sub GarantirMotorDoPainel()
+Public Function GarantirMotorDoPainel() As Boolean
     Dim eng As Worksheet
     On Error Resume Next
     Set eng = ThisWorkbook.Sheets("Eng_Saida")
@@ -2424,8 +2450,9 @@ Public Sub GarantirMotorDoPainel()
        Or Trim$(CStr(eng.Range("E1").Value)) <> mLotes.LotePainel() _
        Or UCase$(Trim$(CStr(eng.Range("S1").Value))) <> EquipFiltro() Then
         RecalcularAnalitoAtual
+        GarantirMotorDoPainel = True
     End If
-End Sub
+End Function
 
 
 ' ADR-057: o equipamento do Painel mudou (Bioquimica). Cada equipamento e uma
@@ -2439,6 +2466,7 @@ Public Sub EquipMudou()
     AtualizarEstatistica
     On Error Resume Next
     Application.Run "'" & ThisWorkbook.Name & "'!RecalcularEstatPeriodo"
+    mIncerteza.RecalcularIncerteza          ' ADR-064: o equipamento muda a populacao do CIQ
     On Error GoTo falha
     mApp.fim
     mApp.VoltarPara volta
@@ -2449,4 +2477,13 @@ falha:
     mApp.VoltarPara volta
     MsgBox "Nao foi possivel trocar o equipamento." & vbCrLf & vbCrLf & _
            "Erro " & nE & ": " & sE, vbExclamation, "Painel"
+End Sub
+
+' ADR-062: o 1o clique depois de abrir pagava ler a tblCQ_Final inteira (32-44 mil linhas),
+' montar o indice analito|lote e os eventos de Westgard do lote -- 2,7 a 3,1 s medidos.
+' Aquecer no login (e ao entrar no Painel) tira esse custo do clique. Quente: sai na hora.
+Public Sub AquecerMotor()
+    On Error Resume Next
+    GarantirIndice
+    If mAgg Is Nothing Then RegistrarEventosWestgard
 End Sub

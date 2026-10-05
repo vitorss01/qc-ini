@@ -523,7 +523,15 @@ def compilar_vba(ex, wb, teto=120):
         feito.set()
     if morto:
         raise SystemExit('ERRO DE COMPILACAO DO VBA (modal no VBE) -- instalacao interrompida')
-    ok = not ctl.Enabled
+    # o estado do comando nao muda no mesmo instante do Execute: com mais modulos trocados
+    # a leitura imediata via "habilitado" num projeto que compila. Erro de verdade deixa o
+    # comando habilitado para sempre (e abre o modal que o cao de guarda pega).
+    ok = False
+    for _ in range(40):
+        if not ctl.Enabled:
+            ok = True
+            break
+        time.sleep(0.2)
     log(f'  VBA compilado: {"OK" if ok else "comando ainda habilitado (conferir)"}')
     return ok
 

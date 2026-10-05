@@ -70,3 +70,6 @@ _backup_pre_integracao_*/
 # Copia local do DB_SEAC (dados do laboratorio) usada como fonte do Power Query.
 # O remoto e publico: a copia e os backups dela nunca sao versionados.
 INTERFACEAMENTO_DB_COPIA/
+
+# Area de trabalho do entregar.py (copias .xlsm instaladas + logs dos testes, dados do laboratorio)
+_entrega_*/

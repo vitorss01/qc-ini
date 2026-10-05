@@ -1,0 +1,257 @@
+[
+ {
+  "teste": "G01 Entrar no Painel: os 2 gráficos de Levey-Jennings visíveis e INTEIROS na tela, lado a lado na vertical, mesma altura (≥ 130 pt), cabeçalho A:U e legenda do lote (linha 39) inteiros",
+  "resultado": "PASS",
+  "evidencia": {
+   "zoom": 71.0,
+   "visivel": "A1:V40",
+   "graficos_topo_fundo_altura_direita": [
+    [
+     186.5,
+     462.3,
+     275.9,
+     1572.6
+    ],
+    [
+     470.3,
+     746.2,
+     275.9,
+     1572.6
+    ]
+   ],
+   "linha_legenda_topo": 754.2,
+   "largura_visivel_pt": 1578.6,
+   "criterios": {
+    "quantos": true,
+    "todos_visiveis": true,
+    "dentro_vertical": true,
+    "legenda_do_lote_inteira": true,
+    "cabecalho_A_U_inteiro": true,
+    "dentro_horizontal": true,
+    "sem_sobrepor": true,
+    "mesma_altura_legivel": true,
+    "rolagem_no_topo": true
+   },
+   "foto": "C:\\Users\\vitor\\Desktop\\qcini.finalização\\_entrega_2026-10-04_1228\\Bioquimica\\qa_graficos_painel.png"
+  }
+ },
+ {
+  "teste": "G02 Abrir o Painel liga o vigia de zoom (só com gente olhando: Interactive e eventos ligados)",
+  "resultado": "PASS",
+  "evidencia": {
+   "estado": "46299,5249884259|71|1136,4"
+  }
+ },
+ {
+  "teste": "G03 Zoom manual (130% → 70% → 160%) SEM clique: o zoom do usuário vale, a largura dos gráficos acompanha a janela em até ~1 s, nenhum gráfico some nem muda de altura, a pasta não fica \"suja\"",
+  "resultado": "PASS",
+  "evidencia": {
+   "130": {
+    "reagiu_em_s": 0.05,
+    "zoom_mantido": true,
+    "larguras": [
+     848,
+     848
+    ],
+    "largura_visivel": 854,
+    "pasta_continua_salva": true,
+    "graficos_inalterados": true
+   },
+   "70": {
+    "reagiu_em_s": 0.79,
+    "zoom_mantido": true,
+    "larguras": [
+     1595,
+     1595
+    ],
+    "largura_visivel": 1601,
+    "pasta_continua_salva": true,
+    "graficos_inalterados": true
+   },
+   "160": {
+    "reagiu_em_s": 0.8,
+    "zoom_mantido": true,
+    "larguras": [
+     684,
+     684
+    ],
+    "largura_visivel": 690,
+    "pasta_continua_salva": true,
+    "graficos_inalterados": true
+   }
+  }
+ },
+ {
+  "teste": "G04 Botão \"Ver todos os gráficos\" depois de um zoom manual: volta a mostrar TODOS inteiros, sem sujar a pasta",
+  "resultado": "PASS",
+  "evidencia": {
+   "zoom": 71.0,
+   "visivel": "A1:V40",
+   "graficos_topo_fundo_altura_direita": [
+    [
+     186.5,
+     462.3,
+     275.9,
+     1572.6
+    ],
+    [
+     470.3,
+     746.2,
+     275.9,
+     1572.6
+    ]
+   ],
+   "linha_legenda_topo": 754.2,
+   "largura_visivel_pt": 1578.6,
+   "criterios": {
+    "quantos": true,
+    "todos_visiveis": true,
+    "dentro_vertical": true,
+    "legenda_do_lote_inteira": true,
+    "cabecalho_A_U_inteiro": true,
+    "dentro_horizontal": true,
+    "sem_sobrepor": true,
+    "mesma_altura_legivel": true,
+    "rolagem_no_topo": true
+   },
+   "retorno": "OK|71|275,9|2",
+   "pasta_continua_salva": true,
+   "botao": {
+    "texto": "Ver todos os gráficos",
+    "macro": "PainelVerTodos"
+   }
+  }
+ },
+ {
+  "teste": "G05 Janela redimensionada (menor e depois maximizada): o Painel se encaixa de novo sozinho, todos inteiros",
+  "resultado": "PASS",
+  "evidencia": {
+   "janela_menor_900x520pt": {
+    "zoom": 55.0,
+    "visivel": "A1:V41",
+    "graficos_topo_fundo_altura_direita": [
+     [
+      186.5,
+      489.3,
+      302.9,
+      1557.3
+     ],
+     [
+      497.3,
+      800.2,
+      302.9,
+      1557.3
+     ]
+    ],
+    "linha_legenda_topo": 808.2,
+    "largura_visivel_pt": 1563.3,
+    "criterios": {
+     "quantos": true,
+     "todos_visiveis": true,
+     "dentro_vertical": true,
+     "legenda_do_lote_inteira": true,
+     "cabecalho_A_U_inteiro": true,
+     "dentro_horizontal": true,
+     "sem_sobrepor": true,
+     "mesma_altura_legivel": true,
+     "rolagem_no_topo": true
+    },
+    "reagiu_em_s": 0.19,
+    "foto": "C:\\Users\\vitor\\Desktop\\qcini.finalização\\_entrega_2026-10-04_1228\\Bioquimica\\qa_graficos_painel_janela_menor.png"
+   },
+   "maximizada": {
+    "zoom": 71.0,
+    "visivel": "A1:V40",
+    "graficos_topo_fundo_altura_direita": [
+     [
+      186.5,
+      462.3,
+      275.9,
+      1572.6
+     ],
+     [
+      470.3,
+      746.2,
+      275.9,
+      1572.6
+     ]
+    ],
+    "linha_legenda_topo": 754.2,
+    "largura_visivel_pt": 1578.6,
+    "criterios": {
+     "quantos": true,
+     "todos_visiveis": true,
+     "dentro_vertical": true,
+     "legenda_do_lote_inteira": true,
+     "cabecalho_A_U_inteiro": true,
+     "dentro_horizontal": true,
+     "sem_sobrepor": true,
+     "mesma_altura_legivel": true,
+     "rolagem_no_topo": true
+    },
+    "reagiu_em_s": 0.16
+   }
+  }
+ },
+ {
+  "teste": "G06 Trocar de analito pelo spinner mantém todos os gráficos inteiros na tela (nada muda de lugar)",
+  "resultado": "PASS",
+  "evidencia": {
+   "zoom": 71.0,
+   "visivel": "A1:V40",
+   "graficos_topo_fundo_altura_direita": [
+    [
+     186.5,
+     462.3,
+     275.9,
+     1572.6
+    ],
+    [
+     470.3,
+     746.2,
+     275.9,
+     1572.6
+    ]
+   ],
+   "linha_legenda_topo": 754.2,
+   "largura_visivel_pt": 1578.6,
+   "criterios": {
+    "quantos": true,
+    "todos_visiveis": true,
+    "dentro_vertical": true,
+    "legenda_do_lote_inteira": true,
+    "cabecalho_A_U_inteiro": true,
+    "dentro_horizontal": true,
+    "sem_sobrepor": true,
+    "mesma_altura_legivel": true,
+    "rolagem_no_topo": true
+   },
+   "analitos": [
+    "Bicarbonato",
+    "Sódio",
+    "Potássio"
+   ],
+   "geometria_igual": true,
+   "zoom_igual": true
+  }
+ },
+ {
+  "teste": "G07 Sair do Painel desliga o vigia; nenhum gráfico fica oculto",
+  "resultado": "PASS",
+  "evidencia": {
+   "vigia": "0|71|1136,4",
+   "todos_visiveis": true
+  }
+ },
+ {
+  "teste": "G08 Fechar o arquivo com o vigia ligado (outra pasta aberta): o Excel NÃO reabre o arquivo (10 s depois)",
+  "resultado": "PASS",
+  "evidencia": {
+   "vigia_estava_ligado": true,
+   "close_levou_s": 2.69,
+   "pastas_abertas_10s_depois": [
+    "Pasta1"
+   ]
+  }
+ }
+]

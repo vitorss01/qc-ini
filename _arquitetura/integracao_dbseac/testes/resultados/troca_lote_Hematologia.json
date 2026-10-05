@@ -1,0 +1,67 @@
+[
+ {
+  "teste": "L01 Troca para lote sem média/DP (QA9999): o Painel diz \"SEM MÉDIA/DP\" em todo nível, nada herdado de 522611",
+  "resultado": "PASS",
+  "evidencia": {
+   "analito": "RBC",
+   "lote_antes": "522611",
+   "status_antes": [
+    "REJEITADO",
+    "REJEITADO",
+    "REJEITADO"
+   ],
+   "lote_depois": "QA9999",
+   "status_depois": [
+    "SEM MÉDIA/DP",
+    "SEM MÉDIA/DP",
+    "SEM MÉDIA/DP"
+   ]
+  }
+ },
+ {
+  "teste": "L02 Volta para 522611: parâmetros intactos (ida e volta não grava a tela vazia por cima) e Painel avaliando de novo",
+  "resultado": "PASS",
+  "evidencia": {
+   "parametros_antes": [
+    [
+     2.3066,
+     0.0219
+    ],
+    [
+     4.3769,
+     0.035
+    ],
+    [
+     5.1228,
+     0.0345
+    ]
+   ],
+   "parametros_depois": [
+    [
+     2.3066,
+     0.0219
+    ],
+    [
+     4.3769,
+     0.035
+    ],
+    [
+     5.1228,
+     0.0345
+    ]
+   ],
+   "status": [
+    "REJEITADO",
+    "REJEITADO",
+    "REJEITADO"
+   ]
+  }
+ },
+ {
+  "teste": "L03 Trocar de lote não é alterar parâmetro: nenhum PARAMETRO_LOTE_ALTERADO na trilha",
+  "resultado": "PASS",
+  "evidencia": {
+   "eventos_na_troca": []
+  }
+ }
+]

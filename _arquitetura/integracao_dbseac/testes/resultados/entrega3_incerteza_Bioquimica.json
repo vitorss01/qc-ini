@@ -1,0 +1,144 @@
+[
+ {
+  "teste": "I00 Janela da incerteza = 12 meses móveis terminando no último resultado que PARTICIPA da estatística (uma data futura digitada por engano num resultado manual não desloca a janela)",
+  "resultado": "PASS",
+  "evidencia": {
+   "janela": [
+    "02/10/2025",
+    "01/10/2026"
+   ],
+   "ultimo_resultado": 46296.0
+  }
+ },
+ {
+  "teste": "I01 u(Rw), gl, lotes, dias, uc, U e U na unidade conferem com o recálculo INDEPENDENTE (lotes n ≥ 20 agrupados por gl) em todas as 62 linhas; validade 90/180 dias e gl 30/100 respeitada",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas": 62,
+   "validade": {
+    "VALIDA": 62,
+    "PROVISORIA": 0,
+    "INSUFICIENTE": 0
+   },
+   "divergencias": []
+  }
+ },
+ {
+  "teste": "I02 Meta u = 0,50 × CVI (EFLM; só o CVI cadastrado na aba Analitos; nunca do TEa CLIA) e classe Ótimo/Desejável/Mínimo/Não atende pelos cortes 0,25/0,50/0,75 × CVI",
+  "resultado": "PASS",
+  "evidencia": {
+   "divergencias": []
+  }
+ },
+ {
+  "teste": "I03 u(cal) do fabricante informada entra em quadratura (uc = raiz(u(Rw)² + u(cal)²)) e tira o rótulo \"parcial\"; apagada, volta ao parcial",
+  "resultado": "PASS",
+  "evidencia": {
+   "analito": "Lactato",
+   "nivel": "1",
+   "u_rw": 10.428955683372111,
+   "uc_com_ucal_1_5": 10.536276222923327,
+   "situacao": [
+    "Válida",
+    "Válida · parcial: sem u(cal) do fabricante"
+   ]
+  }
+ },
+ {
+  "teste": "I04 Viés do CEQ recalculado da EQA_Base: média com sinal, triagem (≥ 6 amostras de ≥ 2 rodadas; detectável se |média| > 2 EP) e U Nordtest informativo (u(Cref) = DP do grupo / raiz(nº de laboratórios))",
+  "resultado": "PASS",
+  "evidencia": {
+   "analitos": 31,
+   "exemplos": {
+    "Lactato": {
+     "media": 2.437,
+     "n": 15,
+     "rodadas": 3,
+     "triagem": "detectável, dentro do permitido"
+    },
+    "Ácido úrico": {
+     "media": -1.104,
+     "n": 15,
+     "rodadas": 3,
+     "triagem": "não detectável"
+    },
+    "Albumina": {
+     "media": -1.092,
+     "n": 15,
+     "rodadas": 3,
+     "triagem": "não detectável"
+    },
+    "Bilirrubina direta": {
+     "media": -20.12,
+     "n": 13,
+     "rodadas": 3,
+     "triagem": "RELEVANTE: investigar/corrigir (U não cobre)"
+    }
+   },
+   "divergencias": []
+  }
+ },
+ {
+  "teste": "I05 Bloco \"INCERTEZA DE MEDIÇÃO\" do Painel mostra, por nível, exatamente a linha da Estatística do analito selecionado, com a janela na nota",
+  "resultado": "PASS",
+  "evidencia": {
+   "linha": 66,
+   "analito": "Proteína C-reativa",
+   "nota": "Janela 02/10/2025 a 01/10/2026 (12 meses)  ·  u(Rw) = CIQ de longo prazo, lotes (n >= 20) ",
+   "divergencias": []
+  }
+ },
+ {
+  "teste": "I06 Nenhum erro de fórmula (#VALOR!, #NOME?...) nas colunas da incerteza nem no bloco do Painel",
+  "resultado": "PASS",
+  "evidencia": {
+   "erros": []
+  }
+ },
+ {
+  "teste": "I08 Padronização do status do CEQ reconhece rótulos acentuados (Controllab em português) -- na Bioquímica o texto estava corrompido (\"ACEITÃVEL\")",
+  "resultado": "PASS",
+  "evidencia": {
+   "Aceitável": "ACEITO",
+   "Não aceito": "NAO ACEITO",
+   "NÃO CONFORME": "NAO ACEITO",
+   "Insatisfatório": "NAO ACEITO",
+   "Acceptable": "ACEITO"
+  }
+ },
+ {
+  "teste": "I10 Linhas sem analito cadastrado (A = 0) não calculam nem mostram incerteza",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_sem_analito": 18,
+   "celulas_preenchidas": []
+  }
+ },
+ {
+  "teste": "I11 u(cal) colada como texto não entra: uc continua = u(Rw) e a situação continua \"parcial\" (antes a fórmula ignorava o texto e o VBA dizia que não era parcial)",
+  "resultado": "PASS",
+  "evidencia": {
+   "situacao": "Válida · parcial: sem u(cal) do fabricante",
+   "uc": 10.428955683372111,
+   "u_rw": 10.428955683372111
+  }
+ },
+ {
+  "teste": "I12 Decisão manual de Uso_Analitico na EQA_Base sobrevive a uma nova consolidação do CEQ (antes era apagada sem aviso)",
+  "resultado": "PASS",
+  "evidencia": {
+   "chave": "CAP|2025|C-A 2025|ALT (SGPT)|CHM-01",
+   "antes": "SIM",
+   "manual": "NAO",
+   "depois": "NAO",
+   "carimbo": " total 545 | sem analito canonico 20 | chaves repetidas 0 | uso manual mantido 1"
+  }
+ },
+ {
+  "teste": "I09 Recalcular toda a incerteza (depois de ATUALIZAR DADOS) leva menos de 10 s",
+  "resultado": "PASS",
+  "evidencia": {
+   "segundos": 0.81
+  }
+ }
+]

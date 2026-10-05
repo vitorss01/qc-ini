@@ -12,22 +12,29 @@
 // =====================================================================
 let
     C = CFG_INTEGRACAO,
-    PREFIXO = C[PREFIXO_ID],
+    PREFIXO = Text.Upper(Text.Trim(Text.From(C[PREFIXO_ID]))),          // D15
     Txt = (x as any) as nullable text => if x = null then null else
             let t = Text.Trim(Text.From(x)) in if t = "" then null else t,
     SIM = "SIM", NAO = "NÃO",
     SoDigitos = (t as text) as logical => t <> "" and Text.Length(Text.Select(t, {"0".."9"})) = Text.Length(t),
-    // mesma normalizacao do DB_CQ_FINAL: numero puro = ID do setor; MAN_7 -> MAN_0007
+    // mesma normalizacao do DB_CQ_FINAL (D14): numero puro = ID do setor, sem zeros a esquerda; sem NBSP; MAN_7 -> MAN_0007
+    SemZeros = (d as text) as text => let z = Text.TrimStart(d, "0") in if z = "" then "0" else z,
     NormId = (x as any) as nullable text =>
         let t = Txt(x) in
         if t = null then null
-        else let u = Text.Upper(Text.Remove(t, {" "})) in
-             if SoDigitos(u) then PREFIXO & "-" & u
+        else let u = Text.Upper(Text.Remove(t, {" ", Character.FromNumber(160)})),
+                 pre = PREFIXO & "-" in
+             if SoDigitos(u) then pre & SemZeros(u)
+             else if Text.StartsWith(u, pre) and SoDigitos(Text.Middle(u, Text.Length(pre))) then pre & SemZeros(Text.Middle(u, Text.Length(pre)))
              else if Text.StartsWith(u, "MAN_") and SoDigitos(Text.Middle(u, 4)) then "MAN_" & Text.PadStart(Text.Middle(u, 4), 4, "0")
              else u,
+    // D03: tabela obrigatoria ausente PARA (o QA nunca confere "vazio" no lugar de uma tabela perdida)
     Ler = (nome as text, cols as list) as table =>
-        let t = try Excel.CurrentWorkbook(){[Name = nome]}[Content] otherwise #table(cols, {})
+        let t = try Excel.CurrentWorkbook(){[Name = nome]}[Content]
+                otherwise error Error.Record("TABELA_AUSENTE", "Tabela obrigatoria ausente ou renomeada: " & nome, nome)
         in Table.SelectColumns(t, cols, MissingField.UseNull),
+    DataHoraTxt = (v as any) as text => try DateTime.ToText(DateTime.From(v), "dd/MM/yyyy HH:mm") otherwise "?",
+    Segundos = (v as any) as nullable number => try Number.Round(Number.From(DateTime.From(v)) * 86400) otherwise null,
 
     F0 = Excel.CurrentWorkbook(){[Name = "tblCQ_Final"]}[Content],
     F = Table.Buffer(Table.SelectRows(F0, each [ID_REGISTRO] <> null or [ORIGEM_RESULTADO] = "MANUAL")),
@@ -83,15 +90,63 @@ let
             each "copia de " & (_[ID_RELACIONADO] ?? "?") & " (mesma amostra, item, instante e valor) -- nao entra em calculo nem no grafico"),
 
     // A03 -- valor recebido diferente do valor atual na origem
-    Rec = Ler("tblDB_Recebimento", {"ID_REGISTRO", "VALOR", "FLAG"}),
-    Agora = Table.SelectColumns(SEAC_ORIGEM, {"ID_REGISTRO", "VALOR", "FLAG", "ANALITO", "NIVEL", "DATA_HORA"}),
+    // D13 (QA-ETL-001): compara tambem ANALITO, LOTE, NIVEL e DATA_HORA -- ID reaproveitado ou corrigido na
+    // origem com outro analito/lote/instante nao passa mais em silencio. DATA_HORA comparada ao segundo (a ida
+    // e volta pela celula do Excel arredonda a fracao).
+    Rec = Ler("tblDB_Recebimento", {"ID_REGISTRO", "VALOR", "FLAG", "ANALITO", "LOTE", "NIVEL", "DATA_HORA"}),
+    Origem = SEAC_ORIGEM,
+    Agora = Table.SelectColumns(Table.SelectRows(Origem, each [ID_REGISTRO] <> null),
+                {"ID_REGISTRO", "VALOR", "FLAG", "ANALITO", "LOTE", "NIVEL", "DATA_HORA"}, MissingField.UseNull),
     Cmp = Table.ExpandTableColumn(Table.NestedJoin(Agora, {"ID_REGISTRO"}, Rec, {"ID_REGISTRO"}, "_r", JoinKind.Inner),
-            "_r", {"VALOR", "FLAG"}, {"VALOR_RECEBIDO", "FLAG_RECEBIDA"}),
-    Div = Table.SelectRows(Cmp, each (try Number.From([VALOR_RECEBIDO]) otherwise null) <> [VALOR] or Txt([FLAG_RECEBIDA]) <> Txt([FLAG])),
+            "_r", {"VALOR", "FLAG", "ANALITO", "LOTE", "NIVEL", "DATA_HORA"},
+            {"VALOR_RECEBIDO", "FLAG_RECEBIDA", "ANALITO_RECEBIDO", "LOTE_RECEBIDO", "NIVEL_RECEBIDO", "DH_RECEBIDO"}),
+    Difs = (r as record) as list => List.RemoveNulls({
+            if (try Number.From(r[VALOR_RECEBIDO]) otherwise null) <> r[VALOR] then "VALOR " & Text.From(r[VALOR_RECEBIDO] ?? "vazio") &
+                " -> " & Text.From(r[VALOR] ?? "vazio") else null,
+            if Txt(r[FLAG_RECEBIDA]) <> Txt(r[FLAG]) then "FLAG" else null,
+            if Txt(r[ANALITO_RECEBIDO]) <> Txt(r[ANALITO]) then "ANALITO " & (Txt(r[ANALITO_RECEBIDO]) ?? "vazio") & " -> " &
+                (Txt(r[ANALITO]) ?? "vazio") else null,
+            if Txt(r[LOTE_RECEBIDO]) <> Txt(r[LOTE]) then "LOTE " & (Txt(r[LOTE_RECEBIDO]) ?? "vazio") & " -> " & (Txt(r[LOTE]) ?? "vazio") else null,
+            if (try Number.From(r[NIVEL_RECEBIDO]) otherwise null) <> (try Number.From(r[NIVEL]) otherwise null) then "NIVEL" else null,
+            if Segundos(r[DH_RECEBIDO]) <> Segundos(r[DATA_HORA]) then "DATA_HORA " & DataHoraTxt(r[DH_RECEBIDO]) & " -> " &
+                DataHoraTxt(r[DATA_HORA]) else null}),
+    Div = Table.SelectRows(Table.AddColumn(Cmp, "_difs", each Difs(_)), each not List.IsEmpty([_difs])),
     A03 = Achado("ALERTA", "A03", "Valor na origem diferente do valor recebido",
             Div,
-            each "recebido " & Text.From(_[VALOR_RECEBIDO] ?? "vazio") & ", origem agora " & Text.From(_[VALOR] ?? "vazio") &
+            each "mudou na origem: " & Text.Combine(_[_difs], "; ") &
                  ". Vale o RECEBIDO (registro imutavel); investigar a correcao na origem."),
+
+    // E06 (D02/P-02) -- linha da origem SEM ID: nao entrou no recebimento; nunca some em silencio
+    SemId = Table.SelectRows(Origem, each [ID_REGISTRO] = null or Text.Trim(Text.From([ID_REGISTRO])) = ""),
+    E06 = Achado("ERRO", "E06", "Linha da origem sem ID (rejeitada)",
+            SemId,
+            each "linha do DB_SEAC sem ID valido -- NAO entrou no recebimento: ID_AMOSTRA " & ((try Txt(_[ID_AMOSTRA]) otherwise null) ?? "?") &
+                 " | " & ((try Txt(_[ANALITO]) otherwise null) ?? "?") & " | nivel " & ((try Text.From(_[NIVEL]) otherwise null) ?? "?") &
+                 " | " & DataHoraTxt(try _[DATA_HORA] otherwise null) & " | ID_ORIGEM informado: " &
+                 (try (Txt(_[ID_ORIGEM]) ?? "vazio") otherwise "invalido") & ". Corrigir o ID na origem (SIPEC/DB_SEAC)."),
+
+    // E07 (D01) -- ID repetido na origem (mesma carga) ou ja duplicado no recebimento: entra uma vez so
+    RepOrig = Table.SelectRows(Table.Group(Agora, {"ID_REGISTRO"}, {{"_n", each Table.RowCount(_), Int64.Type},
+                {"ANALITO", each List.First([ANALITO])}, {"NIVEL", each List.First([NIVEL])},
+                {"DATA_HORA", each List.Min([DATA_HORA])}}), each [_n] > 1),
+    RepRec = Table.SelectRows(Table.Group(Table.SelectRows(Rec, each [ID_REGISTRO] <> null), {"ID_REGISTRO"},
+                {{"_n", each Table.RowCount(_), Int64.Type}, {"ANALITO", each List.First([ANALITO])},
+                 {"NIVEL", each List.First([NIVEL])}, {"DATA_HORA", each List.Min([DATA_HORA])}}), each [_n] > 1),
+    Rep7 = Table.Distinct(Table.Combine({Table.AddColumn(RepOrig, "_onde", each "na origem (DB_SEAC)"),
+                                         Table.AddColumn(RepRec, "_onde", each "no recebimento")}), {"ID_REGISTRO"}),
+    E07 = Achado("ERRO", "E07", "ID repetido na origem",
+            Rep7,
+            each "o ID aparece " & Text.From(_[_n]) & " vezes " & _[_onde] & "; entrou UMA vez (a de menor ITEM_ID). " &
+                 "Conferir a origem: dois resultados nunca podem ter o mesmo ID."),
+
+    // E08 (D15) -- prefixo dos IDs recebidos diferente do CFG: trocar o prefixo duplicaria o historico
+    PreErr = Table.SelectRows(Rec, each [ID_REGISTRO] <> null and not Text.StartsWith(Text.Upper(Text.From([ID_REGISTRO])), PREFIXO & "-")),
+    PreGrp = Table.Group(Table.AddColumn(PreErr, "_pref", each Text.BeforeDelimiter(Text.From([ID_REGISTRO]), "-")), {"_pref"},
+                {{"_n", each Table.RowCount(_), Int64.Type}, {"ID_REGISTRO", each List.Min([ID_REGISTRO])}}),
+    E08 = Achado("ERRO", "E08", "Prefixo do ID recebido diferente do CFG",
+            PreGrp,
+            each Text.From(_[_n]) & " ID(s) recebido(s) com prefixo '" & _[_pref] & "-' e o CFG PREFIXO_ID = '" & PREFIXO &
+                 "'. Conferir o CFG: com o prefixo trocado, todo o DB_SEAC entraria de novo como resultado novo."),
 
     // A04 -- inativacao de resultado que ja estava fora por regra automatica
     A04 = Achado("ALERTA", "A04", "Inativacao redundante",
@@ -145,7 +200,58 @@ let
                  DateTime.ToText(_[_ini], "dd/MM/yyyy") & " a " & DateTime.ToText(_[DATA_HORA], "dd/MM/yyyy") &
                  ". Cadastre o lote (Configuracao) e a media/DP para ve-lo no Painel."),
 
-    Tudo = Table.Combine({E01, E02, E03, E04, E05, A01, A02, A03, A04, A05, A06, I01, I02, I03}),
+    // A07 -- MODO_FONTE = HISTORICO (ADR-058): o DB_SEAC NAO foi lido. Alerta em toda
+    //        atualizacao enquanto o modo estiver ligado -- esquecer o modo ligado na
+    //        rede do laboratorio nunca passa em silencio
+    ModoF = Text.Upper(Text.Trim(Text.From(Record.FieldOrDefault(C, "MODO_FONTE", "SEAC") ?? "SEAC"))),
+    UltRec = try List.Max(Ler("tblDB_Recebimento", {"DATA_HORA"})[DATA_HORA]) otherwise null,
+    A07 = Achado("ALERTA", "A07", "MODO HISTORICO: DB_SEAC nao lido nesta atualizacao",
+            if ModoF = "HISTORICO" or ModoF = "HISTÓRICO" then #table({"DATA_HORA"}, {{UltRec}}) else #table({"DATA_HORA"}, {}),
+            each "nenhum resultado novo foi recebido; vale o historico ate " &
+                 (try DateTime.ToText(DateTime.From(_[DATA_HORA]), "dd/MM/yyyy HH:mm") otherwise "?") &
+                 ". Na rede do laboratorio, voltar Cfg_Integracao MODO_FONTE = SEAC."),
+
+    // E09 (D16) -- resultado do interfaceamento sem DATA_HORA: fora da corrida e do calculo (SEM_DATA_HORA)
+    E09 = Achado("ERRO", "E09", "Resultado do interfaceamento sem DATA_HORA",
+            Table.SelectRows(F, each [ORIGEM_RESULTADO] = "INTERFACEAMENTO" and [DATA_HORA] = null),
+            each "sem DATA_HORA na origem: fora da corrida (RUN vazio), do grafico e da estatistica. Corrigir na origem."),
+
+    // A08 (D06) -- "REGISTRAR - LJ" com valor nao reconhecido: vale NAO (nao plota), mas nunca em silencio
+    IL = Ler("tblInativacao_NaoConformes", {"ID_REGISTRO", "REGISTRAR - LJ"}),
+    LjConhecido = (v as any) as logical =>
+        v = null or v is logical or v is number or
+        List.Contains({"", "SIM", "S", "TRUE", "VERDADEIRO", "V", "X", "1", "NÃO", "NAO", "N", "FALSE", "FALSO", "F", "0"},
+                      Text.Upper(Text.Trim(Text.From(v)))),
+    LjEstranho = Table.SelectRows(Table.AddColumn(IL, "_IDN", each NormId([ID_REGISTRO])),
+                    each [_IDN] <> null and not LjConhecido([#"REGISTRAR - LJ"])),
+    A08 = Achado("ALERTA", "A08", "REGISTRAR - LJ com valor nao reconhecido",
+            Table.RenameColumns(Table.RemoveColumns(LjEstranho, {"ID_REGISTRO"}), {{"_IDN", "ID_REGISTRO"}}),
+            each "valor '" & Text.From(_[#"REGISTRAR - LJ"]) & "' na inativacao: tratado como NAO (o X nao aparece). " &
+                 "Marque ou desmarque a caixa."),
+
+    // A09 (D09, decisao conservadora) -- manual que coincide com interfaceamento INATIVADO: continua fora da
+    // estatistica (CONFLITO_MANUAL) ate o RT decidir se "inativar o automatico e lancar o correto" e permitido
+    IdsInat = List.Buffer(Table.SelectRows(F, each [STATUS_ANALITICO] = "INATIVADO")[ID_REGISTRO]),
+    A09 = Achado("ALERTA", "A09", "Manual coincide com resultado do interfaceamento inativado",
+            Table.SelectRows(F, each [ORIGEM_RESULTADO] = "MANUAL" and [STATUS_ANALITICO] = "CONFLITO_MANUAL" and
+                                     [ID_RELACIONADO] <> null and List.Contains(IdsInat, [ID_RELACIONADO])),
+            each "o automatico " & _[ID_RELACIONADO] & " esta INATIVADO e este manual tem a mesma chave e instante: o manual " &
+                 "NAO participa (decisao do RT pendente: manual pode substituir um automatico inativado?)."),
+
+    // A10 (D12) -- Hematologia (sem seletor de equipamento): o Painel, a Estatistica e o Westgard sao do
+    // EQUIPAMENTO_PADRAO do CFG; resultado de outro equipamento fica na base, fora dessas series -- nunca em silencio
+    EqPad = Text.Upper(Text.Trim(Text.From(Record.FieldOrDefault(C, "EQUIPAMENTO_PADRAO", "") ?? ""))),
+    SemSeletor = Text.Upper(Text.Trim(Text.From(Record.FieldOrDefault(C, "SETOR", "") ?? ""))) = "HEMATOLOGIA",
+    OutroEq = if not SemSeletor or EqPad = "" then #table({"EQUIPAMENTO"}, {}) else
+              Table.Group(Table.SelectRows(F, each [PARTICIPA_ESTATISTICA] = SIM and Text.Upper(Text.Trim(Text.From([EQUIPAMENTO] ?? ""))) <> EqPad),
+                          {"EQUIPAMENTO", "ANALITO"}, {{"_n", each Table.RowCount(_), Int64.Type}, {"DATA_HORA", each List.Max([DATA_HORA])}}),
+    A10 = Achado("ALERTA", "A10", "Resultado de outro equipamento fora do Painel (Hematologia)",
+            OutroEq,
+            each Text.From(_[_n]) & " resultado(s) do equipamento '" & Text.From(_[EQUIPAMENTO]) & "': o Painel, a Estatistica e o " &
+                 "Westgard da Hematologia sao do equipamento padrao (CFG EQUIPAMENTO_PADRAO = " & EqPad & "). Se for o mesmo " &
+                 "aparelho com outro nome, corrija o lancamento."),
+
+    Tudo = Table.Combine({E01, E02, E03, E04, E05, E06, E07, E08, E09, A01, A02, A03, A04, A05, A06, A07, A08, A09, A10, I01, I02, I03}),
     Peso = (s as text) as number => if s = "ERRO" then 1 else if s = "ALERTA" then 2 else 3,
     Ordenado = Table.Sort(Tudo, {{each Peso([SEVERIDADE]), Order.Ascending}, {"CODIGO", Order.Ascending}, {"DATA_HORA", Order.Ascending}}),
     Tipos = Table.TransformColumnTypes(Ordenado, {{"SEVERIDADE", type text}, {"CODIGO", type text}, {"TESTE", type text},

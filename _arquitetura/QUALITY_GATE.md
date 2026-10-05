@@ -4,7 +4,7 @@ Documento oficial de liberação do projeto. Enquanto houver item ⏳ ou ❌ **n
 para a fase seguinte**. Cada ✅ exige evidência verificável — marcação sem evidência
 não vale.
 
-**Última atualização:** 05/08/2026
+**Última atualização:** 04/10/2026, ciclo autônomo (seções 10 a 16: ADR-057 a ADR-066, auditoria final e QA-ETL-001)
 **Sprint corrente:** HARDENING (nenhuma funcionalidade nova)
 
 ---
@@ -83,7 +83,7 @@ não vale.
 | 3.2 | Log em todo caminho de gravação | ✅ | Chamar de **dentro do `mDados`**, não dos formulários — senão algum caminho escapa |
 | 3.3 | Proteção persistida no arquivo salvo | ✅ | Nenhuma das 18 abas tem `<sheetProtection>`. `UserInterfaceOnly:=True` **não persiste** entre sessões |
 | 3.4 | Projeto VBA com senha | ⏳ | DPB decodifica para payload vazio — sem senha |
-| 3.5 | Arquivo distribuído em estado bloqueado | ✅ | Salvo em sessão autenticada: abrir com macros desabilitadas dá acesso total a `DB_Resultados` |
+| 3.5 | Arquivo distribuído em estado bloqueado | ✅ | Salvo em sessão autenticada: abrir com macros desabilitadas dá acesso total a `DB_Resultados`. **Regrediu com o ADR-057** (os instaladores novos não passavam pela blindagem: Bioquímica salva com 35 de 35 abas visíveis e estrutura aberta) e **voltou a fechar em 03/10/2026** com `blindar_entrega.py`: só Login visível, toda aba protegida, estrutura travada — conferido no XML (prova S01). Ver seção 11. **04/10/2026:** vale também para o Ctrl+S no meio de uma sessão — o arquivo é gravado trancado e sem a identidade da sessão (ADR-065, S19/S20) |
 
 
 > **Reabertos e agora fechados com evidência que se sustenta (03/08/2026).**
@@ -218,9 +218,9 @@ não vale.
 | # | Item | Status | O que fecha |
 |---|---|---|---|
 | 4.1 | Testes unitários do motor | ✅ | Suíte em `scripts_fase1/` e `scripts_fase2/` |
-| 4.2 | QA integrado | ⏳ | **Nunca executou** — agente interrompido por limite de gastos |
-| 4.3 | Regressão Fases 1 e 2 pós-Fase 3 | ⏳ | RUN, exclusão lógica, troca de lote, login, 3 UserForms, upsert sem duplicar |
-| 4.4 | Casos extremos | ⏳ | Banco vazio · 1 resultado · 2 resultados · analito sem média/DP · lote sem resultado · status inválido · RUN duplicado · data futura |
+| 4.2 | QA integrado | ✅ | `integracao_dbseac/testes/qa_final.py`, pelo caminho real (tabelas de entrada com eventos, ATUALIZAR DADOS, LJ, Estatística, QA, Audit_Log, fechar/reabrir). **28/28 Bioquímica · 28/28 Hematologia** em 03/10/2026, sobre os bytes entregues. Evidência: `testes/resultados/qa_*_entrega.json` (bytes finais, com ADR-059 e blindagem; a rodada do ADR-058 fica em `qa_*_adr058.json`). Ver seções 10 e 11 |
+| 4.3 | Regressão Fases 1 e 2 pós-Fase 3 | ✅ | **Escopo reduzido em 03/10/2026.** O ADR-057 removeu os 3 UserForms, o upsert e a exclusão lógica; os sucessores estão cobertos pelo `qa_final.py`: RUN estável (T06), soft-delete e reativação (T07, T14), manual sem duplicar (T15, T16), formulários que ficaram abrem e o VBA compila (T23). Login e troca de lote ganharam prova própria: `qa_seguranca.py` (S03, S04, S11, S12: senha errada, login, logout, papel) e `qa_troca_lote.py` (L01–L03: lote sem média/DP mostra "SEM MÉDIA/DP" e não herda, ida e volta preserva os parâmetros, trocar não grava `PARAMETRO_LOTE_ALTERADO`) |
+| 4.4 | Casos extremos | ✅ | `testes/qa_casos_extremos.py`, **9/9 nos dois produtos** (03/10/2026). Na arquitetura do ADR-057 o dado ruim só entra por Digitar Resultados e Inativar, e é por elas que a prova o injeta: **data futura** (X01 — era aceito como ATIVO; corrigido, ver 10.3), resultado não numérico (X02), nível inexistente (X03), ID fora do padrão (X04), analito sem cadastro (X05), decimal com vírgula lido como milhar (X06, família do 2.2), inativação de ID inexistente (X07) e repetida (X08); nenhum inválido participa (X09). Os casos estatísticos da lista original seguem no 1.7 (n=0, n=1, DP=0, alvo=0 → banco vazio, lote sem resultado, analito sem média/DP); RUN duplicado é o T04 + retransmissão A02; "status inválido" deixou de existir — o status é calculado pelo Power Query, ninguém o digita |
 | 4.5 | Teste de estresse | ✅ | `teste_estresse.ps1`, curva ate o teto de 15.000 linhas (375 corridas, 20 analitos x 2 niveis): recalculo 1,15s → 4,61s e motor 0,63s → 2,28s. Total 6,88s no teto. Expoente 1,1–1,46 — **superlinear leve, nao quadratico**. As 30.000 `COUNTIFS` de intervalo expansivo do banco NAO sao gargalo: a suspeita levantada na inspecao foi refutada pela medicao. Achado real: buffer de eventos de Westgard estourava a partir de ~5.200 linhas (14.317 eventos a 15.000). Corrigido com dimensionamento dinamico |
 | 4.6 | Zero erro de fórmula | ✅ | Suíte 4.6: varre todas as abas por `#DIV/0!`, `#VALOR!`, `#REF!`, `#NOME?`, `#NÚM!` e `#NULO!`. Zero achados. `#N/A` fica fora de propósito — é a lacuna deliberada das séries do gráfico |
 | 4.7 | Estado global restaurado | ✅ | Suíte 4.7: após `AtualizarEstatistica`, `ScreenUpdating = True` e `Calculation = xlCalculationAutomatic`. Rotina que sai deixando cálculo manual faz o painel mentir sem dar erro |
@@ -233,7 +233,7 @@ não vale.
 |---|---|---|---|---|---|
 | Hematologia | ✅ | ✅ | ✅ | ❌ | Motor instalado e verificado pela suíte. Sem `mEspecificacoes` — o subsistema é da Bioquímica |
 | Bioquímica | ✅ | ✅ | ✅ | ✅ | Produto de referência. Aba `Importar` com 31 analitos, motor de especificações (ADR-022/023) |
-| Imunologia | ✅ | ✅ | ❌ | ❌ | Fase 3 nunca aplicada. Adiado por decisão do gestor |
+| Imunologia | ✅ | ✅ | ❌ | ❌ | Fase 3 nunca aplicada. **Fora do escopo** por decisão do usuário em 03/10/2026: o foco é só Hematologia e Bioquímica |
 
 > Esta tabela dizia "Fase 3 nunca aplicada" para a Bioquímica até 06/08/2026,
 > quando ela já passava a suíte inteira. A escrituração ficou para trás do
@@ -248,7 +248,7 @@ não vale.
 | 6.2 | Padronização "Corrida" → "RUN" | ✅ | Bioquímica e Hematologia. O identificador não se chama mais "Seq": `DB_Resultados!A2`, `Calc!B2`, `RegistrosStore!D1`. **"Corrida" permanece onde designa o evento** — `Lançar corrida`, `Registro de corridas`, `DataCorrida` estão corretos. Prova 6.2 |
 | 6.2a | `Audit_Legenda!B22` preservada | ✅ | Ali "Seq" é a sequência de **auditoria** (1ª, 2ª, 3ª alteração do resultado), outro conceito. A prova 6.2 falha nos dois sentidos: reprova se o Seq do identificador sobrar **e** se o Seq da auditoria for apagado por um replace global |
 | 6.3 | Eixo X alinhado ao RUN | ✅ | 2 gráficos na Bioquímica, 3 na Hematologia: `Corrida (RUN)` → `RUN`. Prova 6.3 |
-| 6.4 | 52 achados de UX/arquitetura triados | ⏳ | `FASE3A_achados_estaticos.md` |
+| 6.4 | 64 achados de UX/arquitetura triados | ✅ | `TRIAGEM_6.4_achados_FASE3A.md` (03/10/2026), cada um conferido no VBA e nas abas dos `.xlsm` entregues: **34 resolvidos · 16 obsoletos · 6 parciais · 6 abertos · 2 decisões**. Nenhum aberto deixa resultado errado passar como certo. A triagem achou um crítico ainda aberto (escalação de privilégio) — fechado pelo ADR-059, seção 11 |
 | 6.5 | Importação por aba substitui o `frmMassa` | ✅ | Bioquímica. Analitos na horizontal, colagem direta, botão **Registrar** migra para `DB_Resultados` e limpa a aba. Provas 1.7–1.10 (montagem), 3.16–3.17 (execução) e 3.18 (rastro) |
 
 ## 7. Motor de Especificações (ADR-022 / ADR-023)
@@ -328,6 +328,150 @@ verificada, como aqui, isso é legítimo — mas é decisão de processo sua, n�
 minha, porque a mesma ação feita sem verificar é exatamente como um gate morre:
 redefinindo a verdade para caber no resultado.
 
+## 10. Camada de dados — ADR-057 e ADR-058 (03/10/2026)
+
+O ADR-057 (02/10) trocou a porta de entrada: o DB_SEAC entra por Power Query e a
+**Principal - Resultados** (`tblCQ_Final`) é a fonte única do LJ, Westgard, Estatística e BI.
+Fora da rede do laboratório o DB_SEAC não existe, e a atualização — corretamente — parava
+na primeira camada. O ADR-058 resolve isso sem afrouxar a regra.
+
+| # | Item | Status | Evidência |
+|---|---|---|---|
+| 10.1 | Falha de fonte continua PARANDO a atualização | ✅ | T20 nos dois produtos, agora com `MODO_FONTE = SEAC` explícito: `DataSource.NotFound` → "Etapa: atualizar tblDB_Recebimento", carimbo do motor inalterado, Principal - Resultados intacta |
+| 10.2 | Modo histórico: trabalhar sobre o que já foi recebido | ✅ | `MODO_FONTE = HISTORICO` (Cfg_Integracao). T25: com o caminho do DB_SEAC quebrado, a atualização conclui, 0 novos, recebimento intacto (32.033 / 44.392), estado final idêntico ao do T19, motor executado. Escolha **explícita** — cair sozinho para o histórico faria do T20 letra morta |
+| 10.2a | O modo nunca passa em silêncio | ✅ | Resumo abre com "ATENÇÃO - MODO HISTÓRICO"; QA **A07** (ALERTA) em toda atualização com a data do último recebido; `ATUALIZACAO_MODO_HISTORICO` no Audit_Log (T21 exige). Aceita `Histórico` acentuado (armadilha do 7.4) |
+| 10.3 | Manual com data futura entrava como ATIVO | ✅ corrigido | Achado pela prova 4.4: nada impedia DATA/HORA posterior ao próprio lançamento, e o resultado participava da estatística. Agora é `MANUAL_INCOMPLETO` ("DATA/HORA posterior ao lancamento"), fora do cálculo e do LJ, E04 no QA. Compara com `REGISTRADO_EM`, não com "agora": a classificação não muda sozinha com o tempo |
+| 10.4 | O que foi instalado é o que está na fonte | ✅ | `instalar_modo_historico.py` relê do arquivo cada consulta (`SEAC_ORIGEM`, `QA_INTEGRACAO`, `DB_CQ_FINAL`) e o `mIntegracao` e exige identidade com `pq/` e `src/` antes de salvar (lição da nota de 2.1). Os `.xlsm` entregues são os **mesmos bytes** que passaram nas duas suítes (SHA-256 conferido) |
+
+> **Pendências do laboratório, não do software** (QA I03): na Hematologia, **8 lotes
+> recebidos sem cadastro** — 528211, 533811, 536411, 602911, 608511, 614011, 619611 e o
+> atual 625311 —, ~35.700 resultados de 31/10/2025 a 01/10/2026 que estão na base mas não
+> aparecem no Painel até o lote e a média/DP serem cadastrados. Os 589 alertas A02 são
+> retransmissões do interfaceamento, já fora de cálculo e gráfico.
+
+## 11. Papéis, sessão e entrega travada — ADR-059 (03/10/2026)
+
+A triagem do 6.4 encontrou **aberto** o achado crítico da FASE3A "escalação de privilégio e sequestro de
+identidade": um ANALISTA criava ADM e regravava a senha de qualquer usuário (inclusive do ADM); na Bioquímica,
+usuário e papel da sessão (Usuarios!N1:N2) e a coluna do hash estavam destravados — digitar `ADM` dava
+privilégio e digitar outro nome mudava a autoria de tudo que o sistema carimba. Nada disso deixava rastro.
+
+| # | Item | Status | Evidência (`testes/qa_seguranca.py`, pelo caminho real: aba Login, área de cadastro, Logout) |
+|---|---|---|---|
+| 11.1 | Ninguém se promove | ✅ | ANALISTA criando ADM, regravando a senha do ADM ou mudando a própria função: recusado, tabela intacta, `CADASTRO_RECUSADO` na trilha (S05–S07) |
+| 11.2 | O papel vem da tabela, não da célula | ✅ | Célula da sessão travada; e mesmo alterada à força, o cadastro de ADM é recusado (S10) |
+| 11.3 | Só o ADM altera terceiros; o último ADM não se rebaixa | ✅ | S13, S14. ANALISTA ainda cria TÉCNICO/ANALISTA (S08) e troca a própria senha (S09). **Mudança de fluxo:** redefinir a senha de um colega passou a ser só do ADM |
+| 11.4 | Sessão nunca herdada | ✅ | Arquivo salvo com sessão vazia (S02); senha errada não entra e não herda (S03); logout limpa (S11) |
+| 11.5 | Acesso deixa rastro, sem senha nem hash | ✅ | `LOGIN`, `LOGIN_FALHOU`, `LOGOUT`, cadastro, recusa, assinatura, Modo Desenvolvedor (S03–S15); nenhuma senha nem hash no log (S16); cadeia íntegra (S17) |
+| 11.6 | Audit_Log filtrável depois do login | ✅ | `ReprotectAll` tirava filtro e ordenação a cada login; agora usa `ProtegerAudit` para `Audit_*` (S04) |
+| 11.7 | Entrega travada (3.5) | ✅ | `blindar_entrega.py`, conferido no XML (S01) |
+| 11.8 | Instalador não salva projeto que não compila | ✅ corrigido | A 1ª versão do módulo tinha 3 constantes no meio do módulo (erro de compilação). O instalador só avisou "conferir" e salvou; o erro virou modal no primeiro login. Os dois instaladores incrementais agora **param** se o comando Compilar continuar habilitado |
+
+**Bateria sobre os bytes entregues (03/10/2026):** Bioquímica — `qa_final` 28/28 · `qa_seguranca` 17/17 ·
+`qa_casos_extremos` 9/9 · `qa_troca_lote` 3/3; Hematologia — `qa_final` 28/28 · `qa_seguranca` 17/17 · `qa_casos_extremos` 9/9 · `qa_troca_lote` 3/3. Os testes não alteram o arquivo
+(SHA-256 conferido antes e depois). Para repetir na rede do laboratório: `integracao_dbseac/entregar.py --modo SEAC`
+instala em cópia, roda as quatro suítes e só troca a produção se todas passarem.
+
+> **Limites declarados.** Proteção de planilha é barreira, não cofre — a senha está no VBA e o projeto VBA
+> ainda não tem senha (3.4). Hashes sem sal (salgar exige recadastrar senhas). Assinatura sem vínculo
+> criptográfico com o conteúdo. A integridade continua garantida pela cadeia de hash da Audit_Log.
+
+## 12. Lotes automáticos, validade e identificação — ADR-060 (03/10/2026)
+
+| # | Item | Status | Evidência (`testes/qa_lotes_auto.py`, caminho real e caixas de mensagem de verdade) |
+|---|---|---|---|
+| 12.1 | Lote recebido entra sozinho no cadastro | ✅ | ATUALIZAR DADOS registra (interfaceamento + analito cadastrado), anexa no fim, em ordem de chegada, origem na coluna E, trilha `LOTE_CADASTRADO`; QA sem I03 (A01). Segunda passada: nada (A02). Manual não vira lote (A03). Na entrega: Hematologia 8 lotes, Bioquímica 20 |
+| 12.2 | Falta de validade é cobrada | ✅ | Caixa real "Detectei N lotes SEM DATA DE VALIDADE … RECOMENDADO: vamos inserir agora?": **Sim** leva à célula (A08); **Não** abre o 2º alerta e grava `VALIDADE_LOTE_ADIADA` (A09); **fechar, reabrir e logar: o aviso volta** (A13). Automação nunca abre caixa (A07) |
+| 12.3 | Validade conferida e auditada | ✅ | Validação de data; texto colado é desfeito (A06); `VALIDADE_LOTE_ALTERADA` com antes/depois (A05) |
+| 12.4 | Posição do lote preservada | ✅ | Nunca reaproveita buraco (endereça Liberação/Registros); cadastro cheio registra o que cabe e avisa (A10) |
+| 12.5 | Configuração travada | ✅ | Editáveis só C5:C16, C20, D26:D125 — a Bioquímica estava inteira destravada (A12) |
+| 12.6 | Defeitos achados no caminho | ✅ corrigido | Bioquímica: C21 olhava 25 lotes (A11); identificação do XN-1000 → **DIMENSION EXL-200 / SIEMENS**, série e controle "A INFORMAR". Nos dois: **classificação de Westgard nunca casava** ("Não classificada" para tudo — códigos `1_3s`… contra `13S`…); **lote gravado como número na trilha** |
+
+## 13. Painel: todos os gráficos à vista, zoom e troca de analito — ADR-061, ADR-063, ADR-062 (03/10/2026)
+
+| # | Item | Status | Evidência (`testes/qa_graficos.py`, Excel visível, foto da janela anexada) |
+|---|---|---|---|
+| 13.1 | **Todos os níveis inteiros na tela ao entrar no Painel** | ✅ corrigido | G01: Hematologia **3 × 183 pt** (o N3 ficava abaixo da borda), Bioquímica **2 × 276 pt** (o N2 era cortado); cabeçalho A:U e legenda do lote inteiros. Prova do próprio Excel (`VisibleRange`) |
+| 13.2 | Nenhum gráfico oculto, nunca | ✅ | Foco por nível e Ctrl+Shift+G do ADR-061 **revogados** a pedido do usuário (ADR-063); G07 |
+| 13.3 | Janela de outro tamanho e botão "Ver todos os gráficos" | ✅ | G05 (900×520 pt → zoom 55%, todos inteiros; maximizada de novo → reencaixa); G04 depois de zoom manual |
+| 13.4 | Zoom manual respeitado; largura acompanha sem clique | ✅ | G03 130→70→160%, < 1 s, pasta limpa. Legenda não corta mais à direita (`UsableWidth` inclui os cabeçalhos — defeito desde o ADR-054) |
+| 13.5 | Fechar não reabre o arquivo | ✅ corrigido | G08 olhando 10 s depois. A prova anterior era **falso positivo** (olhava aos 4 s; reabrir leva ~4,7 s). Por automação o Excel ignora o `Application.Wait`: laço ocupado — reabria 3/3, agora 0/4 |
+| 13.6 | Troca de analito quase imediata | ✅ | `qa_desempenho.py` (trava permanente): 1ª troca 1,7–2,3 s → ~0,25 s; mediana ~320 → ~210 ms; lista 0,5–0,7 s → ~0,2 s. Visível (Bio): mediana 425 → 204 ms, pior caso 991 → 290 ms. Causa principal medida: ~150 ms por ciclo de senha da proteção, 2 ciclos por clique. G06: trocar de analito não mexe nos gráficos |
+| 13.7 | Spinner não cai em posição vazia | ✅ | Limitado aos analitos cadastrados (31/28) — ia até 40 e mostrava "0.0" (P04) |
+| 13.8 | Só o ADM define senhas; desvios Alt+F8 fechados | ✅ | `qa_seguranca.py` revista (S05–S13): ANALISTA não cria nem troca a própria; `UnprotectAll`/`UnlockApp` pela lista de macros não desprotegem nem revelam; sessão forjada recusada (ADR-059 revisto) |
+
+**Bateria sobre os bytes entregues (2ª rodada, 03/10/2026):** Bioquímica — segurança 17/17 · casos extremos 9/9 · troca de lote 3/3 · lotes automáticos 14/14 · gráficos 8/8 · desempenho 4/4 · QA final 28/28 (entregue, sha256 4dd8750e81b318e1); Hematologia — segurança 17/17 · casos extremos 9/9 · troca de lote 3/3 · lotes automáticos 14/14 · gráficos 8/8 · desempenho 4/4 · QA final 28/28 (entregue, sha256 614830665ec842ba).
+Instalação pelo ponto único `codigo_atual.py` (todo o VBA das fontes de uma vez, compilação exigida): os
+instaladores deixaram de depender de ordem. Lições da rodada, todas com guarda nova: compilação lida cedo
+demais dava falso "não compilou"; arquivo aberto **somente leitura** salvava "com sucesso" sem gravar (os
+instaladores agora recusam); Excel que sobra de teste com erro segura o arquivo (as suítes sempre fecham).
+
+**Duas baterias de entrega foram paradas antes desta — e a produção ficou intocada nas duas, como o portão manda.**
+A 1ª reprovou as duas; nenhum dos motivos era do produto, e os dois viraram guarda:
+- Hematologia, G05 antigo: o "truque do ALT" da prova ligava as dicas de teclado (KeyTips) e engolia o
+  Ctrl+Shift+G (matriz de 12 rodadas, caixas fotografadas). O atalho depois saiu com o ADR-063.
+- Bioquímica, casos extremos: ao abrir a cópia blindada, um `Unprotect` falhou calado e a suíte caiu em
+  "não é possível definir Visible", deixando um Excel órfão (transitório: reaberta, destrava 35/35 abas). O
+  `QA.abrir` agora confere a estrutura destravada, repete e diz o motivo; falhou, fecha o Excel.
+- Achado no caminho: **matar o Excel com uma pasta aberta faz ele marcar aquele caminho como "causou um erro
+  grave"** — na próxima abertura pergunta se continua e, em automação, o Open falha. Conferido que os arquivos
+  de produção não foram marcados. `xlh.fechar` agora fecha todas as pastas, pede o Quit e espera o Excel sair.
+
+A 2ª foi interrompida por mim no meio da instalação quando o usuário avisou que **não pode haver um gráfico só
+na tela** — ela entregaria o foco por nível. Daí o ADR-063.
+
+## 14. Incerteza de medição — ADR-064 (04/10/2026)
+
+| # | Item | Status | Evidência |
+|---|---|---|---|
+| 14.1 | Metodologia fundamentada antes de implementar | ✅ | Pesquisa no PubMed (2 frentes) + revisor adversarial: **57 PMIDs conferidos, todos existem**; 18 correções incorporadas; 16 perguntas respondidas (ADR-064; `testes/resultados/adr064_revisao_metodologica.json`) |
+| 14.2 | u(Rw) de longo prazo, lotes separados e agrupados | ✅ | `qa_incerteza.py` I01: recálculo **independente em Python** a partir da tblCQ_Final confere u(Rw), gl, lotes, dias, uc, U e U na unidade em **todas** as linhas (Bio 62, Hema 84) |
+| 14.3 | Validade e alertas | ✅ | ≥ 180 dias e gl ≥ 100 válida; 90–179 ou gl 30–99 provisória; abaixo não exibida; lotes curtos, CV heterogêneo, inativados > 5%, sem margem p/ u(cal) |
+| 14.4 | Meta por variação biológica e classe | ✅ | I02: meta 0,50·CVI (nunca TEa CLIA); classe pelos cortes 0,25/0,50/0,75·CVI |
+| 14.5 | u(cal) do fabricante | ✅ | I03: campo novo na aba Analitos; informado, entra em quadratura e tira o rótulo "parcial" |
+| 14.6 | Viés do CEQ verificado, não somado | ✅ | I04: média com sinal, triagem (≥ 6 amostras de ≥ 2 rodadas; > 2 EP) e Nordtest informativo conferidos (Bio 31, Hema 28 analitos) |
+| 14.7 | Painel e Estatística coerentes | ✅ | I05 Painel = Estatística por nível; I06 nenhum erro de fórmula; recálculo ~1 s (I09) |
+| 14.8 | Correções do CEQ achadas no caminho | ✅ corrigido | Hema: colunas R/S/T/AC/AD davam "SEM EP" sempre (I07); Bio: rótulos acentuados corrompidos no mEQA (I08); mPlanoQC com texto corrompido; datas "yyyy" na Hema |
+| 14.9 | Viés do Sigma (média de \|bias\|) | ⚠️ pendência D-01 | Superestima o viés (≈0,8σ sem viés real) e subestima o Sigma. Impacto medido: Bio 5/58 e Hema 15/57 classes subiriam. Fica para o RT aprovar: relaxa regras de Westgard |
+
+**Bateria sobre os bytes entregues (ciclo autônomo, 04/10/2026):** Bioquímica — **98/98** (segurança 20, casos extremos 9, troca de lote 3, lotes 14, gráficos 8, incerteza 12, desempenho 4, QA final 28) — sha256 f85a3c1566ea62fe; Hematologia — **100/100** (segurança 20, casos extremos 9, troca de lote 3, lotes 14, gráficos 8, incerteza 14, desempenho 4, QA final 28) — sha256 e419f22e7d898463.
+
+## 15. Auditoria final independente (04/10/2026)
+
+Duas frentes independentes do Agente 09 (cálculo/dados/CEQ e VBA/segurança). Cada achado foi conferido no código pelo
+Gestor antes de entrar; o que não se sustentou foi descartado. Detalhe dos achados: ADR-064 ("Auditoria final") e ADR-065.
+
+| # | Item | Status | Evidência |
+|---|---|---|---|
+| 15.1 | 11 achados do cálculo da incerteza e do CEQ (amostra não avaliada ou zero, data futura na janela, ano anterior no CEQ, provedor vazio na Hematologia, meta 2·CVTp, lote de média zero, u(cal) em texto, linhas sem analito, chave repetida, % inativados, decisão manual da EQA apagada) | ✅ corrigido | ADR-064, "Auditoria final" (A-01 a A-11); `qa_incerteza.py` I00–I13 com recálculo independente |
+| 15.2 | Ctrl+S numa sessão gravava o arquivo aberto (o item 3.5 valia só para a entrega) | ✅ corrigido | ADR-065; `qa_seguranca.py` S19 (a sessão volta) e S20 (XML trancado, sem a identidade) |
+| 15.3 | Sessão ADM editava o Audit_Log sem rastro; `NovoLote` pelo Alt+F8 sem login | ✅ corrigido | S18 |
+| 15.4 | CEQ desatualizado depois de consolidar; nº de laboratórios nunca renovado | ✅ corrigido | `AtualizarEQABase` recalcula; I12 |
+| 15.5 | `TrocarLote` zerava a própria operação no meio | ✅ corrigido | Compilação + bateria completa |
+| 15.5b | Fechar → Cancelar deixa a aparência do Excel até o próximo login | ⚠️ P-06 limitação | Perguntar no BeforeClose travava fechamentos por automação — tentado, medido e revertido (ADR-065) |
+| 15.6 | Reinstalar o ADR-064 gravava as fórmulas de texto como TEXTO | ✅ corrigido | Fumaça do instalador; a entrega reinstala sobre a produção, que já tinha o ADR-064 |
+| 15.7 | DB_SEAC: linhas sem ID caem sem aviso | ⏳ P-02 | Só reproduzível no laboratório |
+| 15.8 | Hash da trilha depende da região do Windows | ⚠️ P-03 limitação | PCs pt-BR; não mudar a região |
+| 15.9 | Truncar o fim da trilha não é detectado | ⚠️ P-04 limitação | Anotar o último hash no registro mensal |
+| 15.10 | Outras macros sem argumento rodam pelo Alt+F8 sem login (só recalculam; ficam na trilha) | ⚠️ P-05 | Fecha de vez com a senha do projeto VBA (gate 3.4, passo manual) |
+
+
+## 16. QA-ETL-001 — integridade da camada de dados por ID (gate obrigatório, ADR-066, 05/10/2026)
+
+| # | Item | Status | Evidência |
+|---|---|---|---|
+| 16.1 | Proposta avaliada antes de executar (premissas corrigidas: soft-delete fica na final; RUN derivado) | ✅ | ADR-066; mapa real em `QUALITY_GATE_anexo_ETL.md` |
+| 16.2 | Recebimento = origem por conjunto, célula a célula (DB_SEAC sintético) | ✅ | E01 |
+| 16.3 | Nenhuma linha some sem rastro: sem ID, ID repetido, ID inválido, sem DATA_HORA | ✅ corrigido | E02–E04 (D01, D02, D16) |
+| 16.4 | Tabela ausente PARA a atualização (antes: inativados voltavam a ATIVO; 44.392 IDs perdidos) | ✅ corrigido | E06 (D03, D04) |
+| 16.5 | Final = recebimento ∪ manuais, IDs únicos, partição por STATUS, Estatística = recálculo independente | ✅ | E07 em todos os estados |
+| 16.6 | Exclusão + checkbox SIM→NÃO→SIM: só a linha muda; o X nunca contamina (valor extremo, janela normal e saturada) | ✅ corrigido | E10, E11 (D10) |
+| 16.7 | RUN = oráculo independente em 100% dos IDs; idempotência 3× da linha inteira | ✅ | E12, E15 |
+| 16.8 | Chaves (NBSP, zeros, caixa, repetidas, inexistentes), manual × inativação, meia-noite, lote/equipamento | ✅ corrigido | E08, E09, E13, E14 (D05–D09, D12–D15) |
+| 16.9 | Matriz de rastreabilidade por ID | ✅ | `testes/resultados/etl_rastreabilidade_*.json` |
+| 16.10 | Regressão completa sobre os bytes entregues | ✅ | Hematologia **191/191**, Bioquímica **190/190** (10 suítes) |
+| 16.11 | Manual pode substituir automático inativado? | ⏳ decisão do RT | Hoje não (CONFLITO + A09) |
+
 ---
 
 ## Resumo
@@ -335,7 +479,23 @@ redefinindo a verdade para caber no resultado.
 > **Regra de merge:** nada entra na `main` enquanto houver ⏳ ou ❌.
 > A branch `fase3a-motor-cqi` é de trabalho; se um PR for aberto, deve ser **draft**.
 
-**40 ✅ · 6 ⏳ · 2 ❌**  (contagem inclui a tabela de cobertura por produto)
+**05/10/2026 (QA-ETL-001):** seção 16 nova. A camada de dados foi auditada por ID com DB_SEAC sintético; 16 defeitos provados no Excel e corrigidos (o pior: tabela de recebimento ausente apagava 44.392 resultados sem aviso). Gate incluído na entrega. Bateria: Hematologia 191/191, Bioquímica 190/190.
+
+**04/10/2026 (ciclo autônomo):** seções 14 (incerteza de medição, ADR-064) e 15 (auditoria final) novas.
+A auditoria achou 16 defeitos e mais um no instalador, todos corrigidos e provados. O mais grave: o Ctrl+S no meio
+de uma sessão gravava o arquivo aberto, e o 3.5 valia só para a entrega (ADR-065). Ficam classificados, com
+dono: **D-01** (viés no Sigma, decisão do RT), **P-02** (DB_SEAC sem ID, conferir no laboratório) e as
+limitações **P-03 a P-06**. Bateria sobre os bytes entregues: Bioquímica 98/98, Hematologia 100/100.
+Fora do software continuam **3.4**, **6.1** e os certificados de u(cal) do fabricante.
+
+**03/10/2026:** 4.2, 4.3, 4.4 e 6.4 fecham com prova; 3.5 regrediu com o ADR-057 e fechou de novo;
+seções 10 (ADR-057/058) e 11 (ADR-059) novas, todas ✅. Continuam abertos só os dois que não são de
+software: **3.4** (senha do projeto VBA — passo manual seu) e **6.1** (validação do fluxo diário com
+usuário real).
+Os ❌ da tabela de cobertura são Imunologia (fora do escopo) e Especificações na Hematologia
+(subsistema da Bioquímica).
+
+*Histórico (06/08/2026):* **40 ✅ · 6 ⏳ · 2 ❌**  (contagem inclui a tabela de cobertura por produto)
 
 **Suíte, 06/08/2026:** Bioquímica **68 de 69** · Hematologia **61 de 63**.
 Na Bioquímica a única falha é a `5.4` (senha do VBA, passo manual seu). Na

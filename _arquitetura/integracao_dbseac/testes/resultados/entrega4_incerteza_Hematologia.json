@@ -1,0 +1,164 @@
+[
+ {
+  "teste": "I00 Janela da incerteza = 12 meses móveis terminando no último resultado que PARTICIPA da estatística (uma data futura digitada por engano num resultado manual não desloca a janela)",
+  "resultado": "PASS",
+  "evidencia": {
+   "janela": [
+    "02/10/2025",
+    "01/10/2026"
+   ],
+   "ultimo_resultado": 46296.0
+  }
+ },
+ {
+  "teste": "I01 u(Rw), gl, lotes, dias, uc, U e U na unidade conferem com o recálculo INDEPENDENTE (lotes n ≥ 20 agrupados por gl) em todas as 84 linhas; validade 90/180 dias e gl 30/100 respeitada",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas": 84,
+   "validade": {
+    "VALIDA": 84,
+    "PROVISORIA": 0,
+    "INSUFICIENTE": 0
+   },
+   "divergencias": []
+  }
+ },
+ {
+  "teste": "I02 Meta u = 0,50 × CVI (EFLM; só o CVI cadastrado na aba Analitos; nunca do TEa CLIA) e classe Ótimo/Desejável/Mínimo/Não atende pelos cortes 0,25/0,50/0,75 × CVI",
+  "resultado": "PASS",
+  "evidencia": {
+   "divergencias": []
+  }
+ },
+ {
+  "teste": "I03 u(cal) do fabricante informada entra em quadratura (uc = raiz(u(Rw)² + u(cal)²)) e tira o rótulo \"parcial\"; apagada, volta ao parcial",
+  "resultado": "PASS",
+  "evidencia": {
+   "analito": "WBC",
+   "nivel": "1",
+   "u_rw": 2.365768735449245,
+   "uc_com_ucal_1_5": 2.801225037305843,
+   "situacao": [
+    "Válida",
+    "Válida · parcial: sem u(cal) do fabricante"
+   ]
+  }
+ },
+ {
+  "teste": "I04 Viés do CEQ recalculado da EQA_Base: média com sinal, triagem (≥ 6 amostras de ≥ 2 rodadas; detectável se |média| > 2 EP) e U Nordtest informativo (u(Cref) = DP do grupo / raiz(nº de laboratórios))",
+  "resultado": "PASS",
+  "evidencia": {
+   "analitos": 28,
+   "exemplos": {
+    "WBC": {
+     "media": -1.865,
+     "n": 15,
+     "rodadas": 3,
+     "triagem": "detectável (relevância não avaliada)"
+    },
+    "RBC": {
+     "media": 1.534,
+     "n": 15,
+     "rodadas": 3,
+     "triagem": "detectável (relevância não avaliada)"
+    },
+    "HGB": {
+     "media": 1.35,
+     "n": 15,
+     "rodadas": 3,
+     "triagem": "detectável (relevância não avaliada)"
+    },
+    "HCT": {
+     "media": 0.324,
+     "n": 15,
+     "rodadas": 3,
+     "triagem": "não detectável"
+    }
+   },
+   "divergencias": []
+  }
+ },
+ {
+  "teste": "I05 Bloco \"INCERTEZA DE MEDIÇÃO\" do Painel mostra, por nível, exatamente a linha da Estatística do analito selecionado, com a janela na nota",
+  "resultado": "PASS",
+  "evidencia": {
+   "linha": 65,
+   "analito": "RBC",
+   "nota": "Janela 02/10/2025 a 01/10/2026 (12 meses)  ·  u(Rw) = CIQ de longo prazo, lotes (n >= 20) ",
+   "divergencias": []
+  }
+ },
+ {
+  "teste": "I06 Nenhum erro de fórmula (#VALOR!, #NOME?...) nas colunas da incerteza nem no bloco do Painel",
+  "resultado": "PASS",
+  "evidencia": {
+   "erros": []
+  }
+ },
+ {
+  "teste": "I07 Hematologia: as colunas do CEQ (bias com sinal, nº de amostras e rodadas, status SDI e limites) usam o provedor do filtro como o bias de G -- antes liam Analitos!AR, que só existe na Bioquímica, e davam SEM EP",
+  "resultado": "PASS",
+  "evidencia": {
+   "WBC": {
+    "N_EQA": 15.0,
+    "bias_sinal": -1.8648146011737141,
+    "status_SDI": "OK (|SDI| max 1,80 em 15 amostra(s))"
+   }
+  }
+ },
+ {
+  "teste": "I08 Padronização do status do CEQ reconhece rótulos acentuados (Controllab em português) -- na Bioquímica o texto estava corrompido (\"ACEITÃVEL\")",
+  "resultado": "PASS",
+  "evidencia": {
+   "Aceitável": "ACEITO",
+   "Não aceito": "NAO ACEITO",
+   "NÃO CONFORME": "NAO ACEITO",
+   "Insatisfatório": "NAO ACEITO",
+   "Acceptable": "ACEITO"
+  }
+ },
+ {
+  "teste": "I10 Linhas sem analito cadastrado (A = 0) não calculam nem mostram incerteza",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_sem_analito": 36,
+   "celulas_preenchidas": []
+  }
+ },
+ {
+  "teste": "I11 u(cal) colada como texto não entra: uc continua = u(Rw) e a situação continua \"parcial\" (antes a fórmula ignorava o texto e o VBA dizia que não era parcial)",
+  "resultado": "PASS",
+  "evidencia": {
+   "situacao": "Válida · parcial: sem u(cal) do fabricante",
+   "uc": 2.365768735449245,
+   "u_rw": 2.365768735449245
+  }
+ },
+ {
+  "teste": "I12 Decisão manual de Uso_Analitico na EQA_Base sobrevive a uma nova consolidação do CEQ (antes era apagada sem aviso)",
+  "resultado": "PASS",
+  "evidencia": {
+   "chave": "CAP|2025|FH9-A 2025|Basophils|FH9-01",
+   "antes": "SIM",
+   "manual": "NAO",
+   "depois": "NAO",
+   "carimbo": " total 465 | sem analito canonico 15 | chaves repetidas 0 | uso manual mantido 1"
+  }
+ },
+ {
+  "teste": "I13 Hematologia: provedor do CEQ definido (CAP, editável, célula própria fora da nota mesclada); antes eqProvedor caía no meio de F4:M4 e ficava vazio (\"todos os provedores\", 0 linhas em K5)",
+  "resultado": "PASS",
+  "evidencia": {
+   "eqProvedor": "$R$4",
+   "valor": "CAP",
+   "K5": "Bias do EP: CAP | ano 2025 | media de todas as rodadas | 375 linha(s) analíticas na EQA_Base"
+  }
+ },
+ {
+  "teste": "I09 Recalcular toda a incerteza (depois de ATUALIZAR DADOS) leva menos de 10 s",
+  "resultado": "PASS",
+  "evidencia": {
+   "segundos": 1.21
+  }
+ }
+]

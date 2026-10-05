@@ -1,0 +1,123 @@
+[
+ {
+  "teste": "X01 Data futura: MANUAL_INCOMPLETO, fora da estatística e do LJ, E04 no QA",
+  "resultado": "PASS",
+  "evidencia": {
+   "ID_REGISTRO": "MAN_0001",
+   "DATA_HORA": "2026-11-14 01:07:00",
+   "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: DATA/HORA posterior ao lancamento"
+  }
+ },
+ {
+  "teste": "X02 Resultado não numérico (\"abc\"): MANUAL_INCOMPLETO, fora",
+  "resultado": "PASS",
+  "evidencia": {
+   "ID_REGISTRO": "MAN_0002",
+   "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: RESULTADO"
+  }
+ },
+ {
+  "teste": "X03 Nível inexistente (4): MANUAL_INCOMPLETO, fora",
+  "resultado": "PASS",
+  "evidencia": {
+   "ID_REGISTRO": "MAN_0003",
+   "NIVEL": 4.0,
+   "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: NIVEL"
+  }
+ },
+ {
+  "teste": "X04 ID manual fora do padrão (XYZ_12): vira MAN_INVALIDO_L<n>, MANUAL_INCOMPLETO, fora",
+  "resultado": "PASS",
+  "evidencia": [
+   {
+    "ID_REGISTRO": "MAN_INVALIDO_L4",
+    "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+    "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: ID_REGISTRO (padrao MAN_0001)"
+   }
+  ]
+ },
+ {
+  "teste": "X05 Analito sem cadastro: guardado, ANALITO_CADASTRADO = NÃO, I01 no QA, fora do Painel",
+  "resultado": "PASS",
+  "evidencia": {
+   "ID_REGISTRO": "MAN_0005",
+   "ANALITO": "ANALITO_QUE_NAO_EXISTE",
+   "ANALITO_CADASTRADO": "NÃO",
+   "STATUS_ANALITICO": "ATIVO",
+   "PARTICIPA_ESTATISTICA": "SIM",
+   "fora_do_painel": true,
+   "analito_em_tela": "RBC",
+   "analitos_no_cadastro": 28
+  }
+ },
+ {
+  "teste": "X06 Decimal com vírgula (\"0,15\"): lido como 0.15, nunca como milhar (armadilha do item 2.2)",
+  "resultado": "PASS",
+  "evidencia": {
+   "ID_REGISTRO": "MAN_0006",
+   "RESULTADO": 0.15,
+   "STATUS_ANALITICO": "ATIVO"
+  }
+ },
+ {
+  "teste": "X07 Inativar ID inexistente (MAN_9999): E03 no QA, nenhum resultado afetado",
+  "resultado": "PASS",
+  "evidencia": [
+   "ID digitado na linha 1 da inativacao nao corresponde a nenhum resultado recebido ou manual"
+  ]
+ },
+ {
+  "teste": "X08 Mesmo ID inativado duas vezes: E02 no QA, uma única inativação, resultado não duplica",
+  "resultado": "PASS",
+  "evidencia": {
+   "id": "HEM-202981",
+   "E02": [
+    "aparece 2 vezes (linhas 2, 3 da tabela); vale so a primeira, a contagem nao duplica"
+   ],
+   "status": "INATIVADO"
+  }
+ },
+ {
+  "teste": "X09 Nenhum resultado inválido participa da estatística",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas": [
+    44392,
+    44399
+   ],
+   "manuais_novos": 7,
+   "sumidos": [],
+   "novos_sem_origem_valida": [],
+   "participando_indevido": []
+  }
+ },
+ {
+  "teste": "X10 RESULTADO manual '1.5' gravado como TEXTO: MANUAL_INCOMPLETO, fora da estatística e do LJ, E04 com 'RESULTADO ambíguo', nunca vira 15 (hoje falha: prova D07)",
+  "resultado": "PASS",
+  "evidencia": {
+   "celula_RESULTADO": "1.5",
+   "tipo_celula": "str",
+   "ID_REGISTRO": "MAN_0007",
+   "RESULTADO": null,
+   "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+   "PARTICIPA_ESTATISTICA": "NÃO",
+   "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: RESULTADO ambiguo (use virgula decimal: 1,5)",
+   "E04": [
+    "campos obrigatorios ausentes/invalidos: RESULTADO ambiguo (use virgula decimal: 1,5)"
+   ]
+  }
+ },
+ {
+  "teste": "X11 Segurança do teste: arquivo de entrada intacto (SHA-256 igual antes e depois; nada salvo nele)",
+  "resultado": "PASS",
+  "evidencia": {
+   "arquivo": "C:\\Users\\vitor\\Desktop\\qcini.finalização\\_entrega_2026-10-05_0225\\Hematologia\\teste_qa_casos_extremos\\QC_Hematologia.xlsm",
+   "sha256_antes": "65231b17cefb4c2d2065aed733091e59e2181925625caa5f89504c4beed2a3e0",
+   "sha256_depois": "65231b17cefb4c2d2065aed733091e59e2181925625caa5f89504c4beed2a3e0"
+  }
+ }
+]

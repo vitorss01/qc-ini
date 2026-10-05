@@ -1,0 +1,1135 @@
+[
+ {
+  "teste": "E01a Recebimento por conjunto (DB_SEAC sintético): os IDs novos são exatamente {PREFIXO-9000001..9000005}",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro_atualizacao": null,
+   "t_s": 54.3,
+   "esperados": [
+    "HEM-9000001",
+    "HEM-9000002",
+    "HEM-9000003",
+    "HEM-9000004",
+    "HEM-9000005"
+   ],
+   "novos": [
+    "HEM-9000001",
+    "HEM-9000002",
+    "HEM-9000003",
+    "HEM-9000004",
+    "HEM-9000005"
+   ],
+   "n_novos": 5,
+   "linhas": [
+    44392,
+    44397
+   ],
+   "molde": {
+    "grupo(equip, matriz, lote, analito)": [
+     "XN1000",
+     "SANGUE TOTAL",
+     "522611",
+     "BASO#"
+    ],
+    "lote_painel": "522611",
+    "equip_painel": null,
+    "molde_ids": {
+     "1": "HEM-213735",
+     "2": "HEM-213776",
+     "3": "HEM-213817"
+    },
+    "valores": {
+     "1": 0.15,
+     "2": 0.31,
+     "3": 0.82
+    },
+    "dias_sem_dado": [
+     "2026-09-27",
+     "2026-09-26",
+     "2026-09-20",
+     "2026-09-19",
+     "2026-09-13"
+    ],
+    "GAP_CORRIDA_MIN": 10.0,
+    "PREFIXO_ID": "HEM",
+    "TABELA_ORIGEM": "tbHematologia",
+    "colunas_origem": [
+     "EQUIPAMENTO",
+     "LOTE",
+     "NIVEL",
+     "NIVEL_DESC",
+     "DATA",
+     "DATA_HORA",
+     "ANALITO",
+     "VALOR",
+     "FLAG",
+     "ID_ORIGEM",
+     "ID_AMOSTRA",
+     "ITEM_ID",
+     "UNIDADE"
+    ]
+   }
+  }
+ },
+ {
+  "teste": "E01b Recebimento = origem célula a célula em TODAS as colunas do DB_SEAC (VALOR, DATA_HORA, ANALITO, LOTE, NIVEL, ITEM_ID, ...)",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro_atualizacao": null,
+   "t_s": 54.3,
+   "celulas_conferidas": 65,
+   "colunas": [
+    "EQUIPAMENTO",
+    "LOTE",
+    "NIVEL",
+    "NIVEL_DESC",
+    "DATA",
+    "DATA_HORA",
+    "ANALITO",
+    "VALOR",
+    "FLAG",
+    "ID_ORIGEM",
+    "ID_AMOSTRA",
+    "ITEM_ID",
+    "UNIDADE"
+   ],
+   "divergencias": [],
+   "origem": [
+    {
+     "_nome": "S01",
+     "_id": "HEM-9000001",
+     "ID_ORIGEM": 9000001,
+     "ITEM_ID": 9000001,
+     "NIVEL": 1,
+     "DATA_HORA": "2026-09-27 08:00:00",
+     "VALOR": 0.15,
+     "ANALITO": "BASO#",
+     "ID_AMOSTRA": "QASINT-S01"
+    },
+    {
+     "_nome": "S02",
+     "_id": "HEM-9000002",
+     "ID_ORIGEM": 9000002,
+     "ITEM_ID": 9000002,
+     "NIVEL": 2,
+     "DATA_HORA": "2026-09-27 08:01:00",
+     "VALOR": 0.31,
+     "ANALITO": "BASO#",
+     "ID_AMOSTRA": "QASINT-S02"
+    },
+    {
+     "_nome": "S03",
+     "_id": "HEM-9000003",
+     "ID_ORIGEM": 9000003,
+     "ITEM_ID": 9000003,
+     "NIVEL": 3,
+     "DATA_HORA": "2026-09-27 08:02:00",
+     "VALOR": 0.82,
+     "ANALITO": "BASO#",
+     "ID_AMOSTRA": "QASINT-S03"
+    },
+    {
+     "_nome": "S04",
+     "_id": "HEM-9000004",
+     "ID_ORIGEM": 9000004,
+     "ITEM_ID": 9000004,
+     "NIVEL": 1,
+     "DATA_HORA": "2026-09-27 14:00:00",
+     "VALOR": 0.15,
+     "ANALITO": "BASO#",
+     "ID_AMOSTRA": "QASINT-S04"
+    },
+    {
+     "_nome": "S05",
+     "_id": "HEM-9000005",
+     "ID_ORIGEM": 9000005,
+     "ITEM_ID": 9000005,
+     "NIVEL": 2,
+     "DATA_HORA": "2026-09-27 14:01:00",
+     "VALOR": 0.31,
+     "ANALITO": "BASO#",
+     "ID_AMOSTRA": "QASINT-S05"
+    }
+   ]
+  }
+ },
+ {
+  "teste": "E01c Um único RECEBIDO_EM para a carga, preenchido",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro_atualizacao": null,
+   "t_s": 54.3,
+   "carimbos": [
+    "2026-10-05 02:52:26"
+   ]
+  }
+ },
+ {
+  "teste": "E01d Histórico pré-existente intacto: mesmo conjunto de linhas e mesmos valores (inclusive RECEBIDO_EM)",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro_atualizacao": null,
+   "t_s": 54.3,
+   "linhas_antes": 44392,
+   "linhas_depois": 44397,
+   "novos": 5,
+   "linhas_sem_ID_na_base_antes": 0,
+   "obs_sem_ID": null,
+   "sumiram_ou_mudaram": [],
+   "surgiram": []
+  }
+ },
+ {
+  "teste": "E01e Final: os 5 IDs uma vez cada, ATIVO/SIM/NORMAL/INTERFACEAMENTO, RESULTADO = VALOR, RUN = oráculo da regra de corrida",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro_atualizacao": null,
+   "t_s": 54.3,
+   "problemas": [],
+   "final": [
+    {
+     "ID_REGISTRO": "HEM-9000001",
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "RUN": 26092701.0,
+     "RESULTADO": 0.15,
+     "ID_RELACIONADO": null,
+     "DATA_HORA": "2026-09-27 08:00:00",
+     "NIVEL": 1.0,
+     "oraculo": 26092701,
+     "regra_desenhada": 26092701
+    },
+    {
+     "ID_REGISTRO": "HEM-9000002",
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "RUN": 26092701.0,
+     "RESULTADO": 0.31,
+     "ID_RELACIONADO": null,
+     "DATA_HORA": "2026-09-27 08:01:00",
+     "NIVEL": 2.0,
+     "oraculo": 26092701,
+     "regra_desenhada": 26092701
+    },
+    {
+     "ID_REGISTRO": "HEM-9000003",
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "RUN": 26092701.0,
+     "RESULTADO": 0.82,
+     "ID_RELACIONADO": null,
+     "DATA_HORA": "2026-09-27 08:02:00",
+     "NIVEL": 3.0,
+     "oraculo": 26092701,
+     "regra_desenhada": 26092701
+    },
+    {
+     "ID_REGISTRO": "HEM-9000004",
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "RUN": 26092702.0,
+     "RESULTADO": 0.15,
+     "ID_RELACIONADO": null,
+     "DATA_HORA": "2026-09-27 14:00:00",
+     "NIVEL": 1.0,
+     "oraculo": 26092702,
+     "regra_desenhada": 26092702
+    },
+    {
+     "ID_REGISTRO": "HEM-9000005",
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "RUN": 26092702.0,
+     "RESULTADO": 0.31,
+     "ID_RELACIONADO": null,
+     "DATA_HORA": "2026-09-27 14:01:00",
+     "NIVEL": 2.0,
+     "oraculo": 26092702,
+     "regra_desenhada": 26092702
+    }
+   ],
+   "linhas_do_grupo_no_dia": 5
+  }
+ },
+ {
+  "teste": "E02a P-02: linha da origem sem ID (S6 em branco, S6b nula) não é acumulada no recebimento nem recarimbada a cada atualização (hoje falha: prova D02)",
+  "resultado": "PASS",
+  "evidencia": {
+   "tentativas_L2": [
+    {
+     "linhas": [
+      "S01",
+      "S02",
+      "S03",
+      "S04",
+      "S05",
+      "S06A",
+      "S06B",
+      "S07A",
+      "S07B",
+      "S08A",
+      "S08B",
+      "S09A",
+      "S09B",
+      "S13"
+     ],
+     "erro": null,
+     "t_s": 51.0,
+     "recebimento": 44401
+    }
+   ],
+   "erros_L3_L4": [
+    null,
+    null
+   ],
+   "t_L2_L3_L4_s": [
+    51.0,
+    57.5,
+    60.4
+   ],
+   "linhas_sem_id_na_origem": [
+    {
+     "_nome": "S06A",
+     "_id": null,
+     "ID_ORIGEM": " ",
+     "ITEM_ID": 9000006,
+     "NIVEL": 1,
+     "DATA_HORA": "2026-09-26 08:00:00",
+     "VALOR": 0.15,
+     "ANALITO": "BASO#",
+     "ID_AMOSTRA": "QASINT-S06A"
+    },
+    {
+     "_nome": "S06B",
+     "_id": null,
+     "ID_ORIGEM": null,
+     "ITEM_ID": 9000106,
+     "NIVEL": 2,
+     "DATA_HORA": "2026-09-26 08:01:00",
+     "VALOR": 0.31,
+     "ANALITO": "BASO#",
+     "ID_AMOSTRA": "QASINT-S06B"
+    }
+   ],
+   "no_recebimento_L2": [],
+   "no_recebimento_L3": [],
+   "recarimbadas_entre_L2_e_L3": [],
+   "na_final": []
+  }
+ },
+ {
+  "teste": "E02b P-02: cada linha sem ID gera ERRO E06 \"Linha da origem sem ID (rejeitada)\" com DATA_HORA, ANALITO, ID_AMOSTRA e NIVEL no DETALHE (hoje falha: prova D02)",
+  "resultado": "PASS",
+  "evidencia": {
+   "sem_achado_completo": [],
+   "E06": [
+    {
+     "SEVERIDADE": "ERRO",
+     "TESTE": "Linha da origem sem ID (rejeitada)",
+     "DATA_HORA": "2026-09-26 08:00:00",
+     "DETALHE": "linha do DB_SEAC sem ID valido -- NAO entrou no recebimento: ID_AMOSTRA QASINT-S06A | BASO# | nivel 1 | 26/09/2026 08:00 | ID_ORIGEM informado: vazio. Corrigir o ID na origem (SIPEC/DB_SEAC)."
+    },
+    {
+     "SEVERIDADE": "ERRO",
+     "TESTE": "Linha da origem sem ID (rejeitada)",
+     "DATA_HORA": "2026-09-26 08:01:00",
+     "DETALHE": "linha do DB_SEAC sem ID valido -- NAO entrou no recebimento: ID_AMOSTRA QASINT-S06B | BASO# | nivel 2 | 26/09/2026 08:01 | ID_ORIGEM informado: vazio. Corrigir o ID na origem (SIPEC/DB_SEAC)."
+    }
+   ],
+   "codigos_QA_L3": {
+    "E06": 2,
+    "E07": 3,
+    "A02": 590,
+    "A03": 2,
+    "I01": 3,
+    "I02": 31
+   }
+  }
+ },
+ {
+  "teste": "E02c P-02 conservação: |linhas da origem| = |já recebidas| + |IDs novos| + |repetições do mesmo ID| + |rejeitadas reportadas (E06)| (hoje falha: prova D02)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_origem": 14,
+   "ja_recebidas": 5,
+   "ids_novos": 4,
+   "repeticoes_mesmo_id": 3,
+   "rejeitadas_reportadas_E06": 2,
+   "rejeitadas": [
+    "S06A",
+    "S06B"
+   ],
+   "achados_E06": 2,
+   "ids_novos_lista": [
+    "HEM-9000007",
+    "HEM-9000008",
+    "HEM-9000009",
+    "HEM-9000013"
+   ],
+   "ids_novos_esperados": [
+    "HEM-9000007",
+    "HEM-9000008",
+    "HEM-9000009",
+    "HEM-9000013"
+   ],
+   "erro_L2": null
+  }
+ },
+ {
+  "teste": "E03a ID repetido na mesma carga (9000007 iguais; 9000008 VALOR 5/500; 9000009 x 9000009.4): exatamente 1 linha por ID no recebimento, vale a de menor ITEM_ID (hoje falha: prova D01)",
+  "resultado": "PASS",
+  "evidencia": {
+   "por_id": {
+    "HEM-9000007": {
+     "recebimento": [
+      {
+       "ITEM_ID": 9000007.0,
+       "VALOR": 0.15,
+       "ID_ORIGEM": 9000007.0,
+       "RECEBIDO_EM": "2026-10-05 02:53:21.015000"
+      }
+     ],
+     "final": [
+      {
+       "ID_REGISTRO": "HEM-9000007",
+       "STATUS_ANALITICO": "ATIVO",
+       "PARTICIPA_ESTATISTICA": "SIM",
+       "TIPO_PLOTAGEM_LJ": "NORMAL",
+       "RUN": 26092001.0,
+       "RESULTADO": 0.15,
+       "ID_RELACIONADO": null,
+       "DATA_HORA": "2026-09-20 09:00:00",
+       "NIVEL": 1.0
+      }
+     ]
+    },
+    "HEM-9000008": {
+     "recebimento": [
+      {
+       "ITEM_ID": 9000008.0,
+       "VALOR": 5.0,
+       "ID_ORIGEM": 9000008.0,
+       "RECEBIDO_EM": "2026-10-05 02:53:21.015000"
+      }
+     ],
+     "final": [
+      {
+       "ID_REGISTRO": "HEM-9000008",
+       "STATUS_ANALITICO": "ATIVO",
+       "PARTICIPA_ESTATISTICA": "SIM",
+       "TIPO_PLOTAGEM_LJ": "NORMAL",
+       "RUN": 26092001.0,
+       "RESULTADO": 5.0,
+       "ID_RELACIONADO": null,
+       "DATA_HORA": "2026-09-20 09:01:00",
+       "NIVEL": 2.0
+      }
+     ]
+    },
+    "HEM-9000009": {
+     "recebimento": [
+      {
+       "ITEM_ID": 9000009.0,
+       "VALOR": 0.15,
+       "ID_ORIGEM": 9000009.0,
+       "RECEBIDO_EM": "2026-10-05 02:53:21.015000"
+      }
+     ],
+     "final": [
+      {
+       "ID_REGISTRO": "HEM-9000009",
+       "STATUS_ANALITICO": "ATIVO",
+       "PARTICIPA_ESTATISTICA": "SIM",
+       "TIPO_PLOTAGEM_LJ": "NORMAL",
+       "RUN": 26092002.0,
+       "RESULTADO": 0.15,
+       "ID_RELACIONADO": null,
+       "DATA_HORA": "2026-09-20 13:00:00",
+       "NIVEL": 1.0
+      }
+     ]
+    }
+   },
+   "regra_menor_ITEM_ID_9000009": true,
+   "valor_mantido_9000008": [
+    5.0
+   ],
+   "desvio_do_plano": "S9 = 9000009.4 colide com S09A (9000009) na mesma carga; S1 já entrou na carga L1"
+  }
+ },
+ {
+  "teste": "E03b Final: nunca 2 linhas com o mesmo ID_REGISTRO e nenhum ATIVO em dobro por (equip, lote, nível, analito, RUN) (hoje falha: prova D01)",
+  "resultado": "PASS",
+  "evidencia": {
+   "ids_repetidos_na_final": {},
+   "chave_motor_com_mais_de_1": {},
+   "linhas_na_final": {
+    "HEM-9000007": 1,
+    "HEM-9000008": 1,
+    "HEM-9000009": 1
+   },
+   "participantes_por_id": {
+    "HEM-9000007": 1,
+    "HEM-9000008": 1,
+    "HEM-9000009": 1
+   }
+  }
+ },
+ {
+  "teste": "E03c QA: ERRO E07 \"ID repetido na origem\" para cada ID repetido, e só para eles (hoje falha: prova D01)",
+  "resultado": "PASS",
+  "evidencia": {
+   "E07_ids": [
+    "HEM-9000007",
+    "HEM-9000008",
+    "HEM-9000009"
+   ],
+   "esperados": [
+    "HEM-9000007",
+    "HEM-9000008",
+    "HEM-9000009"
+   ],
+   "E07_indevido_em_ID_unico": [],
+   "E07": [
+    {
+     "ID_REGISTRO": "HEM-9000007",
+     "TESTE": "ID repetido na origem",
+     "DETALHE": "o ID aparece 2 vezes na origem (DB_SEAC); entrou UMA vez (a de menor ITEM_ID). Conferir a origem: dois resultados nunca podem ter o mesmo ID."
+    },
+    {
+     "ID_REGISTRO": "HEM-9000008",
+     "TESTE": "ID repetido na origem",
+     "DETALHE": "o ID aparece 2 vezes na origem (DB_SEAC); entrou UMA vez (a de menor ITEM_ID). Conferir a origem: dois resultados nunca podem ter o mesmo ID."
+    },
+    {
+     "ID_REGISTRO": "HEM-9000009",
+     "TESTE": "ID repetido na origem",
+     "DETALHE": "o ID aparece 2 vezes na origem (DB_SEAC); entrou UMA vez (a de menor ITEM_ID). Conferir a origem: dois resultados nunca podem ter o mesmo ID."
+    }
+   ]
+  }
+ },
+ {
+  "teste": "E05a Retransmissão S13 (cópia de S2 com ID 9000013): DUPLICIDADE_ORIGEM, ID_RELACIONADO = PREFIXO-9000002, A02; S2 continua ATIVO",
+  "resultado": "PASS",
+  "evidencia": {
+   "S13": [
+    {
+     "ID_REGISTRO": "HEM-9000013",
+     "STATUS_ANALITICO": "DUPLICIDADE_ORIGEM",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "RUN": null,
+     "RESULTADO": 0.31,
+     "ID_RELACIONADO": "HEM-9000002",
+     "DATA_HORA": "2026-09-27 08:01:00",
+     "NIVEL": 2.0
+    }
+   ],
+   "S02": [
+    {
+     "ID_REGISTRO": "HEM-9000002",
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "RUN": 26092701.0,
+     "RESULTADO": 0.31,
+     "ID_RELACIONADO": null,
+     "DATA_HORA": "2026-09-27 08:01:00",
+     "NIVEL": 2.0
+    }
+   ],
+   "A02": [
+    "copia de HEM-9000002 (mesma amostra, item, instante e valor) -- nao entra em calculo nem no grafico"
+   ],
+   "S13_no_recebimento": 1
+  }
+ },
+ {
+  "teste": "E05b Idempotência: 3 atualizações com o mesmo arquivo -> |Recebimento|, RECEBIDO_EM de cada ID e final (ID/RUN/STATUS) idênticos; RUN de S1-S5 igual ao da carga L1",
+  "resultado": "PASS",
+  "evidencia": {
+   "tentativas_L2": [
+    {
+     "linhas": [
+      "S01",
+      "S02",
+      "S03",
+      "S04",
+      "S05",
+      "S06A",
+      "S06B",
+      "S07A",
+      "S07B",
+      "S08A",
+      "S08B",
+      "S09A",
+      "S09B",
+      "S13"
+     ],
+     "erro": null,
+     "t_s": 51.0,
+     "recebimento": 44401
+    }
+   ],
+   "erros_L3_L4": [
+    null,
+    null
+   ],
+   "t_L2_L3_L4_s": [
+    51.0,
+    57.5,
+    60.4
+   ],
+   "recebimento": [
+    44401,
+    44401,
+    44401
+   ],
+   "final": [
+    44401,
+    44401,
+    44401
+   ],
+   "ids_com_RECEBIDO_EM_alterado": [],
+   "final_igual": [
+    true,
+    true
+   ],
+   "RUN_S1_S5_L1_L2_L3_L4": {
+    "HEM-9000001": [
+     26092701.0,
+     26092701.0,
+     26092701.0,
+     26092701.0
+    ],
+    "HEM-9000002": [
+     26092701.0,
+     26092701.0,
+     26092701.0,
+     26092701.0
+    ],
+    "HEM-9000003": [
+     26092701.0,
+     26092701.0,
+     26092701.0,
+     26092701.0
+    ],
+    "HEM-9000004": [
+     26092702.0,
+     26092702.0,
+     26092702.0,
+     26092702.0
+    ],
+    "HEM-9000005": [
+     26092702.0,
+     26092702.0,
+     26092702.0,
+     26092702.0
+    ]
+   }
+  }
+ },
+ {
+  "teste": "E05c Origem altera o VALOR de S1 já recebido: o recebido e a final mantêm o valor original e o QA dá A03",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro_L5": null,
+   "t_s": 63.2,
+   "valor_origem_antes": 0.15,
+   "valor_origem_agora": 1.165,
+   "recebido": [
+    0.15
+   ],
+   "final": [
+    0.15
+   ],
+   "A03": [
+    "mudou na origem: VALOR 0,15 -> 1,165. Vale o RECEBIDO (registro imutavel); investigar a correcao na origem."
+   ],
+   "A03_ja_existia_antes": false
+  }
+ },
+ {
+  "teste": "E05d Origem altera só o ANALITO de S3 (VALOR igual): o recebido mantém e o QA dá A03 (hoje falha: prova D13)",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro_L5": null,
+   "analito_origem_antes": "BASO#",
+   "analito_origem_agora": "WBC",
+   "valor": 0.82,
+   "recebido": [
+    "BASO#"
+   ],
+   "A03": [
+    "mudou na origem: ANALITO BASO# -> WBC. Vale o RECEBIDO (registro imutavel); investigar a correcao na origem."
+   ],
+   "A03_ja_existia_antes": false
+  }
+ },
+ {
+  "teste": "E04a ID_ORIGEM em texto (\" 9000010 \" com espaços, \"9000011\"): viram PREFIXO-9000010/9000011, únicos e ATIVO",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro_L6": null,
+   "t_s": 65.4,
+   "origem": [
+    {
+     "_nome": "S10",
+     "_id": "HEM-9000010",
+     "ID_ORIGEM": " 9000010 ",
+     "ITEM_ID": 9000010,
+     "NIVEL": 1,
+     "DATA_HORA": "2026-09-19 10:00:00",
+     "VALOR": 0.15,
+     "ANALITO": "BASO#",
+     "ID_AMOSTRA": "QASINT-S10"
+    },
+    {
+     "_nome": "S11",
+     "_id": "HEM-9000011",
+     "ID_ORIGEM": "9000011",
+     "ITEM_ID": 9000011,
+     "NIVEL": 2,
+     "DATA_HORA": "2026-09-19 10:01:00",
+     "VALOR": 0.31,
+     "ANALITO": "BASO#",
+     "ID_AMOSTRA": "QASINT-S11"
+    }
+   ],
+   "recebimento": {
+    "HEM-9000010": [
+     {
+      "ID_ORIGEM": 9000010.0,
+      "VALOR": 0.15
+     }
+    ],
+    "HEM-9000011": [
+     {
+      "ID_ORIGEM": 9000011.0,
+      "VALOR": 0.31
+     }
+    ]
+   },
+   "final": {
+    "HEM-9000010": [
+     {
+      "ID_REGISTRO": "HEM-9000010",
+      "STATUS_ANALITICO": "ATIVO",
+      "PARTICIPA_ESTATISTICA": "SIM",
+      "TIPO_PLOTAGEM_LJ": "NORMAL",
+      "RUN": 26091901.0,
+      "RESULTADO": 0.15,
+      "ID_RELACIONADO": null,
+      "DATA_HORA": "2026-09-19 10:00:00",
+      "NIVEL": 1.0
+     }
+    ],
+    "HEM-9000011": [
+     {
+      "ID_REGISTRO": "HEM-9000011",
+      "STATUS_ANALITICO": "ATIVO",
+      "PARTICIPA_ESTATISTICA": "SIM",
+      "TIPO_PLOTAGEM_LJ": "NORMAL",
+      "RUN": 26091901.0,
+      "RESULTADO": 0.31,
+      "ID_RELACIONADO": null,
+      "DATA_HORA": "2026-09-19 10:01:00",
+      "NIVEL": 2.0
+     }
+    ]
+   },
+   "linhas_S10_S11_por_ID_AMOSTRA": [
+    "HEM-9000010",
+    "HEM-9000011"
+   ]
+  }
+ },
+ {
+  "teste": "E04b ID_ORIGEM não numérico (\"ABC\"): a atualização falha com mensagem explícita OU a linha é rejeitada com ERRO no QA; nunca erro de célula silencioso nem perda muda",
+  "resultado": "PASS",
+  "evidencia": {
+   "ramo": "concluiu",
+   "erro_L7": "",
+   "t_s": 62.5,
+   "recebimento": [
+    44403,
+    44403
+   ],
+   "final": [
+    44403,
+    44403
+   ],
+   "carimbo_motor_inalterado": false,
+   "S12_no_recebimento": [],
+   "achado_ERRO": [
+    {
+     "CODIGO": "E06",
+     "ID_REGISTRO": null,
+     "DETALHE": "linha do DB_SEAC sem ID valido -- NAO entrou no recebimento: ID_AMOSTRA QASINT-S12 | BASO# | nivel 1 | 19/09/2026 15:00 | ID_ORIGEM informado: invalido. Corrigir o ID na origem (SIPEC/DB_SEAC)."
+    }
+   ]
+  }
+ },
+ {
+  "teste": "E04c Interface com DATA preenchida e DATA_HORA nula: a atualização conclui, a linha fica fora do RUN com ERRO E09 e o vizinho do grupo mantém o RUN correto (hoje falha: prova D16)",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro_L8": "",
+   "t_s": 70.3,
+   "S14": [
+    {
+     "ID_REGISTRO": "HEM-9000014",
+     "STATUS_ANALITICO": "SEM_DATA_HORA",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "RUN": null,
+     "RESULTADO": 0.15,
+     "ID_RELACIONADO": null,
+     "DATA_HORA": null,
+     "NIVEL": 1.0
+    }
+   ],
+   "S15": [
+    {
+     "ID_REGISTRO": "HEM-9000015",
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "RUN": 26091301.0,
+     "RESULTADO": 0.15,
+     "ID_RELACIONADO": null,
+     "DATA_HORA": "2026-09-13 09:00:00",
+     "NIVEL": 1.0
+    }
+   ],
+   "RUN_esperado_S15": 26091301,
+   "oraculo_S15": 26091301,
+   "S14_no_recebimento": 1,
+   "E09": [
+    "sem DATA_HORA na origem: fora da corrida (RUN vazio), do grafico e da estatistica. Corrigir na origem."
+   ]
+  }
+ },
+ {
+  "teste": "E13c Conflito manual × interface ATRAVESSA a meia-noite: interface S16 às 23:58 e manual com a mesma chave às 00:02 do dia seguinte -> o manual vira CONFLITO_MANUAL com ID_RELACIONADO = S16 e fica fora da estatística (hoje falha: prova D09c)",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro_L8": "",
+   "interface_S16": [
+    {
+     "ID_REGISTRO": "HEM-9000016",
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "RUN": 26091302.0,
+     "RESULTADO": 0.31,
+     "ID_RELACIONADO": null,
+     "DATA_HORA": "2026-09-13 23:58:00",
+     "NIVEL": 2.0
+    }
+   ],
+   "manual": [
+    {
+     "ID_REGISTRO": "MAN_0001",
+     "STATUS_ANALITICO": "CONFLITO_MANUAL",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "RUN": null,
+     "RESULTADO": 0.31,
+     "ID_RELACIONADO": "HEM-9000016",
+     "DATA_HORA": "2026-09-14 00:02:00",
+     "NIVEL": 2.0
+    }
+   ],
+   "id_manual": "MAN_0001"
+  }
+ },
+ {
+  "teste": "E06p E06 pré-condição: cópia HISTORICO com 1 inativação justificada (INATIVADO) e 1 manual ATIVO",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro": null,
+   "t_s": 57.5,
+   "id_inativado": "HEM-359628",
+   "id_manual": "MAN_0001",
+   "dia_do_manual": "2026-09-27",
+   "inativado": [
+    {
+     "ID_REGISTRO": "HEM-359628",
+     "STATUS_ANALITICO": "INATIVADO",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "TIPO_PLOTAGEM_LJ": "X_VERMELHO",
+     "RUN": 26100102.0,
+     "RESULTADO": 0.36,
+     "ID_RELACIONADO": null,
+     "DATA_HORA": "2026-10-01 13:17:00",
+     "NIVEL": 2.0,
+     "GOVERNANCA": "OK"
+    }
+   ],
+   "manual": [
+    {
+     "ID_REGISTRO": "MAN_0001",
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "RUN": 26092701.0,
+     "RESULTADO": 0.36,
+     "ID_RELACIONADO": null,
+     "DATA_HORA": "2026-09-27 10:00:00",
+     "NIVEL": 2.0
+    }
+   ]
+  }
+ },
+ {
+  "teste": "E06a1 tblInativacao_NaoConformes renomeada: a atualização FALHA com ERRO| citando a tabela; motor (Eng_Saida G1) e final intactos (hoje falha: prova D03)",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro": "Etapa: atualizar tblCQ_Final\r\nErro 1004: [TABELA_AUSENTE] Tabela obrigatoria ausente ou renomeada: tblInativacao_NaoConformes (a atualizacao parou; nada foi alterado)",
+   "t_s": 15.3,
+   "carimbo_motor_inalterado": true,
+   "final_inalterada": true,
+   "diferencas_final": null,
+   "estado_depois": {
+    "inativado": [
+     {
+      "ID_REGISTRO": "HEM-359628",
+      "STATUS_ANALITICO": "INATIVADO",
+      "PARTICIPA_ESTATISTICA": "NÃO",
+      "TIPO_PLOTAGEM_LJ": "X_VERMELHO",
+      "RUN": 26100102.0,
+      "RESULTADO": 0.36,
+      "ID_RELACIONADO": null,
+      "DATA_HORA": "2026-10-01 13:17:00",
+      "NIVEL": 2.0,
+      "GOVERNANCA": "OK"
+     }
+    ],
+    "manual": [
+     {
+      "ID_REGISTRO": "MAN_0001",
+      "STATUS_ANALITICO": "ATIVO",
+      "PARTICIPA_ESTATISTICA": "SIM",
+      "TIPO_PLOTAGEM_LJ": "NORMAL",
+      "RUN": 26092701.0,
+      "RESULTADO": 0.36,
+      "ID_RELACIONADO": null,
+      "DATA_HORA": "2026-09-27 10:00:00",
+      "NIVEL": 2.0
+     }
+    ]
+   }
+  }
+ },
+ {
+  "teste": "E06a2 tblResultados_Manuais renomeada: a atualização FALHA com ERRO| citando a tabela; motor e final intactos (hoje falha: prova D03)",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro": "Etapa: atualizar tblCQ_Final\r\nErro 1004: [TABELA_AUSENTE] Tabela obrigatoria ausente ou renomeada: tblResultados_Manuais (a atualizacao parou; nada foi alterado)",
+   "t_s": 10.3,
+   "carimbo_motor_inalterado": true,
+   "final_inalterada": true,
+   "diferencas_final": null,
+   "estado_depois": {
+    "inativado": [
+     {
+      "ID_REGISTRO": "HEM-359628",
+      "STATUS_ANALITICO": "INATIVADO",
+      "PARTICIPA_ESTATISTICA": "NÃO",
+      "TIPO_PLOTAGEM_LJ": "X_VERMELHO",
+      "RUN": 26100102.0,
+      "RESULTADO": 0.36,
+      "ID_RELACIONADO": null,
+      "DATA_HORA": "2026-10-01 13:17:00",
+      "NIVEL": 2.0,
+      "GOVERNANCA": "OK"
+     }
+    ],
+    "manual": [
+     {
+      "ID_REGISTRO": "MAN_0001",
+      "STATUS_ANALITICO": "ATIVO",
+      "PARTICIPA_ESTATISTICA": "SIM",
+      "TIPO_PLOTAGEM_LJ": "NORMAL",
+      "RUN": 26092701.0,
+      "RESULTADO": 0.36,
+      "ID_RELACIONADO": null,
+      "DATA_HORA": "2026-09-27 10:00:00",
+      "NIVEL": 2.0
+     }
+    ]
+   }
+  }
+ },
+ {
+  "teste": "E06a3 tblComentariosTecnicos renomeada: a atualização FALHA com ERRO| citando a tabela; motor e final intactos (hoje falha: prova D03)",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro": "Etapa: atualizar tblCQ_Final\r\nErro 1004: [TABELA_AUSENTE] Tabela obrigatoria ausente ou renomeada: tblComentariosTecnicos (a atualizacao parou; nada foi alterado)",
+   "t_s": 14.2,
+   "carimbo_motor_inalterado": true,
+   "final_inalterada": true,
+   "diferencas_final": null,
+   "estado_depois": {
+    "inativado": [
+     {
+      "ID_REGISTRO": "HEM-359628",
+      "STATUS_ANALITICO": "INATIVADO",
+      "PARTICIPA_ESTATISTICA": "NÃO",
+      "TIPO_PLOTAGEM_LJ": "X_VERMELHO",
+      "RUN": 26100102.0,
+      "RESULTADO": 0.36,
+      "ID_RELACIONADO": null,
+      "DATA_HORA": "2026-10-01 13:17:00",
+      "NIVEL": 2.0,
+      "GOVERNANCA": "OK"
+     }
+    ],
+    "manual": [
+     {
+      "ID_REGISTRO": "MAN_0001",
+      "STATUS_ANALITICO": "ATIVO",
+      "PARTICIPA_ESTATISTICA": "SIM",
+      "TIPO_PLOTAGEM_LJ": "NORMAL",
+      "RUN": 26092701.0,
+      "RESULTADO": 0.36,
+      "ID_RELACIONADO": null,
+      "DATA_HORA": "2026-09-27 10:00:00",
+      "NIVEL": 2.0
+     }
+    ]
+   }
+  }
+ },
+ {
+  "teste": "E06b1 MODO SEAC com tblDB_Recebimento renomeada: ATUALIZAR DADOS falha com ERRO| citando a tabela; motor, final e recebimento intactos (guarda atual do VBA)",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro": "Etapa: atualizar tblDB_Recebimento\r\nErro -2147220934: tabela tblDB_Recebimento nao encontrada",
+   "t_s": 0.2,
+   "carimbo_motor_inalterado": true,
+   "final_inalterada": true,
+   "recebimento": [
+    44397,
+    44397
+   ],
+   "linha_de_base_SEAC_s": 64.1
+  }
+ },
+ {
+  "teste": "E06b2 MODO SEAC, camada Power Query: o refresh do recebimento sem a própria tabela (final não vazia) FALHA explícito em vez de reconstruir só com a janela do DB_SEAC (hoje falha: prova D04)",
+  "resultado": "PASS",
+  "evidencia": {
+   "erro": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', '[TABELA_AUSENTE] tblDB_Recebimento ausente ou renomeada com a tblCQ_Final preenchida: a atualizacao parou para nao apagar o historico (carga inicial: CFG CARGA_INICIAL = SIM)', 'xlmain11.chm', 0, -2146827284), None)",
+   "t_s": 2.5,
+   "recebimento_linhas": [
+    44397,
+    44397
+   ],
+   "ids_perdidos": 0,
+   "exemplo_ids_depois": [
+    "HEM-202969",
+    "HEM-202970",
+    "HEM-202971",
+    "HEM-202972",
+    "HEM-202973",
+    "HEM-202974"
+   ]
+  }
+ },
+ {
+  "teste": "E00 Segurança: arquivo de entrada intacto (SHA-256 igual antes e depois; trabalho só em cópias descartáveis, nada salvo, pasta temporária apagada)",
+  "resultado": "PASS",
+  "evidencia": {
+   "sha256_antes": "65231b17cefb4c2d2065aed733091e59e2181925625caa5f89504c4beed2a3e0",
+   "sha256_depois": "65231b17cefb4c2d2065aed733091e59e2181925625caa5f89504c4beed2a3e0",
+   "pasta_temporaria_apagada": true,
+   "atualizacoes": [
+    {
+     "atualizacao": "A-L1 (S01-S05)",
+     "s": 54.3,
+     "ok": true
+    },
+    {
+     "atualizacao": "A-L2 tentativa 1",
+     "s": 51.0,
+     "ok": true
+    },
+    {
+     "atualizacao": "A-L3 (mesmo arquivo)",
+     "s": 57.5,
+     "ok": true
+    },
+    {
+     "atualizacao": "A-L4 (mesmo arquivo)",
+     "s": 60.4,
+     "ok": true
+    },
+    {
+     "atualizacao": "A-L5 (S01 VALOR e S03 ANALITO alterados na origem)",
+     "s": 63.2,
+     "ok": true
+    },
+    {
+     "atualizacao": "A-L6 (+S10 \" 9000010 \", S11 \"9000011\")",
+     "s": 65.4,
+     "ok": true
+    },
+    {
+     "atualizacao": "A-L7 (+S12 \"ABC\")",
+     "s": 62.5,
+     "ok": true
+    },
+    {
+     "atualizacao": "A-L8 (+S14 DATA_HORA nula, S15, S16 23:58 + manual 00:02)",
+     "s": 70.3,
+     "ok": true
+    },
+    {
+     "atualizacao": "B0 linha de base (HISTORICO)",
+     "s": 57.5,
+     "ok": true
+    },
+    {
+     "atualizacao": "B-E06a1 (tblInativacao_NaoConformes renomeada)",
+     "s": 15.3,
+     "ok": false
+    },
+    {
+     "atualizacao": "B-E06a2 (tblResultados_Manuais renomeada)",
+     "s": 10.3,
+     "ok": false
+    },
+    {
+     "atualizacao": "B-E06a3 (tblComentariosTecnicos renomeada)",
+     "s": 14.2,
+     "ok": false
+    },
+    {
+     "atualizacao": "B-E06b0 linha de base SEAC (sintético)",
+     "s": 64.1,
+     "ok": true
+    },
+    {
+     "atualizacao": "B-E06b1 (tblDB_Recebimento renomeada)",
+     "s": 0.2,
+     "ok": false
+    },
+    {
+     "atualizacao": "B-E06b2 (só a consulta do recebimento)",
+     "s": 2.5,
+     "ok": false
+    }
+   ],
+   "n_atualizacoes": 15,
+   "tempo_total_s": 714.5
+  }
+ }
+]

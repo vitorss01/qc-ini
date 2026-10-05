@@ -12,6 +12,7 @@ Cada teste devolve PASS/FAIL com a evidencia. Nada e salvo no arquivo, exceto
 no teste de fechar/reabrir (que trabalha numa copia propria).
 """
 import collections
+import hashlib
 import json
 import math
 import os
@@ -19,6 +20,8 @@ import shutil
 import sys
 import threading
 import time
+import traceback
+import unicodedata
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(AQUI, '..'))
@@ -40,13 +43,46 @@ class QA:
         self.produto, self.caminho = produto, caminho
         self.bio = produto.startswith('Bio')
         self.nlv = 2 if self.bio else 3
-        self.abrir()
+        try:
+            self.abrir()
+        except Exception:
+            # nunca deixa Excel orfao segurando a copia (o proximo teste nao abriria o arquivo)
+            if getattr(self, 'ex', None) is not None:
+                self.ex.fechar()
+            raise
 
     # ------------------------------------------------------------ infraestrutura
     def abrir(self):
         self.ex = xlh.Excel()
         print('EXCEL_PID', self.ex.pid, flush=True)
         self.wb = self.ex.abrir(self.caminho)
+        # o arquivo entregue e salvo BLINDADO (blindar_entrega.py: so Login visivel,
+        # estrutura travada); em uso, o login revela as abas. O QA testa o sistema
+        # nesse estado revelado -- e como o usuario o encontra -- e nunca salva.
+        # Conferido, nao presumido: em 03/10/2026 um Unprotect calado deixou a estrutura
+        # travada e a suite caiu em "nao e possivel definir Visible" sem dizer por que.
+        erro = None
+        for _ in range(6):
+            try:
+                self.wb.Unprotect('qcini2025')
+            except Exception as e:
+                erro = e
+            if not self.wb.ProtectStructure:
+                break
+            time.sleep(1)
+        else:
+            raise RuntimeError(f'estrutura continua travada depois de 6 tentativas de Unprotect: {erro}')
+        for ws in self.wb.Worksheets:
+            for tentativa in range(4):
+                try:
+                    if ws.Visible != -1:
+                        ws.Visible = -1
+                    break
+                except Exception as e:
+                    if tentativa == 3:
+                        raise RuntimeError(f'nao revelou a aba {ws.Name} (estrutura travada: '
+                                           f'{self.wb.ProtectStructure}): {e}')
+                    time.sleep(0.5)
         self.ex.xl.EnableEvents = True
         self.ex.xl.Calculation = -4105
 
@@ -78,6 +114,18 @@ class QA:
 
     def ws(self, nome):
         return self.wb.Worksheets(nome)
+
+    def cfg(self, chave, valor=None):
+        """Le (e, com valor, grava) uma chave de tblConfigIntegracao, como o administrador faria."""
+        lo = self.lo('tblConfigIntegracao')
+        self.ws('Cfg_Integracao').Unprotect('qcini2025')
+        vals = lo.DataBodyRange.Value
+        lin = [i for i, r in enumerate(vals, 1) if str(r[0]).strip().upper() == chave][0]
+        cel = lo.DataBodyRange.Cells(lin, 2)
+        antes = cel.Value
+        if valor is not None:
+            cel.Value = valor
+        return antes
 
     def nome(self, n):
         return self.wb.Names(n).RefersToRange
@@ -167,8 +215,87 @@ def stats(vals):
     return n, m, sd
 
 
+def sha256_arquivo(caminho):
+    """Hash do arquivo de entrada: o QA confere no fim que nada foi salvo nele."""
+    h = hashlib.sha256()
+    with open(caminho, 'rb') as f:
+        for bloco in iter(lambda: f.read(1 << 20), b''):
+            h.update(bloco)
+    return h.hexdigest()
+
+
+def sem_acento(s):
+    return unicodedata.normalize('NFKD', str(s)).encode('ascii', 'ignore').decode('ascii')
+
+
+def _txt(v):
+    """Mesmo Txt() do Power Query: None/'' -> None; numero inteiro sem '.0'."""
+    if v is None:
+        return None
+    if isinstance(v, float) and v.is_integer():
+        v = int(v)
+    t = str(v).strip()
+    return t or None
+
+
+def _so_digitos(t):
+    return t != '' and all('0' <= c <= '9' for c in t)
+
+
+def norm_id(v, prefixo):
+    """Espelho do NormId de pq/DB_CQ_FINAL.m (como esta hoje)."""
+    t = _txt(v)
+    if t is None:
+        return None
+    u = t.upper().replace(' ', '')
+    if _so_digitos(u):
+        return prefixo + '-' + u
+    if u.startswith('MAN_') and _so_digitos(u[4:]):
+        return 'MAN_' + u[4:].rjust(4, '0')
+    return u
+
+
+def ids_manuais_derivados(linhas_manuais, prefixo):
+    """IDs que a tblResultados_Manuais gera na final, pela regra do pq/DB_CQ_FINAL.m (M1/M2/Manuais):
+    linha com qualquer campo preenchido = 1 resultado; ID fora do padrao MAN_nnnn -> MAN_INVALIDO_L<n>;
+    ID repetido: vale a 1a linha, as seguintes ganham ~L<n>. <n> = linha da tabela (1 = 1a linha de dados)."""
+    derivados = []
+    for n, r in enumerate(linhas_manuais, start=1):
+        campos = [r.get(c) for c in ('ID_REGISTRO', 'DATA', 'HORA', 'LOTE', 'NIVEL', 'ANALITO', 'RESULTADO')]
+        if not any(_txt(c) is not None for c in campos):
+            continue
+        i = norm_id(r.get('ID_REGISTRO'), prefixo)
+        ok = i is not None and i.startswith('MAN_') and _so_digitos(i[4:])
+        derivados.append((n, i if ok else f'MAN_INVALIDO_L{n}'))
+    prim = {}
+    for n, i in derivados:
+        prim.setdefault(i, n)
+    return [i if prim[i] == n else f'{i}~L{n}' for n, i in derivados]
+
+
+def ler_origem_seac(caminho, tabela):
+    """Le a tabela do setor no DB_SEAC SEM Excel (openpyxl, somente leitura de arquivo): cabecalho e
+    a coluna ID_ORIGEM. So e chamada em MODO_FONTE = SEAC (no modo historico a origem e vazia)."""
+    import openpyxl
+    from openpyxl.utils import range_boundaries
+    t0 = time.time()
+    wb = openpyxl.load_workbook(caminho, data_only=True, keep_vba=False, keep_links=False)
+    try:
+        for ws in wb.worksheets:
+            if tabela in ws.tables:
+                c0, l0, c1, l1 = range_boundaries(ws.tables[tabela].ref)
+                linhas = list(ws.iter_rows(min_row=l0, max_row=l1, min_col=c0, max_col=c1, values_only=True))
+                cab = [str(c).strip() if c is not None else '' for c in linhas[0]]
+                k = cab.index('ID_ORIGEM')
+                return {'colunas': cab, 'id_origem': [l[k] for l in linhas[1:]], 'tempo_s': round(time.time() - t0, 1)}
+        raise RuntimeError(f'tabela {tabela} nao encontrada em {caminho}')
+    finally:
+        wb.close()
+
+
 # =============================================================================
 def executar(produto, caminho, saida):
+    hash0 = sha256_arquivo(caminho)
     q = QA(produto, caminho)
     try:
         wb = q.wb
@@ -215,9 +342,61 @@ def executar(produto, caminho, saida):
         rec = q.ler('tblDB_Recebimento')
         fin = q.ler('tblCQ_Final')
         org = q.lo('tblDB_Organizado')
+        # D17: o T02 compara com a ORIGEM. Linha a linha: ID_REGISTRO = PREFIXO_ID-ID_ORIGEM (a chave nasce da
+        # origem). Em MODO SEAC le tambem o DB_SEAC (sem Excel) e exige: colunas da origem presentes no
+        # recebimento na mesma ordem e todo ID da origem (com ID_ORIGEM) recebido -- o recebimento acumula.
+        # Em MODO HISTORICO a origem e vazia por construcao (pq/SEAC_ORIGEM.m): fica dito na evidencia.
+        prefixo = str(q.cfg('PREFIXO_ID') or '').strip().upper()
+        modo = sem_acento(str(q.cfg('MODO_FONTE') or 'SEAC')).strip().upper()
+        cols_rec = list(rec[0].keys()) if rec else []
+        # unicidade sobre os IDs NAO nulos: linhas sem ID (D02) colapsariam num unico None no conjunto e
+        # derrubariam o T02 por um defeito que nao e o dele (D02 e provado nas suites dos defeitos)
+        ids_rec_lista = [r['ID_REGISTRO'] for r in rec if _txt(r['ID_REGISTRO']) is not None]
+        ids_rec = set(ids_rec_lista)
+        fora_regra, sem_id_rec = [], 0
+        for r in rec:
+            io = r.get('ID_ORIGEM')
+            if _txt(r['ID_REGISTRO']) is None and _txt(io) is None:
+                sem_id_rec += 1          # P-02/D02 (linha da origem sem ID): provado nas suites dos defeitos
+                continue
+            esp = f'{prefixo}-{int(io)}' if isinstance(io, (int, float)) else None
+            if esp is None or r['ID_REGISTRO'] != esp:
+                fora_regra.append((r['ID_REGISTRO'], io))
+        ok_cols = cols_rec[:1] == ['ID_REGISTRO'] and cols_rec[-1:] == ['RECEBIDO_EM'] and 'ID_ORIGEM' in cols_rec
+        ev_orig = {'modo_fonte': modo}
+        ok_orig = True
+        if modo == 'SEAC':
+            try:
+                o = ler_origem_seac(q.cfg('CAMINHO_DB_SEAC'), q.cfg('TABELA_ORIGEM'))
+                ids_o, sem_id = set(), 0
+                for v in o['id_origem']:
+                    try:
+                        ids_o.add(f'{prefixo}-{int(float(v))}')
+                    except (TypeError, ValueError):
+                        sem_id += 1
+                faltam_o = sorted(ids_o - ids_rec)
+                it = iter(cols_rec)
+                cols_o = [c for c in o['colunas'] if c]
+                ordem_ok = all(c in it for c in cols_o)
+                ok_orig = bool(ids_o) and not faltam_o and ordem_ok
+                ev_orig.update({'linhas_origem': len(o['id_origem']), 'ids_origem': len(ids_o),
+                                'linhas_origem_sem_id': sem_id, 'ids_origem_nao_recebidos': faltam_o[:10],
+                                'n_ids_origem_nao_recebidos': len(faltam_o), 'colunas_origem': cols_o,
+                                'colunas_na_mesma_ordem': ordem_ok, 'tempo_leitura_origem_s': o['tempo_s']})
+                if not ids_o:
+                    ev_orig['falha'] = 'pré-condição ausente: origem lida sem nenhum ID_ORIGEM'
+            except Exception as ex_o:
+                ok_orig = False
+                ev_orig['falha'] = f'pré-condição ausente: o teste não leu o DB_SEAC em MODO SEAC: {ex_o}'
+        else:
+            ev_orig['origem'] = ('não lida: MODO_FONTE=HISTORICO devolve a origem vazia (pq/SEAC_ORIGEM.m); '
+                                 'conferida a regra ID_REGISTRO = PREFIXO_ID-ID_ORIGEM linha a linha')
         reg('T02 DB_RECEBIMENTO recebe o DB_SEAC com as colunas do DB_SEAC + ID_REGISTRO + RECEBIDO_EM',
-            len(rec) > 0 and len({r['ID_REGISTRO'] for r in rec}) == len(rec),
-            {'linhas': len(rec), 'colunas': list(rec[0].keys()) if rec else [], 'ids_unicos': len({r['ID_REGISTRO'] for r in rec})})
+            len(ids_rec_lista) > 0 and len(ids_rec) == len(ids_rec_lista) and bool(prefixo) and ok_cols and not fora_regra and ok_orig,
+            {'linhas': len(rec), 'linhas_com_ID': len(ids_rec_lista), 'colunas': cols_rec, 'ids_unicos': len(ids_rec),
+             'PREFIXO_ID': prefixo,
+             'ids_fora_da_regra_PREFIXO-ID_ORIGEM': fora_regra[:10], 'n_fora_da_regra': len(fora_regra),
+             'linhas_sem_ID_no_recebimento': sem_id_rec, 'origem': ev_orig})
         cols_org = [c.Name for c in org.ListColumns]
         reg('T03 DB_ORGANIZADO horizontal (uma coluna por analito)', org.ListRows.Count > 0 and len(cols_org) > 12,
             {'linhas': org.ListRows.Count, 'colunas': cols_org[:12] + ['...'], 'n_colunas': len(cols_org)})
@@ -226,10 +405,22 @@ def executar(produto, caminho, saida):
                  'PARTICIPA_ESTATISTICA', 'REGISTRAR_RESULTADO_NO_LJ', 'TIPO_PLOTAGEM_LJ', 'COMENTARIO_TECNICO']
         part = collections.Counter((r['EQUIPAMENTO'], r['LOTE'], r['NIVEL'], r['ANALITO'], r['RUN'])
                                    for r in fin if r['PARTICIPA_ESTATISTICA'] == 'SIM')
-        ok = (len(ids) == len(set(ids)) and all(c in fin[0] for c in obrig) and len(fin) >= len(rec)
+        # D17: por CONJUNTO (e nao len(fin) >= len(rec)): IDs(Final) = Recebimento(ID nao nulo) U manuais
+        # derivados (pela regra do PQ), sem sobra nem falta
+        man_lin = q.ler('tblResultados_Manuais')
+        man_der = ids_manuais_derivados(man_lin, prefixo)
+        rec_ids_ok = {r['ID_REGISTRO'] for r in rec if _txt(r['ID_REGISTRO']) is not None}
+        esperado_fin = rec_ids_ok | set(man_der)
+        sobras = sorted(str(i) for i in set(ids) - esperado_fin)
+        faltas = sorted(str(i) for i in esperado_fin - set(ids))
+        ok = (len(ids) == len(set(ids)) and all(c in fin[0] for c in obrig) and not sobras and not faltas
+              and len(man_der) == len(set(man_der)) and len(fin) == len(rec_ids_ok) + len(man_der)
               and not any(v > 1 for v in part.values()))
         reg('T04 DB_CQ_FINAL: uma linha por resultado, ID único, campos obrigatórios, <=1 participante por corrida/nível',
             ok, {'linhas': len(fin), 'colunas': len(fin[0]), 'ids_unicos': len(set(ids)),
+                 'conjunto': {'recebimento_com_ID': len(rec_ids_ok), 'manuais_derivados': len(man_der),
+                              'manuais_exemplo': man_der[:5], 'sobras_na_final': sobras[:10], 'n_sobras': len(sobras),
+                              'faltas_na_final': faltas[:10], 'n_faltas': len(faltas)},
                  'status': dict(collections.Counter(r['STATUS_ANALITICO'] for r in fin)),
                  'plotagem': dict(collections.Counter(r['TIPO_PLOTAGEM_LJ'] for r in fin)),
                  'tempo_atualizacao_s': round(t, 1), 'resumo': resumo})
@@ -283,12 +474,22 @@ def executar(produto, caminho, saida):
         rec_x0 = [r for r in rec if r['ID_REGISTRO'] == xid][0]
 
         # ---------------------------------------------------------------- ID estavel em varios refreshes
+        # D17: compara (RUN, STATUS) por ID depois de CADA uma das atualizacoes 2 e 3 contra a 1a
+        difs6, tempos6, tam6 = [], [round(t, 1)], [len(base_ids)]
         for k in range(2):
-            q.atualizar()
-        fin2 = q.final_por_id()
-        ok = all(fin2.get(i, {}).get('RUN') == v[0] for i, v in base_ids.items()) and len(fin2) == len(base_ids)
+            _, tk = q.atualizar()
+            tempos6.append(round(tk, 1))
+            fin2 = q.final_por_id()
+            tam6.append(len(fin2))
+            est_k = {i: (r['RUN'], r['STATUS_ANALITICO']) for i, r in fin2.items()}
+            for i in set(base_ids) | set(est_k):
+                if base_ids.get(i) != est_k.get(i):
+                    difs6.append({'atualizacao': k + 2, 'ID': i, 'antes': base_ids.get(i), 'depois': est_k.get(i)})
+        ok = not difs6 and all(n == len(base_ids) for n in tam6) and len(base_ids) > 0
         reg('T06 ID estável: mesmos IDs e mesmo RUN após 3 atualizações', ok,
-            {'ids': len(fin2), 'ids_base': len(base_ids), 'exemplo': (xid, fin2[xid]['RUN'])})
+            {'ids': len(fin2), 'ids_base': len(base_ids), 'linhas_por_atualizacao': tam6,
+             'divergencias_RUN_STATUS': difs6[:10], 'n_divergencias': len(difs6), 'tempos_s': tempos6,
+             'exemplo': (xid, (fin2.get(xid) or {}).get('RUN'), (fin2.get(xid) or {}).get('STATUS_ANALITICO'))})
 
         # ---------------------------------------------------------------- inativacao (soft-delete) sem comentario
         q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': xid.split('-')[-1]})   # so o numero: o evento normaliza
@@ -390,15 +591,35 @@ def executar(produto, caminho, saida):
         lo = q.lo('tblInativacao_NaoConformes')
         idx = [i for i, v in enumerate(lo.ListColumns('ID_REGISTRO').DataBodyRange.Value, 1) if v[0] == xid][0]
         lo.ListColumns('REGISTRAR - LJ').DataBodyRange.Cells(idx, 1).Value = False
-        q.atualizar()
-        f = q.final_por_id()[xid]
+        _, t13 = q.atualizar()
+        fin13 = q.final_por_id()
+        f = fin13[xid]
         e2 = q.eng_saida()
         st2 = q.painel_stats()
         sl2 = e2['runs'].index(alvo[1]) if alvo[1] in e2['runs'] else None
-        ok = (f['TIPO_PLOTAGEM_LJ'] == 'NAO_PLOTAR' and f['PARTICIPA_ESTATISTICA'] == NAO and xid in q.final_por_id()
-              and (sl2 is None or e2['x'][sl2][0] in (None, '')) and st2[0] == st1[0])
-        reg('T13 REGISTRAR-LJ desmarcado: não plota, não participa, continua auditável; estatística igual ao estado X',
-            ok, {'TIPO_PLOTAGEM_LJ': f['TIPO_PLOTAGEM_LJ'], 'slot_no_LJ': sl2, 'painel_X': st1[0], 'painel_nao_plotar': st2[0]})
+        # D17: a corrida PRECISA estar na janela (sem o slot a asserção passaria por vacuidade) e a varredura
+        # cobre os 3 slots de X de TODOS os níveis da corrida: so pode haver X onde a final manda (X_VERMELHO
+        # da mesma corrida); o desmarcado nao aparece nem como X nem como ponto normal do N1
+        if sl2 is None:
+            reg('T13 REGISTRAR-LJ desmarcado: não plota, não participa, continua auditável; estatística igual ao estado X',
+                False, {'falha': 'pré-condição ausente: a corrida do resultado não está na janela do LJ',
+                        'RUN': alvo[1], 'janela_corridas': e2['n'], 'TIPO_PLOTAGEM_LJ': f['TIPO_PLOTAGEM_LJ'],
+                        'tempo_atualizacao_s': round(t13, 1)})
+        else:
+            x_lidos = sorted((nv + 1, e2['x'][sl2][nv * 3 + s]) for nv in range(q.nlv) for s in range(3)
+                             if e2['x'][sl2][nv * 3 + s] not in (None, ''))
+            x_esp = sorted((int(r['NIVEL']), r['RESULTADO']) for r in fin13.values()
+                           if r['TIPO_PLOTAGEM_LJ'] == 'X_VERMELHO' and r['ANALITO'] == analito
+                           and str(r['LOTE']) == str(lote) and int(r['RUN'] or 0) == alvo[1]
+                           and (not q.bio or r['EQUIPAMENTO'] == e0['equip']))
+            ok = (f['TIPO_PLOTAGEM_LJ'] == 'NAO_PLOTAR' and f['PARTICIPA_ESTATISTICA'] == NAO and xid in fin13
+                  and f['STATUS_ANALITICO'] == 'INATIVADO' and f['REGISTRAR_RESULTADO_NO_LJ'] == NAO
+                  and x_lidos == x_esp and e2['val'][sl2][0] in (None, '') and st2[0] == st1[0])
+            reg('T13 REGISTRAR-LJ desmarcado: não plota, não participa, continua auditável; estatística igual ao estado X',
+                ok, {'TIPO_PLOTAGEM_LJ': f['TIPO_PLOTAGEM_LJ'], 'STATUS_ANALITICO': f['STATUS_ANALITICO'],
+                     'REGISTRAR_RESULTADO_NO_LJ': f['REGISTRAR_RESULTADO_NO_LJ'], 'slot_no_LJ': sl2, 'X_no_slot_niveis_x_3': x_lidos,
+                     'X_esperados_pela_final': x_esp, 'valor_N1_no_slot': e2['val'][sl2][0],
+                     'painel_X': st1[0], 'painel_nao_plotar': st2[0], 'tempo_atualizacao_s': round(t13, 1)})
 
         # ---------------------------------------------------------------- reabilitacao
         q.limpar_linha('tblInativacao_NaoConformes', 'ID_REGISTRO', xid)
@@ -493,7 +714,7 @@ def executar(produto, caminho, saida):
             for i in escolhidos[a]:
                 q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': i})
                 q.escrever_linha('tblComentariosTecnicos', {'ID_REGISTRO': i, 'COMENTARIO_TECNICO': 'QA: repetição registrada.'})
-        q.atualizar()
+        _, t17 = q.atualizar()
         bloco = q.bloco_repeticoes()
         ok = all(bloco.get(a) == k for a, k in alvo_q.items())
         reg(f'T17 Estatística: bloco RESULTADOS NÃO CONFORMES / REPETIÇÕES conta {alvo_q}', ok,
@@ -516,10 +737,30 @@ def executar(produto, caminho, saida):
                        and r['PARTICIPA_ESTATISTICA'] == 'SIM' and no_filtro(r)]
             n_i, m_i, sd_i = stats(pop)
             res[a] = {'antes': antes_est[a], 'depois': depois, 'independente': (n_i, m_i, sd_i)}
-            if depois is None or depois[0] in (None, '') or int(depois[0]) != n_i or abs(float(depois[1]) - m_i) > 1e-6:
+            # D17: sem a linha "antes" a queda exata nao e conferida -> FAIL, nunca pulo calado
+            if not antes_est[a] or antes_est[a][0] in (None, ''):
                 okc = False
-            if antes_est[a] and antes_est[a][0] not in (None, '') and int(antes_est[a][0]) - int(depois[0]) != alvo_q[a]:
+                res[a]['falha'] = 'pré-condição ausente: Estatística sem n antes da inativação'
+                continue
+            if depois is None or depois[0] in (None, '') or n_i == 0:
                 okc = False
+                res[a]['falha'] = 'pré-condição ausente: Estatística ou população independente vazia depois'
+                continue
+            if int(depois[0]) != n_i or abs(float(depois[1]) - m_i) > 1e-6:
+                okc = False
+            # D17: DP tambem (amostral n-1; com n<2 o motor devolve 0)
+            dp_m = depois[2]
+            if sd_i is None:
+                if dp_m not in (None, '', 0, 0.0):
+                    okc = False
+                    res[a]['falha_DP'] = f'n<2: DP esperado 0/vazio, motor {dp_m}'
+            elif dp_m in (None, '') or abs(float(dp_m) - sd_i) > 1e-9 * max(1.0, abs(sd_i)):
+                okc = False
+                res[a]['falha_DP'] = f'DP do motor {dp_m} x independente {sd_i}'
+            if int(antes_est[a][0]) - int(depois[0]) != alvo_q[a]:
+                okc = False
+                res[a]['falha_queda'] = f'n caiu {int(antes_est[a][0]) - int(depois[0])}, esperado {alvo_q[a]}'
+        res['tempo_atualizacao_T17_s'] = round(t17, 1)
         reg('T18 Estatística usa só PARTICIPA=SIM da DB_CQ_FINAL: n caiu exatamente o número de inativados; '
             'n/média batem com o cálculo independente', okc, res)
 
@@ -543,6 +784,7 @@ def executar(produto, caminho, saida):
         lin_c = [i for i, r in enumerate(vals, 1) if r[0] == 'CAMINHO_DB_SEAC'][0]
         cam = cfg.DataBodyRange.Cells(lin_c, 2).Value
         stamp0 = q.ws('Eng_Saida').Range('G1').Value
+        modo0 = q.cfg('MODO_FONTE', 'SEAC')                 # ADR-058: a falha de fonte e do modo normal
         cfg.DataBodyRange.Cells(lin_c, 2).Value = cam + '.NAO_EXISTE'
         erro = None
         try:
@@ -552,18 +794,45 @@ def executar(produto, caminho, saida):
         stamp1 = q.ws('Eng_Saida').Range('G1').Value
         n_falha = q.lo('tblCQ_Final').ListRows.Count
         cfg.DataBodyRange.Cells(lin_c, 2).Value = cam
+        q.cfg('MODO_FONTE', modo0)
         reg('T20 Refresh síncrono: falha de camada PARA o processo, não diz "concluída", não atualiza gráfico/estatística',
             erro is not None and 'DB_Recebimento' in erro and stamp0 == stamp1 and n_falha == len(fin7),
             {'erro': (erro or '')[:300], 'carimbo_motor_inalterado': stamp0 == stamp1, 'linhas_final': n_falha})
+
+        # ---------------------------------------------------------------- modo historico (ADR-058)
+        # mesmo caminho INEXISTENTE do T20, agora com MODO_FONTE = Histórico (grafia acentuada,
+        # de proposito -- item 7.4 do gate): o DB_SEAC nao e tocado, nada novo entra, nada
+        # recebido se perde, o motor roda, e o modo nunca passa em silencio (resumo + A07 + log)
+        modo0 = q.cfg('MODO_FONTE', 'Histórico')
+        cfg.DataBodyRange.Cells(lin_c, 2).Value = cam + '.NAO_EXISTE'
+        n_rec0 = q.lo('tblDB_Recebimento').ListRows.Count
+        erro_h, resumo_h = None, ''
+        try:
+            resumo_h, _ = q.atualizar()
+        except Exception as ex:
+            erro_h = str(ex)
+        cfg.DataBodyRange.Cells(lin_c, 2).Value = cam
+        q.cfg('MODO_FONTE', modo0)
+        fin_h = q.final_por_id()
+        est_h = {i: (r['RUN'], r['STATUS_ANALITICO'], r['TIPO_PLOTAGEM_LJ'], r['COMENTARIO_TECNICO']) for i, r in fin_h.items()}
+        a07 = [r for r in q.ler('tblQA_Integracao') if r['CODIGO'] == 'A07']
+        stamp_h = q.ws('Eng_Saida').Range('G1').Value
+        reg('T25 Modo histórico: sem DB_SEAC a atualização conclui sobre o já recebido (0 novos, nada perdido, '
+            'mesmos IDs/RUN/inativações), motor roda, aviso no resumo e QA A07',
+            erro_h is None and 'MODO HISTÓRICO' in resumo_h and 'novos nesta atualização: 0' in resumo_h
+            and q.lo('tblDB_Recebimento').ListRows.Count == n_rec0 and est_h == estado1 and len(a07) == 1
+            and stamp_h != stamp0,
+            {'erro': (erro_h or '')[:300], 'recebidos': [n_rec0, q.lo('tblDB_Recebimento').ListRows.Count],
+             'final_igual_T19': est_h == estado1, 'A07': [r['DETALHE'] for r in a07], 'motor_rodou': stamp_h != stamp0})
 
         # ---------------------------------------------------------------- auditoria
         al = q.ws('Audit_Log')
         ult_l = al.Cells(al.Rows.Count, 1).End(-4162).Row
         acoes = [al.Cells(r, 7).Value for r in range(max(4, ult_l - 60), ult_l + 1)]
         c = collections.Counter(acoes)
-        reg('T21 Audit_Log: inativação, reativação, plotagem e manual registrados (ISO 15189 8.4)',
+        reg('T21 Audit_Log: inativação, reativação, plotagem, manual e modo histórico registrados (ISO 15189 8.4)',
             c.get('RESULTADO_INATIVADO', 0) >= 1 and c.get('RESULTADO_REATIVADO', 0) >= 1 and c.get('PLOTAGEM_LJ_ALTERADA', 0) >= 1
-            and any('MANUAL_INCLUIDO' in str(a) for a in acoes), dict(c))
+            and any('MANUAL_INCLUIDO' in str(a) for a in acoes) and c.get('ATUALIZACAO_MODO_HISTORICO', 0) >= 1, dict(c))
 
         # ---------------------------------------------------------------- fonte unica (VBA e formulas)
         import re as _re
@@ -623,16 +892,22 @@ def executar(produto, caminho, saida):
         wb.VBProject.VBComponents.Remove(wb.VBProject.VBComponents(nome_mod))
         reg('T23 VBA compila (Depurar > Compilar) e os formulários que ficaram abrem', comp_ok and 'frmDev' in str(forms),
             {'formularios': forms})
+    except Exception as ex_geral:
+        # nenhum teste some calado: a interrupcao vira FAIL com o ponto exato, e o hash/JSON saem mesmo assim
+        reg('T00 Execução interrompida: os testes seguintes a este ponto não rodaram', False,
+            {'erro': f'{type(ex_geral).__name__}: {ex_geral}', 'traceback': traceback.format_exc()[-1500:]})
     finally:
         q.fechar(salvar=False)
 
     # ---------------------------------------------------------------- fechar e reabrir (copia propria)
     copia = caminho.replace('.xlsm', '_reabrir.xlsm')
     shutil.copy2(caminho, copia)
-    q2 = QA(produto, copia)
+    q2 = None
     try:
+        q2 = QA(produto, copia)
         r1, t1 = q2.atualizar()
-        q2.fechar(salvar=True)
+        q2.fechar(salvar=True)          # salva SO a copia _reabrir (o T26 confere que a entrada nao mudou)
+        q2 = None
         q2 = QA(produto, copia)
         r2, t2 = q2.atualizar()
         fin = q2.ler('tblCQ_Final')
@@ -641,8 +916,15 @@ def executar(produto, caminho, saida):
         reg('T24 Fechar, reabrir e atualizar: camadas, motor, LJ e Estatística funcionando', ok,
             {'linhas_final': len(fin), 'corridas_no_LJ': e['n'], 'tempo_1a_s': round(t1, 1), 'tempo_apos_reabrir_s': round(t2, 1),
              'resumo': r2})
+    except Exception as ex_24:
+        reg('T24 Fechar, reabrir e atualizar: camadas, motor, LJ e Estatística funcionando', False,
+            {'erro': f'{type(ex_24).__name__}: {ex_24}', 'traceback': traceback.format_exc()[-1500:]})
     finally:
-        q2.fechar(salvar=False)
+        if q2 is not None:
+            q2.fechar(salvar=False)
+    hash1 = sha256_arquivo(caminho)
+    reg('T26 Segurança do teste: arquivo de entrada intacto (SHA-256 igual antes e depois; nada salvo nele)',
+        hash0 == hash1, {'arquivo': caminho, 'sha256_antes': hash0, 'sha256_depois': hash1})
     if saida:
         with open(saida, 'w', encoding='utf-8') as f:
             json.dump(RES, f, ensure_ascii=False, indent=1, default=str)

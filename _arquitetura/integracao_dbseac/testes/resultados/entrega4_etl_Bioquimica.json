@@ -1,0 +1,1843 @@
+[
+ {
+  "teste": "E07 [estado-base] Reconciliação por conjunto: IDs(Final) = Recebimento(ID≠nulo) ∪ manuais derivados (NormId, ~L<n>, MAN_INVALIDO_L<n>), IDs únicos, partição exata por STATUS, {SIM}={ATIVO}={NORMAL}, {X}={INATIVADO∧LJ}, {INATIVACAO_REGISTRADA}=NormId(Inativar)∩Final",
+  "resultado": "PASS",
+  "evidencia": {
+   "checagens": {
+    "ids_unicos_e_nao_vazios": true,
+    "final_igual_rec_uniao_manuais": true,
+    "manuais_um_id_sem_sufixo_por_grupo": true,
+    "particao_status_exata": true,
+    "SIM=ATIVO=NORMAL": true,
+    "X=INATIVADO_e_LJ": true,
+    "plotagem_valida": true,
+    "INATIVACAO_REGISTRADA=NormId(Inativar)∩Final": true
+   },
+   "linhas_final": 32033,
+   "ids_recebimento": 32033,
+   "ids_manuais_derivados": 0,
+   "ids_duplicados": [],
+   "ids_vazios": 0,
+   "faltam_na_final": [],
+   "sobram_na_final": [],
+   "manuais_divergentes": [],
+   "status": {
+    "ATIVO": 32033
+   },
+   "status_fora_da_lista": {},
+   "SIM-ATIVO": [],
+   "ATIVO-NORMAL": [],
+   "X_divergentes": [],
+   "INAT_REG_divergentes": [],
+   "plotagem_invalida": [],
+   "tempo_leitura_s": 2.5
+  }
+ },
+ {
+  "teste": "E07 [estado-base] Estatística (A14:F) = recálculo independente em TODAS as linhas analito×nível (n exato; média, DP e CV com tolerância relativa 1e-9)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_conferidas": 62,
+   "linhas_com_n>0": 61,
+   "recorte": {
+    "produto": "Bioquimica",
+    "ini": 46023,
+    "fim": 46387,
+    "exclusoes": [],
+    "lote": "8974",
+    "equip": "DIMENSION 1"
+   },
+   "divergencias": [],
+   "n_divergencias": 0
+  }
+ },
+ {
+  "teste": "E08a Inativar \"hem-<A> \" (minúsculo + espaço) e \"<B>\" (número puro): INATIVADO/X_VERMELHO e a célula normalizada pelo evento",
+  "resultado": "PASS",
+  "evidencia": {
+   "A": {
+    "ID_REGISTRO": "BIO-203099",
+    "ORIGEM_RESULTADO": "INTERFACEAMENTO",
+    "ANALITO": "Hemoglobina glicada",
+    "LOTE": "8588",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2025-10-01 08:20:01",
+    "RESULTADO": 5.04,
+    "RUN": 25100101.0,
+    "CORRIDA_NO_DIA": 1.0,
+    "STATUS_ANALITICO": "INATIVADO",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "X_VERMELHO",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "B": {
+    "ID_REGISTRO": "BIO-203100",
+    "ORIGEM_RESULTADO": "INTERFACEAMENTO",
+    "ANALITO": "Proteína C-reativa",
+    "LOTE": "8352",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2025-10-01 08:24:16",
+    "RESULTADO": 1.0,
+    "RUN": 25100101.0,
+    "CORRIDA_NO_DIA": 1.0,
+    "STATUS_ANALITICO": "INATIVADO",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "X_VERMELHO",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "celula_A": "BIO-203099",
+   "celula_B": "BIO-203100"
+  }
+ },
+ {
+  "teste": "E08b A repetido (2ª linha): E02 no QA e uma única linha de A na final",
+  "resultado": "PASS",
+  "evidencia": {
+   "E02": [
+    "aparece 2 vezes (linhas 1, 6 da tabela); vale so a primeira, a contagem nao duplica"
+   ],
+   "linhas_A": 1
+  }
+ },
+ {
+  "teste": "E08c Inexistente (BIO-999999999): E03 no QA, sem efeito na final",
+  "resultado": "PASS",
+  "evidencia": {
+   "E03": [
+    "ID digitado na linha 5 da inativacao nao corresponde a nenhum resultado recebido ou manual"
+   ]
+  }
+ },
+ {
+  "teste": "E08d Zeros à esquerda (\"00<C>\") casam com o ID canônico após D14 (hoje falha: prova D14)",
+  "resultado": "PASS",
+  "evidencia": {
+   "C": "BIO-203123",
+   "celula_sem_evento": "00203123",
+   "celula_apos_evento": "BIO-203123",
+   "final_C": {
+    "ID_REGISTRO": "BIO-203123",
+    "ORIGEM_RESULTADO": "INTERFACEAMENTO",
+    "ANALITO": "ALT (TGP)",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2025-10-01 08:27:10",
+    "RESULTADO": 30.0,
+    "RUN": 25100101.0,
+    "CORRIDA_NO_DIA": 1.0,
+    "STATUS_ANALITICO": "INATIVADO",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "X_VERMELHO",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "E03_do_C": []
+  }
+ },
+ {
+  "teste": "E08e NBSP interno (\"HEM-\\u00a0<D>\") casa com o ID canônico após D14 (hoje falha: prova D14)",
+  "resultado": "PASS",
+  "evidencia": {
+   "D": "BIO-203122",
+   "celula_apos_evento": "'BIO-203122'",
+   "final_D": {
+    "ID_REGISTRO": "BIO-203122",
+    "ORIGEM_RESULTADO": "INTERFACEAMENTO",
+    "ANALITO": "AST (TGO)",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2025-10-01 08:27:10",
+    "RESULTADO": 46.0,
+    "RUN": 25100101.0,
+    "CORRIDA_NO_DIA": 1.0,
+    "STATUS_ANALITICO": "INATIVADO",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "X_VERMELHO",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "E03_do_D": []
+  }
+ },
+ {
+  "teste": "E08f \"man_1\" é a chave MAN_0001 (não existe: E03)",
+  "resultado": "PASS",
+  "evidencia": {
+   "celula": "MAN_0001",
+   "MAN_0001_existia": false,
+   "resultado": {
+    "E03": [
+     "ID digitado na linha 7 da inativacao nao corresponde a nenhum resultado recebido ou manual"
+    ]
+   }
+  }
+ },
+ {
+  "teste": "E08g |Final| e o conjunto de IDs não mudam com a digitação de chaves",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas": [
+    32033,
+    32033
+   ],
+   "novos": [],
+   "sumidos": []
+  }
+ },
+ {
+  "teste": "E07 [E08] Reconciliação por conjunto: IDs(Final) = Recebimento(ID≠nulo) ∪ manuais derivados (NormId, ~L<n>, MAN_INVALIDO_L<n>), IDs únicos, partição exata por STATUS, {SIM}={ATIVO}={NORMAL}, {X}={INATIVADO∧LJ}, {INATIVACAO_REGISTRADA}=NormId(Inativar)∩Final",
+  "resultado": "PASS",
+  "evidencia": {
+   "checagens": {
+    "ids_unicos_e_nao_vazios": true,
+    "final_igual_rec_uniao_manuais": true,
+    "manuais_um_id_sem_sufixo_por_grupo": true,
+    "particao_status_exata": true,
+    "SIM=ATIVO=NORMAL": true,
+    "X=INATIVADO_e_LJ": true,
+    "plotagem_valida": true,
+    "INATIVACAO_REGISTRADA=NormId(Inativar)∩Final": true
+   },
+   "linhas_final": 32033,
+   "ids_recebimento": 32033,
+   "ids_manuais_derivados": 0,
+   "ids_duplicados": [],
+   "ids_vazios": 0,
+   "faltam_na_final": [],
+   "sobram_na_final": [],
+   "manuais_divergentes": [],
+   "status": {
+    "INATIVADO": 4,
+    "ATIVO": 32029
+   },
+   "status_fora_da_lista": {},
+   "SIM-ATIVO": [],
+   "ATIVO-NORMAL": [],
+   "X_divergentes": [],
+   "INAT_REG_divergentes": [],
+   "plotagem_invalida": [],
+   "tempo_leitura_s": 0.9
+  }
+ },
+ {
+  "teste": "E07 [E08] Estatística (A14:F) = recálculo independente em TODAS as linhas analito×nível (n exato; média, DP e CV com tolerância relativa 1e-9)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_conferidas": 62,
+   "linhas_com_n>0": 61,
+   "recorte": {
+    "produto": "Bioquimica",
+    "ini": 45931,
+    "fim": 46209,
+    "exclusoes": [],
+    "lote": "8974",
+    "equip": "DIMENSION 1"
+   },
+   "divergencias": [],
+   "n_divergencias": 0
+  }
+ },
+ {
+  "teste": "E09a Manual com ID vazio recebe MAN_n automático e fica ATIVO",
+  "resultado": "PASS",
+  "evidencia": {
+   "id": "MAN_0001",
+   "final": {
+    "ID_REGISTRO": "MAN_0001",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Potássio",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-10-04 01:07:00",
+    "RESULTADO": 3.8,
+    "RUN": 26100401.0,
+    "CORRIDA_NO_DIA": 1.0,
+    "STATUS_ANALITICO": "ATIVO",
+    "PARTICIPA_ESTATISTICA": "SIM",
+    "TIPO_PLOTAGEM_LJ": "NORMAL",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "dia": "2026-10-04",
+   "analito": "Potássio"
+  }
+ },
+ {
+  "teste": "E09b \"man_7\" vira MAN_0007 (evento e PQ) e fica ATIVO",
+  "resultado": "PASS",
+  "evidencia": {
+   "celula": "MAN_0007",
+   "final": {
+    "ID_REGISTRO": "MAN_0007",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Potássio",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-10-04 02:07:00",
+    "RESULTADO": 3.8,
+    "RUN": 26100402.0,
+    "CORRIDA_NO_DIA": 2.0,
+    "STATUS_ANALITICO": "ATIVO",
+    "PARTICIPA_ESTATISTICA": "SIM",
+    "TIPO_PLOTAGEM_LJ": "NORMAL",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   }
+  }
+ },
+ {
+  "teste": "E09c ID do interfaceamento digitado no manual (com prefixo e número puro): MAN_INVALIDO_L<n>, MANUAL_INCOMPLETO, E04; o resultado real fica intacto",
+  "resultado": "PASS",
+  "evidencia": {
+   "celulas": [
+    "BIO-203101",
+    "BIO-203101"
+   ],
+   "finais": [
+    {
+     "ID_REGISTRO": "MAN_INVALIDO_L3",
+     "ORIGEM_RESULTADO": "MANUAL",
+     "ANALITO": "Potássio",
+     "LOTE": "8974",
+     "NIVEL": 1.0,
+     "DATA_HORA": "2026-10-04 03:07:00",
+     "RESULTADO": 3.8,
+     "RUN": null,
+     "CORRIDA_NO_DIA": null,
+     "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "ID_RELACIONADO": null,
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: ID_REGISTRO (padrao MAN_0001)"
+    },
+    {
+     "ID_REGISTRO": "MAN_INVALIDO_L4",
+     "ORIGEM_RESULTADO": "MANUAL",
+     "ANALITO": "Potássio",
+     "LOTE": "8974",
+     "NIVEL": 1.0,
+     "DATA_HORA": "2026-10-04 04:07:00",
+     "RESULTADO": 3.8,
+     "RUN": null,
+     "CORRIDA_NO_DIA": null,
+     "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "ID_RELACIONADO": null,
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: ID_REGISTRO (padrao MAN_0001)"
+    }
+   ],
+   "real_intacto": true,
+   "real": "BIO-203101"
+  }
+ },
+ {
+  "teste": "E09d Duas linhas completas MAN_0050: a 1ª ATIVO, a 2ª \"MAN_0050~L6\" CONFLITO_MANUAL + A01",
+  "resultado": "PASS",
+  "evidencia": {
+   "primeira": {
+    "ID_REGISTRO": "MAN_0050",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Potássio",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-10-04 05:07:00",
+    "RESULTADO": 3.8,
+    "RUN": 26100403.0,
+    "CORRIDA_NO_DIA": 3.0,
+    "STATUS_ANALITICO": "ATIVO",
+    "PARTICIPA_ESTATISTICA": "SIM",
+    "TIPO_PLOTAGEM_LJ": "NORMAL",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "segunda": {
+    "ID_REGISTRO": "MAN_0050~L6",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Potássio",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-10-04 06:07:00",
+    "RESULTADO": 3.8,
+    "RUN": null,
+    "CORRIDA_NO_DIA": null,
+    "STATUS_ANALITICO": "CONFLITO_MANUAL",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": "ID_REGISTRO manual repetido (vale a 1a linha)"
+   },
+   "A01": 1
+  }
+ },
+ {
+  "teste": "E09e \"MAN_001\" além de um MAN_0001 existente: o mesmo ID; a linha posterior vira MAN_0001~L<n> CONFLITO_MANUAL",
+  "resultado": "PASS",
+  "evidencia": {
+   "celula": "MAN_0001",
+   "linha_existente": 1,
+   "linha_nova": 7,
+   "sufixado": {
+    "ID_REGISTRO": "MAN_0001~L7",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Potássio",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-10-04 07:07:00",
+    "RESULTADO": 3.8,
+    "RUN": null,
+    "CORRIDA_NO_DIA": null,
+    "STATUS_ANALITICO": "CONFLITO_MANUAL",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": "ID_REGISTRO manual repetido (vale a 1a linha)"
+   },
+   "alvo": "MAN_0001",
+   "digitado": "MAN_001"
+  }
+ },
+ {
+  "teste": "E09f MAN_0060 incompleto na linha 8 e completo na linha 9: a COMPLETA vale (ATIVO) e a incompleta vira MAN_0060~L8 (hoje falha: prova D08)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas": [
+    8,
+    9
+   ],
+   "MAN_0060": {
+    "ID_REGISTRO": "MAN_0060",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Potássio",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-10-04 09:07:00",
+    "RESULTADO": 3.8,
+    "RUN": 26100404.0,
+    "CORRIDA_NO_DIA": 4.0,
+    "STATUS_ANALITICO": "ATIVO",
+    "PARTICIPA_ESTATISTICA": "SIM",
+    "TIPO_PLOTAGEM_LJ": "NORMAL",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "MAN_0060~L8": {
+    "ID_REGISTRO": "MAN_0060~L8",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Potássio",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-10-04 08:07:00",
+    "RESULTADO": null,
+    "RUN": null,
+    "CORRIDA_NO_DIA": null,
+    "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: RESULTADO"
+   },
+   "MAN_0060~L9": null
+  }
+ },
+ {
+  "teste": "E07 [E09 #1] Reconciliação por conjunto: IDs(Final) = Recebimento(ID≠nulo) ∪ manuais derivados (NormId, ~L<n>, MAN_INVALIDO_L<n>), IDs únicos, partição exata por STATUS, {SIM}={ATIVO}={NORMAL}, {X}={INATIVADO∧LJ}, {INATIVACAO_REGISTRADA}=NormId(Inativar)∩Final",
+  "resultado": "PASS",
+  "evidencia": {
+   "checagens": {
+    "ids_unicos_e_nao_vazios": true,
+    "final_igual_rec_uniao_manuais": true,
+    "manuais_um_id_sem_sufixo_por_grupo": true,
+    "particao_status_exata": true,
+    "SIM=ATIVO=NORMAL": true,
+    "X=INATIVADO_e_LJ": true,
+    "plotagem_valida": true,
+    "INATIVACAO_REGISTRADA=NormId(Inativar)∩Final": true
+   },
+   "linhas_final": 32043,
+   "ids_recebimento": 32033,
+   "ids_manuais_derivados": 10,
+   "ids_duplicados": [],
+   "ids_vazios": 0,
+   "faltam_na_final": [],
+   "sobram_na_final": [],
+   "manuais_divergentes": [],
+   "status": {
+    "INATIVADO": 3,
+    "ATIVO": 32035,
+    "MANUAL_INCOMPLETO": 3,
+    "CONFLITO_MANUAL": 2
+   },
+   "status_fora_da_lista": {},
+   "SIM-ATIVO": [],
+   "ATIVO-NORMAL": [],
+   "X_divergentes": [],
+   "INAT_REG_divergentes": [],
+   "plotagem_invalida": [],
+   "tempo_leitura_s": 0.7
+  }
+ },
+ {
+  "teste": "E07 [E09 #1] Estatística (A14:F) = recálculo independente em TODAS as linhas analito×nível (n exato; média, DP e CV com tolerância relativa 1e-9)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_conferidas": 62,
+   "linhas_com_n>0": 61,
+   "recorte": {
+    "produto": "Bioquimica",
+    "ini": 45931,
+    "fim": 46209,
+    "exclusoes": [],
+    "lote": "8974",
+    "equip": "DIMENSION 1"
+   },
+   "divergencias": [],
+   "n_divergencias": 0
+  }
+ },
+ {
+  "teste": "E09g Apagar o último manual (inativado e comentado) e digitar outro: o novo recebe um MAN_ NUNCA usado e não herda inativação/comentário (hoje falha: prova D05)",
+  "resultado": "PASS",
+  "evidencia": {
+   "MAN_k_apagado": "MAN_0061",
+   "novo_id": "MAN_0062",
+   "novo_ja_usado": false,
+   "novo_final": {
+    "ID_REGISTRO": "MAN_0062",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Potássio",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-10-04 11:07:00",
+    "RESULTADO": 3.8,
+    "RUN": 26100405.0,
+    "CORRIDA_NO_DIA": 5.0,
+    "STATUS_ANALITICO": "ATIVO",
+    "PARTICIPA_ESTATISTICA": "SIM",
+    "TIPO_PLOTAGEM_LJ": "NORMAL",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "inativacao_herdada": "NÃO",
+   "comentario_herdado": null
+  }
+ },
+ {
+  "teste": "E10v D06 \"REGISTRAR - LJ\" vazio numa inativação já carimbada = NÃO (NAO_PLOTAR), coerente com a caixa desmarcada (hoje falha: prova D06)",
+  "resultado": "PASS",
+  "evidencia": {
+   "id": "BIO-203100",
+   "celula_LJ": null,
+   "DATA_INATIVACAO": "2026-10-05 02:06:38+00:00",
+   "final": {
+    "ID_REGISTRO": "BIO-203100",
+    "ORIGEM_RESULTADO": "INTERFACEAMENTO",
+    "ANALITO": "Proteína C-reativa",
+    "LOTE": "8352",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2025-10-01 08:24:16",
+    "RESULTADO": 1.0,
+    "RUN": 25100101.0,
+    "CORRIDA_NO_DIA": 1.0,
+    "STATUS_ANALITICO": "INATIVADO",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   }
+  }
+ },
+ {
+  "teste": "E10v D06 \"REGISTRAR - LJ\" com valor não reconhecido (\"TALVEZ\"): NAO_PLOTAR e ALERTA A08 (hoje falha: prova D06)",
+  "resultado": "PASS",
+  "evidencia": {
+   "id": "BIO-203099",
+   "celula_LJ": "TALVEZ",
+   "final": {
+    "ID_REGISTRO": "BIO-203099",
+    "ORIGEM_RESULTADO": "INTERFACEAMENTO",
+    "ANALITO": "Hemoglobina glicada",
+    "LOTE": "8588",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2025-10-01 08:20:01",
+    "RESULTADO": 5.04,
+    "RUN": 25100101.0,
+    "CORRIDA_NO_DIA": 1.0,
+    "STATUS_ANALITICO": "INATIVADO",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "A08": [
+    "valor 'TALVEZ' na inativacao: tratado como NAO (o X nao aparece). Marque ou desmarque a caixa."
+   ]
+  }
+ },
+ {
+  "teste": "E07 [E09 #2] Reconciliação por conjunto: IDs(Final) = Recebimento(ID≠nulo) ∪ manuais derivados (NormId, ~L<n>, MAN_INVALIDO_L<n>), IDs únicos, partição exata por STATUS, {SIM}={ATIVO}={NORMAL}, {X}={INATIVADO∧LJ}, {INATIVACAO_REGISTRADA}=NormId(Inativar)∩Final",
+  "resultado": "PASS",
+  "evidencia": {
+   "checagens": {
+    "ids_unicos_e_nao_vazios": true,
+    "final_igual_rec_uniao_manuais": true,
+    "manuais_um_id_sem_sufixo_por_grupo": true,
+    "particao_status_exata": true,
+    "SIM=ATIVO=NORMAL": true,
+    "X=INATIVADO_e_LJ": true,
+    "plotagem_valida": true,
+    "INATIVACAO_REGISTRADA=NormId(Inativar)∩Final": true
+   },
+   "linhas_final": 32043,
+   "ids_recebimento": 32033,
+   "ids_manuais_derivados": 10,
+   "ids_duplicados": [],
+   "ids_vazios": 0,
+   "faltam_na_final": [],
+   "sobram_na_final": [],
+   "manuais_divergentes": [],
+   "status": {
+    "INATIVADO": 2,
+    "ATIVO": 32036,
+    "MANUAL_INCOMPLETO": 3,
+    "CONFLITO_MANUAL": 2
+   },
+   "status_fora_da_lista": {},
+   "SIM-ATIVO": [],
+   "ATIVO-NORMAL": [],
+   "X_divergentes": [],
+   "INAT_REG_divergentes": [],
+   "plotagem_invalida": [],
+   "tempo_leitura_s": 0.8
+  }
+ },
+ {
+  "teste": "E07 [E09 #2] Estatística (A14:F) = recálculo independente em TODAS as linhas analito×nível (n exato; média, DP e CV com tolerância relativa 1e-9)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_conferidas": 62,
+   "linhas_com_n>0": 61,
+   "recorte": {
+    "produto": "Bioquimica",
+    "ini": 45931,
+    "fim": 46209,
+    "exclusoes": [],
+    "lote": "8974",
+    "equip": "DIMENSION 1"
+   },
+   "divergencias": [],
+   "n_divergencias": 0
+  }
+ },
+ {
+  "teste": "E10a diff(F0,F1): só a linha X muda e só nas colunas da inativação (STATUS, PARTICIPA, REGISTRAR, TIPO, INATIVACAO_REGISTRADA, DATA/USUARIO_INATIVACAO, TEM_JUSTIFICATIVA, GOVERNANCA, COMENTARIO); RUN de todos os IDs igual; recebimento idêntico",
+  "resultado": "PASS",
+  "evidencia": {
+   "x": "BIO-314216",
+   "colunas_X": [
+    "STATUS_ANALITICO",
+    "PARTICIPA_ESTATISTICA",
+    "TIPO_PLOTAGEM_LJ",
+    "INATIVACAO_REGISTRADA",
+    "COMENTARIO_TECNICO",
+    "TEM_JUSTIFICATIVA",
+    "DATA_INATIVACAO",
+    "USUARIO_INATIVACAO"
+   ],
+   "outras_linhas_ou_colunas": {},
+   "recebimento_identico": true,
+   "final_X": {
+    "ID_REGISTRO": "BIO-314216",
+    "ORIGEM_RESULTADO": "INTERFACEAMENTO",
+    "ANALITO": "Cloro",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-07-06 08:09:54",
+    "RESULTADO": 106.0,
+    "RUN": 26070601.0,
+    "CORRIDA_NO_DIA": 1.0,
+    "STATUS_ANALITICO": "INATIVADO",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "X_VERMELHO",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   }
+  }
+ },
+ {
+  "teste": "E10b F1: X no slot do RUN e no nível certo (3 slots × níveis varridos); nenhum outro X novo",
+  "resultado": "PASS",
+  "evidencia": {
+   "RUN": 26070601,
+   "slot": 179,
+   "X_N1": [
+    106.0,
+    null,
+    null
+   ],
+   "X_novos": [
+    [
+     26070601,
+     1,
+     106.0
+    ]
+   ],
+   "X_sumidos": []
+  }
+ },
+ {
+  "teste": "E10c engPainel F1: n(N1) caiu exatamente 1 em relação a F0; os outros níveis não mudam",
+  "resultado": "PASS",
+  "evidencia": {
+   "F0": [
+    [
+     1.0,
+     148.0,
+     113.32432432432432,
+     6.670287672626629,
+     5.886015833226455
+    ],
+    [
+     2.0,
+     135.0,
+     89.42222222222222,
+     4.0967163164068925,
+     4.581317948268145
+    ]
+   ],
+   "F1": [
+    [
+     1.0,
+     147.0,
+     113.37414965986395,
+     6.6653991899217955,
+     5.879117250201031
+    ],
+    [
+     2.0,
+     135.0,
+     89.42222222222222,
+     4.0967163164068925,
+     4.581317948268145
+    ]
+   ]
+  }
+ },
+ {
+  "teste": "E10d F2 (desmarcado): corrida na janela (slot não nulo), nenhum X em slot nenhum além dos de F0; só REGISTRAR/TIPO da linha X mudam; engPainel = F1",
+  "resultado": "PASS",
+  "evidencia": {
+   "slot": 179,
+   "X_N1": [
+    null,
+    null,
+    null
+   ],
+   "colunas_X": [
+    "REGISTRAR_RESULTADO_NO_LJ",
+    "TIPO_PLOTAGEM_LJ"
+   ],
+   "outras": [],
+   "painel_F1": [
+    [
+     1.0,
+     147.0,
+     113.37414965986395,
+     6.6653991899217955,
+     5.879117250201031
+    ],
+    [
+     2.0,
+     135.0,
+     89.42222222222222,
+     4.0967163164068925,
+     4.581317948268145
+    ]
+   ],
+   "painel_F2": [
+    [
+     1.0,
+     147.0,
+     113.37414965986395,
+     6.6653991899217955,
+     5.879117250201031
+    ],
+    [
+     2.0,
+     135.0,
+     89.42222222222222,
+     4.0967163164068925,
+     4.581317948268145
+    ]
+   ]
+  }
+ },
+ {
+  "teste": "E10e F3 (marcado de novo): o X volta ao mesmo slot; só REGISTRAR/TIPO da linha X mudam; engPainel = F1",
+  "resultado": "PASS",
+  "evidencia": {
+   "colunas_X": [
+    "REGISTRAR_RESULTADO_NO_LJ",
+    "TIPO_PLOTAGEM_LJ"
+   ],
+   "X_novos_vs_F1": [],
+   "painel_F3": [
+    [
+     1.0,
+     147.0,
+     113.37414965986395,
+     6.6653991899217955,
+     5.879117250201031
+    ],
+    [
+     2.0,
+     135.0,
+     89.42222222222222,
+     4.0967163164068925,
+     4.581317948268145
+    ]
+   ]
+  }
+ },
+ {
+  "teste": "E10f F4 = F3: final (todas as colunas, todas as linhas), Eng_Saida e engPainel idênticos; engPainel F1=F2=F3=F4",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_diferentes": {},
+   "eng_diferencas": [],
+   "painel_dif": []
+  }
+ },
+ {
+  "teste": "E07 [E10] Reconciliação por conjunto: IDs(Final) = Recebimento(ID≠nulo) ∪ manuais derivados (NormId, ~L<n>, MAN_INVALIDO_L<n>), IDs únicos, partição exata por STATUS, {SIM}={ATIVO}={NORMAL}, {X}={INATIVADO∧LJ}, {INATIVACAO_REGISTRADA}=NormId(Inativar)∩Final",
+  "resultado": "PASS",
+  "evidencia": {
+   "checagens": {
+    "ids_unicos_e_nao_vazios": true,
+    "final_igual_rec_uniao_manuais": true,
+    "manuais_um_id_sem_sufixo_por_grupo": true,
+    "particao_status_exata": true,
+    "SIM=ATIVO=NORMAL": true,
+    "X=INATIVADO_e_LJ": true,
+    "plotagem_valida": true,
+    "INATIVACAO_REGISTRADA=NormId(Inativar)∩Final": true
+   },
+   "linhas_final": 32043,
+   "ids_recebimento": 32033,
+   "ids_manuais_derivados": 10,
+   "ids_duplicados": [],
+   "ids_vazios": 0,
+   "faltam_na_final": [],
+   "sobram_na_final": [],
+   "manuais_divergentes": [],
+   "status": {
+    "INATIVADO": 3,
+    "ATIVO": 32035,
+    "MANUAL_INCOMPLETO": 3,
+    "CONFLITO_MANUAL": 2
+   },
+   "status_fora_da_lista": {},
+   "SIM-ATIVO": [],
+   "ATIVO-NORMAL": [],
+   "X_divergentes": [],
+   "INAT_REG_divergentes": [],
+   "plotagem_invalida": [],
+   "tempo_leitura_s": 0.9
+  }
+ },
+ {
+  "teste": "E07 [E10] Estatística (A14:F) = recálculo independente em TODAS as linhas analito×nível (n exato; média, DP e CV com tolerância relativa 1e-9)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_conferidas": 62,
+   "linhas_com_n>0": 61,
+   "recorte": {
+    "produto": "Bioquimica",
+    "ini": 45931,
+    "fim": 46209,
+    "exclusoes": [],
+    "lote": "8974",
+    "equip": "DIMENSION 1"
+   },
+   "divergencias": [],
+   "n_divergencias": 0
+  }
+ },
+ {
+  "teste": "E11a S1 ≠ S0 (sensibilidade): manual extremo (média+20·DP às 23:50) ATIVO em corrida própria no fim, sem renumerar; n(N1)+1, média deslocada e 1_3s no seu slot",
+  "resultado": "PASS",
+  "evidencia": {
+   "analito": "Sódio",
+   "lote": "8974",
+   "periodo": [
+    "2025-10-01 08:27:10",
+    "2026-03-05 00:00:00"
+   ],
+   "corridas_ate_o_fim": 169,
+   "manual": {
+    "ID_REGISTRO": "MAN_0063",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Sódio",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-03-05 23:50:00",
+    "RESULTADO": 169.783875,
+    "RUN": 26030503.0,
+    "CORRIDA_NO_DIA": 3.0,
+    "STATUS_ANALITICO": "ATIVO",
+    "PARTICIPA_ESTATISTICA": "SIM",
+    "TIPO_PLOTAGEM_LJ": "NORMAL",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "extremo": 169.783875,
+   "alvo_lote": [
+    143.3181818181818,
+    1.3232846447693145
+   ],
+   "slot": 169,
+   "flags_N1": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    "REJEITADO"
+   ],
+   "renumerados": [],
+   "painel_S0": [
+    [
+     1.0,
+     145.0,
+     144.68275862068967,
+     6.403887109790627,
+     4.426157733541355
+    ],
+    [
+     2.0,
+     125.0,
+     125.52,
+     2.990846249863503,
+     2.3827646987440274
+    ]
+   ],
+   "painel_S1": [
+    [
+     1.0,
+     146.0,
+     144.85468407534248,
+     6.711368337377694,
+     4.633173155717178
+    ],
+    [
+     2.0,
+     125.0,
+     125.52,
+     2.990846249863503,
+     2.3827646987440274
+    ]
+   ],
+   "corridas_janela_S0": 169,
+   "cortadas_S0": 0
+  }
+ },
+ {
+  "teste": "E11b S2 = S0 (|Δ| < 1e-9): engPainel completo, linha da Estatística (u(Rw) incluída, AQ/PEXCL permitida), Eventos_Westgard, RUNs; só X_VERMELHO/INATIVADO +1 e o X extremo no RUN do manual",
+  "resultado": "PASS",
+  "evidencia": {
+   "painel_igual": true,
+   "painel_dif": [],
+   "estatistica_igual(sem AQ)": true,
+   "estatistica_dif": [],
+   "eventos_westgard_iguais": true,
+   "eventos": [
+    676,
+    676
+   ],
+   "contadores_delta": {
+    "('INATIVADO', 'X_VERMELHO')": 1
+   },
+   "contadores_negativos": {},
+   "eng_saida_ok": true,
+   "corridas": [
+    169,
+    170
+   ],
+   "RUN_inalterados": true,
+   "AQ_alertas": [
+    [
+     "",
+     ""
+    ],
+    [
+     "",
+     ""
+    ]
+   ]
+  }
+ },
+ {
+  "teste": "E11c S3 = S0 com LJ = NÃO: indicadores e eventos iguais, X ausente (Eng_Saida = S0)",
+  "resultado": "PASS",
+  "evidencia": {
+   "painel_igual": true,
+   "painel_dif": [],
+   "estatistica_igual(sem AQ)": true,
+   "estatistica_dif": [],
+   "eventos_westgard_iguais": true,
+   "eventos": [
+    676,
+    676
+   ],
+   "contadores_delta": {
+    "('INATIVADO', 'NAO_PLOTAR')": 1
+   },
+   "contadores_negativos": {},
+   "eng_saida_ok": true,
+   "corridas": [
+    169,
+    169
+   ],
+   "RUN_inalterados": true,
+   "AQ_alertas": [
+    [
+     "",
+     ""
+    ],
+    [
+     "",
+     ""
+    ]
+   ]
+  }
+ },
+ {
+  "teste": "E11d Variante B, S1 ≠ S0 (sensibilidade): extremo ATIVO numa janela saturada (180 corridas, a mais antiga dentro do filtro)",
+  "resultado": "PASS",
+  "evidencia": {
+   "analito": "Bicarbonato",
+   "periodo": [
+    "2025-10-01 08:27:10",
+    "2026-08-12 00:00:00"
+   ],
+   "corridas_ate_o_fim": 269,
+   "sinteticos": 0,
+   "janela_S0": 180,
+   "fil_mais_antiga": 1.0,
+   "manual": {
+    "ID_REGISTRO": "MAN_0064",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Bicarbonato",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-08-12 23:50:00",
+    "RESULTADO": 128.823527,
+    "RUN": 26081203.0,
+    "CORRIDA_NO_DIA": 3.0,
+    "STATUS_ANALITICO": "ATIVO",
+    "PARTICIPA_ESTATISTICA": "SIM",
+    "TIPO_PLOTAGEM_LJ": "NORMAL",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "painel_S0": [
+    [
+     1.0,
+     137.0,
+     33.50875912408759,
+     4.956078775731682,
+     14.790397810252042
+    ],
+    [
+     2.0,
+     130.0,
+     18.21461538461538,
+     2.8198386764142715,
+     15.481187040578376
+    ]
+   ],
+   "painel_S1": [
+    [
+     1.0,
+     137.0,
+     34.19141260583942,
+     9.532599546340952,
+     27.880098597368033
+    ],
+    [
+     2.0,
+     129.0,
+     18.203875968992246,
+     2.828162032928121,
+     15.536043190722124
+    ]
+   ]
+  }
+ },
+ {
+  "teste": "E11e Variante B, S2 = S0 com a janela NK=180 saturada: o X não consome a janela -- n/média/DP/CV/Sigma do Painel, Estatística e eventos iguais (hoje falha: prova D10)",
+  "resultado": "PASS",
+  "evidencia": {
+   "painel_igual": true,
+   "painel_dif": [],
+   "estatistica_igual": true,
+   "eventos_iguais": true,
+   "janela": [
+    180,
+    180
+   ],
+   "cortadas": [
+    89,
+    90
+   ],
+   "primeira_corrida_janela": [
+    [
+     26010801
+    ],
+    [
+     26010801
+    ]
+   ]
+  }
+ },
+ {
+  "teste": "E07 [E11] Reconciliação por conjunto: IDs(Final) = Recebimento(ID≠nulo) ∪ manuais derivados (NormId, ~L<n>, MAN_INVALIDO_L<n>), IDs únicos, partição exata por STATUS, {SIM}={ATIVO}={NORMAL}, {X}={INATIVADO∧LJ}, {INATIVACAO_REGISTRADA}=NormId(Inativar)∩Final",
+  "resultado": "PASS",
+  "evidencia": {
+   "checagens": {
+    "ids_unicos_e_nao_vazios": true,
+    "final_igual_rec_uniao_manuais": true,
+    "manuais_um_id_sem_sufixo_por_grupo": true,
+    "particao_status_exata": true,
+    "SIM=ATIVO=NORMAL": true,
+    "X=INATIVADO_e_LJ": true,
+    "plotagem_valida": true,
+    "INATIVACAO_REGISTRADA=NormId(Inativar)∩Final": true
+   },
+   "linhas_final": 32045,
+   "ids_recebimento": 32033,
+   "ids_manuais_derivados": 12,
+   "ids_duplicados": [],
+   "ids_vazios": 0,
+   "faltam_na_final": [],
+   "sobram_na_final": [],
+   "manuais_divergentes": [],
+   "status": {
+    "INATIVADO": 5,
+    "ATIVO": 32035,
+    "MANUAL_INCOMPLETO": 3,
+    "CONFLITO_MANUAL": 2
+   },
+   "status_fora_da_lista": {},
+   "SIM-ATIVO": [],
+   "ATIVO-NORMAL": [],
+   "X_divergentes": [],
+   "INAT_REG_divergentes": [],
+   "plotagem_invalida": [],
+   "tempo_leitura_s": 1.2
+  }
+ },
+ {
+  "teste": "E07 [E11] Estatística (A14:F) = recálculo independente em TODAS as linhas analito×nível (n exato; média, DP e CV com tolerância relativa 1e-9)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_conferidas": 62,
+   "linhas_com_n>0": 61,
+   "recorte": {
+    "produto": "Bioquimica",
+    "ini": 45931,
+    "fim": 46209,
+    "exclusoes": [],
+    "lote": "8974",
+    "equip": "DIMENSION 1"
+   },
+   "divergencias": [],
+   "n_divergencias": 0
+  }
+ },
+ {
+  "teste": "E12 [antes do E12] Oráculo Python independente do RUN (_GK, ordenação, corte por GAP, _POS por nível, corrida do dia) = CORRIDA_NO_DIA/RUN da final em 100% dos IDs",
+  "resultado": "PASS",
+  "evidencia": {
+   "ids": 32045,
+   "ids_com_corrida": 32040,
+   "divergentes": 0,
+   "exemplos": [],
+   "GAP": 10.0
+  }
+ },
+ {
+  "teste": "E12 [E12 após inserção] Oráculo Python independente do RUN (_GK, ordenação, corte por GAP, _POS por nível, corrida do dia) = CORRIDA_NO_DIA/RUN da final em 100% dos IDs",
+  "resultado": "PASS",
+  "evidencia": {
+   "ids": 32053,
+   "ids_com_corrida": 32047,
+   "divergentes": 0,
+   "exemplos": [],
+   "GAP": 10.0
+  }
+ },
+ {
+  "teste": "E12a M_ini, M_meio e M_fim ATIVO; corridas posteriores do mesmo _GK/dia deslocadas (+1 após M_ini; +3 depois de M_bloco e M_meio), ordem relativa preservada, nenhum ID alterado, nenhum RUN de outro _GK alterado",
+  "resultado": "PASS",
+  "evidencia": {
+   "_GK": [
+    "DIMENSION 1",
+    "SORO",
+    "8974",
+    "Cloro",
+    "2026-06-01"
+   ],
+   "manuais": {
+    "M_ini": {
+     "ID_REGISTRO": "MAN_0065",
+     "ORIGEM_RESULTADO": "MANUAL",
+     "ANALITO": "Cloro",
+     "LOTE": "8974",
+     "NIVEL": 1.0,
+     "DATA_HORA": "2026-06-01 08:09:00",
+     "RESULTADO": 108.324,
+     "RUN": 26060101.0,
+     "CORRIDA_NO_DIA": 1.0,
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "ID_RELACIONADO": null,
+     "MOTIVO_EXCLUSAO_AUTOMATICA": null
+    },
+    "M_meio": {
+     "ID_REGISTRO": "MAN_0066",
+     "ORIGEM_RESULTADO": "MANUAL",
+     "ANALITO": "Cloro",
+     "LOTE": "8974",
+     "NIVEL": 1.0,
+     "DATA_HORA": "2026-06-01 09:18:00",
+     "RESULTADO": 108.432,
+     "RUN": 26060103.0,
+     "CORRIDA_NO_DIA": 3.0,
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "ID_RELACIONADO": null,
+     "MOTIVO_EXCLUSAO_AUTOMATICA": null
+    },
+    "M_fim": {
+     "ID_REGISTRO": "MAN_0067",
+     "ORIGEM_RESULTADO": "MANUAL",
+     "ANALITO": "Cloro",
+     "LOTE": "8974",
+     "NIVEL": 1.0,
+     "DATA_HORA": "2026-06-01 23:59:00",
+     "RESULTADO": 108.54,
+     "RUN": 26060106.0,
+     "CORRIDA_NO_DIA": 6.0,
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "ID_RELACIONADO": null,
+     "MOTIVO_EXCLUSAO_AUTOMATICA": null
+    },
+    "M_inst": {
+     "ID_REGISTRO": "MAN_0068",
+     "ORIGEM_RESULTADO": "MANUAL",
+     "ANALITO": "Cloro",
+     "LOTE": "8974",
+     "NIVEL": 1.0,
+     "DATA_HORA": "2026-06-01 10:14:32",
+     "RESULTADO": 108.0,
+     "RUN": null,
+     "CORRIDA_NO_DIA": null,
+     "STATUS_ANALITICO": "CONFLITO_MANUAL",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "ID_RELACIONADO": "BIO-298059",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "coincide com resultado do interfaceamento (0 min)"
+    }
+   },
+   "deslocamento_divergente": {},
+   "outros_GK_alterados": [],
+   "ids_novos": 8,
+   "ids_duplicados": []
+  }
+ },
+ {
+  "teste": "E12b M_bloco impossível nesta configuração (GAP <= TOL: todo manual dentro do GAP de uma corrida é conflito pela TOL) -- coberto pela regra de CONFLITO (E12c)",
+  "resultado": "INFO",
+  "evidencia": {
+   "GAP": 10.0,
+   "TOL": 30.0
+  }
+ },
+ {
+  "teste": "E12c M_inst (mesmo DATA_HORA de um N1 do interfaceamento): CONFLITO_MANUAL, ID_RELACIONADO = interface, A01, fora do RUN",
+  "resultado": "PASS",
+  "evidencia": {
+   "M_inst": {
+    "ID_REGISTRO": "MAN_0068",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Cloro",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-06-01 10:14:32",
+    "RESULTADO": 108.0,
+    "RUN": null,
+    "CORRIDA_NO_DIA": null,
+    "STATUS_ANALITICO": "CONFLITO_MANUAL",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+    "ID_RELACIONADO": "BIO-298059",
+    "MOTIVO_EXCLUSAO_AUTOMATICA": "coincide com resultado do interfaceamento (0 min)"
+   },
+   "interface": "BIO-298059"
+  }
+ },
+ {
+  "teste": "E14a L1, L2, equipamento B e lote único: cada um em _GK próprio, ATIVO, RUN yyMMdd01 (nada se junta)",
+  "resultado": "PASS",
+  "evidencia": {
+   "RUN_esperado": 26100401,
+   "linhas": {
+    "L1": {
+     "ID_REGISTRO": "MAN_0069",
+     "ORIGEM_RESULTADO": "MANUAL",
+     "ANALITO": "Cloro",
+     "LOTE": "8974",
+     "NIVEL": 1.0,
+     "DATA_HORA": "2026-10-04 10:00:00",
+     "RESULTADO": 115.0,
+     "RUN": 26100401.0,
+     "CORRIDA_NO_DIA": 1.0,
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "ID_RELACIONADO": null,
+     "MOTIVO_EXCLUSAO_AUTOMATICA": null
+    },
+    "L2": {
+     "ID_REGISTRO": "MAN_0070",
+     "ORIGEM_RESULTADO": "MANUAL",
+     "ANALITO": "Cloro",
+     "LOTE": "8977",
+     "NIVEL": 1.0,
+     "DATA_HORA": "2026-10-04 10:00:00",
+     "RESULTADO": 123.05,
+     "RUN": 26100401.0,
+     "CORRIDA_NO_DIA": 1.0,
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "ID_RELACIONADO": null,
+     "MOTIVO_EXCLUSAO_AUTOMATICA": null
+    },
+    "B": {
+     "ID_REGISTRO": "MAN_0071",
+     "ORIGEM_RESULTADO": "MANUAL",
+     "ANALITO": "Cloro",
+     "LOTE": "8974",
+     "NIVEL": 1.0,
+     "DATA_HORA": "2026-10-04 10:00:00",
+     "RESULTADO": 129.95,
+     "RUN": 26100401.0,
+     "CORRIDA_NO_DIA": 1.0,
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "ID_RELACIONADO": null,
+     "MOTIVO_EXCLUSAO_AUTOMATICA": null
+    },
+    "U": {
+     "ID_REGISTRO": "MAN_0072",
+     "ORIGEM_RESULTADO": "MANUAL",
+     "ANALITO": "Cloro",
+     "LOTE": "QAU261004",
+     "NIVEL": 1.0,
+     "DATA_HORA": "2026-10-04 10:00:00",
+     "RESULTADO": 104.65,
+     "RUN": 26100401.0,
+     "CORRIDA_NO_DIA": 1.0,
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "ID_RELACIONADO": null,
+     "MOTIVO_EXCLUSAO_AUTOMATICA": null
+    }
+   },
+   "equipamentos_distintos_por_analito_antes": null,
+   "equip_A": "DIMENSION 1",
+   "equip_B": "DIMENSION 2",
+   "L1": "8974",
+   "L2": "8977"
+  }
+ },
+ {
+  "teste": "E14b Índice ANALITO|LOTE: no LJ do lote L1 o RUN yyMMdd01 mostra o valor de L1; o de L2 não aparece",
+  "resultado": "PASS",
+  "evidencia": {
+   "slot": 179,
+   "N1_no_slot": 115.0,
+   "valores": {
+    "L1": 115.0,
+    "L2": 123.05,
+    "B": 129.95
+   }
+  }
+ },
+ {
+  "teste": "E14c Bioquímica: o equipamento B fica FORA do LJ do equipamento A (mesmo lote, mesmo RUN, mesmo instante)",
+  "resultado": "PASS",
+  "evidencia": {
+   "equip_painel": "DIMENSION 1",
+   "N1_no_slot": 115.0,
+   "vB": 129.95
+  }
+ },
+ {
+  "teste": "E14d No LJ do lote L2 o mesmo RUN yyMMdd01 mostra só o valor de L2 (L1 e B ausentes)",
+  "resultado": "PASS",
+  "evidencia": {
+   "slot": 72,
+   "N1_no_slot": 123.05
+  }
+ },
+ {
+  "teste": "E14e Bioquímica: o equipamento B é uma série própria (no LJ de B, RUN yyMMdd01 = valor de B)",
+  "resultado": "PASS",
+  "evidencia": {
+   "equip_painel": "DIMENSION 2",
+   "N1_no_slot": 129.95,
+   "vA": 115.0,
+   "vB": 129.95
+  }
+ },
+ {
+  "teste": "E14f Lote novo com um único resultado: n=1, média = o valor, DP vazio, sem erro no motor",
+  "resultado": "PASS",
+  "evidencia": {
+   "engPainel_N1": [
+    1.0,
+    1.0,
+    104.65,
+    null,
+    null
+   ],
+   "valor": 104.65,
+   "erros": []
+  }
+ },
+ {
+  "teste": "E14g Primeira e última corrida do período do Painel aparecem no Eng_Saida (ou o corte da janela é informado com a contagem exata em engCortadas)",
+  "resultado": "PASS",
+  "evidencia": {
+   "primeira": 25100101,
+   "ultima": 26070601,
+   "corridas_no_periodo": 299,
+   "janela": 180,
+   "engCortadas": 119,
+   "fora_da_janela": 119
+  }
+ },
+ {
+  "teste": "E12d Após 2 refreshes extras todos os RUN (e CORRIDA_NO_DIA) ficam iguais",
+  "resultado": "PASS",
+  "evidencia": {
+   "diferentes_por_refresh": [
+    [],
+    []
+   ],
+   "linhas": [
+    32053,
+    32053
+   ]
+  }
+ },
+ {
+  "teste": "E07 [E12+E14] Reconciliação por conjunto: IDs(Final) = Recebimento(ID≠nulo) ∪ manuais derivados (NormId, ~L<n>, MAN_INVALIDO_L<n>), IDs únicos, partição exata por STATUS, {SIM}={ATIVO}={NORMAL}, {X}={INATIVADO∧LJ}, {INATIVACAO_REGISTRADA}=NormId(Inativar)∩Final",
+  "resultado": "PASS",
+  "evidencia": {
+   "checagens": {
+    "ids_unicos_e_nao_vazios": true,
+    "final_igual_rec_uniao_manuais": true,
+    "manuais_um_id_sem_sufixo_por_grupo": true,
+    "particao_status_exata": true,
+    "SIM=ATIVO=NORMAL": true,
+    "X=INATIVADO_e_LJ": true,
+    "plotagem_valida": true,
+    "INATIVACAO_REGISTRADA=NormId(Inativar)∩Final": true
+   },
+   "linhas_final": 32053,
+   "ids_recebimento": 32033,
+   "ids_manuais_derivados": 20,
+   "ids_duplicados": [],
+   "ids_vazios": 0,
+   "faltam_na_final": [],
+   "sobram_na_final": [],
+   "manuais_divergentes": [],
+   "status": {
+    "INATIVADO": 5,
+    "ATIVO": 32042,
+    "CONFLITO_MANUAL": 3,
+    "MANUAL_INCOMPLETO": 3
+   },
+   "status_fora_da_lista": {},
+   "SIM-ATIVO": [],
+   "ATIVO-NORMAL": [],
+   "X_divergentes": [],
+   "INAT_REG_divergentes": [],
+   "plotagem_invalida": [],
+   "tempo_leitura_s": 0.8
+  }
+ },
+ {
+  "teste": "E07 [E12+E14] Estatística (A14:F) = recálculo independente em TODAS as linhas analito×nível (n exato; média, DP e CV com tolerância relativa 1e-9)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_conferidas": 62,
+   "linhas_com_n>0": 61,
+   "recorte": {
+    "produto": "Bioquimica",
+    "ini": 45931,
+    "fim": 46209,
+    "exclusoes": [],
+    "lote": "8974",
+    "equip": "DIMENSION 1"
+   },
+   "divergencias": [],
+   "n_divergencias": 0
+  }
+ },
+ {
+  "teste": "E13a Manual inativado pela chave \"man_k\": INATIVADO/X_VERMELHO, mesmo RUN, n−1 na Estatística",
+  "resultado": "PASS",
+  "evidencia": {
+   "manual": {
+    "ID_REGISTRO": "MAN_0065",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Cloro",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-06-01 08:09:00",
+    "RESULTADO": 108.324,
+    "RUN": 26060101.0,
+    "CORRIDA_NO_DIA": 1.0,
+    "STATUS_ANALITICO": "INATIVADO",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "X_VERMELHO",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "RUN_antes": 26060101.0,
+   "n_estatistica": [
+    252,
+    251
+   ],
+   "celula": "MAN_0065"
+  }
+ },
+ {
+  "teste": "E13b Manual corrigindo interface INATIVADO (±5 min): CONFLITO_MANUAL com ID_RELACIONADO = interface, fora da estatística, e ALERTA A09 (decisão conservadora; hoje falha: prova D09b)",
+  "resultado": "PASS",
+  "evidencia": {
+   "manual": {
+    "ID_REGISTRO": "MAN_0073",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Colesterol total",
+    "LOTE": "8977",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-10-01 11:10:51",
+    "RESULTADO": 242.76,
+    "RUN": null,
+    "CORRIDA_NO_DIA": null,
+    "STATUS_ANALITICO": "CONFLITO_MANUAL",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+    "ID_RELACIONADO": "BIO-359554",
+    "MOTIVO_EXCLUSAO_AUTOMATICA": "coincide com resultado do interfaceamento (5 min)"
+   },
+   "interface": {
+    "ID_REGISTRO": "BIO-359554",
+    "ORIGEM_RESULTADO": "INTERFACEAMENTO",
+    "ANALITO": "Colesterol total",
+    "LOTE": "8977",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-10-01 11:05:51",
+    "RESULTADO": 238.0,
+    "RUN": 26100102.0,
+    "CORRIDA_NO_DIA": 2.0,
+    "STATUS_ANALITICO": "INATIVADO",
+    "PARTICIPA_ESTATISTICA": "NÃO",
+    "TIPO_PLOTAGEM_LJ": "X_VERMELHO",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "A09": [
+    "o automatico BIO-359554 esta INATIVADO e este manual tem a mesma chave e instante: o manual NAO participa (decisao do RT pendente: manual pode substituir um automatico inativado?)."
+   ],
+   "A01": 1
+  }
+ },
+ {
+  "teste": "E13c coberto em qa_etl_recebimento.py (DB_SEAC sintético: interface 23:58 x manual 00:02)",
+  "resultado": "INFO",
+  "evidencia": {
+   "TOL": 30.0
+  }
+ },
+ {
+  "teste": "E13a2 Apagar a inativação reabilita: ATIVO, mesmo ID, mesmo RUN, sem duplicar; Estatística do analito idêntica ao estado ativo (A..AU)",
+  "resultado": "PASS",
+  "evidencia": {
+   "manual": {
+    "ID_REGISTRO": "MAN_0065",
+    "ORIGEM_RESULTADO": "MANUAL",
+    "ANALITO": "Cloro",
+    "LOTE": "8974",
+    "NIVEL": 1.0,
+    "DATA_HORA": "2026-06-01 08:09:00",
+    "RESULTADO": 108.324,
+    "RUN": 26060101.0,
+    "CORRIDA_NO_DIA": 1.0,
+    "STATUS_ANALITICO": "ATIVO",
+    "PARTICIPA_ESTATISTICA": "SIM",
+    "TIPO_PLOTAGEM_LJ": "NORMAL",
+    "ID_RELACIONADO": null,
+    "MOTIVO_EXCLUSAO_AUTOMATICA": null
+   },
+   "estatistica_dif": []
+  }
+ },
+ {
+  "teste": "E07 [E13] Reconciliação por conjunto: IDs(Final) = Recebimento(ID≠nulo) ∪ manuais derivados (NormId, ~L<n>, MAN_INVALIDO_L<n>), IDs únicos, partição exata por STATUS, {SIM}={ATIVO}={NORMAL}, {X}={INATIVADO∧LJ}, {INATIVACAO_REGISTRADA}=NormId(Inativar)∩Final",
+  "resultado": "PASS",
+  "evidencia": {
+   "checagens": {
+    "ids_unicos_e_nao_vazios": true,
+    "final_igual_rec_uniao_manuais": true,
+    "manuais_um_id_sem_sufixo_por_grupo": true,
+    "particao_status_exata": true,
+    "SIM=ATIVO=NORMAL": true,
+    "X=INATIVADO_e_LJ": true,
+    "plotagem_valida": true,
+    "INATIVACAO_REGISTRADA=NormId(Inativar)∩Final": true
+   },
+   "linhas_final": 32054,
+   "ids_recebimento": 32033,
+   "ids_manuais_derivados": 21,
+   "ids_duplicados": [],
+   "ids_vazios": 0,
+   "faltam_na_final": [],
+   "sobram_na_final": [],
+   "manuais_divergentes": [],
+   "status": {
+    "INATIVADO": 6,
+    "ATIVO": 32041,
+    "CONFLITO_MANUAL": 4,
+    "MANUAL_INCOMPLETO": 3
+   },
+   "status_fora_da_lista": {},
+   "SIM-ATIVO": [],
+   "ATIVO-NORMAL": [],
+   "X_divergentes": [],
+   "INAT_REG_divergentes": [],
+   "plotagem_invalida": [],
+   "tempo_leitura_s": 0.9
+  }
+ },
+ {
+  "teste": "E07 [E13] Estatística (A14:F) = recálculo independente em TODAS as linhas analito×nível (n exato; média, DP e CV com tolerância relativa 1e-9)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_conferidas": 62,
+   "linhas_com_n>0": 61,
+   "recorte": {
+    "produto": "Bioquimica",
+    "ini": 45931,
+    "fim": 46209,
+    "exclusoes": [],
+    "lote": "8974",
+    "equip": "DIMENSION 1"
+   },
+   "divergencias": [],
+   "n_divergencias": 0
+  }
+ },
+ {
+  "teste": "E15 Idempotência do cenário acumulado (E08–E14): 3 refreshes com saída IDÊNTICA -- final linha inteira, Eng_Saida, engPainel, engEstat, aba Estatística e tblQA_Integracao (multiconjunto); |Final| constante, nenhum ID novo, sumido ou repetido",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_final": 32054,
+   "tempos_s": [
+    55.5,
+    55.0,
+    54.5
+   ],
+   "falhas": [],
+   "duplicados_iniciais": []
+  }
+ },
+ {
+  "teste": "E07 [E15] Reconciliação por conjunto: IDs(Final) = Recebimento(ID≠nulo) ∪ manuais derivados (NormId, ~L<n>, MAN_INVALIDO_L<n>), IDs únicos, partição exata por STATUS, {SIM}={ATIVO}={NORMAL}, {X}={INATIVADO∧LJ}, {INATIVACAO_REGISTRADA}=NormId(Inativar)∩Final",
+  "resultado": "PASS",
+  "evidencia": {
+   "checagens": {
+    "ids_unicos_e_nao_vazios": true,
+    "final_igual_rec_uniao_manuais": true,
+    "manuais_um_id_sem_sufixo_por_grupo": true,
+    "particao_status_exata": true,
+    "SIM=ATIVO=NORMAL": true,
+    "X=INATIVADO_e_LJ": true,
+    "plotagem_valida": true,
+    "INATIVACAO_REGISTRADA=NormId(Inativar)∩Final": true
+   },
+   "linhas_final": 32054,
+   "ids_recebimento": 32033,
+   "ids_manuais_derivados": 21,
+   "ids_duplicados": [],
+   "ids_vazios": 0,
+   "faltam_na_final": [],
+   "sobram_na_final": [],
+   "manuais_divergentes": [],
+   "status": {
+    "INATIVADO": 6,
+    "ATIVO": 32041,
+    "CONFLITO_MANUAL": 4,
+    "MANUAL_INCOMPLETO": 3
+   },
+   "status_fora_da_lista": {},
+   "SIM-ATIVO": [],
+   "ATIVO-NORMAL": [],
+   "X_divergentes": [],
+   "INAT_REG_divergentes": [],
+   "plotagem_invalida": [],
+   "tempo_leitura_s": 0.7
+  }
+ },
+ {
+  "teste": "E07 [E15] Estatística (A14:F) = recálculo independente em TODAS as linhas analito×nível (n exato; média, DP e CV com tolerância relativa 1e-9)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_conferidas": 62,
+   "linhas_com_n>0": 61,
+   "recorte": {
+    "produto": "Bioquimica",
+    "ini": 45931,
+    "fim": 46209,
+    "exclusoes": [],
+    "lote": "8974",
+    "equip": "DIMENSION 1"
+   },
+   "divergencias": [],
+   "n_divergencias": 0
+  }
+ },
+ {
+  "teste": "E16 Matriz de rastreabilidade por ID: cada ID tem destino único e coerente (participa / X / não plota, com motivo ou achado); nenhum NA_ESTATISTICA=SIM com PARTICIPA=NÃO; nenhum X sem INATIVADO∧LJ",
+  "resultado": "PASS",
+  "evidencia": {
+   "arquivo": "C:\\Users\\vitor\\Desktop\\qcini.finalização\\_arquitetura\\integracao_dbseac\\testes\\resultados\\etl_rastreabilidade_Bioquimica.json",
+   "ids": 76,
+   "ids_de_cenario": 36,
+   "amostra": 40,
+   "problemas": []
+  }
+ },
+ {
+  "teste": "TEMPOS",
+  "resultado": "INFO",
+  "evidencia": [
+   {
+    "etapa": "estado-base",
+    "s": 39.4
+   },
+   {
+    "etapa": "E08",
+    "s": 37.3
+   },
+   {
+    "etapa": "E09 #1",
+    "s": 46.9
+   },
+   {
+    "etapa": "E09 #2 (+E10 D06)",
+    "s": 50.4
+   },
+   {
+    "etapa": "E10 F1 inativar",
+    "s": 46.1
+   },
+   {
+    "etapa": "E10 F2 desmarcar",
+    "s": 46.0
+   },
+   {
+    "etapa": "E10 F3 marcar",
+    "s": 46.0
+   },
+   {
+    "etapa": "E10 F4 refresh extra",
+    "s": 46.6
+   },
+   {
+    "etapa": "E11 S1 (manual extremo A)",
+    "s": 48.3
+   },
+   {
+    "etapa": "E11 S2 inativar A",
+    "s": 47.2
+   },
+   {
+    "etapa": "E11 S3 LJ=NÃO A + extremo B",
+    "s": 48.7
+   },
+   {
+    "etapa": "E11 S2 inativar B",
+    "s": 46.9
+   },
+   {
+    "etapa": "E12+E14",
+    "s": 55.4
+   },
+   {
+    "etapa": "E12 extra 1",
+    "s": 54.2
+   },
+   {
+    "etapa": "E12 extra 2",
+    "s": 55.3
+   },
+   {
+    "etapa": "E13 R1",
+    "s": 55.0
+   },
+   {
+    "etapa": "E13 R2 apagar inativação",
+    "s": 54.8
+   },
+   {
+    "etapa": "E15 #1",
+    "s": 55.5
+   },
+   {
+    "etapa": "E15 #2",
+    "s": 55.0
+   },
+   {
+    "etapa": "E15 #3",
+    "s": 54.5
+   }
+  ]
+ },
+ {
+  "teste": "E00 Arquivo de entrada intacto: SHA-256 igual antes e depois (a suíte só abriu uma cópia descartável e nunca salvou)",
+  "resultado": "PASS",
+  "evidencia": {
+   "arquivo": "C:\\Users\\vitor\\Desktop\\qcini.finalização\\_entrega_2026-10-05_0108\\Bioquimica\\teste_qa_etl\\QC_Bioquimica.xlsm",
+   "sha256_antes": "514ef904f4ae5b108030d3dfd1939fbec121ef5412c754ffa151d219b028ad25",
+   "sha256_depois": "514ef904f4ae5b108030d3dfd1939fbec121ef5412c754ffa151d219b028ad25",
+   "copia_removida": true,
+   "duracao_total_min": 18.4
+  }
+ }
+]

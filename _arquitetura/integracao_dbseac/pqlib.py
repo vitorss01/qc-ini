@@ -29,10 +29,21 @@ def m_de(nome):
 
 
 def query_existe(wb, nome):
-    for q in wb.Queries:
-        if q.Name == nome:
-            return q
-    return None
+    # A colecao Queries (Microsoft.Mashup) ja respondeu "O indice esta fora dos limites" ao ser
+    # percorrida logo depois de abrir a pasta (04/10/2026, Bioquimica; a mesma pasta passou antes e
+    # depois). Transitorio: percorre por indice e tenta de novo.
+    for tentativa in range(5):
+        try:
+            qs = wb.Queries
+            for i in range(1, qs.Count + 1):
+                q = qs.Item(i)
+                if q.Name == nome:
+                    return q
+            return None
+        except Exception:
+            if tentativa == 4:
+                raise
+            time.sleep(2)
 
 
 def gravar_query(wb, nome, formula, descricao=''):
@@ -46,11 +57,19 @@ def gravar_query(wb, nome, formula, descricao=''):
 
 
 def tabela(wb, nome):
-    for ws in wb.Worksheets:
-        for lo in ws.ListObjects:
-            if lo.Name == nome:
-                return lo
-    return None
+    # Logo depois de um refresh a enumeracao de abas/tabelas ja devolveu "indice invalido" (DISP_E_BADINDEX,
+    # 04/10/2026, QA-ETL-001): transitorio -- tenta de novo antes de desistir
+    for tentativa in range(5):
+        try:
+            for ws in wb.Worksheets:
+                for lo in ws.ListObjects:
+                    if lo.Name == nome:
+                        return lo
+            return None
+        except Exception:
+            if tentativa == 4:
+                raise
+            time.sleep(2)
 
 
 def carregar_em_tabela(ws, consulta, nome_tabela, destino='A4'):

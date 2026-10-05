@@ -17,6 +17,13 @@ COMUM = {
     'CAMINHO_DB_SEAC': (CAMINHO_DB_SEAC, 'Arquivo de origem (DB_SEAC.xlsm). Trocar aqui se o arquivo mudar de pasta.'),
     'GAP_CORRIDA_MIN': (10, 'Intervalo maximo (min) entre resultados consecutivos de uma mesma corrida (agrupa os niveis).'),
     'TOLERANCIA_CONFLITO_MIN': (30, 'Resultado manual a ate N min de um do interfaceamento, mesma chave = possivel duplicidade.'),
+    # ADR-058: SEAC e o padrao e o unico modo de producao. HISTORICO existe para
+    # quando o DB_SEAC esta fora de alcance (fora da rede do laboratorio): o
+    # historico ja recebido continua sendo reprocessado, nada novo entra, e o
+    # proprio sistema avisa (QA A07 + Audit_Log) enquanto o modo estiver ligado.
+    'MODO_FONTE': ('SEAC', 'SEAC = recebe do DB_SEAC (se inacessivel, a atualizacao PARA). '
+                           'HISTORICO = nao le o DB_SEAC; reprocessa so o que ja foi recebido '
+                           '(inativacoes, manuais, comentarios). Voltar para SEAC na rede do laboratorio.'),
 }
 
 PRODUTOS = {

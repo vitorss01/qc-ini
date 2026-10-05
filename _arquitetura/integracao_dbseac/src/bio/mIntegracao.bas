@@ -40,6 +40,7 @@ Public Sub AtualizarDados()
     resumo = AtualizarDadosCore()
     mApp.VoltarPara volta
     MsgBox resumo, IIf(ContarQA("ERRO") > 0, vbExclamation, vbInformation), "Atualizar dados"
+    mLotes.AvisarLotesSemValidade          ' ADR-060: lote novo sem validade -> "vamos inserir agora?"
     Exit Sub
 falha:
     Dim nE As Long, sE As String
@@ -47,7 +48,9 @@ falha:
     mApp.VoltarPara volta
     MsgBox "A atualização NÃO foi concluída." & vbCrLf & vbCrLf & sE & vbCrLf & vbCrLf & _
            "Os gráficos e a Estatística continuam com os dados da atualização anterior. " & _
-           "Confira se o DB_SEAC está acessível (aba Cfg_Integracao, CAMINHO_DB_SEAC).", _
+           "Confira se o DB_SEAC está acessível (aba Cfg_Integracao, CAMINHO_DB_SEAC)." & vbCrLf & vbCrLf & _
+           "Fora da rede do laboratório, para trabalhar só com o histórico já recebido: " & _
+           "Cfg_Integracao, MODO_FONTE = HISTORICO.", _
            vbCritical, "Atualizar dados"
 End Sub
 
@@ -56,9 +59,11 @@ End Sub
 ' consumidores -- grafico e Estatistica ficam com a atualizacao anterior.
 Public Function AtualizarDadosCore() As String
     Dim camada As Variant, t0 As Double, tempos As String
-    Dim antes As Object, depois As Object, nRec0 As Long, nRec1 As Long, etapa As String
+    Dim antes As Object, depois As Object, nRec0 As Long, nRec1 As Long, etapa As String, hist As Boolean
+    Dim resLotes As String
     mApp.InicioUsuario "Atualizando dados: preparando as entradas..."
     On Error GoTo falha
+    hist = ModoHistorico()
 
     etapa = "preparar as tabelas de entrada"
     PrepararEntradas
@@ -66,6 +71,11 @@ Public Function AtualizarDadosCore() As String
     Set antes = EstadoAuditavel()
 
     For Each camada In Camadas()
+        ' ADR-060: lote novo entra no cadastro ANTES do QA, que confere o cadastro (I03)
+        If CStr(camada) = "tblQA_Integracao" Then
+            etapa = "registrar lotes novos"
+            resLotes = mLotes.RegistrarLotesRecebidos()
+        End If
         etapa = "atualizar " & camada
         Application.StatusBar = "Atualizando dados: " & camada & "..."
         t0 = Timer
@@ -91,13 +101,18 @@ Public Function AtualizarDadosCore() As String
     mLotes.AtualizarListaLiberacao
     mEstatistica.AtualizarEstatistica
     RodarSeExistir "RecalcularEstatPeriodo"
+    mIncerteza.RecalcularIncerteza                 ' ADR-064: incerteza de medicao (CIQ + CEQ)
     tempos = tempos & " · motor " & Format$(Timer - t0, "0.0") & "s"
 
+    If hist Then mAuditoria.RegistrarLog "ATUALIZACAO_MODO_HISTORICO", _
+        "MODO_FONTE = HISTORICO: DB_SEAC nao lido; reprocessado o historico ja recebido (" & nRec1 & " resultados)"
+
     mApp.fim
-    AtualizarDadosCore = "Atualização concluída." & vbCrLf & vbCrLf & _
+    AtualizarDadosCore = IIf(hist, AvisoHistorico() & vbCrLf & vbCrLf, "") & _
+           "Atualização concluída." & vbCrLf & vbCrLf & _
            "Resultados recebidos: " & Format$(nRec1, "#,##0") & " (novos nesta atualização: " & (nRec1 - nRec0) & ")" & vbCrLf & _
            "Principal - Resultados: " & Format$(Linhas(FONTE_CQ), "#,##0") & " resultados" & vbCrLf & _
-           ResumoQA() & vbCrLf & vbCrLf & "Tempo: " & tempos
+           ResumoQA() & ResumoLotes(resLotes) & vbCrLf & vbCrLf & "Tempo: " & tempos
     Exit Function
 falha:
     Dim nE As Long, sE As String
@@ -119,6 +134,22 @@ Public Function AtualizarDadosAutomatico() As String
     Exit Function
 falha:
     AtualizarDadosAutomatico = "ERRO|" & Err.Description
+End Function
+
+' ADR-058. MODO_FONTE = HISTORICO: a consulta SEAC_ORIGEM nao le o DB_SEAC e as
+' camadas reprocessam so o que ja foi recebido. SEAC (ou vazio) e o modo normal.
+' Aceita a grafia acentuada: UCase$("Histórico") = "HISTÓRICO" (mesma armadilha
+' do item 7.4 do QUALITY_GATE).
+Public Function ModoHistorico() As Boolean
+    Dim m As String
+    m = UCase$(Trim$(Cfg("MODO_FONTE")))
+    ModoHistorico = (m = "HISTORICO" Or m = "HISTÓRICO")
+End Function
+
+Private Function AvisoHistorico() As String
+    AvisoHistorico = "ATENÇÃO - MODO HISTÓRICO: o DB_SEAC NÃO foi lido. Nenhum resultado novo entrou; " & _
+                     "inativações, manuais e comentários foram reprocessados sobre o histórico já recebido." & vbCrLf & _
+                     "Na rede do laboratório, volte Cfg_Integracao MODO_FONTE = SEAC."
 End Function
 
 ' Refresh SINCRONO de uma tabela de consulta. BackgroundQuery = False faz o
@@ -173,6 +204,22 @@ Public Function ContarQA(ByVal severidade As String) As Long
     If lo Is Nothing Then Exit Function
     If lo.ListRows.Count = 0 Then Exit Function
     ContarQA = Application.WorksheetFunction.CountIf(lo.ListColumns("SEVERIDADE").DataBodyRange, severidade)
+End Function
+
+' ADR-060: o que o registro automatico de lotes fez nesta atualizacao.
+Private Function ResumoLotes(ByVal r As String) As String
+    Dim p As Variant
+    If Len(r) = 0 Then Exit Function
+    p = Split(r & "|||", "|")
+    If p(0) = "ERRO" Then
+        ResumoLotes = vbCrLf & "ATENÇÃO: o registro automático de lotes falhou (" & p(1) & "). Os dados foram atualizados."
+    ElseIf Val(p(1)) > 0 Then
+        ResumoLotes = vbCrLf & "Lotes novos registrados automaticamente: " & Replace(p(2), ";", ", ") & _
+                      " (falta a validade)."
+    End If
+    If p(0) = "OK" And Len(p(3)) > 0 Then
+        ResumoLotes = ResumoLotes & vbCrLf & "ATENÇÃO: cadastro de lotes cheio (100). Não couberam: " & Replace(p(3), ";", ", ")
+    End If
 End Function
 
 Private Function ResumoQA() As String
@@ -257,11 +304,16 @@ End Sub
 ' Mesma normalizacao do Power Query (DB_CQ_FINAL.NormId): numero puro = ID do
 ' interfaceamento deste setor; MAN_7 / man_0007 -> MAN_0007.
 Public Function NormalizarId(ByVal v As Variant) As String
-    Dim t As String, resto As String
-    t = UCase$(Replace(Trim$(CStr(v)), " ", ""))
+    ' Mesma regra do NormId do PQ (DB_CQ_FINAL e QA_INTEGRACAO) -- D14 (QA-ETL-001): sem espaco nem NBSP
+    ' (colado de e-mail/web) e numero sem zeros a esquerda ("00123" e "HEM-00123" = HEM-123); prefixo em maiusculas.
+    Dim t As String, resto As String, pre As String
+    t = UCase$(Replace(Replace(Trim$(CStr(v)), " ", ""), ChrW$(160), ""))
     If Len(t) = 0 Then Exit Function
+    pre = UCase$(Trim$(Cfg("PREFIXO_ID"))) & "-"
     If SoDigitos(t) Then
-        NormalizarId = Cfg("PREFIXO_ID") & "-" & t
+        NormalizarId = pre & SemZeros(t)
+    ElseIf Left$(t, Len(pre)) = pre And SoDigitos(Mid$(t, Len(pre) + 1)) Then
+        NormalizarId = pre & SemZeros(Mid$(t, Len(pre) + 1))
     ElseIf Left$(t, 4) = "MAN_" Then
         resto = Mid$(t, 5)
         If SoDigitos(resto) Then NormalizarId = "MAN_" & Right$(String$(4, "0") & resto, IIf(Len(resto) > 4, Len(resto), 4)) _
@@ -278,6 +330,13 @@ Private Function SoDigitos(ByVal t As String) As Boolean
         If Mid$(t, i, 1) < "0" Or Mid$(t, i, 1) > "9" Then Exit Function
     Next i
     SoDigitos = True
+End Function
+
+Private Function SemZeros(ByVal d As String) As String
+    Do While Len(d) > 1 And Left$(d, 1) = "0"
+        d = Mid$(d, 2)
+    Loop
+    SemZeros = d
 End Function
 
 ' Valor de tblConfigIntegracao (CHAVE -> VALOR).
@@ -381,24 +440,63 @@ End Function
 
 ' Proximo MAN_nnnn: o maior numero ja usado + 1 (nunca reaproveita um ID).
 Public Function ProximoIdManual(ByVal lo As ListObject) As String
-    Dim v As Variant, i As Long, mx As Long, t As String, n As Long
-    If lo.ListRows.Count > 0 Then
-        v = lo.ListColumns("ID_REGISTRO").DataBodyRange.Value
-        If Not IsArray(v) Then
-            Dim u(1 To 1, 1 To 1) As Variant: u(1, 1) = v: v = u
+    ' D05 (QA-ETL-001): NUNCA reaproveita um MAN_ ja usado. Antes era "maior MAN_ presente + 1": apagar a ultima
+    ' linha manual devolvia o numero, e o manual novo herdava a inativacao e o comentario do anterior (nascia
+    ' INATIVADO). O maximo agora vem da tabela manual, das tabelas que citam IDs (inativacao, comentarios), da
+    ' tblCQ_Final e de uma marca persistente no arquivo (nome oculto qcUltimoIdManual).
+    Dim mx As Long, n As Long, nome As Variant, l As ListObject
+    mx = MaiorIdManual(lo)
+    For Each nome In Array("tblInativacao_NaoConformes", "tblComentariosTecnicos", "tblCQ_Final")
+        Set l = Nothing
+        On Error Resume Next
+        Set l = AcharTabela(CStr(nome))
+        On Error GoTo 0
+        If Not l Is Nothing Then
+            n = MaiorIdManual(l)
+            If n > mx Then mx = n
         End If
-        For i = 1 To UBound(v, 1)
-            t = UCase$(Trim$(CStr(v(i, 1))))
-            If Left$(t, 4) = "MAN_" Then
-                If SoDigitos(Mid$(t, 5)) Then
-                    n = CLng(Mid$(t, 5))
-                    If n > mx Then mx = n
-                End If
-            End If
-        Next i
-    End If
+    Next nome
+    n = MarcaIdManual()
+    If n > mx Then mx = n
     ProximoIdManual = "MAN_" & Format$(mx + 1, "0000")
+    GravarMarcaIdManual mx + 1
 End Function
+
+' Maior numero n de "MAN_n" (com ou sem o sufixo ~L<linha> da DB_CQ_FINAL) na coluna ID_REGISTRO da tabela.
+Private Function MaiorIdManual(ByVal lo As ListObject) As Long
+    Dim v As Variant, i As Long, t As String, n As Long, p As Long
+    On Error GoTo sai
+    If lo.ListRows.Count = 0 Then Exit Function
+    v = lo.ListColumns("ID_REGISTRO").DataBodyRange.Value
+    If Not IsArray(v) Then
+        Dim u(1 To 1, 1 To 1) As Variant: u(1, 1) = v: v = u
+    End If
+    For i = 1 To UBound(v, 1)
+        t = UCase$(Trim$(CStr(v(i, 1))))
+        p = InStr(t, "~")
+        If p > 0 Then t = Left$(t, p - 1)
+        If Left$(t, 4) = "MAN_" Then
+            If SoDigitos(Mid$(t, 5)) And Len(t) <= 13 Then
+                n = CLng(Mid$(t, 5))
+                If n > MaiorIdManual Then MaiorIdManual = n
+            End If
+        End If
+    Next i
+sai:
+End Function
+
+Private Function MarcaIdManual() As Long
+    Dim r As String
+    On Error Resume Next
+    r = ThisWorkbook.Names("qcUltimoIdManual").RefersTo
+    If Len(r) > 1 Then MarcaIdManual = CLng(Val(Mid$(r, 2)))
+End Function
+
+Private Sub GravarMarcaIdManual(ByVal n As Long)
+    On Error Resume Next
+    If n <= MarcaIdManual() Then Exit Sub
+    ThisWorkbook.Names.Add Name:="qcUltimoIdManual", RefersTo:="=" & CStr(n), Visible:=False
+End Sub
 
 ' Chamado pelo Worksheet_Change das abas de entrada.
 Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)

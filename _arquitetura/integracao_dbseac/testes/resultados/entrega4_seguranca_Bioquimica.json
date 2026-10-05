@@ -1,0 +1,229 @@
+[
+ {
+  "teste": "S01 Arquivo salvo travado (XML): só Login visível, toda aba com <sheetProtection>, estrutura travada",
+  "resultado": "PASS",
+  "evidencia": {
+   "arquivo": "QC_Bioquimica.xlsm"
+  }
+ },
+ {
+  "teste": "S02 Usuarios: sessão (N1:N2) e tabela (A4:E53) travadas; só o cadastro editável; hash oculto; sessão vazia no arquivo",
+  "resultado": "PASS",
+  "evidencia": {
+   "travas": {
+    "N1:N2": true,
+    "A4:E53": true
+   },
+   "cadastro_destravado": {
+    "cadLogin": false,
+    "cadNome": false,
+    "cadSenha": false,
+    "cadPapel": false
+   },
+   "hash_oculto": true,
+   "sessao": [
+    "",
+    ""
+   ]
+  }
+ },
+ {
+  "teste": "S03 Senha errada: não entra, sessão vazia, LOGIN_FALHOU na trilha (com o login tentado, sem a senha)",
+  "resultado": "PASS",
+  "evidencia": {
+   "sessao": [
+    "",
+    ""
+   ],
+   "msg": "Usuario ou senha invalidos.",
+   "evento": [
+    {
+     "acao": "LOGIN_FALHOU",
+     "categoria": "SEGURANCA",
+     "usuario": "(sem login)",
+     "papel_sessao": "(sem papel)",
+     "st_ant": null,
+     "st_novo": null,
+     "parecer": "login informado: QA_ANA"
+    }
+   ]
+  }
+ },
+ {
+  "teste": "S04 Login ANALISTA: sessão = tabela (QA_ANA/ANALISTA), LOGIN na trilha, Calc oculta, Audit_Log filtrável",
+  "resultado": "PASS",
+  "evidencia": {
+   "sessao": [
+    "QA_ANA",
+    "ANALISTA"
+   ],
+   "evento": [
+    {
+     "acao": "LOGIN",
+     "categoria": "SEGURANCA",
+     "usuario": "QA_ANA",
+     "papel_sessao": "ANALISTA",
+     "st_ant": null,
+     "st_novo": "ANALISTA",
+     "parecer": null
+    }
+   ],
+   "calc_veryHidden": true,
+   "audit_AllowFiltering": true
+  }
+ },
+ {
+  "teste": "S05 ANALISTA cria um ADM: recusado, ninguém criado, recusa na trilha",
+  "resultado": "PASS",
+  "evidencia": {
+   "msg": "Somente o ADM cadastra usuarios e define ou redefine senhas (inclusive a propria). Procure o administrador."
+  }
+ },
+ {
+  "teste": "S06 ANALISTA regrava a senha do ADM: recusado, hash do ADM intacto (achado CRÍTICO da FASE3A)",
+  "resultado": "PASS",
+  "evidencia": {
+   "msg": "Somente o ADM cadastra usuarios e define ou redefine senhas (inclusive a propria). Procure o administrador."
+  }
+ },
+ {
+  "teste": "S07 ANALISTA muda a própria função para ADM: recusado, continua ANALISTA",
+  "resultado": "PASS",
+  "evidencia": {
+   "msg": "Somente o ADM cadastra usuarios e define ou redefine senhas (inclusive a propria). Procure o administrador."
+  }
+ },
+ {
+  "teste": "S08 ANALISTA não cria usuário (definir a senha inicial é definir senha): recusado, ninguém criado, formulário sem senha",
+  "resultado": "PASS",
+  "evidencia": {
+   "msg": "Somente o ADM cadastra usuarios e define ou redefine senhas (inclusive a propria). Procure o administrador."
+  }
+ },
+ {
+  "teste": "S09 ANALISTA não troca nem a própria senha: recusado, hash intacto, recusa na trilha",
+  "resultado": "PASS",
+  "evidencia": {
+   "msg": "Somente o ADM cadastra usuarios e define ou redefine senhas (inclusive a propria). Procure o administrador."
+  }
+ },
+ {
+  "teste": "S10 Sessão forjada: célula travada; papel forçado → papel vem da tabela; login forçado para o ADM → \"sessão inválida\", hash intacto",
+  "resultado": "PASS",
+  "evidencia": {
+   "celula_bloqueada": true,
+   "msg_papel": "Somente o ADM cadastra usuarios e define ou redefine senhas (inclusive a propria). Procure o administrador.",
+   "msg_login": "Sessao invalida: faca login novamente."
+  }
+ },
+ {
+  "teste": "S11 Logout limpa a sessão (LOGOUT na trilha); UnlockApp sem login (Alt+F8) não revela nenhuma aba",
+  "resultado": "PASS",
+  "evidencia": {
+   "sessao": [
+    "",
+    ""
+   ],
+   "visiveis_apos_UnlockApp": [
+    "Login"
+   ]
+  }
+ },
+ {
+  "teste": "S12 TÉCNICO: não cria usuário, não troca a própria senha, UnprotectAll (Alt+F8) não desprotege nada; nenhum hash mudou sob sessão TÉCNICO/ANALISTA",
+  "resultado": "PASS",
+  "evidencia": {
+   "msg_criar": "Somente o ADM cadastra usuarios e define ou redefine senhas (inclusive a propria). Procure o administrador.",
+   "msg_propria": "Somente o ADM cadastra usuarios e define ou redefine senhas (inclusive a propria). Procure o administrador.",
+   "abas_continuam_protegidas": true,
+   "hashes_inalterados": true
+  }
+ },
+ {
+  "teste": "S13 ADM cria TÉCNICO (\"Tecnico\" normalizado), redefine senha e função de outro e troca a própria: tudo aceito e na trilha",
+  "resultado": "PASS",
+  "evidencia": {
+   "msgs": [
+    "Usuario 'QA_TEC2' salvo (TÉCNICO).",
+    "Usuario 'QA_TEC2' salvo (ANALISTA).",
+    "Usuario 'QA_ADM' salvo (ADM)."
+   ]
+  }
+ },
+ {
+  "teste": "S14 Último ADM não se rebaixa (o sistema ficaria sem administrador)",
+  "resultado": "PASS",
+  "evidencia": {
+   "msg": "O usuario 'QA_ADM' e o unico ADM. Cadastre outro ADM antes de mudar esta funcao.",
+   "outros_adm_na_copia": 1
+  }
+ },
+ {
+  "teste": "S15 Modo Desenvolvedor com senha errada: não abre e deixa marca na trilha",
+  "resultado": "PASS",
+  "evidencia": {
+   "retorno": false,
+   "evento": [
+    {
+     "acao": "MODO_DESENVOLVEDOR_RECUSADO",
+     "categoria": "SEGURANCA",
+     "usuario": "QA_ADM",
+     "papel_sessao": "ADM",
+     "st_ant": "ADM",
+     "st_novo": null,
+     "parecer": "senha incorreta"
+    }
+   ]
+  }
+ },
+ {
+  "teste": "S16 Nenhuma senha nem hash de senha na trilha; todos os eventos de acesso na categoria SEGURANCA",
+  "resultado": "PASS",
+  "evidencia": {
+   "vazamentos": [],
+   "eventos": 20
+  }
+ },
+ {
+  "teste": "S17 Cadeia de hash da Audit_Log íntegra depois de todos os eventos de segurança",
+  "resultado": "PASS",
+  "evidencia": {
+   "verificacao": "OK|58"
+  }
+ },
+ {
+  "teste": "S18 Sessão ADM: abas técnicas desprotegidas, mas a trilha (Audit_Log) continua protegida -- antes o ADM a editava sem rastro; SessaoAtiva (guarda das macros que alteram dados, ex.: NovoLote) só depois do login",
+  "resultado": "PASS",
+  "evidencia": {
+   "papel": "ADM",
+   "audit_protegida": true,
+   "configuracao_aberta": true,
+   "sessao_antes_depois_login": [
+    false,
+    true
+   ]
+  }
+ },
+ {
+  "teste": "S19 Depois do Ctrl+S a sessão continua como estava: mesma aba ativa, abas do ADM visíveis e abertas, sessão válida, pasta marcada como salva",
+  "resultado": "PASS",
+  "evidencia": {
+   "aba_ativa": "Painel",
+   "visiveis": 34,
+   "sessao": "QA_ADM",
+   "saved": true,
+   "sessao_ativa": true
+  }
+ },
+ {
+  "teste": "S20 O arquivo gravado NO MEIO da sessão ADM está TRAVADO no disco (XML: só Login visível, toda aba com <sheetProtection>, estrutura travada) e sem a identidade da sessão -- com macros desabilitadas não abre nada",
+  "resultado": "PASS",
+  "evidencia": {
+   "xml_travado": true,
+   "sessao_gravada": [
+    "",
+    ""
+   ]
+  }
+ }
+]

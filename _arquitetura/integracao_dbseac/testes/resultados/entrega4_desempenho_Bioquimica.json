@@ -1,0 +1,107 @@
+{
+ "resultados": [
+  {
+   "teste": "P01 1ª troca de analito depois do login (motor aquecido no login) dentro do teto",
+   "resultado": "PASS",
+   "evidencia": {
+    "frio_ms": 161,
+    "aquecer_no_login_s": 0.836,
+    "teto_ms": 600
+   }
+  },
+  {
+   "teste": "P02 Trocas seguintes pelo spinner: mediana e máximo dentro do teto",
+   "resultado": "PASS",
+   "evidencia": {
+    "quente": {
+     "mediana_ms": 121,
+     "p90_ms": 143,
+     "max_ms": 184,
+     "n": 12
+    },
+    "componentes_ms": {
+     "AtualizarCalc": 21,
+     "RegistrarEventosWestgard": 1,
+     "AtualizarPainelEng": 3,
+     "Application.Calculate": 46,
+     "AtualizarEixos": 8
+    },
+    "tetos": [
+     300,
+     600
+    ]
+   }
+  },
+  {
+   "teste": "P03 Escolha do analito pela lista (C3) dentro do teto",
+   "resultado": "PASS",
+   "evidencia": {
+    "lista": {
+     "mediana_ms": 149,
+     "p90_ms": 157,
+     "max_ms": 168,
+     "n": 4
+    },
+    "teto_ms": 450
+   }
+  },
+  {
+   "teste": "P04 Spinner limitado aos analitos cadastrados (não cai em posição vazia)",
+   "resultado": "PASS",
+   "evidencia": {
+    "spinner": [
+     1,
+     31
+    ],
+    "analitos": 31
+   }
+  }
+ ],
+ "medicao": {
+  "produto": "Bioquimica",
+  "visivel": false,
+  "aquecer_s": 0.836,
+  "analitos": 31,
+  "spinner_min_max": [
+   1,
+   31
+  ],
+  "frio": {
+   "link_ms": 72,
+   "macro_ms": 89,
+   "total_ms": 161,
+   "analito": "Bicarbonato"
+  },
+  "quente_total": {
+   "mediana_ms": 121,
+   "p90_ms": 143,
+   "max_ms": 184,
+   "n": 12
+  },
+  "quente_link": {
+   "mediana_ms": 41,
+   "p90_ms": 46,
+   "max_ms": 67,
+   "n": 12
+  },
+  "quente_macro": {
+   "mediana_ms": 80,
+   "p90_ms": 104,
+   "max_ms": 117,
+   "n": 12
+  },
+  "lista": {
+   "mediana_ms": 149,
+   "p90_ms": 157,
+   "max_ms": 168,
+   "n": 4
+  },
+  "componentes_ms": {
+   "AtualizarCalc": 21,
+   "RegistrarEventosWestgard": 1,
+   "AtualizarPainelEng": 3,
+   "Application.Calculate": 46,
+   "AtualizarEixos": 8
+  }
+ }
+}

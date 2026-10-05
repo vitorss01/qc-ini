@@ -62,7 +62,14 @@ class P:
         return _wrap(_retry(self._o, *a, **k))
 
     def __iter__(self):
-        for x in _retry(iter, self._o):
+        # cada PASSO da enumeracao tambem pode ser rejeitado com o Excel ocupado (logo depois de um refresh):
+        # a retentativa vale para o next(), nao so para abrir o enumerador (04/10/2026, QA-ETL-001)
+        it = _retry(iter, self._o)
+        while True:
+            try:
+                x = _retry(next, it)
+            except StopIteration:
+                return
             yield _wrap(x)
 
     @property
@@ -70,10 +77,63 @@ class P:
         return self._o
 
 
+CO_E_SERVER_EXEC_FAILURE = -2146959355
+
+
+_AUXILIAR = []
+
+
+def _caminho_excel():
+    import winreg
+    for raiz in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+        try:
+            with winreg.OpenKey(raiz, r'SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\excel.exe') as k:
+                v = winreg.QueryValue(k, None)
+                if v and os.path.exists(v.strip('"')):
+                    return v.strip('"')
+        except OSError:
+            pass
+    for v in (r'C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE',
+              r'C:\Program Files (x86)\Microsoft Office\root\Office16\EXCEL.EXE'):
+        if os.path.exists(v):
+            return v
+    return None
+
+
+def _criar_excel():
+    """DispatchEx com recuperacao do 0x80080005 (CO_E_SERVER_EXEC_FAILURE).
+
+    Nesta instalacao o Excel lancado PELO DCOM, a frio, as vezes nao se registra a
+    tempo ("o servidor nao se registrou no DCOM dentro do tempo limite": >90 s).
+    Medido em 03/10/2026: com QUALQUER Excel ja de pe na maquina, a mesma ativacao
+    sobe em ~15 s. Entao, na falha, lanca um Excel AUXILIAR (/automation, sem pasta,
+    pelo caminho completo do registro -- 'start excel.exe' nao funciona aqui) e tenta
+    de novo. O auxiliar fica de pe ate o fim do processo Python e mantem as proximas
+    ativacoes rapidas; o fechar() continua encerrando so o Excel desta sessao."""
+    import subprocess
+    ultimo = None
+    for tentativa in range(1, 7):
+        try:
+            return w.DispatchEx('Excel.Application')
+        except pythoncom.com_error as e:
+            if e.args[0] != CO_E_SERVER_EXEC_FAILURE:
+                raise
+            ultimo = e
+            if not _AUXILIAR:
+                exe = _caminho_excel()
+                if exe:
+                    try:
+                        _AUXILIAR.append(subprocess.Popen([exe, '/automation']))
+                    except Exception:
+                        pass
+            time.sleep(5 * tentativa)
+    raise ultimo
+
+
 class Excel:
     def __init__(self, visivel=False, eventos=False):
         pythoncom.CoInitialize()
-        self.xl = P(w.DispatchEx('Excel.Application'))
+        self.xl = P(_criar_excel())
         self.xl.Visible = visivel
         self.xl.DisplayAlerts = False
         self.xl.EnableEvents = eventos
@@ -135,9 +195,35 @@ class Excel:
                 self.wb.Close(False)
         except Exception:
             pass
+        # Matar o Excel com pasta ABERTA faz ele marcar aquele caminho como "causou um erro grave":
+        # na proxima abertura pergunta se continua e, em automacao (sem alerta), o Open falha
+        # (03/10/2026). Entao: fecha TODAS as pastas (chamada sincrona), Quit, solta as referencias
+        # e espera o processo sair; so mata o que sobrar -- ja sem nenhum arquivo aberto.
+        try:
+            self.xl.DisplayAlerts = False
+            for b in list(self.xl.Workbooks):
+                try:
+                    b.Close(False)
+                except Exception:
+                    pass
+        except Exception:
+            pass
         try:
             self.xl.Quit()
         except Exception:
             pass
-        time.sleep(1.5)
-        self.matar()   # garante que nao sobra zumbi segurando o arquivo
+        self.xl = None
+        self.wb = None
+        if not self.esperar_saida(6):
+            self.matar()   # garante que nao sobra zumbi segurando o arquivo
+
+    def esperar_saida(self, teto):
+        import win32event
+        try:
+            h = win32api.OpenProcess(0x00100000, False, self.pid)        # SYNCHRONIZE
+        except Exception:
+            return True                                                  # ja saiu
+        try:
+            return win32event.WaitForSingleObject(h, int(teto * 1000)) == win32event.WAIT_OBJECT_0
+        finally:
+            win32api.CloseHandle(h)

@@ -1,0 +1,233 @@
+[
+ {
+  "teste": "A00 A entrega chega com os lotes recebidos já registrados (origem automática), sem validade",
+  "resultado": "PASS",
+  "evidencia": {
+   "lotes_ja_registrados_na_entrega": [
+    "528211",
+    "533811",
+    "536411",
+    "602911",
+    "608511",
+    "614011",
+    "619611",
+    "625311"
+   ]
+  }
+ },
+ {
+  "teste": "A01 ATUALIZAR DADOS registra sozinho os lotes recebidos (interfaceamento + analito cadastrado), anexados no fim, em ordem de chegada, sem validade, com origem; trilha CONFIGURACAO; QA sem I03",
+  "resultado": "PASS",
+  "evidencia": {
+   "esperados": [
+    "528211",
+    "533811",
+    "536411",
+    "602911",
+    "608511",
+    "614011",
+    "619611",
+    "625311"
+   ],
+   "registrados": [
+    "528211",
+    "533811",
+    "536411",
+    "602911",
+    "608511",
+    "614011",
+    "619611",
+    "625311"
+   ],
+   "linhas": [
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34
+   ],
+   "eventos": 8,
+   "I03_restantes": 0,
+   "origem_exemplo": "automático em 04/10/2026 · 7028 resultado(s) de 31/10/2025 a 23/12/2025 · XN1000",
+   "tempo_atualizar_s": 54.1,
+   "linha_resumo": [
+    "Lotes novos registrados automaticamente: 528211, 533811, 536411, 602911, 608511, 614011, 619611, 625311 (falta a validade).\r"
+   ]
+  }
+ },
+ {
+  "teste": "A02 Segunda passada não registra nada (idempotente) e é rápida",
+  "resultado": "PASS",
+  "evidencia": {
+   "retorno": "OK|0||",
+   "tempo_s": 0.228,
+   "linhas_tblCQ_Final": 44392
+  }
+ },
+ {
+  "teste": "A03 Lote digitado em resultado MANUAL (QA7777) não entra no cadastro (lote fantasma)",
+  "resultado": "PASS",
+  "evidencia": {
+   "cadastro_tem_QA7777": false
+  }
+ },
+ {
+  "teste": "A04 Lotes sem validade = novos + os que já estavam sem validade",
+  "resultado": "PASS",
+  "evidencia": {
+   "antes": "0|",
+   "agora": "8|528211;533811;536411;602911;608511;614011;619611;625311"
+  }
+ },
+ {
+  "teste": "A05 Validade digitada: sai da lista de pendentes, fica na trilha com antes/depois, sombra atualizada",
+  "resultado": "PASS",
+  "evidencia": {
+   "pendentes": "7",
+   "evento": [
+    {
+     "acao": "VALIDADE_LOTE_ALTERADA",
+     "categoria": "CONFIGURACAO",
+     "lote": "528211",
+     "antes": "<VAZIO>",
+     "depois": "30/09/2026",
+     "parecer": "Validade do lote 528211: (vazia) -> 30/09/2026"
+    }
+   ],
+   "texto_celula": "30/09/2026"
+  }
+ },
+ {
+  "teste": "A06 Texto colado na validade (passa por cima da validação de dados) é recusado e desfeito, sem trilha",
+  "resultado": "PASS",
+  "evidencia": {
+   "celula_depois": ""
+  }
+ },
+ {
+  "teste": "A07 Em automação (Interactive=False) o aviso não abre caixa nenhuma (não trava o Excel)",
+  "resultado": "PASS",
+  "evidencia": {
+   "tempo_s": 0.0
+  }
+ },
+ {
+  "teste": "A08 Caixa de verdade: \"detectei lote SEM DATA DE VALIDADE ... RECOMENDADO: vamos inserir agora?\" -> Sim leva à célula da validade do 1º lote pendente",
+  "resultado": "PASS",
+  "evidencia": {
+   "dialogo": [
+    {
+     "titulo": "Lotes — validade pendente",
+     "texto": "Detectei 7 lotes de controle SEM DATA DE VALIDADE:\r\n\r\n     533811, 536411, 602911, 608511, 614011, 619611, 625311\r\n\r\nO cadastro do lote é automático, mas a validade precisa ser informada por você (bula/rótulo do controle).\r\nNÃO é recomendado — não devemos trabalhar sem registrar a data de validade.\r\n\r\nRECOMENDADO: vamos inserir agora?",
+     "botoes": [
+      "NÃO",
+      "SIM"
+     ],
+     "clicou": "Sim"
+    }
+   ],
+   "aba_ativa": "Configuração",
+   "celula_ativa": "$D$28",
+   "primeira_pendente": 28
+  }
+ },
+ {
+  "teste": "A09 Não -> segunda caixa: \"NÃO é recomendado ... vai aparecer de novo toda vez que o arquivo for aberto\"; adiamento na trilha; pendências continuam",
+  "resultado": "PASS",
+  "evidencia": {
+   "dialogos": [
+    {
+     "titulo": "Lotes — validade pendente",
+     "texto": "Detectei 7 lotes de controle SEM DATA DE VALIDADE:\r\n\r\n     533811, 536411, 602911, 608511, 614011, 619611, 625311\r\n\r\nO cadastro do lote é automático, mas a validade precisa ser informada por você (bula/rótulo do controle).\r\nNÃO é recomendado — não devemos trabalhar sem registrar a data de validade.\r\n\r\nRECOMENDADO: vamos inserir agora?",
+     "botoes": [
+      "NÃO",
+      "SIM"
+     ],
+     "clicou": "Não"
+    },
+    {
+     "titulo": "Lotes — validade pendente",
+     "texto": "NÃO é recomendado trabalhar sem a data de validade do lote.\r\n\r\nLote(s) sem validade: 533811, 536411, 602911, 608511, 614011, 619611, 625311\r\n\r\nEste aviso vai aparecer de novo toda vez que o arquivo for aberto, até a validade ser registrada (Configuração > cadastro de lotes, coluna Validade).",
+     "botoes": [
+      "OK"
+     ],
+     "clicou": "OK"
+    }
+   ],
+   "evento": [
+    {
+     "acao": "VALIDADE_LOTE_ADIADA",
+     "categoria": "CONFIGURACAO",
+     "lote": "",
+     "antes": null,
+     "depois": null,
+     "parecer": "Usuario adiou o registro da validade: 533811, 536411, 602911, 608511, 614011, 619611, 625311"
+    }
+   ]
+  }
+ },
+ {
+  "teste": "A10 Lote novo é anexado no FIM (nunca reaproveita buraco: a posição endereça a Liberação); cadastro cheio registra o que cabe e informa o resto, sem erro",
+  "resultado": "PASS",
+  "evidencia": {
+   "retorno": "OK|1|619611|625311",
+   "C125": "619611",
+   "buraco_reusado": false
+  }
+ },
+ {
+  "teste": "A11 Validade do lote em uso (C21) enxerga as 100 linhas do cadastro (a Bioquímica olhava só 25)",
+  "resultado": "PASS",
+  "evidencia": {
+   "C21": "15/08/2027"
+  }
+ },
+ {
+  "teste": "A12 Configuração travada; editáveis só identificação/constantes (C5:C16), lote em uso (C20) e validade (D26:D125)",
+  "resultado": "PASS",
+  "evidencia": {
+   "locked": {
+    "B26": true,
+    "C26": true,
+    "C21": true,
+    "AB2": true,
+    "E26": true,
+    "C9": false,
+    "D26": false,
+    "D125": false,
+    "C20": false
+   },
+   "protegida": true,
+   "sombra_oculta": true
+  }
+ },
+ {
+  "teste": "A13 Fechou sem registrar a validade, abriu de novo, fez login: o MESMO aviso aparece (e o \"Não\" repete o alerta)",
+  "resultado": "PASS",
+  "evidencia": {
+   "sessao": "QA_ADM_LOTES",
+   "dialogos": [
+    {
+     "titulo": "Lotes — validade pendente",
+     "texto": "Detectei 7 lotes de controle SEM DATA DE VALIDADE:\r\n\r\n     533811, 536411, 602911, 608511, 614011, 619611, 625311\r\n\r\nO cadastro do lote é automático, mas a validade precisa ser informada por você (bula/rótulo do controle).\r\nNÃO é recomendado — não devemos trabalhar sem registrar a data de validade.\r\n\r\nRECOMENDADO: vamos inserir agora?",
+     "botoes": [
+      "NÃO",
+      "SIM"
+     ],
+     "clicou": "Não"
+    },
+    {
+     "titulo": "Lotes — validade pendente",
+     "texto": "NÃO é recomendado trabalhar sem a data de validade do lote.\r\n\r\nLote(s) sem validade: 533811, 536411, 602911, 608511, 614011, 619611, 625311\r\n\r\nEste aviso vai aparecer de novo toda vez que o arquivo for aberto, até a validade ser registrada (Configuração > cadastro de lotes, coluna Validade).",
+     "botoes": [
+      "OK"
+     ],
+     "clicou": "OK"
+    }
+   ]
+  }
+ }
+]

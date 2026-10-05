@@ -7,6 +7,23 @@ Public Const SHEET_START As String = "Início"
 Private Const DEV_HASH As String = "edbed0fcb2dac08503c515de40f4c771a137c4905cbe01ff60da11546f6e9c4f"
 Private m_K(0 To 63) As Long
 Private m_ready As Boolean
+' Papeis da lista fechada (ADR-059). Declaracao de modulo so pode ficar aqui,
+' antes do primeiro procedimento -- no meio do modulo e erro de COMPILACAO.
+Private Const PAPEL_ADM As String = "ADM"
+Private Const PAPEL_ANALISTA As String = "ANALISTA"
+Private Const PAPEL_TECNICO As String = "TÉCNICO"
+' Ancora da sessao EM MEMORIA (03/10/2026): gravada so pelo DoLogin depois da
+' senha conferida. As celulas currentUser/currentPapel podem ser forcadas por
+' quem desproteger a aba (a senha esta no VBA); esta variavel, nao. Se o VBA for
+' reiniciado ela some -- e o cadastro pede login de novo, que e o certo.
+Private mSessaoLogin As String
+' Estado gravado no disco (auditoria 04/10/2026): o BeforeSave grava TRANCADO e o AfterSave devolve
+' a vista de quem estava trabalhando -- sessao comum, ADM ou Modo Desenvolvedor.
+Private mModoDev As Boolean
+Private mTrancadoParaGravar As Boolean
+Private mAbaAntesGravar As String
+Private mUsuarioAntesGravar As String
+Private mPapelAntesGravar As String
 
 
 ' ============== ESCRITA EM ABA PROTEGIDA (ADR-046) ==============
@@ -25,6 +42,17 @@ Private m_ready As Boolean
 Public Function LiberarEscrita(ByVal ws As Worksheet) As Boolean
     LiberarEscrita = ws.ProtectContents
     If LiberarEscrita Then ws.Unprotect Password:="qcini2025"
+End Function
+
+
+' ADR-062: no caminho do CLIQUE (troca de analito), Protect/Unprotect com senha custa ~70-80 ms
+' CADA (hash da senha com 100 mil voltas; medido em 03/10/2026) e o motor fazia 2 ciclos por clique.
+' Com UserInterfaceOnly em vigor NESTA sessao (ProtectionMode, aplicado no login pelo ReprotectAll),
+' o VBA ja escreve sem desproteger: devolve False e o RestaurarProtecao do chamador nao faz nada.
+' Sem UserInterfaceOnly (automacao, arquivo recem-aberto) cai no LiberarEscrita normal (ADR-046).
+Public Function LiberarEscritaRapida(ByVal ws As Worksheet) As Boolean
+    If ws.ProtectContents And ws.ProtectionMode Then Exit Function
+    LiberarEscritaRapida = LiberarEscrita(ws)
 End Function
 
 
@@ -141,51 +169,219 @@ Private Function FindUserRow(ByVal login As String) As Long
     Next i
 End Function
 
+' ===================== PAPEIS E SESSAO (ADR-059) =====================
+'
+' FASE3A, achado CRITICO "escalacao de privilegio e sequestro de identidade":
+' o papel da sessao era lido da celula currentPapel, e CadastrarUsuario deixava
+' um ANALISTA criar um ADM ou regravar o hash de QUALQUER usuario existente --
+' inclusive o do ADM, e com ele assinar em nome de outro. Nada era registrado.
+'
+' Regras agora:
+'   1. o papel de quem age vem da TABELA de usuarios (pelo login da sessao),
+'      nunca da celula -- a celula so mostra;
+'   2. ninguem concede papel acima do proprio;
+'   3. SOMENTE O ADM CADASTRA USUARIOS E DEFINE OU REDEFINE SENHAS (decisao do
+'      usuario, 03/10/2026), inclusive a propria. Criar usuario tambem e definir
+'      senha: quem define a senha inicial a conhece e entraria como o novo usuario
+'      -- o mesmo vetor do achado critico. TECNICO e ANALISTA nao gravam hash;
+'   4. o ultimo ADM nao pode ser rebaixado (o sistema ficaria sem administrador);
+'   5. a sessao e LIMPA no logout e na abertura: quem entra nunca herda a
+'      identidade de quem usou o arquivo antes;
+'   6. login, falha de login, logout, cadastro, recusa, assinatura e Modo
+'      Desenvolvedor vao para o Audit_Log (categoria SEGURANCA). Senha e hash
+'      NUNCA entram no log.
+
+' Papel da lista fechada, ou "" se o texto nao for um papel. Aceita a grafia sem
+' acento: UCase$("Técnico") = "TÉCNICO" (mesma armadilha do item 7.4 do gate).
+Private Function NormalizarPapel(ByVal p As String) As String
+    Select Case UCase$(Trim$(p))
+        Case "ADM": NormalizarPapel = PAPEL_ADM
+        Case "ANALISTA": NormalizarPapel = PAPEL_ANALISTA
+        Case "TÉCNICO", "TECNICO": NormalizarPapel = PAPEL_TECNICO
+    End Select
+End Function
+
+Private Function NivelPapel(ByVal p As String) As Long
+    Select Case p
+        Case PAPEL_TECNICO: NivelPapel = 1
+        Case PAPEL_ANALISTA: NivelPapel = 2
+        Case PAPEL_ADM: NivelPapel = 3
+    End Select
+End Function
+
+' Papel do usuario segundo a tabela (aba Usuarios, coluna C).
+Public Function PapelDoUsuario(ByVal login As String) As String
+    Dim r As Long
+    r = FindUserRow(login)
+    If r > 0 Then PapelDoUsuario = NormalizarPapel(CStr(ThisWorkbook.Sheets("Usuarios").Cells(r, 3).Value))
+End Function
+
+Private Function ContarAdm() As Long
+    Dim ws As Worksheet, i As Long
+    Set ws = ThisWorkbook.Sheets("Usuarios")
+    For i = 4 To 53
+        If Trim$(CStr(ws.Cells(i, 1).Value)) <> "" Then
+            If NormalizarPapel(CStr(ws.Cells(i, 3).Value)) = PAPEL_ADM Then ContarAdm = ContarAdm + 1
+        End If
+    Next i
+End Function
+
+Private Function PrimeiraLinhaLivre() As Long
+    Dim ws As Worksheet, i As Long
+    Set ws = ThisWorkbook.Sheets("Usuarios")
+    For i = 4 To 53
+        If Trim$(CStr(ws.Cells(i, 1).Value)) = "" Then PrimeiraLinhaLivre = i: Exit Function
+    Next i
+End Function
+
+' Escreve num nome definido mesmo com a aba protegida (ADR-046): as celulas da
+' sessao e das mensagens ficam TRAVADAS, e UserInterfaceOnly pode nao estar em
+' vigor (nao persiste ao salvar). Quem precisa de garantia confere lendo de volta.
+Private Sub EscreverNome(ByVal nome As String, ByVal valor As Variant)
+    Dim rg As Range, prot As Boolean
+    On Error Resume Next
+    Set rg = ThisWorkbook.Names(nome).RefersToRange
+    If rg Is Nothing Then Exit Sub
+    prot = LiberarEscrita(rg.Worksheet)
+    rg.Value = valor
+    RestaurarProtecao rg.Worksheet, prot
+End Sub
+
+Private Sub EncerrarSessao()
+    mSessaoLogin = ""
+    EscreverNome "currentUser", ""
+    EscreverNome "currentPapel", ""
+End Sub
+
+' Evento de seguranca no Audit_Log. Mesmo criterio do mIntegracao: a trilha
+' nunca impede o login nem o cadastro -- falhar em registrar nao bloqueia o
+' laboratorio. stAnt/stNovo carregam o papel antes/depois.
+Private Sub AuditarSeg(ByVal acao As String, ByVal papelAnt As String, ByVal papelNovo As String, ByVal detalhe As String)
+    On Error Resume Next
+    mAuditoria.Auditar mAuditoria.CAT_SEG, acao, "mSeguranca", 0, Empty, "", "", 0, "", Empty, Empty, _
+                       papelAnt, papelNovo, "", detalhe
+End Sub
+
 Public Sub DoLogin()
-    Dim u As String, p As String, r As Long
+    Dim u As String, p As String, r As Long, ok As Boolean, papel As String, login As String
     On Error Resume Next
     u = Trim$(CStr(ThisWorkbook.Names("loginUser").RefersToRange.Value))
     p = CStr(ThisWorkbook.Names("loginPass").RefersToRange.Value)
-    ThisWorkbook.Names("loginPass").RefersToRange.Value = ""
+    On Error GoTo 0
+    EscreverNome "loginPass", ""
+    EncerrarSessao                       ' nada da sessao anterior sobrevive a uma tentativa
     r = FindUserRow(u)
-    If r > 0 And p <> "" Then
-        If LCase$(CStr(ThisWorkbook.Sheets("Usuarios").Cells(r, 4).Value)) = SHA256Hex(p) Then
-            ThisWorkbook.Names("currentUser").RefersToRange.Value = ThisWorkbook.Sheets("Usuarios").Cells(r, 1).Value
-            ThisWorkbook.Names("currentPapel").RefersToRange.Value = ThisWorkbook.Sheets("Usuarios").Cells(r, 3).Value
-            ThisWorkbook.Names("loginMsg").RefersToRange.Value = ""
-            UnlockApp
-            Exit Sub
-        End If
+    If r > 0 And p <> "" Then ok = (LCase$(CStr(ThisWorkbook.Sheets("Usuarios").Cells(r, 4).Value)) = SHA256Hex(p))
+    p = ""
+    If Not ok Then
+        EscreverNome "loginMsg", "Usuario ou senha invalidos."
+        AuditarSeg "LOGIN_FALHOU", "", "", "login informado: " & Left$(u, 60)
+        Exit Sub
     End If
-    ThisWorkbook.Names("loginMsg").RefersToRange.Value = "Usuario ou senha invalidos."
+    login = CStr(ThisWorkbook.Sheets("Usuarios").Cells(r, 1).Value)
+    papel = NormalizarPapel(CStr(ThisWorkbook.Sheets("Usuarios").Cells(r, 3).Value))
+    If Len(papel) = 0 Then
+        EscreverNome "loginMsg", "Usuario sem funcao valida (ADM, ANALISTA ou TÉCNICO). Procure o administrador."
+        AuditarSeg "LOGIN_FALHOU", "", "", "login " & login & " com funcao invalida na tabela"
+        Exit Sub
+    End If
+    EscreverNome "currentUser", login
+    EscreverNome "currentPapel", papel
+    ' a sessao tem de ser A DA TABELA: se a escrita falhou em silencio, o login
+    ' nao segue com o que estava na celula
+    If UsuarioSistema() <> login Or PapelSistema() <> papel Then
+        EncerrarSessao
+        EscreverNome "loginMsg", "Nao foi possivel abrir a sessao. Feche e abra o arquivo novamente."
+        AuditarSeg "LOGIN_FALHOU", "", papel, "login " & login & ": sessao nao gravada"
+        Exit Sub
+    End If
+    mSessaoLogin = login
+    EscreverNome "loginMsg", ""
+    AuditarSeg "LOGIN", "", papel, ""
+    UnlockApp
+    ' ADR-060: toda abertura passa pelo login -- lote sem validade avisa aqui
+    ' (so leitura; no Workbook_Open nao ha usuario nem a aba visivel para levar)
+    On Error Resume Next
+    mLotes.AvisarLotesSemValidade
+    ' ADR-062: o 1o clique no Painel nao paga mais a leitura do banco e o indice
+    Application.StatusBar = "Preparando o Painel..."
+    mEstatistica.AquecerMotor
+    Application.StatusBar = False
 End Sub
 
 Public Sub CadastrarUsuario()
-    Dim ws As Worksheet, lg$, nm$, sN$, pp$, r As Long
-    On Error Resume Next
+    Dim ws As Worksheet, lg As String, nm As String, sN As String, pedido As String
+    Dim ator As String, papelAtor As String, papelAnt As String, papelNovo As String
+    Dim r As Long, novo As Boolean, recusa As String, acao As String
+    Dim prot As Boolean, nE As Long, sE As String
     Set ws = ThisWorkbook.Sheets("Usuarios")
-    Dim ppAtual$
-    ppAtual = UCase$(Trim$(CStr(ThisWorkbook.Names("currentPapel").RefersToRange.Value)))
-    If ppAtual <> "ANALISTA" And ppAtual <> "ADM" Then
-        ThisWorkbook.Names("cadMsg").RefersToRange.Value = "Apenas ANALISTA/ADM pode cadastrar usuarios."
-        Exit Sub
-    End If
+    On Error Resume Next
     lg = Trim$(CStr(ThisWorkbook.Names("cadLogin").RefersToRange.Value))
     nm = Trim$(CStr(ThisWorkbook.Names("cadNome").RefersToRange.Value))
     sN = CStr(ThisWorkbook.Names("cadSenha").RefersToRange.Value)
-    pp = Trim$(CStr(ThisWorkbook.Names("cadPapel").RefersToRange.Value))
-    If lg = "" Or sN = "" Then ThisWorkbook.Names("cadMsg").RefersToRange.Value = "Preencha login e senha.": Exit Sub
-    If pp = "" Then pp = "TÉCNICO"
+    pedido = Trim$(CStr(ThisWorkbook.Names("cadPapel").RefersToRange.Value))
+    On Error GoTo 0
+    EscreverNome "cadSenha", ""          ' a senha digitada nunca fica no arquivo, nem na recusa
+
+    ator = UsuarioSistema()
+    papelAtor = PapelDoUsuario(ator)     ' da TABELA, nunca da celula da sessao
     r = FindUserRow(lg)
-    If r = 0 Then
-        For r = 4 To 53
-            If Trim$(CStr(ws.Cells(r, 1).Value)) = "" Then Exit For
-        Next r
+    novo = (r = 0)
+    If Not novo Then papelAnt = NormalizarPapel(CStr(ws.Cells(r, 3).Value))
+    If Len(pedido) = 0 Then
+        papelNovo = IIf(novo, PAPEL_TECNICO, papelAnt)
+    Else
+        papelNovo = NormalizarPapel(pedido)
     End If
-    ws.Cells(r, 1).Value = lg: ws.Cells(r, 2).Value = nm: ws.Cells(r, 3).Value = pp
+
+    If papelAtor <> PAPEL_ADM Then
+        recusa = "Somente o ADM cadastra usuarios e define ou redefine senhas (inclusive a propria). Procure o administrador."
+    ElseIf Len(mSessaoLogin) = 0 Or UCase$(mSessaoLogin) <> UCase$(ator) Then
+        recusa = "Sessao invalida: faca login novamente."
+    ElseIf lg = "" Or sN = "" Then
+        recusa = "Preencha login e senha."
+    ElseIf Len(papelNovo) = 0 Then
+        recusa = "Funcao invalida: use ADM, ANALISTA ou TÉCNICO."
+    ElseIf NivelPapel(papelNovo) > NivelPapel(papelAtor) Then
+        recusa = "Um " & papelAtor & " nao pode conceder a funcao " & papelNovo & "."
+    ElseIf Not novo And papelAnt = PAPEL_ADM And papelNovo <> PAPEL_ADM And ContarAdm() <= 1 Then
+        recusa = "O usuario '" & lg & "' e o unico ADM. Cadastre outro ADM antes de mudar esta funcao."
+    ElseIf novo Then
+        r = PrimeiraLinhaLivre()
+        If r = 0 Then recusa = "A tabela de usuarios esta cheia (50 linhas)."
+    End If
+    If Len(recusa) > 0 Then
+        sN = ""
+        EscreverNome "cadMsg", recusa
+        AuditarSeg "CADASTRO_RECUSADO", papelAnt, papelNovo, "alvo: " & Left$(lg, 60) & " | " & recusa
+        Exit Sub
+    End If
+
+    On Error GoTo restaura
+    prot = LiberarEscrita(ws)
+    ws.Cells(r, 1).Value = lg
+    If novo Or Len(nm) > 0 Then ws.Cells(r, 2).Value = nm
+    ws.Cells(r, 3).Value = papelNovo
     ws.Cells(r, 4).Value = SHA256Hex(sN)
-    ThisWorkbook.Names("cadSenha").RefersToRange.Value = ""
-    ThisWorkbook.Names("cadMsg").RefersToRange.Value = "Usuario '" & lg & "' salvo (" & pp & ")."
+restaura:
+    nE = Err.Number: sE = Err.Description
+    RestaurarProtecao ws, prot
+    On Error GoTo 0
+    sN = ""
+    If nE <> 0 Then
+        EscreverNome "cadMsg", "Erro ao salvar o usuario: " & sE
+        AuditarSeg "CADASTRO_RECUSADO", papelAnt, papelNovo, "alvo: " & Left$(lg, 60) & " | erro " & nE & ": " & sE
+        Exit Sub
+    End If
+    If novo Then
+        acao = "USUARIO_CRIADO"
+    ElseIf UCase$(lg) = UCase$(ator) Then
+        acao = "SENHA_PROPRIA_ALTERADA"
+    Else
+        acao = "USUARIO_ALTERADO"
+    End If
+    EscreverNome "cadMsg", "Usuario '" & lg & "' salvo (" & papelNovo & ")."
+    AuditarSeg acao, papelAnt, papelNovo, "alvo: " & lg
 End Sub
 
 Public Function AssinarCom(ByVal tcell As Range, ByVal login As String, ByVal senha As String, ByVal tipo As String) As String
@@ -193,11 +389,20 @@ Public Function AssinarCom(ByVal tcell As Range, ByVal login As String, ByVal se
     On Error Resume Next
     Set ws = ThisWorkbook.Sheets("Usuarios")
     r = FindUserRow(login)
-    If r = 0 Then AssinarCom = "Usuario nao encontrado.": Exit Function
-    If LCase$(CStr(ws.Cells(r, 4).Value)) <> SHA256Hex(senha) Or senha = "" Then AssinarCom = "Senha invalida.": Exit Function
-    papel = UCase$(Trim$(CStr(ws.Cells(r, 3).Value)))
-    If UCase$(tipo) = "FINALIZADO" And papel <> "ANALISTA" And papel <> "ADM" Then
+    If r = 0 Then
+        AssinarCom = "Usuario nao encontrado."
+        AuditarSeg "ASSINATURA_RECUSADA", "", "", tipo & " | login informado: " & Left$(login, 60) & " | " & AssinarCom
+        Exit Function
+    End If
+    If LCase$(CStr(ws.Cells(r, 4).Value)) <> SHA256Hex(senha) Or senha = "" Then
+        AssinarCom = "Senha invalida."
+        AuditarSeg "ASSINATURA_RECUSADA", "", "", tipo & " | login " & ws.Cells(r, 1).Value & " | " & AssinarCom
+        Exit Function
+    End If
+    papel = NormalizarPapel(CStr(ws.Cells(r, 3).Value))
+    If UCase$(tipo) = "FINALIZADO" And papel <> PAPEL_ANALISTA And papel <> PAPEL_ADM Then
         AssinarCom = "Apenas ANALISTA/ADM pode finalizar/liberar o equipamento."
+        AuditarSeg "ASSINATURA_RECUSADA", "", papel, tipo & " | login " & ws.Cells(r, 1).Value & " | " & AssinarCom
         Exit Function
     End If
     CarimbarRubrica ws, r, tcell
@@ -205,6 +410,10 @@ Public Function AssinarCom(ByVal tcell As Range, ByVal login As String, ByVal se
     On Error Resume Next
     tcell.Offset(0, 1).EntireColumn.AutoFit
     On Error GoTo 0
+    ' quem assinou pode nao ser quem esta logado (assinatura pede login e senha
+    ' proprios): o signatario vai no detalhe, a sessao fica no usuario do evento
+    AuditarSeg "ASSINATURA_" & UCase$(tipo), "", papel, "signatario: " & ws.Cells(r, 1).Value & _
+               " | " & tcell.Worksheet.Name & "!" & tcell.Address(False, False)
     AssinarCom = "OK"
 End Function
 
@@ -256,6 +465,8 @@ Public Sub LockApp()
     Dim ws As Worksheet
     Application.ScreenUpdating = False
     On Error Resume Next
+    EncerrarSessao                  ' ADR-059: a tela de login nunca guarda a identidade de ninguem
+    mModoDev = False
     LiberarEstrutura
     Sheets(SHEET_LOGIN).Visible = xlSheetVisible
     For Each ws In ThisWorkbook.Worksheets
@@ -272,9 +483,15 @@ End Sub
 
 Public Sub UnlockApp()
     Dim ws As Worksheet, isAdm As Boolean
+    ' Rodar pela lista de macros (Alt+F8) sem login revelava as abas: sem sessao
+    ' valida na tabela, volta para a tela de login.
+    If Len(PapelDoUsuario(UsuarioSistema())) = 0 Then
+        LockApp
+        Exit Sub
+    End If
     Application.ScreenUpdating = False
     On Error Resume Next
-    isAdm = (UCase$(Trim$(CStr(ThisWorkbook.Names("currentPapel").RefersToRange.Value))) = "ADM")
+    isAdm = (PapelDoUsuario(UsuarioSistema()) = PAPEL_ADM)      ' ADR-059: da tabela, nao da celula
     LiberarEstrutura
     For Each ws In ThisWorkbook.Worksheets
         Select Case ws.Name
@@ -300,22 +517,103 @@ Public Sub UnlockApp()
 End Sub
 
 Public Sub UnprotectAll()
+    ' Pela lista de macros (Alt+F8) qualquer usuario desprotegia o sistema inteiro:
+    ' so uma sessao ADM, conferida pela tabela e pela ancora em memoria.
+    If PapelDoUsuario(UsuarioSistema()) <> PAPEL_ADM Then Exit Sub
+    If UCase$(mSessaoLogin) <> UCase$(UsuarioSistema()) Then Exit Sub
     On Error Resume Next
     Dim ws As Worksheet
     For Each ws In ThisWorkbook.Worksheets
-        ws.Unprotect Password:="qcini2025"
+        ' a trilha (Audit_*) continua protegida tambem para o ADM: desprotegida, a sessao ADM
+        ' editava o Audit_Log sem deixar rastro (auditoria 04/10/2026). Quem grava nela e o mAuditoria.
+        If Not ws.Name Like "Audit_*" Then ws.Unprotect Password:="qcini2025"
     Next ws
+End Sub
+
+' Sessao aberta pelo DoLogin NESTA execucao do VBA: a ancora em memoria confere com a celula e o
+' papel vem da tabela. Macro que altera dados e roda pela lista (Alt+F8) na tela de login confere
+' isto antes de fazer qualquer coisa (auditoria 04/10/2026).
+Public Function SessaoAtiva() As Boolean
+    On Error Resume Next
+    If Len(mSessaoLogin) = 0 Then Exit Function
+    If UCase$(mSessaoLogin) <> UCase$(UsuarioSistema()) Then Exit Function
+    SessaoAtiva = (Len(PapelDoUsuario(UsuarioSistema())) > 0)
+End Function
+
+' ===================== ESTADO GRAVADO NO DISCO (auditoria 04/10/2026) =====================
+' Com macros desabilitadas (arquivo baixado, recebido por e-mail) o Workbook_Open nao roda: o que
+' protege o arquivo e o estado em que ele foi GRAVADO. A entrega sai blindada (blindar_entrega.py),
+' mas o primeiro Ctrl+S de uma sessao gravava as abas visiveis -- e, na sessao ADM ou no Modo
+' Desenvolvedor, desprotegidas (FASE3A #2, recomendacao P1). Agora o BeforeSave grava TRANCADO
+' (so o Login visivel, toda aba protegida, estrutura travada) sem encerrar a sessao, e o AfterSave
+' devolve a vista. Se o "Salvar como" for cancelado o AfterSave nao vem: fica a tela de login.
+Public Sub TrancarParaGravar()
+    Dim ws As Worksheet
+    On Error Resume Next
+    mAbaAntesGravar = ""
+    If ActiveWorkbook Is ThisWorkbook Then mAbaAntesGravar = ActiveSheet.Name
+    mTrancadoParaGravar = True
+    ' a identidade da sessao tambem nao vai para o disco (FASE3A: N1:N2 gravados com o ultimo login)
+    mUsuarioAntesGravar = Trim$(CStr(ThisWorkbook.Names("currentUser").RefersToRange.Value))   ' a celula, sem o
+    mPapelAntesGravar = Trim$(CStr(ThisWorkbook.Names("currentPapel").RefersToRange.Value))   ' "(sem login)"
+    EscreverNome "currentUser", ""
+    EscreverNome "currentPapel", ""
+    Application.ScreenUpdating = False
+    LiberarEstrutura
+    ThisWorkbook.Sheets(SHEET_LOGIN).Visible = xlSheetVisible
+    ThisWorkbook.Sheets(SHEET_LOGIN).Activate
+    For Each ws In ThisWorkbook.Worksheets
+        If ws.Name <> SHEET_LOGIN Then ws.Visible = xlSheetVeryHidden
+    Next ws
+    ReprotectAll
+    ThisWorkbook.Protect Password:="qcini2025", Structure:=True     ' no disco, sempre travada
+End Sub
+
+Public Sub RestaurarAposGravar()
+    Dim ws As Worksheet
+    If Not mTrancadoParaGravar Then Exit Sub
+    mTrancadoParaGravar = False
+    On Error Resume Next
+    If Len(mUsuarioAntesGravar) > 0 Then
+        EscreverNome "currentUser", mUsuarioAntesGravar
+        EscreverNome "currentPapel", mPapelAntesGravar
+    End If
+    mUsuarioAntesGravar = ""
+    mPapelAntesGravar = ""
+    If mModoDev Then
+        LiberarEstrutura
+        For Each ws In ThisWorkbook.Worksheets
+            ws.Unprotect Password:="qcini2025"
+            ws.Visible = xlSheetVisible
+        Next ws
+    ElseIf SessaoAtiva() Then
+        UnlockApp                    ' a mesma vista do login (o ADM ve as abas tecnicas)
+    Else
+        RestaurarEstrutura           ' sem sessao: fica a tela de login, como no repouso
+        Exit Sub
+    End If
+    Application.ScreenUpdating = False
+    If Len(mAbaAntesGravar) > 0 Then ThisWorkbook.Sheets(mAbaAntesGravar).Activate
+    ThisWorkbook.Saved = True        ' o disco ja tem tudo; so a vista mudou
+    Application.ScreenUpdating = True
 End Sub
 
 Public Sub ReprotectAll()
     On Error Resume Next
     Dim ws As Worksheet
     For Each ws In ThisWorkbook.Worksheets
-        ws.Protect Password:="qcini2025", UserInterfaceOnly:=True, DrawingObjects:=False, Contents:=True, Scenarios:=True
+        If ws.Name Like "Audit_*" Then
+            ' a trilha precisa de filtro e ordenacao para o auditor (item 3.1); a
+            ' protecao generica tirava as duas a cada login, ate o proximo evento
+            mAuditoria.ProtegerAudit ws
+        Else
+            ws.Protect Password:="qcini2025", UserInterfaceOnly:=True, DrawingObjects:=False, Contents:=True, Scenarios:=True
+        End If
     Next ws
 End Sub
 
 Public Sub Logout()
+    AuditarSeg "LOGOUT", PapelSistema(), "", ""
     LockApp
 End Sub
 
@@ -323,7 +621,7 @@ End Sub
 ' ===================== MODO DESENVOLVEDOR (Etapa 6) =====================
 ' Acionado por um Shape 100% transparente na aba Painel (sem atalho de teclado).
 Public Sub ModoDesenvolvedor()
-    Dim s As String, ws As Worksheet
+    Dim s As String
     frmDev.Confirmado = False
     frmDev.txtSenha.Value = ""
     frmDev.Show
@@ -333,10 +631,27 @@ Public Sub ModoDesenvolvedor()
     End If
     s = frmDev.txtSenha.Value
     Unload frmDev
-    If LCase$(SHA256Hex(s)) <> LCase$(DEV_HASH) Then
+    If Not AtivarModoDesenvolvedor(s) Then
+        s = ""
         MsgBox "Senha incorreta.", vbExclamation, "Modo Desenvolvedor"
         Exit Sub
     End If
+    s = ""
+    MsgBox "Modo Desenvolvedor ATIVO." & vbCrLf & vbCrLf & _
+           "Todas as abas visiveis e desprotegidas." & vbCrLf & _
+           "Use Sair (logout) para voltar ao modo normal.", vbInformation, "Modo Desenvolvedor"
+End Sub
+
+' Nucleo do Modo Desenvolvedor, sem formulario (o QA chama este). Achado FASE3A:
+' "desprotege todo o sistema e nao deixa nenhuma marca" -- agora deixa, tanto a
+' ativacao quanto a tentativa com senha errada.
+Public Function AtivarModoDesenvolvedor(ByVal senha As String) As Boolean
+    Dim ws As Worksheet
+    If LCase$(SHA256Hex(senha)) <> LCase$(DEV_HASH) Then
+        AuditarSeg "MODO_DESENVOLVEDOR_RECUSADO", PapelSistema(), "", "senha incorreta"
+        Exit Function
+    End If
+    AuditarSeg "MODO_DESENVOLVEDOR_ATIVADO", PapelSistema(), "", "todas as abas visiveis e desprotegidas ate o logout"
     Application.ScreenUpdating = False
     On Error Resume Next
     LiberarEstrutura
@@ -347,9 +662,8 @@ Public Sub ModoDesenvolvedor()
     On Error GoTo 0
     SystemLook False
     Application.ScreenUpdating = True
-    MsgBox "Modo Desenvolvedor ATIVO." & vbCrLf & vbCrLf & _
-           "Todas as abas visiveis e desprotegidas." & vbCrLf & _
-           "Use Sair (logout) para voltar ao modo normal.", vbInformation, "Modo Desenvolvedor"
-End Sub
+    mModoDev = True                 ' o AfterSave refaz esta vista depois de gravar trancado
+    AtivarModoDesenvolvedor = True
+End Function
 
 

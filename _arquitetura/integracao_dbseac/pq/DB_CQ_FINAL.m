@@ -23,8 +23,9 @@
 //  aqui; VBA, grafico, Estatistica e Power BI leem, nunca reinterpretam.
 //
 //  STATUS_ANALITICO (precedencia de cima para baixo)
-//    MANUAL_INCOMPLETO ... linha manual sem campo obrigatorio ou ID fora do
-//                          padrao MAN_nnnn                          -> nao participa, nao plota
+//    MANUAL_INCOMPLETO ... linha manual sem campo obrigatorio, ID fora do
+//                          padrao MAN_nnnn ou DATA/HORA posterior ao lancamento
+//                                                                   -> nao participa, nao plota
 //    DUPLICIDADE_ORIGEM .. retransmissao do interfaceamento: mesma
 //                          amostra, item, instante e valor de um ID
 //                          menor (ID_RELACIONADO)                   -> nao participa, nao plota
@@ -32,6 +33,7 @@
 //                          interfaceamento (mesma chave logica, ate
 //                          TOLERANCIA_CONFLITO_MIN) ou repete outro
 //                          manual -- nunca duplica em silencio      -> nao participa, nao plota
+//    SEM_DATA_HORA ....... interfaceamento sem DATA_HORA (QA E09)  -> nao participa, nao plota, sem RUN
 //    SEM_VALOR ........... sem numero (flag '----' do XN-1000)      -> nao participa, nao plota
 //    INATIVADO ........... ID na tblInativacao_NaoConformes         -> nao participa;
 //                            REGISTRAR - LJ marcado (padrao) ...... X_VERMELHO
@@ -67,7 +69,7 @@ let
     C = CFG_INTEGRACAO,
     GAP = Number.From(C[GAP_CORRIDA_MIN]),
     TOL = Number.From(C[TOLERANCIA_CONFLITO_MIN]),
-    PREFIXO = C[PREFIXO_ID],
+    PREFIXO = Text.Upper(Text.Trim(Text.From(C[PREFIXO_ID]))),          // D15: "hem" no CFG nao vira outro setor
     SIM = "SIM", NAO = "NÃO",
 
     Txt = (x as any) as nullable text => if x = null then null else
@@ -75,11 +77,16 @@ let
     SoDigitos = (t as text) as logical => t <> "" and Text.Length(Text.Select(t, {"0".."9"})) = Text.Length(t),
     // ID digitado: maiusculas, sem espacos; numero puro = ID do interfaceamento deste setor;
     // MAN_7 / man_0007 -> MAN_0007 (manual)
+    // D14 (QA-ETL-001): tambem sem NBSP (colado de e-mail/web) e sem zeros a esquerda no numero
+    // ("00123" e "HEM-00123" = HEM-123). Mesma regra no QA_INTEGRACAO e no VBA (mIntegracao.NormalizarId).
+    SemZeros = (d as text) as text => let z = Text.TrimStart(d, "0") in if z = "" then "0" else z,
     NormId = (x as any) as nullable text =>
         let t = Txt(x) in
         if t = null then null
-        else let u = Text.Upper(Text.Remove(t, {" "})) in
-             if SoDigitos(u) then PREFIXO & "-" & u
+        else let u = Text.Upper(Text.Remove(t, {" ", Character.FromNumber(160)})),
+                 pre = PREFIXO & "-" in
+             if SoDigitos(u) then pre & SemZeros(u)
+             else if Text.StartsWith(u, pre) and SoDigitos(Text.Middle(u, Text.Length(pre))) then pre & SemZeros(Text.Middle(u, Text.Length(pre)))
              else if Text.StartsWith(u, "MAN_") and SoDigitos(Text.Middle(u, 4)) then "MAN_" & Text.PadStart(Text.Middle(u, 4), 4, "0")
              else u,
     Logico = (v as any, padrao as logical) as logical =>
@@ -88,8 +95,12 @@ let
         else if v is number then v <> 0
         else let t = Text.Upper(Text.Trim(Text.From(v))) in
              if t = "" then padrao else List.Contains({"SIM", "S", "TRUE", "VERDADEIRO", "V", "X", "1"}, t),
+    // D03 (QA-ETL-001): tabela de ENTRADA obrigatoria (criada pelo instalador) ausente ou renomeada PARA a
+    // atualizacao. Antes virava tabela vazia: todo inativado voltava a ATIVO e entrava na estatistica sem erro.
     Ler = (nome as text, cols as list) as table =>
-        let t = try Excel.CurrentWorkbook(){[Name = nome]}[Content] otherwise #table(cols, {})
+        let t = try Excel.CurrentWorkbook(){[Name = nome]}[Content]
+                otherwise error Error.Record("TABELA_AUSENTE", "Tabela obrigatoria ausente ou renomeada: " & nome &
+                                             " (a atualizacao parou; nada foi alterado)", nome)
         in Table.SelectColumns(t, cols, MissingField.UseNull),
 
     // ------------------------------------------------------------ de/para
@@ -114,7 +125,8 @@ let
     // Buffer: R1 e lido por Mapa, R2 e NivelDesc (3 leituras da tabela de 44 mil linhas)
     R1 = Table.Buffer(Table.TransformColumnTypes(
         Table.RenameColumns(
-            Table.ReplaceValue(Table.SelectColumns(Table.SelectRows(R0, each [ID_REGISTRO] <> null), ColsRec, MissingField.UseNull),
+            Table.ReplaceValue(Table.Distinct(Table.SelectColumns(Table.SelectRows(R0, each [ID_REGISTRO] <> null), ColsRec,
+                                              MissingField.UseNull), {"ID_REGISTRO"}),          // D01: defesa, 1 linha por ID
                                null, C[MATRIZ_PADRAO], Replacer.ReplaceValue, {"MATRIZ"}),
             {{"ANALITO", "ANALITO_ORIGEM"}}), {
         {"ID_REGISTRO", type text}, {"ID_ORIGEM", Int64.Type},
@@ -172,21 +184,32 @@ let
             lt = let v = [LOTE] in if v is number then Number.ToText(v, "0") else Txt(v),
             nv = try Int64.From([NIVEL]) otherwise null,
             an = Txt([ANALITO]),
-            vl = try (if [RESULTADO] is number then [RESULTADO] else Number.FromText(Text.Trim(Text.From([RESULTADO])), "pt-BR")) otherwise null,
+            // D07: texto com ponto e sem virgula ("1.5") e AMBIGUO em pt-BR (ponto = milhar: viraria 15) -- nunca converte
+            rtx = if [RESULTADO] is number then null else Txt([RESULTADO]),
+            amb = rtx <> null and Text.Contains(rtx, ".") and not Text.Contains(rtx, ","),
+            vl = if amb then null
+                 else try (if [RESULTADO] is number then [RESULTADO] else Number.FromText(Text.Trim(Text.From([RESULTADO])), "pt-BR")) otherwise null,
             orig = ParaOrigem(mz, an),
             nd = let p = List.PositionOf(NivelDesc[NIVEL], nv) in if p >= 0 then NivelDesc{p}[NIVEL_DESC] else (if nv = null then null else Text.From(nv)),
+            dh = if dt = null or hr = null then null else DateTime.From(dt) + (hr - #time(0, 0, 0)),
+            // gate 4.4 (data futura): o resultado nao pode ser posterior ao proprio
+            // lancamento. Compara com REGISTRADO_EM (carimbo do evento de digitacao),
+            // nao com "agora": a classificacao nao muda sozinha com o passar do tempo
+            reg = (try DateTime.From([REGISTRADO_EM]) otherwise null) ?? DateTime.LocalNow(),
             faltando = List.Select({
                 {"ID_REGISTRO (padrao MAN_0001)", id = null or not (Text.StartsWith(id, "MAN_") and SoDigitos(Text.Middle(id, 4)))},
                 {"DATA", dt = null}, {"HORA", hr = null}, {"LOTE", lt = null},
+                {"DATA/HORA posterior ao lancamento", dh <> null and dh > reg},
                 {"NIVEL", nv = null or nv < 1 or nv > Number.From(C[NIVEIS])},
-                {"ANALITO", an = null}, {"RESULTADO", vl = null}}, each _{1})
+                {"ANALITO", an = null}, {"RESULTADO ambiguo (use virgula decimal: 1,5)", amb},
+                {"RESULTADO", vl = null and not amb}}, each _{1})
         in [
             ID_REGISTRO = if id <> null and Text.StartsWith(id, "MAN_") and SoDigitos(Text.Middle(id, 4)) then id
                           else "MAN_INVALIDO_L" & Text.From([_LINHA_MANUAL]), ID_ORIGEM = null,
             ID_DIGITADO = id,
             EQUIPAMENTO = eq, MATRIZ = mz,
             BLOCO = if orig = null then null else orig[BLOCO], LOTE = lt, NIVEL = nv, NIVEL_DESC = nd,
-            DATA = dt, DATA_HORA = if dt = null or hr = null then null else DateTime.From(dt) + (hr - #time(0, 0, 0)),
+            DATA = dt, DATA_HORA = dh,
             ANALITO_ORIGEM = if orig = null then an else orig[ANALITO_ORIGEM], PRIMEIRO_DO_DIA = null,
             VALOR = vl, FLAG = null, UNIDADE = Txt([UNIDADE]), ID_AMOSTRA = null, ITEM_ID = null,
             RECEBIDO_EM = try DateTime.From([REGISTRADO_EM]) otherwise null,
@@ -203,7 +226,11 @@ let
     Manuais0 = Table.FromRecords(M2[_r], ColsManual, MissingField.UseNull),
     // ID repetido entre manuais: vale a 1a linha; as seguintes ganham sufixo ~L<n>
     // (o ID_REGISTRO da DB_CQ_FINAL e UNICO sempre) e viram CONFLITO_MANUAL
-    PrimeiroId = Table.Group(Manuais0, {"ID_REGISTRO"}, {{"_PRIM_ID", each List.Min([_LINHA_MANUAL]), Int64.Type}}),
+    // D08 (QA-ETL-001): com o mesmo MAN_ numa linha incompleta e numa completa, vale a COMPLETA, qualquer que
+    // seja a ordem fisica (antes a incompleta de cima derrubava a boa para CONFLITO)
+    PrimeiroId = Table.Group(Manuais0, {"ID_REGISTRO"}, {{"_PRIM_ID", each
+                    let ok = List.Min(Table.SelectRows(_, each [_MANUAL_FALTA] = "")[_LINHA_MANUAL]) in ok ?? List.Min([_LINHA_MANUAL]),
+                    Int64.Type}}),
     Manuais1 = Table.ExpandTableColumn(Table.NestedJoin(Manuais0, {"ID_REGISTRO"}, PrimeiroId, {"ID_REGISTRO"}, "_a", JoinKind.LeftOuter), "_a", {"_PRIM_ID"}),
     Manuais = Table.RemoveColumns(Table.AddColumn(Table.RenameColumns(Manuais1, {{"ID_REGISTRO", "_ID0"}}), "ID_REGISTRO", each
                 if [_PRIM_ID] = [_LINHA_MANUAL] then [_ID0] else [_ID0] & "~L" & Text.From([_LINHA_MANUAL]), type text), {"_ID0"}),
@@ -219,15 +246,27 @@ let
 
     // manual x interfaceamento: mesma chave logica no mesmo dia, ate TOL minutos -> CONFLITO
     // (o interfaceamento prevalece; o manual fica guardado, fora do calculo, e vai ao QA)
-    InterfaceValida = Table.SelectColumns(
-            Table.SelectRows(InterfaceD, each not [_DUP] and [VALOR] <> null),
-            {"ID_REGISTRO", "EQUIPAMENTO", "MATRIZ", "LOTE", "NIVEL", "ANALITO", "DATA", "DATA_HORA"}),
+    // Buffer: sem ele cada linha manual reavaliava a juncao sobre ~44 mil linhas (medido: 130 manuais = 6 min)
+    InterfaceValida = Table.Buffer(Table.SelectColumns(
+            Table.SelectRows(InterfaceD, each not [_DUP] and [VALOR] <> null and [DATA_HORA] <> null),
+            {"ID_REGISTRO", "EQUIPAMENTO", "MATRIZ", "LOTE", "NIVEL", "ANALITO", "DATA", "DATA_HORA"})),
+    ChaveMI = {"EQUIPAMENTO", "MATRIZ", "LOTE", "NIVEL", "ANALITO"},
+    // D09c (QA-ETL-001): a tolerancia e medida no DATA_HORA e atravessa a meia-noite -- um manual as 00:02 e o
+    // interfaceamento as 23:58 da vespera sao o mesmo resultado (antes os dois participavam). Candidatos: o proprio
+    // dia, a vespera e o dia seguinte (TOL < 24 h), cada um por juncao de chave + DATA (hash, pequena).
+    MMd = Table.AddColumn(Table.AddColumn(MM, "_DANT", each try Date.AddDays([DATA], -1) otherwise null, type nullable date),
+                          "_DSEG", each try Date.AddDays([DATA], 1) otherwise null, type nullable date),
     MI = if Table.IsEmpty(MM) then Table.AddColumn(MM, "_i", each #table({"ID_REGISTRO", "DATA_HORA"}, {}))
-         else Table.NestedJoin(MM, {"EQUIPAMENTO", "MATRIZ", "LOTE", "NIVEL", "ANALITO", "DATA"},
-                          InterfaceValida, {"EQUIPAMENTO", "MATRIZ", "LOTE", "NIVEL", "ANALITO", "DATA"}, "_i", JoinKind.LeftOuter),
+         else Table.Buffer(Table.RemoveColumns(Table.AddColumn(
+                Table.NestedJoin(Table.NestedJoin(Table.NestedJoin(MMd,
+                    ChaveMI & {"DATA"}, InterfaceValida, ChaveMI & {"DATA"}, "_i0", JoinKind.LeftOuter),
+                    ChaveMI & {"_DANT"}, InterfaceValida, ChaveMI & {"DATA"}, "_ia", JoinKind.LeftOuter),
+                    ChaveMI & {"_DSEG"}, InterfaceValida, ChaveMI & {"DATA"}, "_is", JoinKind.LeftOuter),
+                "_i", each Table.Combine({[_i0], [_ia], [_is]})), {"_i0", "_ia", "_is", "_DANT", "_DSEG"})),
     MI2 = Table.AddColumn(MI, "_conf", each
         let
-            cand = Table.AddColumn([_i], "_d", (x) => Number.Abs(Duration.TotalMinutes(x[DATA_HORA] - [DATA_HORA]))),
+            cand = Table.AddColumn(Table.SelectRows([_i], (x) => x[DATA_HORA] <> null and [DATA_HORA] <> null),
+                                   "_d", (x) => Number.Abs(Duration.TotalMinutes(x[DATA_HORA] - [DATA_HORA]))),
             perto = if Table.IsEmpty(cand) then null else Table.Min(cand, "_d")
         in
             if [_PRIM_ID] <> [_LINHA_MANUAL] then [m = "ID_REGISTRO manual repetido (vale a 1a linha)", id = null]
@@ -257,7 +296,9 @@ let
             each [_IDN] <> null),
     I2 = Table.Distinct(Table.Buffer(Table.Sort(I1, {"_ord"})), {"_IDN"}),          // 1a ocorrencia vale; repeticao vai para o QA
     Inat = Table.SelectColumns(Table.AddColumn(Table.AddColumn(Table.AddColumn(I2,
-            "_LJ", each Logico([#"REGISTRAR - LJ"], true), type logical),                 // vazio = SIM (padrao)
+            // D06 (QA-ETL-001): vazio = SIM so na linha nova (sem DATA_INATIVACAO); numa inativacao ja carimbada a
+            // celula vazia aparece DESMARCADA e vale NAO. Valor nao reconhecido: NAO e ALERTA A08 no QA.
+            "_LJ", each Logico([#"REGISTRAR - LJ"], (try DateTime.From([DATA_INATIVACAO]) otherwise null) = null), type logical),
             "_DTI", each try DateTime.From([DATA_INATIVACAO]) otherwise null, type nullable datetime),
             "_USRI", each Txt([USUARIO]), type nullable text),
             {"_IDN", "_LJ", "_DTI", "_USRI"}),
@@ -279,6 +320,7 @@ let
             st = if [_MANUAL_FALTA] <> "" then "MANUAL_INCOMPLETO"
                  else if [_DUP] then "DUPLICIDADE_ORIGEM"
                  else if [_conf] <> null then "CONFLITO_MANUAL"
+                 else if [DATA_HORA] = null then "SEM_DATA_HORA"            // D16: fora da corrida e do calculo; QA E09
                  else if [VALOR] = null then "SEM_VALOR"
                  else if inat then "INATIVADO"
                  else "ATIVO",
@@ -286,6 +328,7 @@ let
             motivo = if st = "MANUAL_INCOMPLETO" then "campos obrigatorios ausentes/invalidos: " & [_MANUAL_FALTA]
                      else if st = "DUPLICIDADE_ORIGEM" then "retransmissao do interfaceamento"
                      else if st = "CONFLITO_MANUAL" then [_conf][m]
+                     else if st = "SEM_DATA_HORA" then "resultado do interfaceamento sem DATA_HORA (fora da corrida)"
                      else if st = "SEM_VALOR" then "resultado sem valor numerico (flag " & ([FLAG] ?? "vazia") & ")"
                      else null
         in [
@@ -311,7 +354,8 @@ let
     // ordenar e bufferizar 45 colunas x 44 mil linhas tres vezes estourava a
     // memoria do conteiner do Power Query e o tempo crescia mais que a base.
     // Mesma condicao de CORRIDA_REAL: fora so incompleto, retransmissao e conflito.
-    Reais = Table.SelectColumns(Table.SelectRows(U, each [_MANUAL_FALTA] = "" and not [_DUP] and [_conf] = null),
+    // D16: resultado sem DATA_HORA nao entra na corrida (quebraria o corte por GAP); o QA reporta (E09)
+    Reais = Table.SelectColumns(Table.SelectRows(U, each [_MANUAL_FALTA] = "" and not [_DUP] and [_conf] = null and [DATA_HORA] <> null),
                 {"ID_REGISTRO", "EQUIPAMENTO", "MATRIZ", "LOTE", "ANALITO", "DATA", "DATA_HORA", "NIVEL", "ITEM_ID"}),
 
     // Cada passo: ordena, poe ao lado de cada linha os valores da linha ANTERIOR
@@ -357,7 +401,8 @@ let
     RunPorId = Table.Buffer(Table.SelectColumns(Table.AddColumn(ComCorrida, "RUN", each
         if [CORRIDA_NO_DIA] > 99 then null else Number.From(Date.ToText([DATA], "yyMMdd")) * 100 + [CORRIDA_NO_DIA], Int64.Type),
         {"ID_REGISTRO", "CORRIDA_NO_DIA", "RUN"})),
-    Junto = Table.RemoveColumns(Table.Join(ComJust, {"ID_REGISTRO"}, Table.RenameColumns(RunPorId, {{"ID_REGISTRO", "_RID"}}),
+    RunPorIdU = Table.Distinct(RunPorId, {"ID_REGISTRO"}),                    // D01: o join abaixo nunca multiplica
+    Junto = Table.RemoveColumns(Table.Join(ComJust, {"ID_REGISTRO"}, Table.RenameColumns(RunPorIdU, {{"ID_REGISTRO", "_RID"}}),
                                            {"_RID"}, JoinKind.LeftOuter), {"_RID"}),
 
     // ------------------------------------------------------------ saida

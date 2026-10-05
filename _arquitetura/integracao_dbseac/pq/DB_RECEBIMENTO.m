@@ -37,7 +37,16 @@ let
     Origem = SEAC_ORIGEM,
 
     // ---- o que ja foi recebido (a propria tabela) ----
-    Lido = try Excel.CurrentWorkbook(){[Name = "tblDB_Recebimento"]}[Content] otherwise null,
+    Lido0 = try Excel.CurrentWorkbook(){[Name = "tblDB_Recebimento"]}[Content] otherwise null,
+    // D04 (QA-ETL-001): recebimento AUSENTE com a tabela final ja cheia nao e "carga inicial" -- e tabela
+    // perdida ou renomeada. Reconstruir so com a janela do DB_SEAC apagaria o historico em silencio: para.
+    // Carga inicial de verdade: final vazia/ausente, ou CFG CARGA_INICIAL = SIM.
+    CargaInicial = Text.Upper(Text.Trim(Text.From(Record.FieldOrDefault(CFG_INTEGRACAO, "CARGA_INICIAL", "NAO") ?? "NAO"))) = "SIM",
+    FinalCheia = (try Table.RowCount(Excel.CurrentWorkbook(){[Name = "tblCQ_Final"]}[Content]) otherwise 0) > 0,
+    Lido = if Lido0 = null and FinalCheia and not CargaInicial
+           then error Error.Record("TABELA_AUSENTE", "tblDB_Recebimento ausente ou renomeada com a tblCQ_Final preenchida: " &
+                                   "a atualizacao parou para nao apagar o historico (carga inicial: CFG CARGA_INICIAL = SIM)")
+           else Lido0,
 
     // colunas = as da origem; coluna que um dia saia do DB_SEAC continua aqui (nada some)
     DaOrigem = List.RemoveItems(Table.ColumnNames(Origem), {"ID_REGISTRO"}),
@@ -55,8 +64,16 @@ let
                               each [ID_REGISTRO] <> null and Text.Trim(Text.From([ID_REGISTRO])) <> ""),
     ExistenteT = Tipar(Existente),
 
+    // D02 (P-02): linha da origem SEM ID nao entra (antes era regravada a cada atualizacao com RECEBIDO_EM
+    // novo e sumia na final sem aviso); o QA_INTEGRACAO a reporta (E06).
+    // D01: ID repetido na MESMA carga entra uma vez so -- vale a de menor ITEM_ID (empate: primeira DATA_HORA);
+    // o QA reporta (E07). Antes as duas entravam com o mesmo ID e a final multiplicava as linhas.
+    ComIdOk = Table.SelectRows(Origem, each [ID_REGISTRO] <> null and Text.Trim(Text.From([ID_REGISTRO])) <> ""),
+    UmPorId = Table.Distinct(Table.Buffer(Table.Sort(ComIdOk, List.Select({{"ID_REGISTRO", Order.Ascending},
+                    {"ITEM_ID", Order.Ascending}, {"DATA_HORA", Order.Ascending}},
+                    each List.Contains(Table.ColumnNames(ComIdOk), _{0})))), {"ID_REGISTRO"}),
     Novos = Table.RemoveColumns(
-                Table.NestedJoin(Origem, {"ID_REGISTRO"},
+                Table.NestedJoin(UmPorId, {"ID_REGISTRO"},
                                  Table.SelectColumns(ExistenteT, {"ID_REGISTRO"}), {"ID_REGISTRO"},
                                  "_ja", JoinKind.LeftAnti),
                 {"_ja"}),

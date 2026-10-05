@@ -1,0 +1,605 @@
+{
+ "pmids_que_nao_conferem": [
+  "Conferência no PubMed (get_article_metadata em 3 lotes de 19): os 57 PMIDs citados nas duas frentes EXISTEM e o título e o tema de cada um conferem. Nenhum PMID é inventado.",
+  "32292278 (Martinello 2020, DOI 10.11613/BM.2020.020101): existe, mas NÃO sustenta o uso que a Frente 2 faz dele na rec. 3 ('u_bias rotulado Nordtest com CEQ CAP (Martinello 2020)'). O resumo conclui que o mais prático é o Nordtest com viés de programa interlaboratorial de CIQ (IQCS). Também mostra que o viés vindo de PT (ensaio de proficiência, como o CAP) foi o MAIOR entre as fontes.",
+  "25870964 (Braga 2015, DOI 10.1515/cclm-2014-1240): existe e trata do orçamento de incerteza da cadeia de rastreabilidade (no máximo 1/3 para as referências e cerca de 50% para a calibração do fabricante). A Frente 2 (1c) o cita como fonte do 'modelo ISO/TS 20914 da escola de Milão', o que é anacronismo: a ISO/TS 20914 é de 2019.",
+  "40643010 (Farrance & Frenkel 2025, DOI 10.1093/jalm/jfaf080): existe e trata só do PHI (Prostate Health Index). A extensão para VCM/HCM/CHCM ('o cálculo direto pelo CIQ tende a superestimar') feita na Frente 1 não está no artigo.",
+  "25719329 (Sandberg 2015, DOI 10.1515/cclm-2015-0067): existe, mas o registro no PubMed não tem resumo. O conteúdo atribuído (os 3 modelos de Milão) foi confirmado indiretamente por Ceriotti 2017 (27506603) e Coskun 2025 (40114656).",
+  "29348165 (Nilsson 2018, DOI 10.1373/clinchem.2017.277541): existe. Trata de como avaliar a comutabilidade de materiais de referência, inclusive de amostras de CEQ. O uso para dizer que 'o viés de matriz do CEQ não se transfere ao paciente' é indireto; aceitável como apoio, não como prova.",
+  "Divergências só de ano, sem efeito: 33218279 (Petersmann) saiu online em 2020 e no fascículo de 2022; 28153359 (Westgard) saiu online em 2016 e no fascículo de 2017."
+ ],
+ "erros_ou_afirmacoes_sem_base": [
+  "[AMBAS AS FRENTES] Comparar u_Rw sozinha com a MAU superestima a conformidade. A MAU é o orçamento TOTAL da incerteza em amostras de pacientes, com calibrador e referências incluídos. Braga 2015 e 2018 (25870964, 29526674) reservam até 50% do orçamento para a calibração do fabricante. Sem u_cal, 'atende' só pode ser PROVISÓRIO. Recomendo checar também u_Rw ≤ 0,87·MAU, porque √(1−0,5²) = 0,866; essa derivação é minha e é uma aproximação.",
+  "[AMBAS] Agrupar por lote de controle sem nenhuma ressalva. Na Hema há 8 lotes por ano (cerca de 45 dias cada). A variância dentro de cada lote não contém deslocamentos que coincidam com a troca de lote, como uma recalibração ou troca de reagente na mesma data. Assim, u_Rw se aproxima de uma precisão intermediária de cerca de 6 semanas, não de 6 a 12 meses. Isso fere o critério de 'cobrir as fontes rotineiras de variação' (Yurt 2026, 42532314) e a ideia de top-down com mais de 3 meses (Coskun 2025, 40114656). Precisa de alerta (duração mediana do lote) e de declaração no relatório.",
+  "[FRENTE 1, 2c] 'Quando existe, u(cal) costuma ser pequena' generaliza a partir de um único exemplo (etanol 0,56%, Bozdayi 2025; confirmei no texto completo, tabela 3). Wadhwa 2025 (40099095) relatou u_cal de 4,7% (ALP), 5,45% (LD), 11,06% (CK) e 23,2% (ferritina), e foram esses valores que puseram esses analitos acima da APS. A ausência de u_cal NÃO pode ser tratada como desprezível.",
+  "[FRENTE 1, 3a] 'Com os mesmos dados, o Nordtest dá U maior que a ISO/TS 20914' não vale em geral. O próprio Bozdayi 2025 (texto completo) cita Nurlu: no etanol, Nordtest 6,62% contra ISO 11,55% e 9,13%. Nurlu 2024 (38742707) mostra analitos aprovados por um método e não pelo outro. A direção depende de u_cal comparada com RMS_bias.",
+  "[FRENTE 1, extra de hematologia] 'Pelo GUM, o cálculo direto pelo CIQ tende a superestimar' os índices é extrapolação a partir de um único caso (PHI). Para índices que o analisador laudo, o CV do CIQ do próprio índice é a estimativa empírica de u_Rw daquilo que vai no laudo, e já embute a correlação real presente nos dados. Nenhum artigo do conjunto mostra superestimação em hematologia.",
+  "[FRENTE 2, rec. 3] Martinello 2020 é citado como base para 'Nordtest com CEQ CAP', mas o artigo favorece o viés de IQCS e acha que o viés de PT é o maior. Usá-lo como apoio é inverter a conclusão.",
+  "[FRENTE 2, 1c] 'Modelo ISO/TS 20914 da escola de Milão (Braga 2015)': Braga 2015 é anterior à norma. O correto é: orçamento da cadeia de rastreabilidade (Braga 2015/2018) e ISO/TS 20914 aplicada por Borrillo 2023 (36773318).",
+  "[FRENTE 2, 3a] 'Wadhwa 2025: 24 abaixo do mínimo da APS' pode ser lido ao contrário. No artigo, 24 dos 31 analitos tiveram MU ABAIXO do limite mínimo, ou seja, ATENDERAM. Os 7 que não atenderam foram LD, CK, ALP, Na, Cl, glicose e ferritina.",
+  "[FRENTE 1, rec. 6] O teste t do viés médio de CEQ trata as amostras como independentes. Amostras da mesma rodada compartilham o mesmo estado de calibração e cobrem concentrações diferentes, então o SE sai subestimado. A regra deve exigir pelo menos 2 rodadas e funcionar como triagem, não como teste formal. Além disso, 'viés permitido por VB' não existe como campo no QC_INI. Só dá para derivá-lo como ETp − 1,65·CVTp, e apenas quando ETp e CVTp vêm da mesma fonte de VB.",
+  "[FRENTE 2, rec. 3] Exigir 'RMS_bias com o bias% COM SINAL' não muda nada: o RMS é idêntico com ou sem sinal, porque os termos são elevados ao quadrado. O que realmente difere do Bias EQC% atual é usar RMS em vez da média de |bias|.",
+  "[AMBAS] Nenhuma das frentes manda monitorar a fração de resultados excluídos ('inativado' ou 'não participa'). Exclusões sem erro documentado reduzem u_Rw artificialmente. O sistema deve exibir o % excluído e alertar acima de 5% (regra interna).",
+  "[FRENTE 1, rec. 12] A checagem 'Hb ≈ 3%, PLT ≈ 6% (Cui 2017)' compara coisas diferentes. Esses valores são U pelo Nordtest, com viés de CEQ, de outro laboratório; não se comparam com U ISO calculada só com u_Rw. Servem no máximo como ordem de grandeza.",
+  "[FRENTE 1, extra] 'Modelo pragmático da EFLM (MUPU)': os resumos consultados (35513038, 40784633) não mostram que o MUPU seja documento oficial da EFLM. Rotular como 'MUPU (Coskun et al. 2022)'.",
+  "[FRENTE 1, rec. 3] Usar Bartlett/Levene como critério de heterogeneidade não serve aqui. Com cerca de 8 lotes de 80 resultados, os testes ficam hipersensíveis, e o Bartlett ainda é sensível a não normalidade. Basta a razão CVmax/CVmin como alerta, sem bloquear o agrupamento.",
+  "[FRENTE 2, rec. 7] Reavaliar a MU a cada novo lote de controle é excessivo com cerca de 8 lotes por ano na Hema. O recálculo mensal na janela móvel já cobre isso.",
+  "[FRENTE 2, rec. 5 / FRENTE 1, rec. 9] 'MAU desejável = CVTp' só vale se o CVTp cadastrado for 0,5·CVI. Bases de VB diferentes podem dar CVI diferentes. Além disso, Braga 2021 (33725754) põe a Hb no modelo 1 (2,80%), não no modelo de VB. A fonte tem de ser conferida analito por analito.",
+  "[SISTEMA ATUAL, CONFIRMADO] O Bias EQC% atual é a média de |bias| das amostras. Pela conta E|X| = σ·√(2/π) ≈ 0,80σ, ele é positivo mesmo sem viés real (a conta da Frente 1 está correta). Coskun 2022 (36277430, texto completo) confirma que viés não se calcula com uma medida única e que viés não significativo pode ser desprezado. Consequência: o ET% atual (1,65·CV + Bias EQC%) e o Sigma contam a imprecisão duas vezes, e o Sigma sai subestimado. A correção (usar |média com sinal| junto com o SE) fica FORA do módulo de MU e muda indicadores que já existem.",
+  "[NÃO VERIFICÁVEL NO PUBMED] O número da cláusula da ISO 15189:2022 (7.3.4), qualquer n mínimo 'da norma' e as fórmulas do Nordtest TR 537 vêm de documentos fora do PubMed. Até que alguém confira o texto das normas, devem ser marcados como 'regra interna' ou 'não conferido'."
+ ],
+ "respostas_16": [
+  {
+   "n": 1,
+   "resposta": "[ESTABELECIDO] Incerteza de medição (MU) é, pelo VIM 3 citado por Coskun 2025, o parâmetro que caracteriza a dispersão dos valores atribuídos ao mensurando com base na informação usada. Não é o erro: o erro é a diferença para um valor verdadeiro que ninguém conhece; a incerteza quantifica a dúvida sobre o resultado. No GUM, cada fonte vira uma incerteza-padrão u, igual a 1 DP. A avaliação Tipo A usa estatística de repetições, como o CIQ. A avaliação Tipo B usa outra informação, como o certificado do calibrador. Componentes independentes se somam em quadratura e dão u_c; depois U = k·u_c, e o resultado se expressa como resultado ± U (cerca de 95% com k=2). Efeitos sistemáticos significativos devem ser corrigidos, e só a incerteza da correção entra no orçamento (Ceriotti 2018). Como a MU depende da informação usada, todo valor publicado precisa listar as fontes que inclui (Johansen & Theodorsson 2026).",
+   "pmids": [
+    "40114656",
+    "18852859",
+    "29605551",
+    "42250674"
+   ]
+  },
+  {
+   "n": 2,
+   "resposta": "[ESTABELECIDO] A ISO 15189 exige estimar a MU de cada procedimento quantitativo e mantê-la dentro de especificações de desempenho; para o método, remete à ISO/TS 20914 (Thelen 2024; Yurt 2026). O valor vai além da acreditação. (a) É indicador-chave de qualidade do sistema de medição e da cadeia de rastreabilidade, e força laboratório e fabricante a agir (Braga & Panteghini 2020; Infusino 2018). (b) Permite interpretar resultados perto de limites de decisão, de intervalos de referência e em mudanças seriadas (Plebani 2018; Padoan 2018). (c) Compõe o 'componente II' do CIQ: monitorar a MU continuamente contra a especificação e agir quando piora (Braga 2020).",
+   "pmids": [
+    "38353157",
+    "42532314",
+    "32126011",
+    "29410277",
+    "29402416",
+    "29548924",
+    "32639119"
+   ]
+  },
+  {
+   "n": 3,
+   "resposta": "Há duas famílias de métodos. O bottom-up modela cada fonte pelo GUM completo e é impraticável na rotina; o top-down usa os dados de CQ (Coskun 2025). Dentro do top-down há três variantes. (i) ISO/TS 20914: u_Rw do CIQ de longo prazo (6 a 12 meses), mais u_cal do fabricante, mais u_bias só se o viés for significativo e corrigido; o CEQ funciona como verificação (Bozdayi 2025; Yurt 2025; Appak 2025). (ii) Nordtest TR 537: u_Rw mais u_bias tirado do CEQ, com u_bias = √(RMS_bias² + u(Cref)²) (Magnusson 2012; Cui 2017). (iii) MUPU: só CIQ, incluindo a diferença entre analisadores (Coskun 2022; Oosterhuis 2025). O requisito mínimo, segundo Ceriotti 2018, é a precisão intermediária de pelo menos 6 meses, de preferência com material comutável perto do limite de decisão. Os métodos dão números e conclusões diferentes: em Nurlu 2024, 11 de 20 analitos atenderam em cada método, mas não os mesmos; Martinello 2020 também mostra isso. Por isso o método escolhido deve ser fixado e documentado.",
+   "pmids": [
+    "40114656",
+    "29605551",
+    "40837370",
+    "40831382",
+    "41187658",
+    "22233479",
+    "28928006",
+    "35513038",
+    "40784633",
+    "38742707",
+    "32292278"
+   ]
+  },
+  {
+   "n": 4,
+   "resposta": "Os componentes são cinco. (1) u_Rw, a reprodutibilidade intralaboratorial (Tipo A, CIQ de longo prazo). Ela captura lotes de reagente e calibrador, recalibrações, manutenções, operadores e ambiente [ESTIMÁVEL]. (2) u_cal, a incerteza do valor do calibrador do usuário (Tipo B, certificado do fabricante). Já embute a cadeia até as referências de ordem superior e pode ser grande: CK 11,06% e ferritina 23,2% em Wadhwa 2025 [EXIGE DADOS]. (3) u_bias: na ISO/TS, só a incerteza de uma correção efetivamente aplicada; no Nordtest, √(RMS_bias² + u(Cref)²) [ESTIMÁVEL, uso secundário]. (4) Variação entre analisadores, quando o mesmo paciente pode ser medido em mais de um equipamento (MUPU; Theodorsson 2024) [CONDICIONAL]. (5) Covariâncias em grandezas calculadas, pela propagação GUM (Farrance 2025) [NÃO IMPLEMENTAR]. O orçamento de Milão reserva no máximo 1/3 do total para as referências e cerca de 50% até a calibração do fabricante; o restante fica para a imprecisão do sistema, inclusive lote a lote de reagente, e do laboratório (Braga 2015/2018). O pré-analítico e a variação biológica ficam fora da MU analítica e pertencem à incerteza diagnóstica (Oosterhuis 2018).",
+   "pmids": [
+    "40837370",
+    "41187658",
+    "40099095",
+    "22233479",
+    "35513038",
+    "38329003",
+    "40643010",
+    "25870964",
+    "29526674",
+    "28796637"
+   ]
+  },
+  {
+   "n": 5,
+   "resposta": "IMPRECISÃO: a imprecisão de longo prazo é u_Rw e costuma ser o componente dominante. Quando é o único componente, U ≈ 2·CV_Rw (Coskun 2025). VIÉS: no modelo GUM/ISO, viés significativo é eliminado ou corrigido, e só a incerteza da correção entra no orçamento. Viés pequeno e variável se comporta como aleatório e já está dentro de u_Rw (Theodorsson 2014; Thelen 2024). Westgard 2017 resume que a abordagem da MU assume que o viés pode ser eliminado, corrigido ou ignorado. ERRO TOTAL: ET = |viés| + 1,65·CV é soma linear e unilateral, mantém o viés sem correção e se compara com o TEa. Sigma = (TEa − |viés|)/CV depende inteiramente do TEa escolhido (Oosterhuis 2023). U = k·√Σu² é bilateral (±) e soma em quadratura. Com viés zero, ET = 1,65·CV e U = 2·CV. Os dois modelos são complementares (Oosterhuis 2018; Jairaman 2017), mas não intercambiáveis: o TEa não substitui a MU porque o sinal do viés importa (Coskun 2025). No QC_INI, o Bias EQC% atual (média de |viés| por amostra) fica em cerca de 0,80·σ mesmo sem viés, então o ET% e o Sigma atuais contam a imprecisão duas vezes (Coskun 2022).",
+   "pmids": [
+    "40114656",
+    "25486232",
+    "38353157",
+    "28153359",
+    "36640931",
+    "28796637",
+    "28153364",
+    "26540227",
+    "36277430"
+   ]
+  },
+  {
+   "n": 6,
+   "resposta": "[ESTIMÁVEL] tblCQ_Final (data, lote, nível, analito, equipamento, status, participa) dá u_Rw por analito × nível × equipamento, separado por lote de controle, numa janela móvel de 12 meses. São cerca de 32 mil resultados na Bio e 44 mil na Hema, com 50 a 120 por lote e nível; o gl agrupado na Hema fica tipicamente acima de 300. tblEQA_Base (resultado, alvo do grupo, DP do grupo, bias% com sinal, SDI) serve para a verificação de viés (média com sinal e SE) e para o Nordtest secundário (RMS_bias). tblEQA_CAP_Dados (N de laboratórios) dá u(Cref) = 100·(DP_grupo/√N)/alvo. Com N de 320 a 3.295 e CV do grupo de 5%, isso fica entre 0,09% e 0,28%, praticamente desprezível. O cadastro ETp/CVTp, se o CVTp vier de VB desejável (0,5·CVI), gera a MAU: a MAU desejável é igual ao CVTp. [NÃO CONTRIBUEM] O ET%, o Sigma e o Bias EQC% atual (média de |bias|) não entram no cálculo da MU.",
+   "pmids": [
+    "40837370",
+    "22233479",
+    "33725754",
+    "36282875"
+   ]
+  },
+  {
+   "n": 7,
+   "resposta": "O CIQ é a base obrigatória. Ele fornece u_Rw (Tipo A), a precisão intermediária de longo prazo. Se aceitas, as variações por troca de lote de reagente ou calibrador, as recalibrações e as manutenções já estão dentro dela (Thelen 2024; van Schrojenstein Lantman 2022), desde que o período cubra essas fontes: 6 a 12 meses (Yurt 2026; Ceriotti 2018). O cálculo separa por lote de controle e agrupa as variâncias ponderadas por graus de liberdade (Bozdayi 2025: denominador Σn_i − número de lotes). Não se usa média simples de CVs, que só vale com n iguais e variâncias homogêneas (Coskun 2022). Limites: o material de controle não tem comutabilidade validada (Ceriotti 2018; Braga 2019). A estimativa vale só nas 2 ou 3 concentrações dos controles. Com lotes curtos (Hema, cerca de 45 dias), o agrupamento remove deslocamentos que coincidam com a troca de lote. Resultados excluídos reduzem u_Rw. O CIQ também não informa viés contra valor de referência nem u_cal.",
+   "pmids": [
+    "38353157",
+    "35172415",
+    "42532314",
+    "29605551",
+    "40837370",
+    "36277430",
+    "30903757",
+    "40114656"
+   ]
+  },
+  {
+   "n": 8,
+   "resposta": "Na ISO/TS 20914 o CEQ não é componente obrigatório. Ele serve para verificar se há viés significativo contra o grupo par; se não houver, u_bias é desconsiderada (Bozdayi 2025, texto completo). No Nordtest, o CEQ vira u_bias = √(RMS_bias² + u(Cref)²) (Magnusson 2012; Cui 2017; Padoan 2017). Em Tan 2022, foi o dado de CEQ que mais elevou a MU. Há quatro ressalvas. (1) Cada amostra de CEQ é uma única medida, e viés não se calcula com medida única (Coskun 2022). Mesmo com viés verdadeiro zero, E[RMS²] ≈ σ², então o Nordtest sai cerca de √2 vezes o U da ISO. Exemplo: com u_Rw = 3%, U fica em cerca de 8,5% contra 6%. Isso é dupla contagem da imprecisão. (2) A referência é o consenso do grupo, não o valor verdadeiro: em Braga 2019, sistemas de IgA bem alinhados entre si tinham viés inaceitável contra o material de referência em 55% dos casos. (3) O material de CEQ raramente tem comutabilidade validada (Braga 2019). (4) São apenas 9 a 15 amostras por ano, em concentrações diferentes das do CIQ. Em Martinello 2020, o viés vindo de PT foi o maior entre as fontes comparadas.",
+   "pmids": [
+    "40837370",
+    "22233479",
+    "28928006",
+    "28245184",
+    "35966261",
+    "36277430",
+    "30626632",
+    "30903757",
+    "32292278"
+   ]
+  },
+  {
+   "n": 9,
+   "resposta": "Só com CIQ e CEQ não se obtém: (1) u_cal e a incerteza da cadeia de rastreabilidade, que exigem o certificado do fabricante (Braga 2015; Infusino 2018 lembra que essa informação é difícil de obter). (2) Viés contra valor de referência, que exige material de referência certificado e comutável ou material de veracidade; Rigo-Bonnin 2018 usou MRC. (3) A comutabilidade do controle e do CEQ (Braga 2019). (4) A MU ao longo da faixa de medição, perto do limite de quantificação ou em limites de decisão fora dos níveis de controle; o perfil de imprecisão varia ao longo da faixa (Kallner 2020). (5) A aceitabilidade das trocas de lote de reagente e calibrador, que exige registro dessas trocas (EFLM, van Schrojenstein Lantman 2022). (6) A incerteza de grandezas calculadas considerando covariâncias (Farrance 2025). (7) A incerteza do valor-alvo do controle comercial (Petersmann 2020). (8) O pré-analítico e a variação biológica, que fazem parte da incerteza diagnóstica.",
+   "pmids": [
+    "29410277",
+    "25870964",
+    "29750938",
+    "30903757",
+    "31971449",
+    "35172415",
+    "40643010",
+    "33218279",
+    "28796637"
+   ]
+  },
+  {
+   "n": 10,
+   "resposta": "[ESTABELECIDO] Em geral, a mais adequada é a top-down da ISO/TS 20914: u_c = √(u_Rw² + u_cal²), com u_bias² só se houver viés corrigido, e U = 2·u_c. Calcula-se por nível, com u_Rw de 6 a 12 meses de CIQ e u_cal do fabricante. O viés é verificado por CEQ ou material de referência e corrigido quando significativo. O resultado é avaliado contra a MAU dos modelos de Milão e recalculado de forma contínua. É o caminho que a ISO 15189 aponta (Thelen 2024), compatível com o orçamento da cadeia de rastreabilidade (Braga 2015) e aplicado nos estudos recentes (Yurt 2025; Appak 2025; Şeneş 2026). O Nordtest é aceito e mais conservador, mas soma viés não corrigido contra um consenso. O MUPU é a versão pragmática para redes com vários analisadores.",
+   "pmids": [
+    "38353157",
+    "29605551",
+    "40831382",
+    "41187658",
+    "42134677",
+    "25870964",
+    "22233479",
+    "35513038"
+   ]
+  },
+  {
+   "n": 11,
+   "resposta": "[ESTIMÁVEL, com declaração] Com os dados atuais, o defensável é a 'ISO/TS 20914 reduzida', que corresponde ao requisito mínimo de Ceriotti 2018 e ao que Coskun 2025 admite quando falta u_cal. (1) u_c = u_Rw e U = 2·u_Rw, por analito × nível × equipamento. u_Rw é agrupada por lote de controle numa janela móvel de 12 meses (mínimo de 6). O relatório diz que u_cal está ausente. (2) O CEQ CAP entra como verificação de viés, com média com sinal e SE, e não é somado a U. (3) O Nordtest (u_Rw + RMS + u(Cref)) aparece como cálculo SECUNDÁRIO com o rótulo 'inclui desvio contra o consenso do grupo par; conta a imprecisão duas vezes'. (4) O status compara u com a MAU de VB (0,25, 0,5 e 0,75·CVI) e fica 'PROVISÓRIO' enquanto faltar u_cal. Inclui a checagem de margem u_Rw ≤ 0,87·MAU, que é uma aproximação derivada de Braga 2015/2018.",
+   "pmids": [
+    "29605551",
+    "40114656",
+    "42532314",
+    "22233479",
+    "33725754",
+    "25870964",
+    "29526674"
+   ]
+  },
+  {
+   "n": 12,
+   "resposta": "Dados que faltam, em ordem de prioridade: (1) u_cal ou U_cal com o k declarado, nos certificados ou documentos de rastreabilidade dos calibradores Siemens Dimension e Sysmex XN CAL. É a prioridade, porque pode dominar a MU (Wadhwa 2025). (2) Um campo de CVI por analito (EFLM BV Database; Sandberg 2024), com o modelo de Milão e a fonte da APS, ou uma MAU manual justificada. Exemplos de Braga 2021/2022: Hb 2,80%, glicose 2,00%, HbA1c 3,00%, PCR 3,76% e colesterol 3,00%. (3) A confirmação da fonte de cada CVTp: é VB desejável (0,5·CVI) ou CLIA? (4) Registro das trocas de lote de reagente e calibrador e das recalibrações. Com ele dá para aplicar a regra EFLM de variação permitida entre lotes e rejeitar ou corrigir deslocamentos grandes, em vez de absorvê-los (Thelen 2024; van Schrojenstein Lantman 2022). (5) Opcional: o valor atribuído pelo fabricante a cada lote de controle, para diagnosticar deslocamentos entre lotes. Usar com cautela, porque a incerteza desse alvo pode ser grande (Petersmann 2020). (6) Os dados da Controllab, tratados por provedor. (7) Para estimar viés verdadeiro: material de referência comutável ou amostras de pacientes divididas com outro laboratório. (8) Os limites de decisão clínica de cada analito.",
+   "pmids": [
+    "40099095",
+    "38501489",
+    "33725754",
+    "36282875",
+    "38353157",
+    "35172415",
+    "33218279",
+    "29605551"
+   ]
+  },
+  {
+   "n": 13,
+   "resposta": "Para cada lote i (dentro de analito × nível × equipamento, só com status ativo e participa = Sim, nos últimos 12 meses): CV_i = 100·s_i/x̄_i. Com os lotes que têm n_i ≥ 20: u_Rw,% = √[Σ(n_i−1)·CV_i² / Σ(n_i−1)]; u_Rw,abs = √[Σ(n_i−1)·s_i² / Σ(n_i−1)]; gl = Σ(n_i−1); x̄_L = Σn_i·x̄_i / Σn_i. Se houver certificado: u_cal,% = 100·(U_cal/k_cal)/valor do calibrador. Combinação: u_c = √(u_Rw² + u_cal²), ou u_c = u_Rw quando não houver u_cal. Expandida: U% = 2·u_c e U_abs = U%·x̄_L/100. Verificação de viés: b_j = 100·(x_lab,j − alvo_j)/alvo_j; b̄ é a média com sinal; SE = s_b/√m. Nordtest secundário: RMS = √(Σb_j²/m); u(Cref) = média de 100·(DP_grupo,j/√N_labs,j)/alvo_j; U_N = 2·√(u_Rw² + RMS² + u(Cref)²). Meta: MAU desejável = 0,5·CVI, que é igual ao CVTp quando o CVTp for 0,5·CVI.",
+   "pmids": [
+    "40837370",
+    "22233479",
+    "33725754",
+    "40114656"
+   ]
+  },
+  {
+   "n": 14,
+   "resposta": "A forma principal é a relativa (%), por nível. Há dois motivos: o agrupamento junta lotes com concentrações um pouco diferentes, e as metas (MAU) são relativas. Ao lado vai sempre a forma absoluta, na unidade do analito (g/dL, ×10³/µL, mg/dL), calculada na concentração média ponderada do nível. A forma relativa só vale se o DP for proporcional à concentração. No nível baixo de PLT e WBC, ou perto do limite de quantificação, o DP tende a ficar constante, e então a forma absoluta deve ser a principal. Exemplo: Magnusson 2012 usou 12 µmol/L abaixo de 120 µmol/L de creatinina e 10% acima (ver também Farrance 2020; Kallner 2020). A declaração fica no formato 'U = ±x% (k=2) em x̄ unidade'.",
+   "pmids": [
+    "22233479",
+    "32238602",
+    "31971449"
+   ]
+  },
+  {
+   "n": 15,
+   "resposta": "U (k=2) é a semiamplitude do intervalo que contém, com cerca de 95% de probabilidade, o valor do mensurando para um resultado na concentração do nível. Isso vale SÓ para as fontes incluídas, u_Rw e, se houver, u_cal. Sem u_cal, o valor é um limite inferior da MU real. O status compara u (k=1) com a MAU. Ótimo: até 0,25·CVI. Desejável: até 0,5·CVI. Mínimo: até 0,75·CVI. Acima de 0,75·CVI, não atende. Também se pode comparar U com 2·MAU, mas nunca misturar k, nunca comparar U com ETp/TEa e nunca calcular 'Sigma da incerteza'. Sem u_cal, 'atende' é provisório; se u_Rw passar de 0,87·MAU, não sobra margem para o calibrador. Se o Nordtest secundário reprovar e o primário aprovar, o viés contra o grupo par é relevante e deve ser investigado. Dois resultados seriados do mesmo paciente diferem analiticamente se a diferença passar de √2·U; essa conta não inclui a variação biológica do RCV. Para Na, Cl e Ca, reprovar contra a meta de VB pode refletir uma meta inatingível (Oosterhuis 2023).",
+   "pmids": [
+    "33725754",
+    "36282875",
+    "41054048",
+    "25870964",
+    "29526674",
+    "36640931",
+    "40114656"
+   ]
+  },
+  {
+   "n": 16,
+   "resposta": "Seis usos práticos. (1) Decisão perto de limites: no etanol, o limite de 50 mg/dL vira 50 ± 5,47 mg/dL pela ISO ou 50 ± 6,98 mg/dL pelo Nordtest (Bozdayi 2025). Em sorologia, a MU cria uma zona de incerteza em torno dos pontos de corte (Appak 2025). (2) Monitoramento: as variações significativas por MU são comparáveis ao RCV (Padoan 2018). (3) Unidade e casas decimais do laudo: Hawkins 2015 mostrou que poucos laboratórios justificam as casas decimais que usam para VCM e CHCM. (4) Indicador contínuo (CIQ componente II): tendência mensal de u_Rw com ação corretiva quando piora (Braga 2020). (5) Mostrar onde atuar: imprecisão (u_Rw), calibrador (u_cal) ou viés (CEQ) (Braga & Panteghini 2020). (6) Evidência de conformidade com a ISO 15189.",
+   "pmids": [
+    "40837370",
+    "41187658",
+    "29548924",
+    "26126036",
+    "32639119",
+    "32126011"
+   ]
+  }
+ ],
+ "metodologia": {
+  "formula_uc": "PRIMÁRIO, ISO/TS 20914 reduzida [ESTABELECIDO; ESTIMÁVEL com os dados atuais]: u_c,% = √(u_Rw,%² + u_cal,%²). Enquanto u_cal não estiver cadastrada, u_c,% = u_Rw,% e o rótulo fixo é 'MU parcial: u_cal não incluída'. Se um dia o laboratório aplicar fator de correção de viés: u_c = √(u_Rw² + u_cal² + u_corr²) [NÃO IMPLEMENTAR AGORA]. SECUNDÁRIO, Nordtest [ESTIMÁVEL, só informativo]: u_c,N = √(u_Rw,%² + RMS_bias² + u(Cref)²).",
+  "formula_U": "U = k·u_c com k = 2. Expressar como ±U% (k=2) e ±U_abs = U%·x̄_L/100, na concentração média ponderada do nível. U_N = 2·u_c,N (secundário).",
+  "termos": [
+   "[ESTIMÁVEL] Seleção: tblCQ_Final com status ativo e participa = Sim, janela móvel de 12 meses, por analito × nível × equipamento. Para cada lote de controle i: n_i, x̄_i, s_i (DP amostral, n−1) e CV_i = 100·s_i/x̄_i.",
+   "[ESTABELECIDO / ESTIMÁVEL] u_Rw,% = √[Σ(n_i−1)·CV_i² / Σ(n_i−1)], usando os lotes com n_i ≥ 20. É o formato de Bozdayi 2025 (40837370), com denominador Σn_i − número de lotes. Também: gl = Σ(n_i−1); u_Rw,abs = √[Σ(n_i−1)·s_i² / Σ(n_i−1)]; x̄_L = Σn_i·x̄_i / Σn_i.",
+   "[EXIGE DADOS ADICIONAIS] u_cal,% = 100·(U_cal/k_cal)/valor atribuído ao calibrador, tirado do certificado do fabricante (Tipo B). Campo vazio significa que u_cal não foi incluída. NUNCA estimar u_cal.",
+   "[NÃO IMPLEMENTAR AGORA] u_corr = √(s_b²/m + u(Cref)²). Só entra se houver fator de correção de viés registrado e aplicado.",
+   "[ESTIMÁVEL] Verificação de viés pelo CEQ, que NÃO entra em U. Dados do CAP dos últimos 12 meses (até 24 se faltarem amostras): b_j = 100·(x_lab,j − alvo_j)/alvo_j; b̄ = Σb_j/m (média com sinal); s_b; SE_b = s_b/√m. O viés é 'detectável' se m ≥ 6 amostras de pelo menos 2 rodadas e |b̄| > 2·SE_b. É 'relevante' se, além disso, |b̄| > B_perm. É uma triagem, porque amostras da mesma rodada não são independentes.",
+   "[APROXIMAÇÃO] B_perm = viés desejável por VB, se houver cadastro. Na falta dele, B_perm = ETp − 1,65·CVTp, apenas quando ETp e CVTp vierem da mesma fonte de VB. Caso contrário, mostrar 'relevância clínica não avaliada'.",
+   "[ESTIMÁVEL, secundário] Nordtest: RMS_bias = √(Σb_j²/m); u(Cref)_j = 100·(DP_grupo,j/√N_labs,j)/alvo_j, com N_labs de tblEQA_CAP_Dados; u(Cref) = média de u(Cref)_j; u_bias,N = √(RMS_bias² + u(Cref)²). É calculado por analito e combinado com o u_Rw de cada nível. CAP e Controllab ficam sempre separados.",
+   "[APROXIMAÇÃO] MAU por VB, comparada com u (k=1): MAU ótima = 0,25·CVI; desejável = 0,50·CVI; mínima = 0,75·CVI. Se o CVTp for VB desejável (0,5·CVI): CVI = 2·CVTp, e então MAU desejável = CVTp, MAU ótima = 0,5·CVTp e MAU mínima = 1,5·CVTp.",
+   "[APROXIMAÇÃO] Margem para o calibrador quando não há u_cal: u_Rw ≤ 0,87·MAU, já que √(1−0,5²) = 0,866 reserva até 50% do orçamento à calibração (Braga 2015/2018). É um alerta e não muda o status.",
+   "[ESTIMÁVEL] Diagnósticos que viram alerta: razão CV_max/CV_min > 2 entre os lotes; duração mediana do lote < 90 dias; % de resultados excluídos > 5%; nível com DP quase constante, que pede a forma absoluta.",
+   "[ESTIMÁVEL, condicional] Mais de um equipamento atendendo os mesmos pacientes com o mesmo lote de controle: u_Rw,rede = DP de todos os resultados desse lote somados entre equipamentos (MUPU, Coskun 2022), mostrado além do valor por equipamento. Se houver um equipamento só, N/A.",
+   "[APROXIMAÇÃO] Índices calculados do XN (VCM, HCM, CHCM): u_Rw tirada direto do CIQ do próprio índice, com o rótulo 'estimativa direta, sem propagação'.",
+   "[ESTIMÁVEL, fora do módulo de MU] Corrigir o viés usado em ET%/Sigma: trocar Bias EQC% = média de |b_j| por |b̄| (média com sinal) e mostrar o SE. O RMS fica só no Nordtest."
+  ],
+  "criterios_minimos": [
+   "JANELA: pelo menos 180 dias entre o primeiro e o último resultado usado; o alvo é a janela móvel de 365 dias. De 90 a 179 dias, o valor sai como 'PROVISÓRIO', nunca como válido. Abaixo de 90 dias, NÃO exibir. Base: Ceriotti 2018 (6 meses), Yurt 2026 (6 a 12 meses), Coskun 2025 (top-down com mais de 3 meses).",
+   "TAMANHO: gl = Σ(n_i−1) ≥ 100 nos lotes elegíveis para o valor ser 'válido'; a incerteza relativa do DP fica em cerca de 1/√(2·gl) ≈ 7%. De 30 a 99, 'PROVISÓRIO'. Abaixo de 30, NÃO exibir. É regra interna, porque a norma não foi conferida.",
+   "LOTE ELEGÍVEL: n_i ≥ 20 (regra interna). Lotes com n_i < 20 aparecem na lista, mas ficam fora do agrupamento, inclusive o lote corrente enquanto não chegar a 20.",
+   "NÚMERO DE LOTES: basta 1 lote elegível, desde que a janela seja atendida. Um único lote cobrindo 6 meses ou mais é o melhor caso, porque captura todos os deslocamentos.",
+   "ALERTAS que não bloqueiam: duração mediana do lote < 90 dias ('u_Rw pode subestimar a variação de longo prazo'; vai acontecer sempre na Hema); CV_max/CV_min > 2 (mostrar o lote pior); excluídos > 5%.",
+   "CEQ: a verificação de viés só ocorre com m ≥ 6 amostras de pelo menos 2 rodadas, em até 24 meses; abaixo disso, 'viés não verificável'. O Nordtest secundário segue o mesmo critério; abaixo dele, 'insuficiente'. Com o CAP, isso dá cerca de 9 a 15 amostras por ano.",
+   "META: o status (ótimo, desejável, mínimo, não atende) só aparece com CVI ou MAU de fonte cadastrada; sem fonte, 'sem meta de incerteza'. Enquanto faltar u_cal, todo status leva o sufixo 'provisório (sem u_cal)'.",
+   "NÍVEL: um resultado por nível; nunca agregar níveis. Se o painel precisar de um resumo, mostrar o PIOR nível com a concentração dele.",
+   "k = 2 só se gl ≥ 30, o que os critérios acima já garantem."
+  ],
+  "lotes": "Lote de controle: separar SEMPRE por lote dentro de analito × nível × equipamento e agrupar as variâncias relativas ponderadas por gl: u_Rw = √[Σ(n_i−1)·CV_i² / Σ(n_i−1)]. NUNCA usar um DP único sobre todos os lotes, porque as diferenças de alvo entre os materiais inflariam u_Rw. NUNCA usar a média simples dos CVs; Coskun 2022 lembra que ela só vale com n iguais e variâncias homogêneas. Ficam fora do agrupamento os lotes com n_i < 20. A heterogeneidade é sinalizada pela razão CV_max/CV_min > 2, sem teste formal, e mostrando o lote pior. Lotes curtos (mediana < 90 dias, típico da Hema com 8 lotes por ano) recebem alerta e declaração de que deslocamentos coincidentes com troca de lote não entram em u_Rw. Lotes de reagente e calibrador NÃO são separados: o sistema não os registra, e esses deslocamentos, se aceitáveis, devem permanecer dentro de u_Rw (Thelen 2024; van Schrojenstein Lantman 2022). A tensão com Yurt 2026, que propõe separar também por lote de reagente, se resolve assim: separar por reagente sem somar de volta a variância entre lotes tiraria essa variação de u_Rw. Quando houver registro de trocas de reagente e calibrador, aplicar a regra EFLM de variação permitida entre lotes para rejeitar ou corrigir deslocamentos grandes, em vez de absorvê-los. Bio, com poucos lotes longos, tende a dar uma u_Rw mais representativa que Hema.",
+  "k": "k = 2, cobertura de cerca de 95% bilateral, assumindo distribuição aproximadamente normal e gl ≥ 100. Coskun 2025 arredonda 1,96 para 2. Não usar 1,65, que é o fator unilateral do ET. Não usar Welch-Satterthwaite nem bootstrap: o gl de u_Rw é grande e o de u_cal não é informado.",
+  "unidade": "Forma principal: % relativo por nível. Ao lado, sempre a forma absoluta na unidade do analito, U_abs = U%·x̄_L/100, na média ponderada do nível. A forma absoluta passa a ser a principal quando o DP for quase constante entre os níveis, isto é, DP_baixo/DP_alto entre 0,67 e 1,5 com médias que diferem mais de 2 vezes, ou quando o nível estiver perto do limite inferior da faixa (Magnusson 2012; Farrance 2020; Kallner 2020). Formato: 'U = ±x% (k=2) em x̄ unidade'.",
+  "meta_e_fonte": "PRIMÁRIA [APROXIMAÇÃO convencional]: MAU por variação biológica (modelo 2 de Milão), comparada com u (k=1). Ótima = 0,25·CVI, desejável = 0,50·CVI, mínima = 0,75·CVI. Os fatores vêm de Coskun 2025 (40114656) para o CV analítico. Os valores desejáveis de Braga 2021/2022 batem com 0,5·CVI: K 1,96%, creatinina 2,20%, RBC 1,55%, WBC 5,65%, PLT 4,85%. Os mínimos de Wadhwa 2025 (Na 0,40%, Cl 0,74%) batem com 0,75·CVI; essa verificação numérica é minha. A fonte do CVI é o EFLM BV Database (Sandberg 2024, 38501489). SEM CVI CADASTRADO: (a) se o CVTp tiver fonte VB desejável, CVI = 2·CVTp e MAU desejável = CVTp. Isso é aproximação, e a fonte de cada analito precisa ser conferida antes. (b) Se o CVTp vier de CLIA ou estado da arte, ou não existir, o status é 'sem meta de incerteza'. NÃO derivar MAU de ETp/TEa CLIA. Permitir MAU manual com fonte e justificativa, por exemplo pelos modelos 1 e 3 (Braga 2021/2022; Borrillo 2023): Hb 2,80%, glicose 2,00%, HbA1c 3,00%, PCR 3,76%, colesterol 3,00%, albumina 1,25%. (c) Na, Cl e Ca: a meta de VB é inatingível (Oosterhuis 2023; Wadhwa 2025). Exibir como informativo e permitir MAU manual pelo estado da arte, com justificativa.",
+  "interpretacao": [
+   "U (k=2): resultado ± U contém o valor do mensurando com cerca de 95% de probabilidade, na concentração do nível, considerando SÓ as fontes incluídas.",
+   "Sem u_cal, rótulo fixo: 'MU parcial (sem calibrador): limite inferior da MU real'.",
+   "Status, comparando u com a MAU (k=1): Ótimo até 0,25·CVI; Desejável até 0,50·CVI; Mínimo até 0,75·CVI; Não atende acima de 0,75·CVI; 'Sem meta' quando não houver fonte. Equivale a comparar U com 2·MAU.",
+   "Se u_Rw passar de 0,87·MAU desejável, alerta 'sem margem para u_cal', mesmo que o status seja Desejável.",
+   "Viés do CEQ em três situações: 'não detectável'; 'detectável, dentro do permitido'; 'relevante: investigar ou corrigir'. Neste último caso U NÃO cobre esse viés, e isso tem de estar escrito.",
+   "Nordtest secundário: sem viés, ele dá cerca de √2·U_ISO por dupla contagem. Se o Nordtest reprovar e o ISO aprovar, o desvio contra o grupo par pesa e deve ser investigado. O Nordtest nunca define o status.",
+   "Nunca comparar U com ETp/TEa nem chamar ET% ou Sigma de incerteza. Os dois painéis são separados e complementares (Oosterhuis 2018).",
+   "Tendência: recalcular u_Rw todo mês na janela móvel de 12 meses. Aumento sustentado leva a ação corretiva (CIQ componente II, Braga 2020).",
+   "Diferença analítica entre dois resultados seriados: significativa acima de √2·U. O RCV completo exige incluir o CVI.",
+   "Na, Cl e Ca: 'não atende' contra VB pode indicar meta inatingível, não falha do método."
+  ],
+  "nao_implementar": [
+   "Chamar ET% ou Sigma de incerteza, comparar U com ETp/TEa, ou calcular 'Sigma da incerteza'.",
+   "Usar um DP ou CV único sobre todos os lotes de controle como u_Rw, ou usar a média simples dos CVs dos lotes.",
+   "Usar CV de curto prazo (lote isolado com menos de 90 dias, repetibilidade, corrida única ou dados da bula) como u_Rw.",
+   "Somar o viés linearmente a U, ou somar o Bias EQC% atual (média de |bias|) em quadratura como u_bias.",
+   "Estimar ou preencher u_cal a partir do CEQ, do alvo ou dos limites do controle comercial, da precisão da bula, ou com um valor padrão.",
+   "Usar o alvo do fabricante do controle como referência de viés na MU (Petersmann 2020: a incerteza desse alvo pode dominar o orçamento).",
+   "Aplicar correção automática de viés aos resultados.",
+   "Propagação GUM com covariâncias para VCM, HCM e CHCM, porque não há dados de correlação.",
+   "Bootstrap (Cui 2017) ou Welch-Satterthwaite, que não trazem ganho com gl ≥ 100.",
+   "Misturar CAP e Controllab no mesmo viés ou RMS.",
+   "Separar por lote de reagente ou calibrador, que não são registrados e cuja variação deve ficar dentro de u_Rw.",
+   "Usar o Nordtest como status principal.",
+   "Derivar MAU de TEa CLIA.",
+   "Um único U por analito agregando os níveis.",
+   "Incluir MU no laudo do paciente nesta etapa."
+  ],
+  "limitacoes_declarar": [
+   "u_cal NÃO incluída por falta de certificado. A MU fica subestimada pela parte da cadeia de rastreabilidade, que pode chegar a 50% do orçamento (Braga 2015/2018) ou dominar a MU (Wadhwa 2025).",
+   "O material de controle não tem comutabilidade validada; u_Rw do controle pode diferir da de amostras de pacientes (Ceriotti 2018; Braga 2019).",
+   "A MU vale só nas concentrações dos 2 níveis (Bio) ou 3 níveis (Hema); o perfil de imprecisão varia ao longo da faixa (Kallner 2020).",
+   "O agrupamento dentro de cada lote não captura deslocamentos que coincidam com a troca de lote de controle. Com lotes de cerca de 45 dias na Hema, u_Rw se aproxima de uma precisão intermediária de curto prazo.",
+   "Resultados inativados ou fora da estatística reduzem u_Rw; a fração excluída é informada.",
+   "O viés é verificado contra o consenso do grupo par CAP, não contra valor de referência. O material de CEQ não tem comutabilidade validada. São 3 a 5 amostras por rodada, cerca de 3 rodadas por ano, em concentrações diferentes das do CIQ.",
+   "O Nordtest secundário conta a imprecisão do laboratório duas vezes, porque o RMS é tirado de medidas únicas.",
+   "Índices calculados (VCM, HCM, CHCM): MU direta do CIQ do índice, sem propagação.",
+   "A meta depende da fonte do CVI ou CVTp. Analitos sob controle homeostático estrito têm meta de VB inatingível.",
+   "Pré-analítico e variação biológica não estão incluídos: é MU analítica, não incerteza diagnóstica.",
+   "ISO/TS 20914, ISO 15189 e Nordtest TR 537 não foram conferidas no texto. Os n mínimos e os cortes de 20, 100, 90 dias e 5% são regras internas."
+  ]
+ },
+ "referencias_validas": [
+  {
+   "pmid": "40114656",
+   "citacao": "Coskun A. Are Your Laboratory Data Reproducible? The Critical Role of Imprecision from Replicate Measurements to Clinical Decision-making. Ann Lab Med. 2025. (texto completo lido)",
+   "doi": "10.3343/alm.2024.0569"
+  },
+  {
+   "pmid": "18852859",
+   "citacao": "White GH. Basics of estimating measurement uncertainty. Clin Biochem Rev. 2008. (PMC2556585)"
+  },
+  {
+   "pmid": "38353157",
+   "citacao": "Thelen MHM, van Schrojenstein Lantman M. When bias becomes part of imprecision. Clin Chem Lab Med. 2024.",
+   "doi": "10.1515/cclm-2023-1303"
+  },
+  {
+   "pmid": "42532314",
+   "citacao": "Yurt EF. Pragmatic measurement uncertainty: Aligning IQC data duration with clinical reality in long-term monitoring. Clin Chim Acta. 2026.",
+   "doi": "10.1016/j.cca.2026.121246"
+  },
+  {
+   "pmid": "40064457",
+   "citacao": "Giannoli JM et al. Ensuring internal quality control practices in medical laboratories: IFCC recommendations based on ISO 15189:2022. Clin Chim Acta. 2025.",
+   "doi": "10.1016/j.cca.2025.120240"
+  },
+  {
+   "pmid": "32126011",
+   "citacao": "Braga F, Panteghini M. The utility of measurement uncertainty in medical laboratories. Clin Chem Lab Med. 2020.",
+   "doi": "10.1515/cclm-2019-1336"
+  },
+  {
+   "pmid": "32118490",
+   "citacao": "Grote-Koska D, Brand K. Using ISO/TS 20914:2019 to calculate MU of immunosuppressive drugs. Scand J Clin Lab Invest. 2020.",
+   "doi": "10.1080/00365513.2020.1731849"
+  },
+  {
+   "pmid": "40831382",
+   "citacao": "Yurt EF, Alpdemir M, Senes M. MU of 11 serum proteins according to ISO/TS 20914: a 1-year analysis. Clin Chem Lab Med. 2025.",
+   "doi": "10.1515/cclm-2025-0654"
+  },
+  {
+   "pmid": "40837370",
+   "citacao": "Bozdayi MA et al. Evaluation of MU calculated by two different methods and TAE for ethanol testing. J Med Biochem. 2025. (texto completo lido)",
+   "doi": "10.5937/jomb0-55093"
+  },
+  {
+   "pmid": "36277430",
+   "citacao": "Coskun A. Bias, the unfinished symphony. Biochem Med (Zagreb). 2022. (texto completo lido)",
+   "doi": "10.11613/BM.2022.030402"
+  },
+  {
+   "pmid": "32238602",
+   "citacao": "Farrance I, Frenkel R, Badrick T. ISO/TS 20914:2019 - a critical commentary. Clin Chem Lab Med. 2020.",
+   "doi": "10.1515/cclm-2019-1209"
+  },
+  {
+   "pmid": "35172415",
+   "citacao": "van Schrojenstein Lantman M et al. An approach for determining allowable between reagent lot variation. Clin Chem Lab Med. 2022.",
+   "doi": "10.1515/cclm-2022-0083"
+  },
+  {
+   "pmid": "41187658",
+   "citacao": "Appak O, Ozkutuk AA. MU in the serology laboratory for anti-HBs, anti-Rubella IgG and anti-Toxoplasma IgG. Diagn Microbiol Infect Dis. 2025.",
+   "doi": "10.1016/j.diagmicrobio.2025.117177"
+  },
+  {
+   "pmid": "42134677",
+   "citacao": "Senes M, Alpdemir M, Yurt EF. MU in urine drug analysis: ISO/TS 20914 vs GUM/Eurachem. Clin Chim Acta. 2026.",
+   "doi": "10.1016/j.cca.2026.121067"
+  },
+  {
+   "pmid": "33218279",
+   "citacao": "Petersmann A, Macdonald R, Nauck M. Disregarded MU contributions and their magnitude in measuring plasma glucose. J Diabetes Sci Technol. 2020 (fascículo 2022).",
+   "doi": "10.1177/1932296820966353"
+  },
+  {
+   "pmid": "22233479",
+   "citacao": "Magnusson B et al. Routine internal- and external-quality control data for estimating measurement and diagnostic uncertainty using GUM principles. Scand J Clin Lab Invest. 2012.",
+   "doi": "10.3109/00365513.2011.649015"
+  },
+  {
+   "pmid": "28928006",
+   "citacao": "Cui M et al. Combining Nordtest method and bootstrap resampling for MU of hematology analytes. Clin Biochem. 2017.",
+   "doi": "10.1016/j.clinbiochem.2017.09.008"
+  },
+  {
+   "pmid": "30626224",
+   "citacao": "Cubukcu HC et al. Uncertainty of measurement for 14 immunoassay analytes. Scand J Clin Lab Invest. 2019.",
+   "doi": "10.1080/00365513.2018.1550806"
+  },
+  {
+   "pmid": "29750938",
+   "citacao": "Rigo-Bonnin R et al. Different top-down approaches to estimate MU of whole blood tacrolimus. Clin Biochem. 2018.",
+   "doi": "10.1016/j.clinbiochem.2018.05.005"
+  },
+  {
+   "pmid": "28809749",
+   "citacao": "Zhou R et al. MU of GGT by four approaches using different quality assessment data. Clin Chem Lab Med. 2018.",
+   "doi": "10.1515/cclm-2017-0511"
+  },
+  {
+   "pmid": "30626632",
+   "citacao": "Braga F et al. Trueness evaluation and verification of interassay agreement of 11 serum IgA measuring systems. Clin Chem. 2019.",
+   "doi": "10.1373/clinchem.2018.297655"
+  },
+  {
+   "pmid": "29348165",
+   "citacao": "Nilsson G et al. IFCC WG recommendations for assessing commutability Part 2. Clin Chem. 2018.",
+   "doi": "10.1373/clinchem.2017.277541"
+  },
+  {
+   "pmid": "25486232",
+   "citacao": "Theodorsson E, Magnusson B, Leito I. Bias in clinical chemistry. Bioanalysis. 2014.",
+   "doi": "10.4155/bio.14.249"
+  },
+  {
+   "pmid": "35513038",
+   "citacao": "Coskun A et al. Measurement uncertainty for practical use. Clin Chim Acta. 2022.",
+   "doi": "10.1016/j.cca.2022.04.1003"
+  },
+  {
+   "pmid": "40784633",
+   "citacao": "Oosterhuis WP et al. Measurement uncertainty for practical use - applied in hematology. Clin Chim Acta. 2025.",
+   "doi": "10.1016/j.cca.2025.120546"
+  },
+  {
+   "pmid": "28796637",
+   "citacao": "Oosterhuis WP et al. The use of error and uncertainty methods in the medical laboratory. Clin Chem Lab Med. 2018.",
+   "doi": "10.1515/cclm-2017-0341"
+  },
+  {
+   "pmid": "26540227",
+   "citacao": "Oosterhuis WP, Theodorsson E. Total error vs. measurement uncertainty: revolution or evolution? Clin Chem Lab Med. 2016.",
+   "doi": "10.1515/cclm-2015-0997"
+  },
+  {
+   "pmid": "42250674",
+   "citacao": "Johansen JV, Theodorsson E. The distinction between systematic and random measurement errors depends on context and perspective. Clin Chim Acta. 2026.",
+   "doi": "10.1016/j.cca.2026.121148"
+  },
+  {
+   "pmid": "31971449",
+   "citacao": "Kallner A et al. Measurement repeatability profiles of eight frequently requested measurands. Scand J Clin Lab Invest. 2020.",
+   "doi": "10.1080/00365513.2020.1716266"
+  },
+  {
+   "pmid": "38501489",
+   "citacao": "Sandberg S et al. APS based on biological variation data - considerations, strengths and limitations. Clin Chem Lab Med. 2024.",
+   "doi": "10.1515/cclm-2024-0108"
+  },
+  {
+   "pmid": "38329003",
+   "citacao": "Theodorsson E. Issues in assessing APS in healthcare systems assembling multiple laboratories and measuring systems. Clin Chem Lab Med. 2024.",
+   "doi": "10.1515/cclm-2023-1208"
+  },
+  {
+   "pmid": "40643010",
+   "citacao": "Farrance I, Frenkel R. Measurement Uncertainty and the Prostate Health Index - A Review. J Appl Lab Med. 2025.",
+   "doi": "10.1093/jalm/jfaf080"
+  },
+  {
+   "pmid": "36640931",
+   "citacao": "Oosterhuis WP et al. Performance specifications for sodium should not be based on biological variation. Clin Chim Acta. 2023.",
+   "doi": "10.1016/j.cca.2023.117221"
+  },
+  {
+   "pmid": "28153359",
+   "citacao": "Westgard JO. Measuring Analytical Quality: Total Analytical Error Versus Measurement Uncertainty. Clin Lab Med. 2016/2017.",
+   "doi": "10.1016/j.cll.2016.09.001"
+  },
+  {
+   "pmid": "28153364",
+   "citacao": "Jairaman J et al. Sunway Medical Laboratory QC plans based on Six Sigma, risk management and uncertainty. Clin Lab Med. 2017.",
+   "doi": "10.1016/j.cll.2016.09.013"
+  },
+  {
+   "pmid": "41054048",
+   "citacao": "Cavusoglu C. Six sigma and maximum allowable uncertainty in coagulation analysis. Medicine (Baltimore). 2025.",
+   "doi": "10.1097/MD.0000000000044978"
+  },
+  {
+   "pmid": "25719329",
+   "citacao": "Sandberg S et al. Defining APS: Consensus Statement from the 1st EFLM Strategic Conference. Clin Chem Lab Med. 2015. (sem resumo no PubMed)",
+   "doi": "10.1515/cclm-2015-0067"
+  },
+  {
+   "pmid": "27506603",
+   "citacao": "Ceriotti F et al. Criteria for assigning laboratory measurands to models for APS (1st EFLM Strategic Conference). Clin Chem Lab Med. 2017.",
+   "doi": "10.1515/cclm-2016-0091"
+  },
+  {
+   "pmid": "33725754",
+   "citacao": "Braga F, Panteghini M. Performance specifications for MU of common biochemical measurands according to Milan models. Clin Chem Lab Med. 2021.",
+   "doi": "10.1515/cclm-2021-0170"
+  },
+  {
+   "pmid": "36282875",
+   "citacao": "Braga F et al. Definition and application of performance specifications for MU of 23 common laboratory tests. Clin Chem Lab Med. 2022.",
+   "doi": "10.1515/cclm-2022-0806"
+  },
+  {
+   "pmid": "25870964",
+   "citacao": "Braga F et al. Performance criteria for combined uncertainty budget in the implementation of metrological traceability. Clin Chem Lab Med. 2015.",
+   "doi": "10.1515/cclm-2014-1240"
+  },
+  {
+   "pmid": "29526674",
+   "citacao": "Braga F, Panteghini M. Defining permissible limits for the combined uncertainty budget in the implementation of metrological traceability. Clin Biochem. 2018.",
+   "doi": "10.1016/j.clinbiochem.2018.03.007"
+  },
+  {
+   "pmid": "32639119",
+   "citacao": "Braga F et al. The internal quality control in the traceability era. Clin Chem Lab Med. 2020.",
+   "doi": "10.1515/cclm-2020-0371"
+  },
+  {
+   "pmid": "29410277",
+   "citacao": "Infusino I, Panteghini M. Measurement uncertainty: Friend or foe? Clin Biochem. 2018.",
+   "doi": "10.1016/j.clinbiochem.2018.01.025"
+  },
+  {
+   "pmid": "36773318",
+   "citacao": "Borrillo F, Panteghini M. Current performance of CRP determination and quality specifications for its MU. Clin Chem Lab Med. 2023.",
+   "doi": "10.1515/cclm-2023-0069"
+  },
+  {
+   "pmid": "30903757",
+   "citacao": "Braga F, Panteghini M. Commutability of reference and control materials. Clin Chem Lab Med. 2019.",
+   "doi": "10.1515/cclm-2019-0154"
+  },
+  {
+   "pmid": "34666026",
+   "citacao": "Loh TP et al. Setting APS using HbA1c as a model measurand. Clin Chim Acta. 2021.",
+   "doi": "10.1016/j.cca.2021.10.016"
+  },
+  {
+   "pmid": "29605551",
+   "citacao": "Ceriotti F. Deriving proper MU from Internal Quality Control data: An impossible mission? Clin Biochem. 2018.",
+   "doi": "10.1016/j.clinbiochem.2018.03.019"
+  },
+  {
+   "pmid": "32292278",
+   "citacao": "Martinello F et al. The top-down approach to MU: which formula should we use in laboratory medicine? Biochem Med (Zagreb). 2020.",
+   "doi": "10.11613/BM.2020.020101"
+  },
+  {
+   "pmid": "28245184",
+   "citacao": "Padoan A et al. Estimating MU using long-term QC and EQA data. Clin Chem Lab Med. 2017.",
+   "doi": "10.1515/cclm-2016-0896"
+  },
+  {
+   "pmid": "38742707",
+   "citacao": "Nurlu N et al. MU in clinical chemistry: ISO 20914 versus Nordtest. Scand J Clin Lab Invest. 2024.",
+   "doi": "10.1080/00365513.2024.2338738"
+  },
+  {
+   "pmid": "40099095",
+   "citacao": "Wadhwa N et al. Evaluation of MU in clinical chemistry and comparison with APS. Cureus. 2025.",
+   "doi": "10.7759/cureus.79043"
+  },
+  {
+   "pmid": "35966261",
+   "citacao": "Tan R et al. A practical approach example to MU: 26 immunoassay parameters. Biochem Med (Zagreb). 2022.",
+   "doi": "10.11613/BM.2022.030705"
+  },
+  {
+   "pmid": "29455564",
+   "citacao": "Lim YK et al. MU of platelet concentration using the Sysmex XN. Scand J Clin Lab Invest. 2018.",
+   "doi": "10.1080/00365513.2018.1437644"
+  },
+  {
+   "pmid": "26126036",
+   "citacao": "Hawkins RC, Badrick T. Reporting unit size and MU: Australian practice. Pathology. 2015.",
+   "doi": "10.1097/PAT.0000000000000271"
+  },
+  {
+   "pmid": "29402416",
+   "citacao": "Plebani M et al. What information on MU should be communicated to clinicians, and how? Clin Biochem. 2018.",
+   "doi": "10.1016/j.clinbiochem.2018.01.017"
+  },
+  {
+   "pmid": "29548924",
+   "citacao": "Padoan A et al. MU in laboratory reports: a tool for improving interpretation. Clin Biochem. 2018.",
+   "doi": "10.1016/j.clinbiochem.2018.03.009"
+  }
+ ]
+}

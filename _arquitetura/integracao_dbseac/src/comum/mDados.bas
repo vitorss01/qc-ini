@@ -86,14 +86,18 @@ Public Function CarregarDB() As Variant
     CarregarDB = out
 End Function
 
-' Ultima data com resultado na fonte oficial (0 se vazia).
+' Ultima data com resultado que PARTICIPA da estatistica (0 se nao houver). So o que participa:
+' uma data futura digitada por engano num resultado manual vira MANUAL_INCOMPLETO no Power Query,
+' mas continua na tabela -- o MAX da coluna inteira levava o ano padrao do Painel e a janela da
+' incerteza para o futuro (auditoria 04/10/2026).
 Public Function UltimaDataCQ() As Double
     Dim lo As ListObject
     On Error Resume Next
     Set lo = TabelaCQ()
     If lo Is Nothing Then Exit Function
     If lo.ListRows.Count = 0 Then Exit Function
-    UltimaDataCQ = Application.WorksheetFunction.Max(lo.ListColumns("DATA").DataBodyRange)
+    UltimaDataCQ = Application.WorksheetFunction.MaxIfs(lo.ListColumns("DATA").DataBodyRange, _
+                       lo.ListColumns("PARTICIPA_ESTATISTICA").DataBodyRange, "SIM")
 End Function
 
 ' Nomes dos analitos cadastrados (aba Analitos).

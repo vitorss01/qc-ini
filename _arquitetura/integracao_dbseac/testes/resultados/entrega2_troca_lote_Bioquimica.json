@@ -1,0 +1,56 @@
+[
+ {
+  "teste": "L01 Troca para lote sem média/DP (8973): o Painel diz \"SEM MÉDIA/DP\" em todo nível, nada herdado de 8974",
+  "resultado": "PASS",
+  "evidencia": {
+   "analito": "Proteína C-reativa",
+   "lote_antes": "8974",
+   "status_antes": [
+    "REJEITADO",
+    ""
+   ],
+   "lote_depois": "8973",
+   "status_depois": [
+    "SEM MÉDIA/DP",
+    "SEM MÉDIA/DP"
+   ]
+  }
+ },
+ {
+  "teste": "L02 Volta para 8974: parâmetros intactos (ida e volta não grava a tela vazia por cima) e Painel avaliando de novo",
+  "resultado": "PASS",
+  "evidencia": {
+   "parametros_antes": [
+    [
+     1.0055555555555555,
+     0.1
+    ],
+    [
+     3.863333333333333,
+     0.18
+    ]
+   ],
+   "parametros_depois": [
+    [
+     1.0055555555555555,
+     0.1
+    ],
+    [
+     3.863333333333333,
+     0.18
+    ]
+   ],
+   "status": [
+    "REJEITADO",
+    ""
+   ]
+  }
+ },
+ {
+  "teste": "L03 Trocar de lote não é alterar parâmetro: nenhum PARAMETRO_LOTE_ALTERADO na trilha",
+  "resultado": "PASS",
+  "evidencia": {
+   "eventos_na_troca": []
+  }
+ }
+]
