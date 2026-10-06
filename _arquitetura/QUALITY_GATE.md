@@ -432,7 +432,7 @@ na tela** — ela entregaria o foco por nível. Daí o ADR-063.
 | 14.6 | Viés do CEQ verificado, não somado | ✅ | I04: média com sinal, triagem (≥ 6 amostras de ≥ 2 rodadas; > 2 EP) e Nordtest informativo conferidos (Bio 31, Hema 28 analitos) |
 | 14.7 | Painel e Estatística coerentes | ✅ | I05 Painel = Estatística por nível; I06 nenhum erro de fórmula; recálculo ~1 s (I09) |
 | 14.8 | Correções do CEQ achadas no caminho | ✅ corrigido | Hema: colunas R/S/T/AC/AD davam "SEM EP" sempre (I07); Bio: rótulos acentuados corrompidos no mEQA (I08); mPlanoQC com texto corrompido; datas "yyyy" na Hema |
-| 14.9 | Viés do Sigma (média de \|bias\|) | ⚠️ pendência D-01 | Superestima o viés (≈0,8σ sem viés real) e subestima o Sigma. Impacto medido: Bio 5/58 e Hema 15/57 classes subiriam. Fica para o RT aprovar: relaxa regras de Westgard |
+| 14.9 | Viés do Sigma (média de \|bias\|) | ⚠️ pendência D-01 | Mistura erro aleatório com sistemático; o efeito é grande no diferencial leucocitário e pequeno onde há deriva entre rodadas (G/A mediano 1,00 Bio / 0,90 Hema). Estudo D-01 (06/10/2026) feito; decisão do RT pendente |
 
 **Bateria sobre os bytes entregues (ciclo autônomo, 04/10/2026):** Bioquímica — **98/98** (segurança 20, casos extremos 9, troca de lote 3, lotes 14, gráficos 8, incerteza 12, desempenho 4, QA final 28) — sha256 f85a3c1566ea62fe; Hematologia — **100/100** (segurança 20, casos extremos 9, troca de lote 3, lotes 14, gráficos 8, incerteza 14, desempenho 4, QA final 28) — sha256 e419f22e7d898463.
 

@@ -1648,10 +1648,11 @@ Public Sub AtualizarPainelEng()
         outStat(t + 1, 3) = IIf(n = 0, "", media)
         outStat(t + 1, 4) = IIf(n < 2, "", dp)
         outStat(t + 1, 5) = IIf(n < 2 Or media = 0, "", cv)
-        outStat(t + 1, 6) = IIf(etp = 0, "", etp)
+        ' ADR-068: sem ETp cadastrado (vazio ou <= 0) ETp e Sigma saem "-" -- nunca 0 nem Sigma negativo
+        outStat(t + 1, 6) = IIf(etp <= 0, "-", etp)
         outStat(t + 1, 7) = IIf(n = 0 Or alvoM = 0, "", bias)
         outStat(t + 1, 8) = IIf(n < 2 Or media = 0, "", et)
-        outStat(t + 1, 9) = IIf(n < 2 Or cv = 0 Or etp = 0, "", sg)
+        outStat(t + 1, 9) = IIf(etp <= 0, "-", IIf(n < 2 Or cv = 0, "", sg))
         outStat(t + 1, 10) = IIf(n = 0, "", IIf(rejTot > 0, "REJEITADO", "OK"))
         outStat(t + 1, 11) = ""
         outStat(t + 1, 12) = ""
@@ -1754,13 +1755,13 @@ Public Sub AtualizarEstatisticaAba()
                 outp(er, 2) = IIf(n = 0, "", media)
                 outp(er, 3) = IIf(n < 2, "", dp)
                 outp(er, 4) = IIf(n < 2 Or media = 0, "", cv)
-                outp(er, 5) = IIf(etp = 0, "", etp)
+                outp(er, 5) = IIf(etp <= 0, "-", etp)            ' ADR-068
                 outp(er, 6) = IIf(IsNumeric(wa.Cells(i, 19).Value), wa.Cells(i, 19).Value, "")
                 outp(er, 7) = IIf(IsNumeric(wa.Cells(i, 20).Value), wa.Cells(i, 20).Value, "")
                 outp(er, 8) = IIf(n = 0 Or alvoM = 0, "", bias)
                 outp(er, 9) = IIf(n < 2 Or media = 0, "", et)
-                outp(er, 10) = IIf(n < 2 Or cv = 0 Or etp = 0, "", sg)
-                outp(er, 11) = IIf(n < 2 Or cv = 0 Or etp = 0, "", mQualidade.ClassificarSigma(sg))
+                outp(er, 10) = IIf(etp <= 0, "-", IIf(n < 2 Or cv = 0, "", sg))
+                outp(er, 11) = IIf(etp <= 0, "-", IIf(n < 2 Or cv = 0, "", mQualidade.ClassificarSigma(sg)))
             End If
         Next t
     Next i

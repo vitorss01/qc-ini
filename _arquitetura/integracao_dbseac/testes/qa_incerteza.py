@@ -387,6 +387,38 @@ def executar(produto, caminho, saida):
         reg('I10 Linhas sem analito cadastrado (A = 0) não calculam nem mostram incerteza', not cheias,
             {'linhas_sem_analito': len(fant), 'celulas_preenchidas': cheias[:6]})
 
+        # ADR-068: sem ETp cadastrado (vazio, texto ou <= 0) ETp, Sigma e tudo que depende dele = "-"; com ETp, numero
+        if any(n_.Name == 'etpOficial' for n_ in q.wb.Names):
+            etp_rng = q.wb.Names('etpOficial').RefersToRange
+        else:
+            etp_rng = a.Range('R4:R43')
+        etp_cad = {}
+        for i_ in range(1, 41):
+            nome_ = str(a.Range(f'A{i_ + 3}').Value or '').strip()
+            if nome_:
+                etp_cad[nome_] = etp_rng.Cells(i_, 1).Value
+        dep = ['L', 'M', 'N', 'O', 'P', 'V', 'W', 'X', 'Y', 'Z', 'AA']
+        dif, sem_etp = [], set()
+        for r, an, nv in linhas:
+            v = etp_cad.get(an)
+            k_ = e.Range(f'K{r}').Value
+            if not (num(v) and v > 0):
+                sem_etp.add(an)
+                fora = [c for c in ['K'] + dep if e.Range(f'{c}{r}').Value != '-']
+                if fora:
+                    dif.append((an, nv, 'sem ETp mas sem "-"', fora))
+            else:
+                if not perto(k_, v):
+                    dif.append((an, nv, 'ETp', k_, v))
+                lv = e.Range(f'L{r}').Value
+                if lv == '-' or (num(lv) and num(e.Range(f'F{r}').Value) and num(e.Range(f'G{r}').Value)
+                                 and not perto(lv, (v - abs(e.Range(f'G{r}').Value)) / e.Range(f'F{r}').Value)):
+                    dif.append((an, nv, 'Sigma', lv))
+        reg('I14 Analito sem ETp cadastrado (vazio ou <= 0) mostra "-" no ETp, Sigma, classe, margem, DPM, rendimento e '
+            'plano de CQ -- nunca 0 nem Sigma negativo; com ETp, Sigma = (ETp − |bias|)/CV (ADR-068)',
+            not dif and len(sem_etp) < len({x[1] for x in linhas}),
+            {'sem_etp': sorted(sem_etp), 'divergencias': dif[:8]})
+
         # sem u(bias): o motivo dito e o do CEQ (insuficiente / sem u(Cref) / sem CEQ)
         motivos = {}
         for r, an, nv in linhas:

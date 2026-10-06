@@ -200,7 +200,7 @@ def bloco_estatistica(wb, ult, exc, prov, cvi):
     val = ciq % 'VALIDADE'
     cvim = 'mIncerteza.CVIMeta(IFERROR(INDEX(' + cvi + ',' + m + '),""),$I{r},$J{r})'
     vies = 'mCEQ.ViesEQ($A{r},eqAnoEP,"%s",' + prov + ',eqRodada)'
-    bperm = 'IF($I{r}="VB",$K{r}-1.65*$J{r},"")'
+    bperm = 'IF(AND($I{r}="VB",ISNUMBER($K{r}),ISNUMBER($J{r})),$K{r}-1.65*$J{r},"")'   # ADR-068: ETp pode ser "-"
     cab = [
         ('u(Rw) %\nCIQ 12 m, lotes n≥20', '=IF(OR($A{r}="",$A{r}=0),"",IF(' + val + '="INSUFICIENTE","",' + (ciq % 'CV') + '))', '0.00'),
         ('gl\nΣ(n−1)', '=IF(OR($A{r}="",$A{r}=0),"",' + (ciq % 'GL') + ')', '0'),

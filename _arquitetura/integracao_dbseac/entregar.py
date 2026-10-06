@@ -13,7 +13,7 @@ Para cada produto:
   1. copia o .xlsm de producao para _entrega_<data>/<produto>/ (a producao nao e tocada);
   2. na copia: MODO_FONTE (058), lotes automaticos e validade (060, registra os lotes ja recebidos),
      papeis e sessao (059), graficos: zoom (061) e todos a vista (063), troca de analito rapida (062),
-     incerteza de medicao e correcoes do CEQ (064) e blindagem.
+     incerteza de medicao e correcoes do CEQ (064/067), ETp ausente = "-" (068) e blindagem.
      Todos idempotentes; cada um instala o VBA inteiro das fontes (codigo_atual.py);
   3. guarda os bytes instalados e roda, cada suite numa copia propria deles:
      qa_seguranca, qa_casos_extremos, qa_troca_lote, qa_lotes_auto, qa_graficos (Excel VISIVEL),
@@ -74,6 +74,7 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('graficos', ['instalar_adr063.py', produto, alvo]),
               ('desempenho', ['instalar_adr062.py', produto, alvo]),
               ('incerteza', ['instalar_adr064.py', produto, alvo]),
+              ('sem_etp', ['instalar_adr068.py', produto, alvo]),
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:
         ok, fim = rodar(os.path.join(trab, f'{nome}.log'), AQUI, *args)
