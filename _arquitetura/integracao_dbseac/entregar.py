@@ -18,7 +18,7 @@ Para cada produto:
   3. guarda os bytes instalados e roda, cada suite numa copia propria deles:
      qa_seguranca, qa_casos_extremos, qa_troca_lote, qa_lotes_auto, qa_graficos (Excel VISIVEL),
      qa_incerteza (recalculo independente), qa_desempenho, qa_final;
-  4. SO SE TODAS PASSAREM: backup da producao em _backup_pre_integracao_<data>/ conferido por
+  4. SO SE TODAS PASSAREM E A PRODUCAO NAO TIVER SIDO GRAVADA DURANTE OS TESTES: backup da producao em _backup_pre_integracao_<data>/ conferido por
      SHA-256, e troca pelos MESMOS bytes que passaram nos testes (SHA-256 conferido de novo).
 Falhou qualquer passo: a producao fica como estava, e o relatorio diz onde parou.
 
@@ -64,7 +64,8 @@ def entregar(produto, modo, testar, pasta, origem=None):
     os.makedirs(trab, exist_ok=True)
     alvo = os.path.join(trab, ARQ[produto])
     shutil.copy2(prod, alvo)
-    print(f'\n## {produto}\n   producao sha256 {sha(prod)[:16]} -> copia de trabalho', flush=True)
+    sha_inicio = sha(alvo)
+    print(f'\n## {produto}\n   producao sha256 {sha_inicio[:16]} -> copia de trabalho', flush=True)
 
     # cada instalador instala TODO o VBA atual (codigo_atual.py) e cuida da sua parte de planilha
     passos = [('modo_fonte', ['instalar_modo_historico.py', produto, alvo, '--modo', modo]
@@ -98,6 +99,11 @@ def entregar(produto, modo, testar, pasta, origem=None):
     if sha(alvo) != instalado:
         return False, 'o arquivo instalado mudou durante os testes'
 
+    # a producao foi gravada no laboratorio durante as horas de teste: trocar agora apagaria o que foi lancado
+    # (inativacoes, manuais, comentarios). Nao troca; rodar de novo com o arquivo fechado (06/10/2026)
+    if sha(prod) != sha_inicio:
+        return False, ('a producao foi gravada durante os testes (alguem salvou o arquivo): NAO trocada. '
+                       'Rodar de novo com o arquivo fechado')
     bk = os.path.join(RAIZ, '_backup_pre_integracao_' + time.strftime('%Y-%m-%d_%H%M'))
     os.makedirs(bk, exist_ok=True)
     shutil.copy2(prod, os.path.join(bk, ARQ[produto]))
