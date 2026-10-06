@@ -229,14 +229,15 @@ let
             each "valor '" & Text.From(_[#"REGISTRAR - LJ"]) & "' na inativacao: tratado como NAO (o X nao aparece). " &
                  "Marque ou desmarque a caixa."),
 
-    // A09 (D09, decisao conservadora) -- manual que coincide com interfaceamento INATIVADO: continua fora da
-    // estatistica (CONFLITO_MANUAL) ate o RT decidir se "inativar o automatico e lancar o correto" e permitido
+    // A09 (D09b, DECIDIDO pelo laboratorio em 06/10/2026: manual NUNCA substitui automatico) -- manual que coincide
+    // com interfaceamento INATIVADO continua fora da estatistica (CONFLITO_MANUAL). Resultado ruim se inativa; o
+    // manual e para o que o interfaceamento nao trouxe
     IdsInat = List.Buffer(Table.SelectRows(F, each [STATUS_ANALITICO] = "INATIVADO")[ID_REGISTRO]),
     A09 = Achado("ALERTA", "A09", "Manual coincide com resultado do interfaceamento inativado",
             Table.SelectRows(F, each [ORIGEM_RESULTADO] = "MANUAL" and [STATUS_ANALITICO] = "CONFLITO_MANUAL" and
                                      [ID_RELACIONADO] <> null and List.Contains(IdsInat, [ID_RELACIONADO])),
             each "o automatico " & _[ID_RELACIONADO] & " esta INATIVADO e este manual tem a mesma chave e instante: o manual " &
-                 "NAO participa (decisao do RT pendente: manual pode substituir um automatico inativado?)."),
+                 "NAO participa: resultado manual nunca substitui um automatico (decisao do laboratorio, 06/10/2026)."),
 
     // A10 (D12) -- Hematologia (sem seletor de equipamento): o Painel, a Estatistica e o Westgard sao do
     // EQUIPAMENTO_PADRAO do CFG; resultado de outro equipamento fica na base, fora dessas series -- nunca em silencio
