@@ -494,7 +494,8 @@ def executar(produto, caminho, saida):
              'exemplo': (xid, (fin2.get(xid) or {}).get('RUN'), (fin2.get(xid) or {}).get('STATUS_ANALITICO'))})
 
         # ---------------------------------------------------------------- inativacao (soft-delete) sem comentario
-        q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': xid.split('-')[-1]})   # so o numero: o evento normaliza
+        # so o numero (o evento normaliza) e o analito (ADR-070); SEM motivo: o T08 prova o E01
+        q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': xid.split('-')[-1], 'ANALITO': X['ANALITO']})
         lin = [r for r in q.ler('tblInativacao_NaoConformes') if r['ID_REGISTRO']]
         q.atualizar()
         f = q.final_por_id()[xid]
@@ -507,7 +508,7 @@ def executar(produto, caminho, saida):
             and rec_x0 == rec_x1 and lin and lin[0]['REGISTRAR - LJ'] is True and lin[0]['DATA_INATIVACAO'] and lin[0]['USUARIO'],
             {'linha_inativacao': lin[0] if lin else None, 'final': {k: f[k] for k in ('ID_REGISTRO', 'STATUS_ANALITICO',
              'PARTICIPA_ESTATISTICA', 'REGISTRAR_RESULTADO_NO_LJ', 'TIPO_PLOTAGEM_LJ', 'RESULTADO')}, 'origem_identica': rec_x0 == rec_x1})
-        reg('T08 Governança: inativado SEM comentário = QA ERRO E01 (FAIL de governança detectado)', bool(e01),
+        reg('T08 Governança: inativado SEM motivo nem comentário = QA ERRO E01 (FAIL de governança detectado)', bool(e01),
             {'achado': e01[0] if e01 else None})
 
         # ---------------------------------------------------------------- LJ: X vermelho
@@ -721,7 +722,7 @@ def executar(produto, caminho, saida):
                     and r['ORIGEM_RESULTADO'] == 'INTERFACEAMENTO' and no_filtro(r)]
             escolhidos[a] = [r['ID_REGISTRO'] for r in pool[:k]]
             for i in escolhidos[a]:
-                q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': i})
+                q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': i, 'ANALITO': a})
                 q.escrever_linha('tblComentariosTecnicos', {'ID_REGISTRO': i, 'COMENTARIO_TECNICO': 'QA: repetição registrada.'})
         _, t17 = q.atualizar()
         bloco = q.bloco_repeticoes()

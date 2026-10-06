@@ -21,6 +21,9 @@ MODULOS = ['mLotes', 'mApp', 'mIntegracao', 'mSeguranca', 'mEstatistica', 'mUI',
            'mDados']                            # ADR-064 (auditoria): ultima data so do que participa
 # modulos que podem ainda nao existir no arquivo (criados na primeira instalacao)
 NOVOS = ['mIncerteza']                         # ADR-064
+# modulos de CLASSE (criados como classe se faltarem). ADR-070: a clsCht (eventos dos graficos do Painel)
+# so existia dentro dos .xlsm; virou fonte versionada
+CLASSES = ['clsCht']
 # modulos de aba: (nome da aba, arquivo-fonte)
 ABAS = [('Painel', 'Painel.cls'), ('Configuração', 'Configuracao.cls')]
 PASTA = 'EstaPastaDeTrabalho.cls'
@@ -57,6 +60,11 @@ def instalar(ex, wb, produto, log=print):
         feitos.append(m)
     for m in NOVOS:
         _trocar(wb, m, _fonte(d, m + '.bas'), criar=True)
+        feitos.append(m)
+    for m in CLASSES:
+        if m not in [c.Name for c in wb.VBProject.VBComponents]:
+            wb.VBProject.VBComponents.Add(2).Name = m            # vbext_ct_ClassModule
+        _trocar(wb, m, _fonte(d, m + '.cls'), criar=False)
         feitos.append(m)
     for aba, arq in ABAS:
         cn = [ws.CodeName for ws in wb.Worksheets if ws.Name == aba][0]

@@ -170,6 +170,7 @@ Public Sub AjustarLegendas()
     Next co
 End Sub
 
+' Liga cada grafico do Painel a uma clsCht (dica do ponto e duplo clique). Indice do grafico = nivel.
 Public Sub HookCharts()
     On Error Resume Next
     Dim co As ChartObject, h As clsCht
@@ -177,7 +178,7 @@ Public Sub HookCharts()
     For Each co In ThisWorkbook.Sheets("Painel").ChartObjects
         Set h = New clsCht
         Set h.c = co.Chart
-        h.ValCol = 6 + (co.Index - 1) * 22
+        h.Nivel = co.Index                        ' ADR-070: a dica le Eng_Saida pelo nivel (antes: coluna do Calc)
         gHooks.Add h
     Next co
 End Sub
@@ -581,4 +582,116 @@ Public Sub SpinnerLimites()
         mSeguranca.RestaurarProtecao ws, prot
         Application.EnableEvents = ev
     End If
+End Sub
+
+' ===================== DICA DO LEVEY-JENNINGS (ADR-070) =====================
+' O usuario passa o mouse (ou clica) num ponto do grafico do Painel e ve DE QUEM e o ponto: o ID do
+' resultado -- o numero que se digita na aba Inativar --, o RUN real, a data/hora e o valor. Antes a caixa
+' lia a aba Calc e mostrava "RUN <indice do ponto>", sem ID.
+'   nivel = indice do grafico (1 = N1); serie = indice da serie no grafico; ponto = indice do ponto, que e o
+'   slot da corrida (Calc e Eng_Saida: linha 2 + ponto). Funcao publica e sem efeito colateral: o QA a chama
+'   por automacao (testes/qa_inativar.py) com o mesmo (nivel, serie, ponto) que o Excel passa no evento.
+' Series do grafico: "Resultado"/"OK"/"Violacao" = o ponto do nivel; "Nao conforme (X)" (tres, uma por X da
+' corrida) = os X vermelhos; linhas de limite e "Calibracao" = so a corrida. Devolve "" quando nao ha ponto.
+Public Function DicaPonto(ByVal nivel As Long, ByVal serie As Long, ByVal ponto As Long) As String
+    Dim ch As Chart, eng As Worksheet, nm As String, r As Long, k As Long, slot As Long, col As Long
+    Dim v As Variant, idv As Variant, dh As Variant, runv As Variant
+    On Error GoTo sai
+    If nivel < 1 Or nivel > mEstatistica.NLV Or ponto < 1 Or ponto > 180 Then Exit Function
+    Set ch = ThisWorkbook.Worksheets("Painel").ChartObjects(nivel).Chart
+    If serie < 1 Or serie > ch.SeriesCollection.Count Then Exit Function
+    nm = CStr(ch.SeriesCollection(serie).Name)
+    Set eng = ThisWorkbook.Worksheets("Eng_Saida")
+    If ponto > CLng(Val(CStr(eng.Range("I1").Value))) Then Exit Function      ' alem das corridas publicadas
+    r = 2 + ponto
+    runv = eng.Cells(r, 2).Value
+    If Len(CStr(runv)) = 0 Then Exit Function
+    If InStr(1, nm, "conforme", vbTextCompare) > 0 Then
+        For k = 1 To serie                        ' qual dos tres X: a ordem das series "Nao conforme (X)"
+            If InStr(1, CStr(ch.SeriesCollection(k).Name), "conforme", vbTextCompare) > 0 Then slot = slot + 1
+        Next k
+        If slot < 1 Or slot > 3 Then Exit Function
+        col = (nivel - 1) * 3 + slot - 1
+        v = eng.Cells(r, mEstatistica.ENG_COL_X0 + col).Value
+        idv = eng.Cells(r, mEstatistica.ENG_COL_IDX0 + col).Value
+        dh = eng.Cells(r, mEstatistica.ENG_COL_DHX0 + col).Value
+        If Not EhNumero(v) Then Exit Function
+        DicaPonto = TextoDica(idv, True, runv, dh, v)
+    ElseIf nm = "Resultado" Or nm = "OK" Or InStr(1, nm, "Viola", vbTextCompare) = 1 Then
+        v = eng.Cells(r, mEstatistica.ENG_COL_VALOR0 + nivel - 1).Value
+        idv = eng.Cells(r, mEstatistica.ENG_COL_ID0 + nivel - 1).Value
+        dh = eng.Cells(r, mEstatistica.ENG_COL_DH0 + nivel - 1).Value
+        If Not EhNumero(v) Then Exit Function
+        DicaPonto = TextoDica(idv, False, runv, dh, v)
+    Else
+        ' linha de limite ou calibracao: nao e um resultado, so a corrida
+        dh = eng.Cells(r, 29).Value                 ' Eng_Saida AC: data da corrida
+        DicaPonto = "RUN " & CStr(runv) & IIf(IsDate(dh), " " & ChrW$(183) & " " & Format$(dh, "dd/mm/yyyy"), "")
+    End If
+sai:
+End Function
+
+Private Function EhNumero(ByVal v As Variant) As Boolean
+    If IsEmpty(v) Or IsError(v) Then Exit Function
+    If VarType(v) = vbString Then Exit Function
+    EhNumero = IsNumeric(v)
+End Function
+
+' "ID 314216 · RUN 25103103 · 25/10/2025 14:32 · 1,234" (X: "ID 314216 · INATIVADO · RUN ...").
+Private Function TextoDica(ByVal idv As Variant, ByVal inativado As Boolean, ByVal runv As Variant, _
+                           ByVal dh As Variant, ByVal v As Variant) As String
+    Dim s As String, sep As String
+    sep = " " & ChrW$(183) & " "
+    s = "ID " & IdCurto(CStr(idv))
+    If inativado Then s = s & sep & "INATIVADO"
+    s = s & sep & "RUN " & CStr(runv)
+    If IsDate(dh) Then s = s & sep & Format$(dh, "dd/mm/yyyy hh:mm")
+    TextoDica = s & sep & CStr(CDbl(v))
+End Function
+
+' O numero que o usuario digita na aba Inativar: "BIO-314216" -> "314216". Manual (MAN_0001) fica inteiro.
+Public Function IdCurto(ByVal id As String) As String
+    Dim p As Long, resto As String
+    id = Trim$(id)
+    p = InStrRev(id, "-")
+    If p > 0 Then
+        resto = Mid$(id, p + 1)
+        If Len(resto) > 0 And resto Like String$(Len(resto), "#") Then IdCurto = resto: Exit Function
+    End If
+    IdCurto = id
+End Function
+
+' Duplo clique num ponto do LJ (clsCht): pergunta o motivo e grava a linha na aba Inativar (ID, analito em
+' tela, REGISTRAR - LJ marcado, MOTIVO; data e usuario carimbados). NAO roda a atualizacao: o usuario
+' confere e clica ATUALIZAR DADOS (a mesma regra de quem digita na aba). X vermelho = ja inativado.
+Public Sub InativarPeloGrafico(ByVal nivel As Long, ByVal serie As Long, ByVal ponto As Long)
+    Dim dica As String, eng As Worksheet, ch As Chart, nm As String, idv As String, an As String
+    Dim motivo As String, r As String
+    On Error GoTo falha
+    dica = DicaPonto(nivel, serie, ponto)
+    If Len(dica) = 0 Or Left$(dica, 3) <> "ID " Then Exit Sub        ' nao e um resultado (linha de limite)
+    Set ch = ThisWorkbook.Worksheets("Painel").ChartObjects(nivel).Chart
+    nm = CStr(ch.SeriesCollection(serie).Name)
+    Set eng = ThisWorkbook.Worksheets("Eng_Saida")
+    an = Trim$(CStr(eng.Range("C1").Value))
+    If InStr(1, nm, "conforme", vbTextCompare) > 0 Then
+        MsgBox "Este resultado ja esta inativado:" & vbCrLf & dica & vbCrLf & vbCrLf & _
+               "Para reativar, apague a linha dele na aba Inativar e clique ATUALIZAR DADOS.", _
+               vbInformation, "Inativar resultado"
+        Exit Sub
+    End If
+    idv = CStr(eng.Cells(2 + ponto, mEstatistica.ENG_COL_ID0 + nivel - 1).Value)
+    motivo = InputBox("Inativar este resultado (" & an & ", nivel " & nivel & ")?" & vbCrLf & dica & vbCrLf & vbCrLf & _
+                      "Escreva o motivo (obrigatorio). Cancelar = nada muda.", "Inativar resultado")
+    If Len(Trim$(motivo)) = 0 Then Exit Sub
+    r = mIntegracao.RegistrarInativacao(idv, an, motivo)
+    If Left$(r, 3) = "OK|" Then
+        MsgBox "Gravado na aba Inativar (linha " & Mid$(r, 4) & "): ID " & IdCurto(idv) & ", " & an & "." & vbCrLf & _
+               "Clique ATUALIZAR DADOS para aplicar.", vbInformation, "Inativar resultado"
+    Else
+        MsgBox Mid$(r, InStr(r, "|") + 1), vbExclamation, "Inativar resultado"
+    End If
+    Exit Sub
+falha:
+    MsgBox "Nao foi possivel gravar a inativacao: " & Err.Description, vbExclamation, "Inativar resultado"
 End Sub

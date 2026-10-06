@@ -50,15 +50,15 @@ ABAS = [
       '3) Confira STATUS: ATIVO = entrou na estatística · CONFLITO_MANUAL = o mesmo resultado já veio pelo '
       'interfaceamento (o manual fica guardado, fora do cálculo) · MANUAL_INCOMPLETO = falta campo.']),
     ('Inativar',
-     'INATIVAR — retirar resultados da população principal (não conformes / repetições)',
-     'Soft-delete por ID_REGISTRO: o resultado continua na base, sai da população estatística',
-     ['Digite (ou cole) o ID_REGISTRO copiado da aba Principal - Resultados.  REGISTRAR - LJ marcado (padrão) = aparece no '
-      'Levey-Jennings como X VERMELHO · desmarcado = não aparece no gráfico.',
-      'Para REATIVAR, apague a linha.  Toda inativação exige justificativa na aba COMENTARIOS_TECNICOS '
-      '(sem ela o QA acusa ERRO DE GOVERNANÇA).  Depois clique ⟳ ATUALIZAR DADOS.']),
+     'INATIVAR — retirar resultados da estatística',
+     'O resultado continua na base (auditoria) e sai do cálculo · REGISTRAR - LJ marcado = X vermelho no gráfico · '
+     'desmarcado = não aparece',
+     ['Digite o ID (o número que aparece ao passar o mouse no ponto do Levey-Jennings), escolha o analito, escreva o '
+      'motivo e clique ⟳ ATUALIZAR DADOS.',
+      'Para reativar, apague a linha.  Se o ID não for do analito escolhido, nada é inativado e a aba QA_INTEGRACAO avisa.']),
     ('COMENTARIOS_TECNICOS',
-     'COMENTÁRIOS TÉCNICOS — justificativa de cada inativação',
-     'Relacionados pelo ID_REGISTRO · obrigatórios para todo resultado inativado',
+     'COMENTÁRIOS TÉCNICOS — observações por resultado',
+     'Relacionados pelo ID_REGISTRO · a justificativa da inativação pode ficar aqui ou no MOTIVO da aba Inativar',
      ['Uma linha por comentário. Mais de um comentário para o mesmo ID aparece junto na DB_CQ_FINAL (separados por " | ").',
       'Comentário de resultado reativado fica como histórico (o QA informa, não acusa erro).']),
     ('Principal - Resultados',
@@ -66,7 +66,7 @@ ABAS = [
      'Single source of truth do Levey-Jennings, Westgard, Estatística e Power BI · gerada só pelo Power Query',
      ['Uma linha = um resultado. Inativados CONTINUAM aqui (PARTICIPA_ESTATISTICA = NÃO). '
       'TIPO_PLOTAGEM_LJ: NORMAL = ponto · X_VERMELHO = X no gráfico · NAO_PLOTAR = só auditoria.',
-      'Para inativar: copie o ID_REGISTRO e cole na aba Inativar.  Não edite esta tabela — '
+      'Para inativar: digite o número do ID e o analito na aba Inativar.  Não edite esta tabela — '
       'ela é refeita a cada ⟳ ATUALIZAR DADOS.']),
     ('QA_INTEGRACAO',
      'QA DA INTEGRAÇÃO — governança dos dados',
@@ -91,7 +91,9 @@ CONSULTAS = ['CFG_INTEGRACAO', 'SEAC_ORIGEM'] + ORDEM_CARGA
 
 # ---------------------------------------------------------------- entradas
 # (cabecalho, largura em caracteres, formato, tipo) -- tipo: 'in' digitado, 'auto' carimbado pelo VBA,
-# 'f' formula de conferencia (calculada, bloqueada)
+# 'f' formula de conferencia (calculada, bloqueada).
+# Coluna de FORMULA nunca tem formato '@' (texto): com '@' o Excel guarda a formula como TEXTO literal e a
+# celula mostra "=IF(..." em vez do valor (defeito achado em 06/10/2026 nas tres abas de entrada; ADR-070).
 LOOKUP = '=IF([@ID_REGISTRO]="","",IFERROR(XLOOKUP([@ID_REGISTRO],tblCQ_Final[ID_REGISTRO],tblCQ_Final[{c}]),"—"))'
 ENTRADAS = {
     'tblResultados_Manuais': ('Digitar Resultados', [
@@ -109,39 +111,38 @@ ENTRADAS = {
         ('USUARIO', 14, '@', 'auto'),
         ('REGISTRADO_EM', 16, 'dd/mm/yyyy hh:mm', 'auto'),
         ('RUN', 11, '0', LOOKUP.format(c='RUN')),
-        ('STATUS', 20, '@', LOOKUP.format(c='STATUS_ANALITICO')),
-        ('DETALHE', 50, '@', '=IF([@ID_REGISTRO]="","",IFERROR(XLOOKUP([@ID_REGISTRO],tblCQ_Final[ID_REGISTRO],'
-                             'tblCQ_Final[MOTIVO_EXCLUSAO_AUTOMATICA]),"atualize os dados"))'),
+        ('STATUS', 20, 'General', LOOKUP.format(c='STATUS_ANALITICO')),
+        ('DETALHE', 50, 'General', '=IF([@ID_REGISTRO]="","",IFERROR(XLOOKUP([@ID_REGISTRO],tblCQ_Final[ID_REGISTRO],'
+                                   'tblCQ_Final[MOTIVO_EXCLUSAO_AUTOMATICA]),"atualize os dados"))'),
     ]),
+    # ADR-070: so o que o usuario preenche (ID, ANALITO de conferencia, caixa, MOTIVO) + a trilha de auditoria
+    # (data e usuario, carimbados pelo VBA, travados). Sem formula: o Power Query confere o ID contra o analito.
     'tblInativacao_NaoConformes': ('Inativar', [
         ('ID_REGISTRO', 14, '@', 'in'),
+        ('ANALITO', 24, '@', 'in'),
         ('REGISTRAR - LJ', 11, 'General', 'in'),
+        ('MOTIVO', 50, '@', 'in'),
         ('DATA_INATIVACAO', 16, 'dd/mm/yyyy hh:mm', 'auto'),
         ('USUARIO', 14, '@', 'auto'),
-        ('ANALITO', 24, '@', LOOKUP.format(c='ANALITO')),
-        ('NIVEL', 7, '0', LOOKUP.format(c='NIVEL')),
-        ('LOTE', 9, '@', LOOKUP.format(c='LOTE')),
-        ('DATA_HORA', 16, 'dd/mm/yyyy hh:mm', LOOKUP.format(c='DATA_HORA')),
-        ('RUN', 11, '0', LOOKUP.format(c='RUN')),
-        ('RESULTADO', 11, 'General', LOOKUP.format(c='RESULTADO')),
-        ('PLOTAGEM_LJ', 13, '@', LOOKUP.format(c='TIPO_PLOTAGEM_LJ')),
-        ('JUSTIFICATIVA', 26, '@', '=IF([@ID_REGISTRO]="","",IF(COUNTIF(tblComentariosTecnicos[ID_REGISTRO],'
-                                   '[@ID_REGISTRO])>0,"OK","FALTA — ver COMENTARIOS_TECNICOS"))'),
     ]),
     'tblComentariosTecnicos': ('COMENTARIOS_TECNICOS', [
         ('ID_REGISTRO', 14, '@', 'in'),
         ('COMENTARIO_TECNICO', 70, '@', 'in'),
         ('DATA', 16, 'dd/mm/yyyy hh:mm', 'auto'),
         ('USUARIO', 14, '@', 'auto'),
-        ('ANALITO', 24, '@', LOOKUP.format(c='ANALITO')),
+        ('ANALITO', 24, 'General', LOOKUP.format(c='ANALITO')),
         ('NIVEL', 7, '0', LOOKUP.format(c='NIVEL')),
-        ('INATIVADO', 10, '@', LOOKUP.format(c='INATIVACAO_REGISTRADA')),
+        ('INATIVADO', 10, 'General', LOOKUP.format(c='INATIVACAO_REGISTRADA')),
     ]),
 }
+# ADR-070: layout da tblInativacao_NaoConformes ate 06/10/2026 -- colunas de FORMULA que a migracao descarta
+# (o ANALITO antigo era XLOOKUP; o novo e digitado e, nas linhas antigas, vem da tblCQ_Final)
+INAT_FORMULAS_LEGADO = ['ANALITO', 'NIVEL', 'LOTE', 'DATA_HORA', 'RUN', 'RESULTADO', 'PLOTAGEM_LJ', 'JUSTIFICATIVA']
 MOTIVOS_MANUAL = ['Falha do interfaceamento', 'Resultado não transmitido', 'Equipamento em contingência', 'Outro']
 
 LARG_SAIDA = {'ID_REGISTRO': 13, 'DATA': 11, 'DATA_HORA': 16, 'HORA': 8, 'ANALITO': 24, 'ANALITO_ORIGEM': 12,
               'STATUS_ANALITICO': 19, 'TIPO_PLOTAGEM_LJ': 15, 'COMENTARIO_TECNICO': 40, 'GOVERNANCA': 30,
+              'MOTIVO_INATIVACAO': 30,
               'MOTIVO_EXCLUSAO_AUTOMATICA': 40, 'DETALHE': 90, 'TESTE': 48, 'RECEBIDO_EM': 16, 'EQUIPAMENTO': 13}
 FMT_SAIDA = {'DATA': 'dd/mm/yyyy', 'DATA_HORA': 'dd/mm/yyyy hh:mm:ss', 'HORA': 'hh:mm:ss', 'RECEBIDO_EM': 'dd/mm/yyyy hh:mm',
              'DATA_INATIVACAO': 'dd/mm/yyyy hh:mm', 'RUN': '0', 'ID_ORIGEM': '0', 'ITEM_ID': '0'}
@@ -198,6 +199,20 @@ def cabecalho(ws, titulo, subtitulo, instrucoes, ncols=12):
     ws.Rows(5).RowHeight = 22
 
 
+def textos_topo(wb, nome):
+    """So os TEXTOS do topo de uma aba (titulo, subtitulo e as 2 linhas de instrucao), sem refazer a formatacao
+    da aba (cabecalho() reformata a aba inteira). Usado por instaladores incrementais (ADR-070)."""
+    for n, tit, sub, instr in ABAS:
+        if n == nome:
+            ws = [w for w in wb.Worksheets if w.Name == nome][0]
+            ws.Range('A1').Value = tit
+            ws.Range('A2').Value = sub
+            for i, txt in enumerate(instr[:2]):
+                ws.Range(f'A{3 + i}').Value = txt
+            return ws
+    raise KeyError(nome)
+
+
 def formatar_cabecalho_tabela(lo, tipos=None):
     hr = lo.HeaderRowRange
     hr.Font.Bold = True
@@ -252,12 +267,144 @@ def montar_cfg(wb, produto, ws):
 
 
 # ================================================================ entradas
+def formato_geral(rng):
+    """Formato Geral numa faixa. 'General' e recusado via COM no Excel pt-BR; 'Geral' e o nome local.
+    Ultimo recurso: limpar os formatos (o Geral e o padrao)."""
+    for tentativa in (lambda: setattr(rng, 'NumberFormat', 'General'),
+                      lambda: setattr(rng, 'NumberFormatLocal', 'Geral'),
+                      lambda: rng.ClearFormats()):
+        try:
+            tentativa()
+            return
+        except Exception:
+            continue
+
+
+def _norm_id(v, prefixo):
+    """Espelho do NormId do Power Query (DB_CQ_FINAL/QA_INTEGRACAO) e do mIntegracao.NormalizarId."""
+    if v is None:
+        return None
+    if isinstance(v, float) and v.is_integer():
+        v = int(v)
+    t = str(v).strip().replace(' ', '').replace('\xa0', '').upper()
+    if not t:
+        return None
+    dig = lambda s: s != '' and s.isdigit()      # noqa: E731
+    sem0 = lambda d: d.lstrip('0') or '0'        # noqa: E731
+    pre = prefixo + '-'
+    if dig(t):
+        return pre + sem0(t)
+    if t.startswith(pre) and dig(t[len(pre):]):
+        return pre + sem0(t[len(pre):])
+    if t.startswith('MAN_') and dig(t[4:]):
+        return 'MAN_' + t[4:].rjust(4, '0')
+    return t
+
+
+def _coluna(lo, nome, n):
+    """Valores (Value2: data = numero de serie, sem fuso do pywin32) de uma coluna da tabela, como lista."""
+    v = lo.ListColumns(nome).DataBodyRange.Value2
+    return [r[0] for r in v] if n > 1 else [v]
+
+
+def migrar_inativacao(wb, lo, cols):
+    """ADR-070: tblInativacao_NaoConformes do layout antigo (ID, caixa, carimbo + 8 colunas de FORMULA) para o
+    novo (ID, ANALITO, caixa, MOTIVO, carimbo). Toda linha digitada e preservada NA MESMA POSICAO (ID,
+    REGISTRAR - LJ, DATA_INATIVACAO, USUARIO); o ANALITO das linhas antigas vem da tblCQ_Final pelo ID (o mesmo
+    que a formula antiga buscava), o MOTIVO fica vazio (a justificativa antiga continua valendo pelos
+    COMENTARIOS_TECNICOS). Idempotente: no layout novo nao faz nada. Devolve um resumo (dict)."""
+    cab = [c[0] for c in cols]
+    atuais = [c.Name for c in lo.ListColumns]
+    if atuais == cab:
+        return {'migrada': False}
+    ws = lo.Parent
+    nome = lo.Name
+    largura_cab = ws.Range('A1').MergeArea.Width          # a barra de navegacao foi montada sobre ela
+    n = lo.ListRows.Count
+    # o que a tabela antiga tinha de DIGITADO/CARIMBADO; colunas de formula sao descartadas
+    legado = set(INAT_FORMULAS_LEGADO) if 'MOTIVO' not in atuais else set()
+    dados = {h: _coluna(lo, h, n) for h in atuais if h in cab and h not in legado} if n else {}
+    prefixo = ''
+    cfg = pqlib.tabela(wb, 'tblConfigIntegracao')
+    if cfg is not None:
+        for r in pqlib.ler_tabela(cfg):
+            if str(r.get('CHAVE') or '').strip().upper() == 'PREFIXO_ID':
+                prefixo = str(r.get('VALOR') or '').strip().upper()
+    fin = pqlib.tabela(wb, 'tblCQ_Final')
+    analito_de = {}
+    if fin is not None and fin.ListRows.Count:
+        nf = fin.ListRows.Count
+        for i, a in zip(_coluna(fin, 'ID_REGISTRO', nf), _coluna(fin, 'ANALITO', nf)):
+            if i not in (None, ''):
+                analito_de[str(i).strip().upper()] = a
+    ids = dados.get('ID_REGISTRO', [None] * n)
+    an = dados.get('ANALITO', [None] * n)
+    preenchidos = 0
+    for k, i in enumerate(ids):
+        idn = _norm_id(i, prefixo)
+        if idn and an[k] in (None, '') and idn in analito_de:
+            an[k] = analito_de[idn]
+            preenchidos += 1
+    dados['ANALITO'] = an
+    # ultima linha com algum conteudo: as linhas (inclusive as vazias no meio) ficam onde estavam
+    ult = 0
+    for k in range(n):
+        if any(dados[h][k] not in (None, '') for h in dados if h != 'REGISTRAR - LJ') or \
+                dados.get('REGISTRAR - LJ', [None] * n)[k] is True:
+            ult = k + 1
+    antigas = [{h: dados[h][k] for h in dados} for k in range(ult)]
+    r0, c0 = lo.Range.Row, lo.Range.Column
+    area = lo.Range.Address
+    lo.Delete()
+    ws.Range(area).Clear()                                # conteudo, formatos, caixa de selecao e validacoes
+    try:
+        ws.Range(area).Validation.Delete()
+    except Exception:
+        pass
+    folga = max(FOLGA_ENTRADA[nome], ult + 100)
+    for j, h in enumerate(cab):
+        ws.Cells(r0, c0 + j).Value = h
+    novo = ws.ListObjects.Add(1, ws.Range(ws.Cells(r0, c0), ws.Cells(r0 + folga, c0 + len(cab) - 1)), None, 1)
+    novo.Name = nome
+    novo.TableStyle = 'TableStyleLight1'
+    if ult:
+        for j, h in enumerate(cab):
+            if h in dados:
+                col = novo.ListColumns(h).DataBodyRange
+                faixa = ws.Range(col.Cells(1, 1), col.Cells(ult, 1))
+                if h in ('ID_REGISTRO', 'ANALITO', 'MOTIVO', 'USUARIO'):
+                    faixa.NumberFormat = '@'
+                faixa.Value2 = tuple((dados[h][k],) for k in range(ult))
+    return {'migrada': True, 'linhas': ult, 'ids': sum(1 for i in ids[:ult] if i not in (None, '')),
+            'analito_preenchido': preenchidos, 'largura_cab': largura_cab, 'antigas': antigas}
+
+
+def igualar_largura_cabecalho(ws, ncols_tabela, alvo, ncols=12):
+    """Depois da migracao a tabela tem menos colunas: as colunas vazias que sobram ate a ultima do cabecalho
+    (L) ficam com a largura que deixa a faixa do titulo (A1:L1, onde a barra de navegacao foi montada) com a
+    MESMA largura de antes -- os botoes, de posicao fixa, continuam alinhados a direita da faixa."""
+    resto = list(range(ncols_tabela + 1, ncols + 1))
+    if not resto or not alvo:
+        return
+    for _ in range(4):
+        atual = sum(ws.Columns(c).Width for c in range(1, ncols + 1))
+        dif = alvo - atual
+        if abs(dif) < 1:
+            return
+        ref = ws.Columns(resto[0])
+        pt_por_car = (ref.Width / ref.ColumnWidth) if ref.ColumnWidth else 5.25
+        for c in resto:
+            w = ws.Columns(c).ColumnWidth + dif / len(resto) / pt_por_car
+            ws.Columns(c).ColumnWidth = max(0.5, min(60, w))
+
+
 def montar_entrada(wb, produto, nome):
     nome_aba, cols = ENTRADAS[nome]
     ws = [w for w in wb.Worksheets if w.Name == nome_aba][0]
     lo = pqlib.tabela(wb, nome)
     cab = [c[0] for c in cols]
     criada = False
+    migracao = None
     if lo is None:
         r0 = LINHA_CAB
         folga = FOLGA_ENTRADA[nome]
@@ -268,6 +415,10 @@ def montar_entrada(wb, produto, nome):
         lo.Name = nome
         lo.TableStyle = 'TableStyleLight1'
         criada = True
+    elif nome == 'tblInativacao_NaoConformes' and [c.Name for c in lo.ListColumns] != cab:
+        # ADR-070: layout novo, sem formula; preserva as linhas
+        migracao = migrar_inativacao(wb, lo, cols)
+        lo = pqlib.tabela(wb, nome)
     else:
         atuais = [c.Name for c in lo.ListColumns]
         if atuais[:len(cab)] != cab:
@@ -277,11 +428,17 @@ def montar_entrada(wb, produto, nome):
                     lo.ListColumns.Add().Name = h
     formatar_cabecalho_tabela(lo, [c[3] if c[3] in ('in', 'auto') else 'f' for c in cols])
     larguras(ws, lo, {c[0]: c[1] for c in cols})
-    body = lo.DataBodyRange
+    if migracao and migracao.get('migrada'):
+        igualar_largura_cabecalho(ws, len(cab), migracao['largura_cab'])
     ws.Cells.Locked = True
     for h, w, fmt, tipo in cols:
         colr = lo.ListColumns(h).DataBodyRange
-        if fmt != 'General':                # 'General' e recusado pelo Excel pt-BR via COM; e o padrao mesmo
+        formula = tipo not in ('in', 'auto')
+        if formula or fmt == 'General':
+            # coluna de formula NUNCA em '@' (a formula viraria texto literal); Geral pelo nome local
+            if formula or str(colr.Cells(1, 1).NumberFormat) == '@':
+                formato_geral(colr)
+        else:
             colr.NumberFormat = fmt
         if tipo == 'in':
             colr.Locked = False          # o que o usuario digita fica destravado com a aba protegida
@@ -291,7 +448,10 @@ def montar_entrada(wb, produto, nome):
             colr.Locked = not (h == 'ID_REGISTRO' and nome == 'tblResultados_Manuais')
             colr.Interior.Color = tema.FUNDO_CARTAO
         else:
-            # '[@COL]' e recusado via COM no Excel pt-BR; a forma longa e aceita
+            if fmt != 'General':
+                colr.NumberFormat = fmt
+            # '[@COL]' e recusado via COM no Excel pt-BR; a forma longa e aceita. Reescrita sempre: a formula
+            # que ficou guardada como texto (formato '@') volta a calcular
             colr.Formula2 = re.sub(r'\[@([^\]]+)\]', lambda m: f'{nome}[[#This Row],[{m.group(1)}]]', tipo)
             colr.Locked = True
             colr.Font.Color = tema.TEXTO_FRACO
@@ -339,6 +499,21 @@ def validacoes(wb, produto, nome, lo):
         r.Validation.Delete()
         r.Validation.Add(2, 1, 7, '-1E+307')                              # decimal
         r.Validation.ErrorMessage = 'Resultado numérico.'
+    elif nome == 'tblInativacao_NaoConformes':
+        # ADR-070: o analito e a CONFERENCIA do ID -- escolhido da lista do cadastro (a mesma do Painel)
+        lista('ANALITO', '=lstAnalitos', 'Escolha o analito da lista (o mesmo nome da aba Analitos).')
+
+        def dica(col, titulo, msg):
+            r = lo.ListColumns(col).DataBodyRange
+            r.Validation.Delete()
+            r.Validation.Add(0, 1, 1)                                     # xlValidateInputOnly: so a mensagem
+            r.Validation.InputTitle = titulo
+            r.Validation.InputMessage = msg
+            r.Validation.ShowInput = True
+        dica('ID_REGISTRO', 'ID do resultado', 'Digite só o número do ID (ex.: 314216): é o número que aparece ao '
+                                              'passar o mouse no ponto do Levey-Jennings, no Painel.')
+        dica('MOTIVO', 'Motivo (obrigatório)', 'Por que este resultado sai da estatística? '
+                                               'Ex.: repetição, erro pré-analítico, controle trocado.')
 
 
 # ================================================================ consultas e saidas
