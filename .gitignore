@@ -73,3 +73,10 @@ INTERFACEAMENTO_DB_COPIA/
 
 # Area de trabalho do entregar.py (copias .xlsm instaladas + logs dos testes, dados do laboratorio)
 _entrega_*/
+
+# --- Arquivos de PRODUCAO do laboratorio (dados reais + configuracao interna,
+# --- inclusive o caminho de rede do servidor). O remoto e publico: nunca versionar.
+# --- A fonte e src/ + instaladores; a versao em uso e rastreada pelo SHA-256
+# --- (_arquitetura/integracao_dbseac/MANIFESTO_PRODUCAO.md). Decisao do gestor, 06/10/2026.
+/QC_Hematologia.xlsm
+/QC_Bioquimica.xlsm
