@@ -75,6 +75,7 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('graficos', ['instalar_adr063.py', produto, alvo]),
               ('desempenho', ['instalar_adr062.py', produto, alvo]),
               ('incerteza', ['instalar_adr064.py', produto, alvo]),
+              ('espec_etp', ['instalar_adr069.py', produto, alvo]),
               ('sem_etp', ['instalar_adr068.py', produto, alvo]),
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:

@@ -419,6 +419,26 @@ def executar(produto, caminho, saida):
             not dif and len(sem_etp) < len({x[1] for x in linhas}),
             {'sem_etp': sorted(sem_etp), 'divergencias': dif[:8]})
 
+        # ADR-069 (Bioquimica): a fonte escolhida em S manda no ETp em uso (T) e no CVTp (U), para TODO analito e
+        # TODA fonte -- troca S para CLIA, VB e FAB, recalcula e confere; devolve S como estava
+        if bio:
+            sys.path.insert(0, os.path.dirname(AQUI))
+            import instalar_adr069 as i69
+            try:
+                a.Unprotect('qcini2025')
+            except Exception:
+                pass
+            calc0 = q.ex.xl.Calculation
+            q.ex.xl.Calculation = -4135
+            try:
+                ruins69, cont69 = i69.fumaca(a)
+            finally:
+                q.ex.xl.Calculation = calc0
+            q.ex.esperar()
+            reg('I15 Bioquímica: a fonte escolhida em Analitos!S (CLIA, VB ou FAB) decide o ETp em uso (T = K, R ou M) e o '
+                'CVTp (U = K/3, f × CVi ou CVTp FAB) em TODOS os analitos; especificação ausente = "-" (ADR-069)',
+                not ruins69, {'por_fonte': cont69, 'divergencias': ruins69[:6]})
+
         # sem u(bias): o motivo dito e o do CEQ (insuficiente / sem u(Cref) / sem CEQ)
         motivos = {}
         for r, an, nv in linhas:
