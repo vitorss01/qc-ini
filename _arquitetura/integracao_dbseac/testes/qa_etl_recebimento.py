@@ -913,7 +913,8 @@ def sessao_b(produto, caminho, tmp):
         X = max(cands, key=lambda r: r['DATA_HORA'])
         xid = X['ID_REGISTRO']
         dia = dias_vazios([rec0, fin0], 1)[0]
-        q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': xid})
+        # ADR-070: a linha da Inativar leva o analito do resultado (sem ele a inativacao nao vale: E11)
+        q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': xid, 'ANALITO': X['ANALITO']})
         q.escrever_linha('tblComentariosTecnicos', {'ID_REGISTRO': xid,
                                                     'COMENTARIO_TECNICO': 'QA E06: inativação justificada (teste).'})
         serie = float((dt.datetime.combine(dia, dt.time()) - dt.datetime(1899, 12, 30)).days)
