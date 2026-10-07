@@ -29,10 +29,18 @@ Option Explicit
 ' (participa da estatistica) entra em u(Rw); o inativado so e CONTADO, para o
 ' alerta de excluidos (exclusao sem erro documentado reduz u(Rw) artificialmente).
 
+' ADR-071: o MESMO estimador (CV pooled dos lotes n >= 20 pelos graus de liberdade) e o denominador
+' do Sigma (Estatistica!L) numa janela de N meses (Sigma_Ini..MU_Fim, padrao 6), ao lado da janela de
+' 12 meses da incerteza. Cache por JANELA (carimbo -> agregado): na mesma linha da tabela ~11 chamadas
+' usam 12 m e 1 usa N m; com um slot so, a alternancia refazia a varredura da tblCQ_Final inteira a
+' cada chamada (I09 < 10 s e qa_desempenho estourariam).
+
 Private mSnapMU As Variant
 Private mAggMU As Object          ' "ANALITO|NIVEL" -> Dictionary(lote -> Array(n, soma, somaQ, dMin, dMax))
 Private mContMU As Object         ' "ANALITO|NIVEL" -> Array(total na janela, inativos)
-Private mCarimboMU As String
+Private mCarimboMU As String      ' carimbo da janela em mAggMU/mContMU
+Private mCacheMU As Object        ' carimbo -> Array(agregado, contagem)  (ADR-071)
+Private Const MU_CACHE_MAX As Long = 6
 
 Public Const MU_N_LOTE_MIN As Long = 20       ' lote entra no agrupamento com n >= 20
 Public Const MU_DIAS_VALIDA As Long = 180
@@ -54,17 +62,21 @@ Public Sub InvalidarIncerteza()
     mSnapMU = Empty
     Set mAggMU = Nothing
     Set mContMU = Nothing
+    Set mCacheMU = Nothing
     mCarimboMU = ""
 End Sub
 
 ' Depois de um refresh (ATUALIZAR DADOS) ou da troca de equipamento nenhum ARGUMENTO das
 ' formulas de incerteza muda -- o Excel nao as recalcularia. Marca a faixa (nome MU_Faixa,
-' criado pelo instalador do ADR-064) como suja e recalcula.
+' criado pelo instalador do ADR-064) como suja e recalcula. ADR-071: tambem o Sigma
+' (Sigma_Faixa = Estatistica!L, CV pooled de N meses) -- senao L ficaria com o valor velho
+' (o Painel I7:I9 le L e acompanha).
 Public Sub RecalcularIncerteza()
     On Error Resume Next
     InvalidarIncerteza
     mEQA.InvalidarNLabs                  ' n de laboratorios digitado depois da consolidacao
     ThisWorkbook.Names("MU_Faixa").RefersToRange.Dirty
+    ThisWorkbook.Names("Sigma_Faixa").RefersToRange.Dirty
     Application.Calculate
 End Sub
 
@@ -105,7 +117,7 @@ End Function
 Private Sub AgregarMU(ByVal dtIni As Double, ByVal dtFim As Double, ByRef ex() As Double, ByVal nEx As Long)
     Dim dados As Variant, i As Long, j As Long, d As Double, v As Double
     Dim eq As String, c As String, k As String, lote As String, reg As Variant, porLote As Object, ct As Variant
-    Dim sa As String
+    Dim sa As String, par As Variant
 
     eq = mEstatistica.EquipFiltro()
     c = CStr(dtIni) & "|" & CStr(dtFim) & "|" & eq & "|" & nEx
@@ -115,11 +127,22 @@ Private Sub AgregarMU(ByVal dtIni As Double, ByVal dtFim As Double, ByRef ex() A
     If Not mAggMU Is Nothing Then
         If c = mCarimboMU Then Exit Sub
     End If
+    ' ADR-071: janela ja agregada nesta sessao (12 m da incerteza, N m do Sigma)?
+    If mCacheMU Is Nothing Then Set mCacheMU = CreateObject("Scripting.Dictionary")
+    If mCacheMU.Exists(c) Then
+        par = mCacheMU.Item(c)
+        Set mAggMU = par(0)
+        Set mContMU = par(1)
+        mCarimboMU = c
+        Exit Sub
+    End If
+    If mCacheMU.Count >= MU_CACHE_MAX Then mCacheMU.RemoveAll
     Set mAggMU = CreateObject("Scripting.Dictionary")
     mAggMU.CompareMode = 1
     Set mContMU = CreateObject("Scripting.Dictionary")
     mContMU.CompareMode = 1
     mCarimboMU = c
+    mCacheMU.Add c, Array(mAggMU, mContMU)        ' os objetos sao preenchidos abaixo (referencia)
     If IsEmpty(mSnapMU) Then mSnapMU = mDados.CarregarDB()
     If IsEmpty(mSnapMU) Then Exit Sub
     dados = mSnapMU

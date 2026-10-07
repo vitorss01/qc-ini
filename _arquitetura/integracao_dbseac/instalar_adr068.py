@@ -71,7 +71,10 @@ def painel(wb, nlv):
         r = 7 + k
         f = str(p.Range(f'I{r}').Formula)
         if not f.startswith(f'=IF($F{r}="-","-",'):
-            if 'ABS(' not in f or f'$F{r}' not in f:
+            # forma antiga: (F - |G|)/E do motor; forma do ADR-071: le o Sigma de Estatistica!L pela chave AB
+            antiga = 'ABS(' in f and f'$F{r}' in f
+            adr071 = '!$L$14:$L$' in f and '!$AB$14:$AB$' in f and 'selAnalito' in f
+            if not (antiga or adr071):
                 raise SystemExit(f'Painel!I{r}: formula inesperada: {f[:120]}')
             p.Range(f'I{r}').Formula = f'=IF($F{r}="-","-",{f[1:]})'
             feitos.append(f'I{r}')

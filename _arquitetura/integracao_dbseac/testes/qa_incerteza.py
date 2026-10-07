@@ -42,11 +42,16 @@ def coluna(lo, nome):
     return [r[0] for r in lo.ListColumns(nome).DataBodyRange.Value]
 
 
-def esperado_ciq(q, eq_filtro, ini, fim, exc):
-    """u(Rw) por analito|nivel, lotes separados (n >= 20) e agrupados por gl."""
+def ler_ciq(q):
     lo = q.wb.Worksheets('Principal - Resultados').ListObjects('tblCQ_Final')
-    cols = {c: coluna(lo, c) for c in ('DATA_HORA', 'NIVEL', 'LOTE', 'ANALITO', 'RESULTADO', 'PARTICIPA_ESTATISTICA',
+    return {c: coluna(lo, c) for c in ('DATA_HORA', 'NIVEL', 'LOTE', 'ANALITO', 'RESULTADO', 'PARTICIPA_ESTATISTICA',
                                         'EQUIPAMENTO')}
+
+
+def esperado_ciq(q, eq_filtro, ini, fim, exc, cols=None):
+    """u(Rw) por analito|nivel, lotes separados (n >= 20) e agrupados por gl. ADR-071: o mesmo CV pooled e o
+    denominador do Sigma (janela Sigma_Ini..MU_Fim)."""
+    cols = cols or ler_ciq(q)
     agg = defaultdict(lambda: defaultdict(list))
     cont = defaultdict(lambda: [0, 0])
     for i in range(len(cols['ANALITO'])):
@@ -182,6 +187,37 @@ def esperado_ceq(q, analito, ano_ref, provedor, rodada):
             'detectavel': (abs(media) > 2 * ep) if (ok and ep is not None) else None}
 
 
+def modo_antigo(rodada):
+    """ADR-071: TODAS/vazio ou rotulo unico (regra antiga). Conjunto, ULTIMAS n, ACUMULADAS ou texto invalido = modo
+    novo -- e a incerteza NAO segue o modo novo (D3): o ViesEQ trata a rodada como TODAS."""
+    s = str(rodada or '').strip().upper()
+    if s in ('', 'TODAS', 'TODOS'):
+        return True
+    return '|' not in s and ';' not in s and s != 'ACUMULADAS' and not s.startswith(('ULTIMAS', 'ÚLTIMAS'))
+
+
+def sigma_esperado(e, linhas, etp_cad, esp):
+    """Estatistica!L = (ETp - |G|) / CV pooled da janela do Sigma (esp = esperado_ciq na janela); sem bias numerico
+    ou sem CV pooled: vazio (nunca o CV do lote nem o historico inteiro); sem ETp: "-" (ADR-068)."""
+    dif, vals, n_num = [], {}, 0
+    for r, an, nv in linhas:
+        v = etp_cad.get(an)
+        lv = e.Range(f'L{r}').Value
+        vals[r] = lv
+        if not (num(v) and v > 0):
+            continue                                   # o "-" e conferido no I14
+        g = e.Range(f'G{r}').Value
+        x = esp.get((an.upper(), nv))
+        cv = x['cv'] if x else None
+        if num(g) and cv:
+            n_num += 1
+            if not perto(lv, (v - abs(g)) / cv):
+                dif.append((an, nv, 'Sigma', lv, (v - abs(g)) / cv, cv))
+        elif lv not in ('', None):
+            dif.append((an, nv, 'Sigma sem bias/CV pooled deveria ser vazio', lv, g, cv))
+    return dif, vals, n_num
+
+
 def executar(produto, caminho, saida):
     q = QA(produto, caminho)
     e = q.wb.Worksheets('Estatística')
@@ -224,7 +260,8 @@ def executar(produto, caminho, saida):
             fim == ultima and ini == dia_menos_12m(fim), {'janela': [e.Range('AG11').Text, e.Range('AI11').Text],
                                                           'ultimo_resultado': ultima})
 
-        esp = esperado_ciq(q, eqf, ini, fim, exc)
+        cols_ciq = ler_ciq(q)
+        esp = esperado_ciq(q, eqf, ini, fim, exc, cols_ciq)
         linhas = []
         for r in range(14, 134):                     # so a tabela analito|nivel: a chave AB existe
             an, ch = e.Range(f'A{r}').Value, str(e.Range(f'AB{r}').Value or '')
@@ -295,8 +332,11 @@ def executar(produto, caminho, saida):
             'a incerteza usa só CIQ + CEQ', not tem_nome and not cab_ucal and not f_ucal,
             {'nome': tem_nome, 'cabecalho_analitos': cab_ucal, 'formulas': f_ucal})
 
-        # CEQ
-        ano, prov_f, rod = e.Range('N4').Value, e.Range('L4').Value, e.Range('P4').Value
+        # CEQ -- pelos NOMES (na Hematologia o provedor e R4; L4 e a nota mesclada, vazia: o teste misturava
+        # provedores). ADR-071 (D3): nos modos novos de rodada a incerteza continua em TODAS.
+        nm_ = lambda n_: q.wb.Names(n_).RefersToRange.Value
+        ano, prov_f, rod = nm_('eqAnoEP'), nm_('eqProvedor'), nm_('eqRodada')
+        rod_vies = rod if modo_antigo(rod) else 'TODAS'
         dif, vistos, amostra = [], set(), {}
         for r, an, nv in linhas:
             if an in vistos:
@@ -306,8 +346,8 @@ def executar(produto, caminho, saida):
             if bio:
                 rr = [i for i in range(4, 44) if str(a.Range(f'A{i}').Value or '').strip() == an]
                 prov = a.Range(f'AR{rr[0]}').Value if rr and a.Range(f'AR{rr[0]}').Value else 'CAP'
-            x = esperado_ceq(q, an, ano, prov, rod)
-            mv, tri, ub = e.Range(f'AR{r}').Value, str(e.Range(f'AS{r}').Value), e.Range(f'AJ{r}').Value
+            x = esperado_ceq(q, an, ano, prov, rod_vies)
+            mv, tri, ub =e.Range(f'AR{r}').Value, str(e.Range(f'AS{r}').Value), e.Range(f'AJ{r}').Value
             if x is None:
                 if num(mv) or not tri.startswith('não verificável'):
                     dif.append((an, 'sem CEQ', mv, tri))
@@ -332,7 +372,8 @@ def executar(produto, caminho, saida):
         reg('I04 Viés do CEQ recalculado da EQA_Base: média com sinal, triagem (≥ 6 amostras de ≥ 2 rodadas; '
             'detectável se |média| > 2 EP) e u(bias) Nordtest = raiz(RMS² + u(Cref)²), u(Cref) = DP do grupo / raiz(nº de '
             'laboratórios), só com o critério',
-            not dif, {'analitos': len(vistos), 'exemplos': amostra, 'divergencias': dif[:6]})
+            not dif, {'analitos': len(vistos), 'selecao': [ano, prov_f, rod, rod_vies], 'exemplos': amostra,
+                      'divergencias': dif[:6]})
 
         # Painel = Estatistica
         nlv = 2 if bio else 3
@@ -399,6 +440,7 @@ def executar(produto, caminho, saida):
                 etp_cad[nome_] = etp_rng.Cells(i_, 1).Value
         dep = ['L', 'M', 'N', 'O', 'P', 'V', 'W', 'X', 'Y', 'Z', 'AA']
         dif, sem_etp = [], set()
+        adr071 = any(n_.Name == 'Sigma_Ini' for n_ in q.wb.Names)
         for r, an, nv in linhas:
             v = etp_cad.get(an)
             k_ = e.Range(f'K{r}').Value
@@ -411,13 +453,72 @@ def executar(produto, caminho, saida):
                 if not perto(k_, v):
                     dif.append((an, nv, 'ETp', k_, v))
                 lv = e.Range(f'L{r}').Value
-                if lv == '-' or (num(lv) and num(e.Range(f'F{r}').Value) and num(e.Range(f'G{r}').Value)
-                                 and not perto(lv, (v - abs(e.Range(f'G{r}').Value)) / e.Range(f'F{r}').Value)):
+                if lv == '-':
+                    dif.append((an, nv, 'Sigma "-" com ETp', lv))
+                elif not adr071 and (num(lv) and num(e.Range(f'F{r}').Value) and num(e.Range(f'G{r}').Value)
+                                     and not perto(lv, (v - abs(e.Range(f'G{r}').Value)) / e.Range(f'F{r}').Value)):
                     dif.append((an, nv, 'Sigma', lv))
+        # ADR-071: o divisor do Sigma e o CV POOLED (lotes n >= 20 agrupados pelos graus de liberdade) da janela de
+        # Sigma_Meses ate MU_Fim -- recalculado aqui por fora (esperado_ciq), nao o CV do lote (F)
+        ev14, sig6 = {'sem_etp': sorted(sem_etp)}, {}
+        if adr071:
+            meses = q.wb.Names('Sigma_Meses').RefersToRange.Value
+            ini_s = q.wb.Names('Sigma_Ini').RefersToRange.Value
+            ini_esp = dia_menos_meses(fim, int(meses)) if num(meses) else None
+            if not (num(meses) and ini_s not in (None, '') and dia(ini_s) == ini_esp):
+                dif.append(('janela do Sigma', meses, ini_s, ini_esp))
+            else:
+                esp_s = esperado_ciq(q, eqf, ini_esp, fim, exc, cols_ciq)
+                d_s, sig6, n_s = sigma_esperado(e, linhas, etp_cad, esp_s)
+                dif += d_s
+                ev14.update({'janela_sigma': [e.Range('Sigma_Ini').Text, e.Range('AI11').Text, meses], 'sigma_conferidos': n_s})
         reg('I14 Analito sem ETp cadastrado (vazio ou <= 0) mostra "-" no ETp, Sigma, classe, margem, DPM, rendimento e '
-            'plano de CQ -- nunca 0 nem Sigma negativo; com ETp, Sigma = (ETp − |bias|)/CV (ADR-068)',
-            not dif and len(sem_etp) < len({x[1] for x in linhas}),
-            {'sem_etp': sorted(sem_etp), 'divergencias': dif[:8]})
+            'plano de CQ -- nunca 0 nem Sigma negativo; com ETp, Sigma = (ETp − |bias|)/CV pooled de N meses (ADR-068, '
+            'ADR-071: CV pooled dos lotes da janela, recalculado por fora)',
+            not dif and len(sem_etp) < len({x[1] for x in linhas}), dict(ev14, divergencias=dif[:8]))
+
+        # ADR-071: a janela do Sigma responde a Sigma_Meses (6 -> 9) e, vazia, deixa o Sigma vazio (nunca o historico)
+        if adr071:
+            m_cel = q.wb.Names('Sigma_Meses').RefersToRange
+            m0 = m_cel.Value
+            try:
+                e.Unprotect('qcini2025')
+            except Exception:
+                pass
+            ev16, dif16 = {}, []
+            try:
+                t0 = time.perf_counter()
+                m_cel.Value = 9
+                q.ex.esperar()
+                ev16['segundos_troca'] = round(time.perf_counter() - t0, 2)
+                ini9 = q.wb.Names('Sigma_Ini').RefersToRange.Value
+                if ini9 in (None, '') or dia(ini9) != dia_menos_meses(fim, 9):
+                    dif16.append(('Sigma_Ini 9 m', ini9, dia_menos_meses(fim, 9)))
+                else:
+                    esp9 = esperado_ciq(q, eqf, dia_menos_meses(fim, 9), fim, exc, cols_ciq)
+                    d9, sig9, n9 = sigma_esperado(e, linhas, etp_cad, esp9)
+                    dif16 += d9
+                    mudaram = sum(1 for r in sig9 if num(sig9[r]) and num(sig6.get(r)) and not perto(sig9[r], sig6[r]))
+                    ev16.update({'janela_9m': e.Range('Sigma_Ini').Text, 'conferidos_9m': n9, 'mudaram_6_para_9': mudaram})
+                    if mudaram == 0:
+                        dif16.append(('nenhum Sigma mudou de 6 para 9 meses (L parado?)',))
+                m_cel.ClearContents()
+                q.ex.esperar()
+                vazio_ini = q.wb.Names('Sigma_Ini').RefersToRange.Value
+                cheios = [(an, nv, e.Range(f'L{r}').Value) for r, an, nv in linhas
+                          if e.Range(f'L{r}').Value not in ('', None, '-')]
+                ev16['sem_meses'] = {'Sigma_Ini': vazio_ini, 'L_preenchidos': cheios[:4]}
+                if vazio_ini not in ('', None) or cheios:
+                    dif16.append(('meses vazio deveria deixar o Sigma vazio', vazio_ini, cheios[:4]))
+            finally:
+                m_cel.Value = m0
+                q.ex.esperar()
+            volta = [(an, nv) for r, an, nv in linhas if not igual_l(e.Range(f'L{r}').Value, sig6.get(r))]
+            if volta:
+                dif16.append(('Sigma nao voltou ao de 6 meses', volta[:4]))
+            reg('I16 Janela do Sigma (ADR-071): Sigma_Ini = EDATE(MU_Fim; −Sigma_Meses)+1; trocar 6 → 9 meses recalcula '
+                'o Sigma e continua igual ao recálculo independente; meses vazio deixa o Sigma vazio (nunca o histórico '
+                'inteiro); voltar a 6 devolve os valores', not dif16, dict(ev16, divergencias=dif16[:6]))
 
         # ADR-069 (Bioquimica): a fonte escolhida em S manda no ETp em uso (T) e no CVTp (U), para TODO analito e
         # TODA fonte -- troca S para CLIA, VB e FAB, recalcula e confere; devolve S como estava
@@ -478,7 +579,8 @@ def executar(produto, caminho, saida):
             pv = q.wb.Names('eqProvedor').RefersToRange
             reg('I13 Hematologia: provedor do CEQ definido (CAP, editável, célula própria fora da nota mesclada); '
                 'antes eqProvedor caía no meio de F4:M4 e ficava vazio ("todos os provedores", 0 linhas em K5)',
-                str(pv.Value) == 'CAP' and pv.MergeArea.Count == 1 and not pv.Locked and ' 0 linha' not in k5,
+                str(pv.Value) == 'CAP' and pv.MergeArea.Count == 1 and not pv.Locked and ' 0 linha' not in k5
+                and 'linha(s)' in k5,
                 {'eqProvedor': pv.Address, 'valor': pv.Value, 'K5': k5[:120]})
 
         # desempenho do recalculo
@@ -500,12 +602,24 @@ def executar(produto, caminho, saida):
 
 def dia_menos_12m(fim):
     """EDATE(fim, -12) + 1, em serial do Excel."""
+    return dia_menos_meses(fim, 12)
+
+
+def dia_menos_meses(fim, meses):
+    """EDATE(fim, -meses) + 1, em serial do Excel."""
+    import calendar
     import datetime as dt
     d = dt.date(1899, 12, 30) + dt.timedelta(days=int(fim))
-    y, m = d.year - 1, d.month
-    import calendar
+    m0 = d.month - 1 - meses
+    y, m = d.year + m0 // 12, m0 % 12 + 1
     dd = min(d.day, calendar.monthrange(y, m)[1])
     return float((dt.date(y, m, dd) - dt.date(1899, 12, 30)).days + 1)
+
+
+def igual_l(a, b):
+    if num(a) and num(b):
+        return perto(a, b)
+    return (a if a is not None else '') == (b if b is not None else '')
 
 
 if __name__ == '__main__':
