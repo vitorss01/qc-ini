@@ -29,6 +29,17 @@ Private Const COL_DATA_ENG As Long = 29 ' Eng_Saida: data da corrida (AC) -- o C
 Private Const COL_X0 As Long = 30      ' Eng_Saida: 1o X vermelho (AD) -- ADR-057
 Private Const NXN As Long = 3          ' X vermelhos por corrida e nivel
 Private Const NX As Long = 9           ' colunas do bloco X (3 niveis x 3), iguais nos dois produtos
+' ADR-070: de quem e cada ponto do LJ -- o ID_REGISTRO (o numero que o usuario digita na aba Inativar) e a
+' DATA_HORA do resultado, por ponto. Mesmo arranjo das colunas de valor (um por nivel) e do bloco X (3 por
+' nivel), com 3 niveis fixos nos dois produtos. Lidos por mUI.DicaPonto (dica do grafico).
+Public Const ENG_COL_ID0 As Long = 39   ' Eng_Saida AM..AO: ID do ponto normal de N1..N3
+Public Const ENG_COL_IDX0 As Long = 42  ' Eng_Saida AP..AX: ID de cada X vermelho (N1 X1..X3, N2 X1..X3, N3 X1..X3)
+Public Const ENG_COL_DH0 As Long = 51   ' Eng_Saida AY..BA: DATA_HORA do ponto normal de N1..N3
+Public Const ENG_COL_DHX0 As Long = 54  ' Eng_Saida BB..BJ: DATA_HORA de cada X vermelho
+Public Const ENG_COL_ULT As Long = 62   ' Eng_Saida BJ: ultima coluna publicada por corrida
+Public Const ENG_COL_VALOR0 As Long = 25 ' Eng_Saida Y: valor do N1 (mesmo que COL_VALOR0, para o mUI)
+Public Const ENG_COL_X0 As Long = 30    ' Eng_Saida AD: 1o X (mesmo que COL_X0, para o mUI)
+Private Const NIDV As Long = 3          ' colunas de ID/DATA_HORA do ponto normal (3 niveis fixos)
 Private Const AR0 As Long = 4          ' Analitos: 1a linha
 Private Const ARN As Long = 43
 Private Const E0  As Long = 7          ' Estatistica: 1a linha
@@ -1149,7 +1160,8 @@ Public Sub AtualizarCalc()
     ' limpa a area de saida (colunas B em diante; a coluna A guarda os slots
     ' fixos). Vai ate o bloco do X vermelho (ADR-057): sem isso, o X do analito
     ' anterior ficaria na tela.
-    ws.Range(ws.Cells(KC0, 2), ws.Cells(KC0 + NK - 1, COL_X0 + NX - 1)).ClearContents
+    ' ADR-070: e as colunas de ID/DATA_HORA por ponto (ate BJ)
+    ws.Range(ws.Cells(KC0, 2), ws.Cells(KC0 + NK - 1, ENG_COL_ULT)).ClearContents
     ws.Range("C1").Value = analito
     ws.Range("E1").NumberFormat = "@"       ' lote "010" nao pode virar 10
     ws.Range("E1").Value = lote
@@ -1267,6 +1279,8 @@ Public Sub AtualizarCalc()
     ' ---- coletar valores ELEGIVEIS por nivel (eixo de plotagem) ----
     ReDim valor(0 To NLV - 1, 1 To nRun)
     ReDim temDado(0 To NLV - 1, 1 To nRun)
+    Dim outIdV() As Variant, outDhV() As Variant          ' ADR-070: de quem e cada ponto
+    ReDim outIdV(1 To nRun, 1 To NIDV): ReDim outDhV(1 To nRun, 1 To NIDV)
     For Each x In linhas
         i = x
         If IsNumeric(mDB(i, COL_RESULT)) Then
@@ -1276,6 +1290,8 @@ Public Sub AtualizarCalc()
                     r = ordem(CStr(mDB(i, COL_RUN)))
                     valor(t, r) = CDbl(mDB(i, COL_RESULT))
                     temDado(t, r) = True
+                    outIdV(r, t + 1) = CStr(mDB(i, COL_ID))
+                    outDhV(r, t + 1) = mDB(i, COL_DATA)
                 End If
             End If
         End If
@@ -1283,7 +1299,9 @@ Public Sub AtualizarCalc()
 
     ' ---- coletar os X vermelhos (ate NXN por corrida e nivel) ----
     Dim outX() As Variant, s As Long, nExc As Long
+    Dim outIdX() As Variant, outDhX() As Variant           ' ADR-070: de quem e cada X
     ReDim outX(1 To nRun, 1 To NX)
+    ReDim outIdX(1 To nRun, 1 To NX): ReDim outDhX(1 To nRun, 1 To NX)
     For Each x In linhasX
         i = x
         If IsNumeric(mDB(i, COL_RESULT)) Then
@@ -1292,7 +1310,12 @@ Public Sub AtualizarCalc()
                 If t >= 0 And t <= NLV - 1 Then
                     r = ordem(CStr(mDB(i, COL_RUN)))
                     For s = 1 To NXN
-                        If IsEmpty(outX(r, t * NXN + s)) Then outX(r, t * NXN + s) = CDbl(mDB(i, COL_RESULT)): Exit For
+                        If IsEmpty(outX(r, t * NXN + s)) Then
+                            outX(r, t * NXN + s) = CDbl(mDB(i, COL_RESULT))
+                            outIdX(r, t * NXN + s) = CStr(mDB(i, COL_ID))
+                            outDhX(r, t * NXN + s) = mDB(i, COL_DATA)
+                            Exit For
+                        End If
                     Next s
                     If s > NXN Then nExc = nExc + 1
                 End If
@@ -1386,6 +1409,11 @@ Public Sub AtualizarCalc()
     ws.Range(ws.Cells(KC0, COL_DATA_ENG), ws.Cells(KC0 + nRun - 1, COL_DATA_ENG)).Value = outDt
     ' X vermelho: bloco proprio, FORA das colunas de valor (que o Painel soma em n/media/DP)
     ws.Range(ws.Cells(KC0, COL_X0), ws.Cells(KC0 + nRun - 1, COL_X0 + NX - 1)).Value = outX
+    ' ADR-070: ID_REGISTRO e DATA_HORA de cada ponto (dica do grafico: mUI.DicaPonto)
+    ws.Range(ws.Cells(KC0, ENG_COL_ID0), ws.Cells(KC0 + nRun - 1, ENG_COL_ID0 + NIDV - 1)).Value = outIdV
+    ws.Range(ws.Cells(KC0, ENG_COL_IDX0), ws.Cells(KC0 + nRun - 1, ENG_COL_IDX0 + NX - 1)).Value = outIdX
+    ws.Range(ws.Cells(KC0, ENG_COL_DH0), ws.Cells(KC0 + nRun - 1, ENG_COL_DH0 + NIDV - 1)).Value = outDhV
+    ws.Range(ws.Cells(KC0, ENG_COL_DHX0), ws.Cells(KC0 + nRun - 1, ENG_COL_DHX0 + NX - 1)).Value = outDhX
 
     For t = 0 To NLV - 1
         ReDim outLvl(1 To nRun, 1 To NEF)

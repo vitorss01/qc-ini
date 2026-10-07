@@ -59,7 +59,7 @@ CORRIDA_REAL = ('ATIVO', 'INATIVADO', 'SEM_VALOR')
 # colunas da tblCQ_Final que uma inativacao (e o seu comentario) pode mudar -- e nenhuma outra
 COLS_INATIVACAO = {'STATUS_ANALITICO', 'PARTICIPA_ESTATISTICA', 'REGISTRAR_RESULTADO_NO_LJ', 'TIPO_PLOTAGEM_LJ',
                    'INATIVACAO_REGISTRADA', 'DATA_INATIVACAO', 'USUARIO_INATIVACAO', 'TEM_JUSTIFICATIVA',
-                   'GOVERNANCA', 'COMENTARIO_TECNICO'}
+                   'GOVERNANCA', 'COMENTARIO_TECNICO', 'MOTIVO_INATIVACAO'}          # MOTIVO_INATIVACAO: ADR-070
 COLS_CAIXA = {'REGISTRAR_RESULTADO_NO_LJ', 'TIPO_PLOTAGEM_LJ'}
 IDX_AQ = 42            # Estatistica!AQ (alertas da incerteza; carrega o % de inativados -- PEXCL)
 IDX_ORDEM = 20         # Estatistica!U 'ordem critico': contagem CORRIDA de linhas criticas desde a 1a linha -- muda
@@ -360,6 +360,7 @@ class Ctx:
         self.hoje = dt.date.today()
         self.e12 = {}
         self.painel_orig = self.painel_ler()
+        self._an = None                              # ID -> ANALITO (ADR-070: a Inativar pede o analito)
 
     # ---------------------------------------------------------------- atualizacao
     def atualizar(self, rotulo):
@@ -492,8 +493,35 @@ class Ctx:
         r = self.q.escrever_linha(TB_MAN, v)
         return r, self.valor(TB_MAN, 'ID_REGISTRO', r)
 
-    def inativar(self, id_, comentario=None):
-        r = self.q.escrever_linha(TB_INAT, {'ID_REGISTRO': id_})
+    def analito_de(self, id_):
+        """ANALITO do resultado, como o usuario o le no grafico (tblCQ_Final) ou, para o manual ainda nao
+        atualizado, na aba Digitar Resultados. None = ID que nao existe."""
+        i = norm_id(id_, self.pref)
+        if not i:
+            return None
+        for _ in range(2):
+            if self._an is not None and i in self._an:
+                return self._an[i]
+            self._an = {}
+            lo = self.q.lo(TB_FINAL)
+            for a, b in zip(lo.ListColumns('ID_REGISTRO').DataBodyRange.Value, lo.ListColumns('ANALITO').DataBodyRange.Value):
+                self._an[cstr(a[0]).strip().upper()] = b[0]
+            for r in self.q.ler(TB_MAN):
+                k = norm_id(r.get('ID_REGISTRO'), self.pref)
+                if k and k not in self._an:
+                    self._an[k] = r.get('ANALITO')
+        return None
+
+    def inativar(self, id_, comentario=None, analito='auto', motivo=None):
+        """Uma linha na aba Inativar. ADR-070: com o ANALITO do resultado (como o usuario faz; 'auto' = o da
+        tblCQ_Final/Digitar Resultados) e, se dado, o MOTIVO."""
+        v = {'ID_REGISTRO': id_}
+        an = self.analito_de(id_) if analito == 'auto' else analito
+        if an not in (None, ''):
+            v['ANALITO'] = an
+        if motivo:
+            v['MOTIVO'] = motivo
+        r = self.q.escrever_linha(TB_INAT, v)
         rc = None
         if comentario:
             rc = self.q.escrever_linha(TB_COM, {'ID_REGISTRO': id_, 'COMENTARIO_TECNICO': comentario})
@@ -767,7 +795,16 @@ def reconciliar_global(ctx, etapa, fin=None):
     s_x_esp = {r['ID_REGISTRO'] for r in fin if r['STATUS_ANALITICO'] == 'INATIVADO'
                and r['REGISTRAR_RESULTADO_NO_LJ'] == SIM}
     s_reg = {r['ID_REGISTRO'] for r in fin if r['INATIVACAO_REGISTRADA'] == SIM}
-    s_reg_esp = {norm_id(r['ID_REGISTRO'], ctx.pref) for r in inat if norm_id(r['ID_REGISTRO'], ctx.pref)} & F
+    # ADR-070: vale a 1a linha de cada ID na Inativar, e so com o ANALITO igual ao do resultado
+    an_fin = {r['ID_REGISTRO']: up(r['ANALITO']) for r in fin}
+    s_reg_esp, vistos_inat = set(), set()
+    for r in inat:
+        i = norm_id(r['ID_REGISTRO'], ctx.pref)
+        if not i or i in vistos_inat:
+            continue
+        vistos_inat.add(i)
+        if i in F and txt(r.get('ANALITO')) is not None and up(r.get('ANALITO')) == an_fin[i]:
+            s_reg_esp.add(i)
     plot_inval = sorted({r['TIPO_PLOTAGEM_LJ'] for r in fin} - {'NORMAL', 'X_VERMELHO', 'NAO_PLOTAR'}, key=str)
     checagens = {
         'ids_unicos_e_nao_vazios': not dup and vazios == 0,
@@ -777,7 +814,7 @@ def reconciliar_global(ctx, etapa, fin=None):
         'SIM=ATIVO=NORMAL': s_sim == s_ativo == s_normal,
         'X=INATIVADO_e_LJ': s_x == s_x_esp,
         'plotagem_valida': not plot_inval,
-        'INATIVACAO_REGISTRADA=NormId(Inativar)∩Final': s_reg == s_reg_esp,
+        'INATIVACAO_REGISTRADA=NormId(Inativar)∩Final∩analito': s_reg == s_reg_esp,
     }
     ok = all(checagens.values()) and len(fin) > 0 and len(R) > 0
     reg(f'E07 [{etapa}] Reconciliação por conjunto: IDs(Final) = Recebimento(ID≠nulo) ∪ manuais derivados (NormId, '
@@ -888,8 +925,9 @@ def e08(ctx, fin0):
     ids_final0 = {r['ID_REGISTRO'] for r in fin0}
     tem_man1 = 'MAN_0001' in ids_final0
     lin = {}
-    lin['A'] = q.escrever_linha(TB_INAT, {'ID_REGISTRO': f'{pref.lower()}-{num(A)} '})
-    lin['B'] = q.escrever_linha(TB_INAT, {'ID_REGISTRO': num(B)})
+    an_c = {c['ID_REGISTRO']: c['ANALITO'] for c in cand}               # ADR-070: a linha leva o analito
+    lin['A'] = q.escrever_linha(TB_INAT, {'ID_REGISTRO': f'{pref.lower()}-{num(A)} ', 'ANALITO': an_c[A]})
+    lin['B'] = q.escrever_linha(TB_INAT, {'ID_REGISTRO': num(B), 'ANALITO': an_c[B]})
     # '00<C>': a coluna ID e texto ('@'); confere SEM evento que a celula guardou o texto com os zeros
     q.ex.xl.EnableEvents = False
     try:
@@ -898,11 +936,13 @@ def e08(ctx, fin0):
     finally:
         q.ex.xl.EnableEvents = True
     ctx.cel(TB_INAT, 'ID_REGISTRO', lin['C']).Value = '00' + num(C)          # agora com o evento
-    lin['D'] = q.escrever_linha(TB_INAT, {'ID_REGISTRO': f'{pref}- {num(D)}'})
+    ctx.cel(TB_INAT, 'ANALITO', lin['C']).Value = an_c[C]
+    lin['D'] = q.escrever_linha(TB_INAT, {'ID_REGISTRO': f'{pref}- {num(D)}', 'ANALITO': an_c[D]})
     inexistente = f'{pref}-999999999'
     lin['X'] = q.escrever_linha(TB_INAT, {'ID_REGISTRO': inexistente})
-    lin['A2'] = q.escrever_linha(TB_INAT, {'ID_REGISTRO': f'{pref}-{num(A)}'})
-    lin['M'] = q.escrever_linha(TB_INAT, {'ID_REGISTRO': 'man_1'})
+    lin['A2'] = q.escrever_linha(TB_INAT, {'ID_REGISTRO': f'{pref}-{num(A)}', 'ANALITO': an_c[A]})
+    an_m = ctx.analito_de('MAN_0001') if tem_man1 else None
+    lin['M'] = q.escrever_linha(TB_INAT, dict({'ID_REGISTRO': 'man_1'}, **({'ANALITO': an_m} if an_m else {})))
     celulas = {k: ctx.valor(TB_INAT, 'ID_REGISTRO', r) for k, r in lin.items()}
     ctx.marcar('E08', A, B, C, D, inexistente, 'MAN_0001')
     ctx.atualizar('E08')

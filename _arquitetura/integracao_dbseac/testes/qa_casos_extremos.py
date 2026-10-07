@@ -69,10 +69,12 @@ def executar(produto, caminho, saida):
         lin10 = manual(0, RESULTADO="'1.5")
         cel10 = q.lo('tblResultados_Manuais').ListColumns('RESULTADO').DataBodyRange.Cells(lin10, 1).Value
         q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': 'MAN_9999'})    # g) inativar ID inexistente
-        rep = next(r for r in fin0.values() if r['ORIGEM_RESULTADO'] == 'INTERFACEAMENTO'
-                   and r['STATUS_ANALITICO'] == 'ATIVO' and r['ID_REGISTRO'] != molde['ID_REGISTRO'])['ID_REGISTRO']
-        q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': rep})           # h) mesmo ID inativado 2x
-        q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': rep})
+        rep_r = next(r for r in fin0.values() if r['ORIGEM_RESULTADO'] == 'INTERFACEAMENTO'
+                     and r['STATUS_ANALITICO'] == 'ATIVO' and r['ID_REGISTRO'] != molde['ID_REGISTRO'])
+        rep = rep_r['ID_REGISTRO']
+        # h) mesmo ID inativado 2x (com o analito do resultado: ADR-070)
+        q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': rep, 'ANALITO': rep_r['ANALITO']})
+        q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': rep, 'ANALITO': rep_r['ANALITO']})
         q.escrever_linha('tblComentariosTecnicos', {'ID_REGISTRO': rep, 'COMENTARIO_TECNICO': 'QA casos extremos'})
 
         q.atualizar()

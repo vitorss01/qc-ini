@@ -6,7 +6,7 @@
 //  consulta, a partir de:
 //    tblDB_Recebimento ........... resultados do interfaceamento (DB_SEAC)
 //    tblResultados_Manuais ....... resultados digitados (staging; falha de interface)
-//    tblInativacao_NaoConformes .. IDs retirados da populacao estatistica (soft-delete)
+//    tblInativacao_NaoConformes .. ID + ANALITO + MOTIVO retirados da populacao estatistica (soft-delete)
 //    tblComentariosTecnicos ...... justificativa tecnica por ID
 //    tblDeParaAnalitos ........... nome do equipamento -> nome do cadastro
 //
@@ -35,10 +35,16 @@
 //                          manual -- nunca duplica em silencio      -> nao participa, nao plota
 //    SEM_DATA_HORA ....... interfaceamento sem DATA_HORA (QA E09)  -> nao participa, nao plota, sem RUN
 //    SEM_VALOR ........... sem numero (flag '----' do XN-1000)      -> nao participa, nao plota
-//    INATIVADO ........... ID na tblInativacao_NaoConformes         -> nao participa;
+//    INATIVADO ........... ID na tblInativacao_NaoConformes COM o   -> nao participa;
+//                          ANALITO da linha igual ao do resultado
+//                          (ADR-070; analito vazio ou de outro ID:
+//                          a inativacao NAO vale e o QA acusa E10/E11)
 //                            REGISTRAR - LJ marcado (padrao) ...... X_VERMELHO
 //                            REGISTRAR - LJ desmarcado ............ NAO_PLOTAR
 //    ATIVO ............... todo o resto (interface ou manual)       -> participa, ponto NORMAL
+//
+//  JUSTIFICATIVA (ADR-070): o MOTIVO escrito na propria linha da aba Inativar OU um
+//  comentario na aba COMENTARIOS_TECNICOS. Inativado sem nenhum dos dois = GOVERNANCA ERRO (QA E01).
 //
 //  CORRIDA e RUN
 //    O instante de cada nivel e diferente (o XN-1000 mede os tres niveis com
@@ -290,18 +296,28 @@ let
         Table.SelectColumns(Table.AddColumn(ManuaisFalha, "_DUP", each false), Comuns, MissingField.UseNull)})),
 
     // ------------------------------------------------------------ inativacao (soft-delete) e comentarios
-    I0 = Ler("tblInativacao_NaoConformes", {"ID_REGISTRO", "REGISTRAR - LJ", "DATA_INATIVACAO", "USUARIO"}),
+    // ADR-070: a linha da Inativar traz ID + ANALITO (conferencia) + MOTIVO (justificativa). O ANALITO tem de ser
+    // o do resultado: ID de outro analito (digitado errado) ou sem analito NAO inativa nada (QA E10/E11).
+    // Tabela ainda no layout antigo (sem a coluna MOTIVO; antes da migracao do instalar_adr070): regra antiga,
+    // so pelo ID -- sem isso, reinstalar a consulta antes da migracao reativaria todo inativado (e o Audit_Log
+    // registraria reativacoes que ninguem fez).
+    InatLegado = not (try List.Contains(Table.ColumnNames(Excel.CurrentWorkbook(){[Name = "tblInativacao_NaoConformes"]}[Content]),
+                                        "MOTIVO") otherwise true),
+    AnKey = (x as any) as nullable text => let t = Txt(x) in if t = null then null else Text.Upper(t),
+    I0 = Ler("tblInativacao_NaoConformes", {"ID_REGISTRO", "ANALITO", "REGISTRAR - LJ", "MOTIVO", "DATA_INATIVACAO", "USUARIO"}),
     I1 = Table.SelectRows(Table.AddIndexColumn(
             Table.AddColumn(I0, "_IDN", each NormId([ID_REGISTRO]), type text), "_ord", 1, 1, Int64.Type),
             each [_IDN] <> null),
     I2 = Table.Distinct(Table.Buffer(Table.Sort(I1, {"_ord"})), {"_IDN"}),          // 1a ocorrencia vale; repeticao vai para o QA
-    Inat = Table.SelectColumns(Table.AddColumn(Table.AddColumn(Table.AddColumn(I2,
+    Inat = Table.SelectColumns(Table.AddColumn(Table.AddColumn(Table.AddColumn(Table.AddColumn(Table.AddColumn(I2,
             // D06 (QA-ETL-001): vazio = SIM so na linha nova (sem DATA_INATIVACAO); numa inativacao ja carimbada a
             // celula vazia aparece DESMARCADA e vale NAO. Valor nao reconhecido: NAO e ALERTA A08 no QA.
             "_LJ", each Logico([#"REGISTRAR - LJ"], (try DateTime.From([DATA_INATIVACAO]) otherwise null) = null), type logical),
             "_DTI", each try DateTime.From([DATA_INATIVACAO]) otherwise null, type nullable datetime),
             "_USRI", each Txt([USUARIO]), type nullable text),
-            {"_IDN", "_LJ", "_DTI", "_USRI"}),
+            "_ANI", each if InatLegado then null else AnKey([ANALITO]), type nullable text),
+            "_MOT", each if InatLegado then null else Txt([MOTIVO]), type nullable text),
+            {"_IDN", "_LJ", "_DTI", "_USRI", "_ANI", "_MOT"}),
 
     K0 = Ler("tblComentariosTecnicos", {"ID_REGISTRO", "COMENTARIO_TECNICO", "DATA", "USUARIO"}),
     K1 = Table.SelectRows(Table.AddColumn(Table.AddColumn(K0, "_IDN", each NormId([ID_REGISTRO]), type text),
@@ -309,14 +325,18 @@ let
     Coment = Table.Group(K1, {"_IDN"}, {{"_COMENT", each Text.Combine([_TXT], " | "), type text}}),
 
     // LEFT OUTER: todo resultado continua; quem casa com a inativacao so muda de estado
-    UI = Table.Join(U, {"ID_REGISTRO"}, Table.RenameColumns(Inat, {{"_IDN", "_INAT_ID"}}), {"_INAT_ID"}, JoinKind.LeftOuter),
+    UI0 = Table.Join(U, {"ID_REGISTRO"}, Table.RenameColumns(Inat, {{"_IDN", "_INAT_ID"}}), {"_INAT_ID"}, JoinKind.LeftOuter),
+    // ADR-070: a inativacao so VALE com o analito informado igual ao do resultado (layout antigo: so o ID).
+    // A que nao vale nao deixa rastro na linha (data, usuario, motivo): o QA conta por que (E10/E11).
+    UI = Table.AddColumn(UI0, "_INAT_OK", each [_INAT_ID] <> null and
+            (InatLegado or ([_ANI] <> null and [_ANI] = AnKey([ANALITO]))), type logical),
     UK = Table.RemoveColumns(Table.Join(UI, {"ID_REGISTRO"}, Table.RenameColumns(Coment, {{"_IDN", "_IDK"}}), {"_IDK"},
                                         JoinKind.LeftOuter), {"_IDK"}),
 
     // ------------------------------------------------------------ classificacao
     Classif = Table.AddColumn(UK, "_cls", each
         let
-            inat = [_INAT_ID] <> null,
+            inat = [_INAT_OK],
             st = if [_MANUAL_FALTA] <> "" then "MANUAL_INCOMPLETO"
                  else if [_DUP] then "DUPLICIDADE_ORIGEM"
                  else if [_conf] <> null then "CONFLITO_MANUAL"
@@ -344,9 +364,14 @@ let
     Exp = Table.ExpandRecordColumn(Classif, "_cls", {"STATUS_ANALITICO", "PARTICIPA_ESTATISTICA",
             "REGISTRAR_RESULTADO_NO_LJ", "TIPO_PLOTAGEM_LJ", "MOTIVO_EXCLUSAO_AUTOMATICA", "ID_RELACIONADO",
             "INATIVACAO_REGISTRADA", "CORRIDA_REAL"}),
-    ComJust = Table.AddColumn(Table.AddColumn(Exp,
-        "TEM_JUSTIFICATIVA", each if [_COMENT] <> null then SIM else NAO, type text),
-        "GOVERNANCA", each if [STATUS_ANALITICO] = "INATIVADO" and [_COMENT] = null
+    // ADR-070: justificativa = MOTIVO da linha da Inativar (so da inativacao que vale) OU comentario tecnico.
+    // Data, usuario e motivo da inativacao so aparecem na linha quando a inativacao vale.
+    ComJust = Table.AddColumn(Table.AddColumn(Table.AddColumn(Table.AddColumn(Table.AddColumn(Exp,
+        "_MOTV", each if [_INAT_OK] then [_MOT] else null, type nullable text),
+        "_DTIV", each if [_INAT_OK] then [_DTI] else null, type nullable datetime),
+        "_USRIV", each if [_INAT_OK] then [_USRI] else null, type nullable text),
+        "TEM_JUSTIFICATIVA", each if [_COMENT] <> null or [_MOTV] <> null then SIM else NAO, type text),
+        "GOVERNANCA", each if [STATUS_ANALITICO] = "INATIVADO" and [_COMENT] = null and [_MOTV] = null
                            then "ERRO DE GOVERNANÇA: INATIVADO SEM JUSTIFICATIVA TÉCNICA" else "OK", type text),
 
     // ------------------------------------------------------------ corrida e RUN
@@ -411,15 +436,15 @@ let
         "HORA", each if [DATA_HORA] = null then null else DateTime.Time([DATA_HORA]), type nullable time),
         "ANALITO_CADASTRADO", each if [ANALITO_QCINI] <> null then SIM else NAO, type text),
         "RESULTADO", each [VALOR], type nullable number),
-    Renom = Table.RenameColumns(Final, {{"_COMENT", "COMENTARIO_TECNICO"}, {"_DTI", "DATA_INATIVACAO"},
-                                        {"_USRI", "USUARIO_INATIVACAO"}}),
+    Renom = Table.RenameColumns(Final, {{"_COMENT", "COMENTARIO_TECNICO"}, {"_DTIV", "DATA_INATIVACAO"},
+                                        {"_USRIV", "USUARIO_INATIVACAO"}, {"_MOTV", "MOTIVO_INATIVACAO"}}),
     Saida = Table.SelectColumns(Renom, {
         "ID_REGISTRO", "ORIGEM_RESULTADO", "SETOR", "EQUIPAMENTO", "MATRIZ", "BLOCO",
         "DATA", "HORA", "DATA_HORA", "CORRIDA_NO_DIA", "RUN", "NIVEL", "NIVEL_DESC", "LOTE",
         "ANALITO", "ANALITO_ORIGEM", "ANALITO_CADASTRADO", "RESULTADO", "UNIDADE", "FLAG",
         "STATUS_ANALITICO", "PARTICIPA_ESTATISTICA", "REGISTRAR_RESULTADO_NO_LJ", "TIPO_PLOTAGEM_LJ",
         "INATIVACAO_REGISTRADA", "COMENTARIO_TECNICO", "TEM_JUSTIFICATIVA", "GOVERNANCA",
-        "DATA_INATIVACAO", "USUARIO_INATIVACAO", "MOTIVO_EXCLUSAO_AUTOMATICA", "ID_RELACIONADO",
+        "DATA_INATIVACAO", "USUARIO_INATIVACAO", "MOTIVO_INATIVACAO", "MOTIVO_EXCLUSAO_AUTOMATICA", "ID_RELACIONADO",
         "ID_ORIGEM", "ID_AMOSTRA", "ITEM_ID", "PRIMEIRO_DO_DIA", "MOTIVO_MANUAL", "USUARIO_MANUAL", "RECEBIDO_EM"}),
     Tipos = Table.TransformColumnTypes(Saida, {
         {"ID_REGISTRO", type text}, {"ORIGEM_RESULTADO", type text}, {"SETOR", type text}, {"EQUIPAMENTO", type text},
@@ -431,7 +456,7 @@ let
         {"REGISTRAR_RESULTADO_NO_LJ", type text}, {"TIPO_PLOTAGEM_LJ", type text}, {"INATIVACAO_REGISTRADA", type text},
         {"COMENTARIO_TECNICO", type nullable text}, {"TEM_JUSTIFICATIVA", type text}, {"GOVERNANCA", type text},
         {"DATA_INATIVACAO", type nullable datetime}, {"USUARIO_INATIVACAO", type nullable text},
-        {"MOTIVO_EXCLUSAO_AUTOMATICA", type nullable text}, {"ID_RELACIONADO", type nullable text},
+        {"MOTIVO_INATIVACAO", type nullable text}, {"MOTIVO_EXCLUSAO_AUTOMATICA", type nullable text}, {"ID_RELACIONADO", type nullable text},
         {"ID_ORIGEM", Int64.Type}, {"ID_AMOSTRA", type nullable text}, {"ITEM_ID", Int64.Type},
         {"PRIMEIRO_DO_DIA", type nullable text}, {"MOTIVO_MANUAL", type nullable text}, {"USUARIO_MANUAL", type nullable text},
         {"RECEBIDO_EM", type nullable datetime}}),

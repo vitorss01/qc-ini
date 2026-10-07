@@ -472,6 +472,17 @@ Gestor antes de entrar; o que não se sustentou foi descartado. Detalhe dos acha
 | 16.10 | Regressão completa sobre os bytes entregues | ✅ | Hematologia **191/191**, Bioquímica **190/190** (10 suítes) |
 | 16.11 | Manual pode substituir automático inativado? | ⏳ decisão do RT | Hoje não (CONFLITO + A09) |
 
+## 17. Aba Inativar simples e ID no Levey-Jennings — ADR-070 (06/10/2026)
+
+| # | Item | Status | Evidência |
+|---|---|---|---|
+| 17.1 | Colunas de fórmula com formato texto (`@`) mostravam a fórmula em vez do valor (Inativar, Digitar Resultados, COMENTARIOS_TECNICOS) | ✅ corrigido | Inativar sem fórmula; nas outras duas, formato Geral + fórmula reescrita; `instalar_adr070.py` confere; `qa_inativar.py` N01 |
+| 17.2 | Inativação exige ANALITO de conferência: ID de outro analito ou sem analito NÃO inativa e vira ERRO (E10/E11) | ✅ | `qa_inativar.py` N05, N08 |
+| 17.3 | MOTIVO na linha da Inativar satisfaz a governança (E01) sem comentário técnico; sem nenhum dos dois continua E01 | ✅ | N04 |
+| 17.4 | Dica do LJ mostra ID, RUN real, data/hora e valor (X vermelho: INATIVADO); `clsCht` versionada | ✅ | N02, N06; fumaça no instalador |
+| 17.5 | Migração dos arquivos em uso: linhas na mesma posição, analito preenchido pela final, mesmos inativados, idempotente | ✅ | `qa_migracao_adr070.py` M01–M05; o instalador exige o mesmo conjunto de inativados (modo histórico) |
+| 17.6 | Regressão (qa_final, qa_etl, qa_casos_extremos) com as inativações informando o analito | ✅ | ver ADR-070 |
+
 ---
 
 ## Resumo

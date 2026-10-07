@@ -48,12 +48,13 @@ let
             DETALHE = detalhe(_)]),
             {"SEVERIDADE", "CODIGO", "TESTE", "ID_REGISTRO", "ANALITO", "NIVEL", "DATA_HORA", "DETALHE"}),
 
-    // E01 -- inativado sem justificativa tecnica (ERRO DE GOVERNANCA)
+    // E01 -- inativado sem justificativa tecnica (ERRO DE GOVERNANCA). ADR-070: justificativa = MOTIVO na
+    //        propria linha da aba Inativar ou comentario na aba COMENTARIOS_TECNICOS (TEM_JUSTIFICATIVA)
     E01 = Achado("ERRO", "E01", "Resultado inativado sem justificativa tecnica",
             Table.SelectRows(F, each [STATUS_ANALITICO] = "INATIVADO" and [TEM_JUSTIFICATIVA] <> SIM),
             each "ERRO DE GOVERNANÇA: " & _[ID_REGISTRO] & " | " & (_[ANALITO] ?? "?") & " | nivel " & Text.From(_[NIVEL] ?? "?") &
                  " | " & (try DateTime.ToText(_[DATA_HORA], "dd/MM/yyyy HH:mm") otherwise "?") &
-                 " -- inativado sem COMENTARIO_TECNICO; registrar a justificativa na aba COMENTARIOS_TECNICOS"),
+                 " -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar"),
 
     // E02 / E03 -- tabela de inativacao: ID repetido, ID inexistente
     I0 = Ler("tblInativacao_NaoConformes", {"ID_REGISTRO"}),
@@ -67,6 +68,31 @@ let
     E03 = Achado("ERRO", "E03", "ID inativado que nao existe na base",
             Table.RenameColumns(Table.RemoveColumns(Orfaos, {"ID_REGISTRO"}), {{"_IDN", "ID_REGISTRO"}}),
             each "ID digitado na linha " & Text.From(_[_linha]) & " da inativacao nao corresponde a nenhum resultado recebido ou manual"),
+
+    // E10 / E11 (ADR-070) -- a inativacao so vale com o ANALITO da linha igual ao do resultado (mesma regra do
+    //        DB_CQ_FINAL: maiusculas, sem espacos nas pontas). Confere a linha que VALE (1a ocorrencia do ID); ID
+    //        inexistente ja e o E03. Tabela no layout antigo (sem MOTIVO, antes da migracao): nao se aplica.
+    InatLegado = not (try List.Contains(Table.ColumnNames(Excel.CurrentWorkbook(){[Name = "tblInativacao_NaoConformes"]}[Content]),
+                                        "MOTIVO") otherwise true),
+    AnKey = (x as any) as nullable text => let t = Txt(x) in if t = null then null else Text.Upper(t),
+    IA0 = Ler("tblInativacao_NaoConformes", {"ID_REGISTRO", "ANALITO"}),
+    IA1 = Table.Distinct(Table.SelectRows(Table.AddColumn(Table.AddIndexColumn(IA0, "_linha", 1, 1), "_IDN", each NormId([ID_REGISTRO])),
+                                          each [_IDN] <> null), {"_IDN"}),
+    FAn = Table.Buffer(Table.SelectColumns(F, {"ID_REGISTRO", "ANALITO", "NIVEL", "DATA_HORA", "RUN"})),
+    IAJ = if InatLegado then #table({"ID_REGISTRO", "_linha", "_AN_DIG", "ANALITO", "NIVEL", "DATA_HORA", "RUN"}, {}) else
+          Table.Join(Table.RenameColumns(Table.SelectColumns(IA1, {"_IDN", "_linha", "ANALITO"}),
+                                         {{"_IDN", "_ID_I"}, {"ANALITO", "_AN_DIG"}}), {"_ID_I"},
+                     FAn, {"ID_REGISTRO"}, JoinKind.Inner),
+    E10 = Achado("ERRO", "E10", "ID nao pertence ao analito informado na inativacao",
+            Table.SelectRows(IAJ, each AnKey([_AN_DIG]) <> null and AnKey([_AN_DIG]) <> AnKey([ANALITO])),
+            each "linha " & Text.From(_[_linha]) & " da aba Inativar: o ID e de " & (_[ANALITO] ?? "?") & " (nivel " &
+                 Text.From(_[NIVEL] ?? "?") & ", RUN " & Text.From(_[RUN] ?? "?") & "), mas a linha diz '" & Text.From(_[_AN_DIG]) &
+                 "'. A inativacao NAO foi aplicada: confira o ID no grafico e corrija o ID ou o analito."),
+    E11 = Achado("ERRO", "E11", "Inativacao sem analito informado",
+            Table.SelectRows(IAJ, each AnKey([_AN_DIG]) = null),
+            each "linha " & Text.From(_[_linha]) & " da aba Inativar sem ANALITO: o ID e de " & (_[ANALITO] ?? "?") &
+                 " (nivel " & Text.From(_[NIVEL] ?? "?") & ", RUN " & Text.From(_[RUN] ?? "?") &
+                 "). A inativacao NAO foi aplicada: escolha o analito na linha."),
 
     // E04 -- resultado manual incompleto
     E04 = Achado("ERRO", "E04", "Resultado manual com campo obrigatorio ausente",
@@ -252,7 +278,7 @@ let
                  "Westgard da Hematologia sao do equipamento padrao (CFG EQUIPAMENTO_PADRAO = " & EqPad & "). Se for o mesmo " &
                  "aparelho com outro nome, corrija o lancamento."),
 
-    Tudo = Table.Combine({E01, E02, E03, E04, E05, E06, E07, E08, E09, A01, A02, A03, A04, A05, A06, A07, A08, A09, A10, I01, I02, I03}),
+    Tudo = Table.Combine({E01, E02, E03, E04, E05, E06, E07, E08, E09, E10, E11, A01, A02, A03, A04, A05, A06, A07, A08, A09, A10, I01, I02, I03}),
     Peso = (s as text) as number => if s = "ERRO" then 1 else if s = "ALERTA" then 2 else 3,
     Ordenado = Table.Sort(Tudo, {{each Peso([SEVERIDADE]), Order.Ascending}, {"CODIGO", Order.Ascending}, {"DATA_HORA", Order.Ascending}}),
     Tipos = Table.TransformColumnTypes(Ordenado, {{"SEVERIDADE", type text}, {"CODIGO", type text}, {"TESTE", type text},

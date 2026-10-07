@@ -7,7 +7,9 @@ Option Explicit
 '  aplica a inativacao e produz a tblCQ_Final. Este modulo NAO decide nada
 '  sobre dado -- so:
 '    1. prepara as tabelas de entrada (ID normalizado, carimbo de data/usuario,
-'       caixa REGISTRAR - LJ marcada por padrao, ID MAN_nnnn automatico);
+'       caixa REGISTRAR - LJ marcada por padrao, ID MAN_nnnn automatico). A aba
+'       Inativar (ADR-070) e so ID + ANALITO + caixa + MOTIVO + carimbo: quem
+'       confere se o ID e daquele analito e o Power Query (QA E10/E11);
 '    2. dispara o refresh das consultas NA ORDEM, de forma SINCRONA
 '       (BackgroundQuery = False): cada Refresh so devolve quando a consulta
 '       terminou -- ou levanta o erro dela. Nenhuma etapa seguinte roda sobre
@@ -255,7 +257,8 @@ Private Function ResumoQA() As String
     Dim e As Long, a As Long
     e = ContarQA("ERRO"): a = ContarQA("ALERTA")
     ResumoQA = "QA da integração: " & e & " erro(s), " & a & " alerta(s), " & ContarQA("INFO") & " informativo(s)."
-    If e > 0 Then ResumoQA = ResumoQA & vbCrLf & "Há ERRO DE GOVERNANÇA: veja a aba QA_INTEGRACAO (ex.: inativação sem justificativa técnica)."
+    If e > 0 Then ResumoQA = ResumoQA & vbCrLf & "Há ERRO DE GOVERNANÇA: veja a aba QA_INTEGRACAO (ex.: inativação sem motivo, " & _
+                             "ou ID que não é do analito informado -- essa não foi aplicada)."
 End Function
 
 ' ============================================================================
@@ -263,9 +266,10 @@ End Function
 ' ============================================================================
 ' ID -> Array(estado, analito, lote, nivel, run, data, equip, resultado, comentario)
 ' So o que interessa a trilha: resultados INATIVADOS e resultados MANUAIS.
+' ADR-070: "comentario" = MOTIVO da inativacao (aba Inativar) + COMENTARIO_TECNICO.
 Private Function EstadoAuditavel() As Object
     Dim d As Object, lo As ListObject, n As Long, i As Long
-    Dim vId, vSt, vPl, vOr, vAn, vLt, vNv, vRun, vDt, vEq, vRes, vCom, est As String
+    Dim vId, vSt, vPl, vOr, vAn, vLt, vNv, vRun, vDt, vEq, vRes, vCom, vMot, est As String, txt As String
     Set d = CreateObject("Scripting.Dictionary")
     Set EstadoAuditavel = d
     Set lo = AcharTabela(FONTE_CQ)
@@ -284,12 +288,20 @@ Private Function EstadoAuditavel() As Object
     vEq = lo.ListColumns("EQUIPAMENTO").DataBodyRange.Value
     vRes = lo.ListColumns("RESULTADO").DataBodyRange.Value
     vCom = lo.ListColumns("COMENTARIO_TECNICO").DataBodyRange.Value
+    vMot = Empty
+    On Error Resume Next                       ' coluna nova (ADR-070): ausente ate a 1a atualizacao com a consulta nova
+    vMot = lo.ListColumns("MOTIVO_INATIVACAO").DataBodyRange.Value
+    On Error GoTo 0
     For i = 1 To n
         est = ""
         If CStr(vSt(i, 1)) = "INATIVADO" Then est = "INATIVADO/" & CStr(vPl(i, 1))
         If CStr(vOr(i, 1)) = "MANUAL" Then est = est & "|MANUAL:" & CStr(vSt(i, 1))
         If Len(est) > 0 Then
-            d(CStr(vId(i, 1))) = Array(est, vAn(i, 1), vLt(i, 1), vNv(i, 1), vRun(i, 1), vDt(i, 1), vEq(i, 1), vRes(i, 1), vCom(i, 1))
+            txt = CStr(vCom(i, 1))
+            If IsArray(vMot) Then
+                If Len(CStr(vMot(i, 1))) > 0 Then txt = "MOTIVO: " & CStr(vMot(i, 1)) & IIf(Len(txt) > 0, " | " & txt, "")
+            End If
+            d(CStr(vId(i, 1))) = Array(est, vAn(i, 1), vLt(i, 1), vNv(i, 1), vRun(i, 1), vDt(i, 1), vEq(i, 1), vRes(i, 1), txt)
         End If
     Next i
 End Function
@@ -453,6 +465,63 @@ Private Function Celula(ByVal lo As ListObject, ByVal r As Long, ByVal coluna As
     Set Celula = lo.ListColumns(coluna).DataBodyRange.Cells(r, 1)
 End Function
 
+Private Sub LimparSeExistir(ByVal lo As ListObject, ByVal r As Long, ByVal coluna As String)
+    On Error Resume Next                       ' tabela ainda no layout antigo: a coluna nao existe
+    Celula(lo, r, coluna).ClearContents
+End Sub
+
+' ADR-070: grava uma inativacao na aba Inativar como o usuario faria (ID normalizado, ANALITO, REGISTRAR - LJ
+' marcado, MOTIVO; data e usuario carimbados). Usada pelo duplo clique no grafico (mUI.InativarPeloGrafico) e
+' pelo QA. NAO atualiza os dados. Devolve "OK|<linha da tabela>" ou "ERRO|<motivo>" -- nunca abre dialogo.
+Public Function RegistrarInativacao(ByVal id As String, ByVal analito As String, ByVal motivo As String) As String
+    Dim lo As ListObject, ws As Worksheet, prot As Boolean, ev As Boolean, idN As String, r As Long
+    Dim v As Variant, i As Long, livre As Long
+    On Error GoTo falha
+    idN = NormalizarId(id)
+    If Len(idN) = 0 Then RegistrarInativacao = "ERRO|ID vazio": Exit Function
+    If Len(Trim$(analito)) = 0 Then RegistrarInativacao = "ERRO|analito vazio": Exit Function
+    If Len(Trim$(motivo)) = 0 Then RegistrarInativacao = "ERRO|motivo vazio": Exit Function
+    Set lo = AcharTabela(TB_INAT)
+    If lo Is Nothing Then RegistrarInativacao = "ERRO|tabela " & TB_INAT & " nao encontrada": Exit Function
+    Set ws = lo.Parent
+    v = lo.ListColumns("ID_REGISTRO").DataBodyRange.Value
+    If Not IsArray(v) Then
+        Dim u(1 To 1, 1 To 1) As Variant: u(1, 1) = v: v = u
+    End If
+    For i = 1 To lo.ListRows.Count
+        If NormalizarId(v(i, 1)) = idN Then
+            RegistrarInativacao = "ERRO|o ID " & idN & " ja esta na aba Inativar (linha " & i & ")": Exit Function
+        End If
+        If livre = 0 And Len(Trim$(CStr(v(i, 1)))) = 0 Then
+            If Len(Trim$(CStr(Celula(lo, i, "ANALITO").Value))) = 0 And _
+               Len(Trim$(CStr(Celula(lo, i, "MOTIVO").Value))) = 0 Then livre = i
+        End If
+    Next i
+    ev = Application.EnableEvents
+    Application.EnableEvents = False
+    prot = LiberarEscrita(ws)
+    If livre = 0 Then                          ' tabela cheia: cresce FOLGA linhas (a aba protegida nao deixa)
+        lo.Resize lo.Range.Resize(lo.Range.rows.Count + FOLGA)
+        livre = lo.ListRows.Count - FOLGA + 1
+    End If
+    r = livre
+    Celula(lo, r, "ID_REGISTRO").Value = idN
+    Celula(lo, r, "ANALITO").Value = Trim$(analito)
+    Celula(lo, r, "MOTIVO").Value = Trim$(motivo)
+    PrepararLinha lo, r                        ' caixa marcada (linha nova) e carimbo de data/usuario
+    RestaurarProtecao ws, prot
+    Application.EnableEvents = ev
+    RegistrarInativacao = "OK|" & r
+    Exit Function
+falha:
+    Dim sE As String
+    sE = Err.Description
+    On Error Resume Next
+    If Not ws Is Nothing Then RestaurarProtecao ws, prot
+    If ev Then Application.EnableEvents = True
+    RegistrarInativacao = "ERRO|" & sE
+End Function
+
 Private Sub Carimbar(ByVal cData As Range, ByVal cUsuario As Range)
     If IsEmpty(cData.Value) Or Len(Trim$(CStr(cData.Value))) = 0 Then cData.Value = Now
     If Len(Trim$(CStr(cUsuario.Value))) = 0 Then cUsuario.Value = mAuditoria.UsuarioSistema()
@@ -553,6 +622,12 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
                 Celula(lo, r, COL_LJ).ClearContents
                 Celula(lo, r, "DATA_INATIVACAO").ClearContents
                 Celula(lo, r, "USUARIO").ClearContents
+                ' ADR-070: foi a celula do ID que o usuario apagou -> a linha inteira sai (o analito e o motivo
+                ' nao ficam esperando o proximo ID digitado ali). Digitar o analito ANTES do ID nao apaga nada.
+                If Not Intersect(Target, Celula(lo, r, "ID_REGISTRO")) Is Nothing Then
+                    LimparSeExistir lo, r, "ANALITO"
+                    LimparSeExistir lo, r, "MOTIVO"
+                End If
             End If
         End If
         PrepararLinha lo, r
