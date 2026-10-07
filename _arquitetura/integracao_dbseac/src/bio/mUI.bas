@@ -32,6 +32,7 @@ Private mVigiaZoom As Double                      ' CACHE (nao estado): ultimo Z
 Private mVigiaUW As Double                        ' CACHE: ultima UsableWidth vista
 Private Const GRAF_VIGIA_FOLGA As Long = 1        ' LatestTime = hora + folga: tique vencido expira
 Private mVigiaUltimo As Date                      ' hora do ultimo tique agendado (o tique nao zera)
+Private mGeracaoDica As Long                      ' ADR-070 (revisao): muda a cada publicacao do motor (LimparDicas)
 Private mFechando As Boolean                      ' BeforeClose em curso: tique nao reagenda
 
 
@@ -674,19 +675,26 @@ Public Sub InativarPeloGrafico(ByVal nivel As Long, ByVal serie As Long, ByVal p
     Set eng = ThisWorkbook.Worksheets("Eng_Saida")
     an = Trim$(CStr(eng.Range("C1").Value))
     If InStr(1, nm, "conforme", vbTextCompare) > 0 Then
-        MsgBox "Este resultado ja esta inativado:" & vbCrLf & dica & vbCrLf & vbCrLf & _
-               "Para reativar, apague a linha dele na aba Inativar e clique ATUALIZAR DADOS.", _
+        MsgBox TextoAnsi("Este resultado ja esta inativado:" & vbCrLf & dica & vbCrLf & vbCrLf & _
+               "Para reativar, apague a linha dele na aba Inativar e clique ATUALIZAR DADOS."), _
                vbInformation, "Inativar resultado"
         Exit Sub
     End If
     idv = CStr(eng.Cells(2 + ponto, mEstatistica.ENG_COL_ID0 + nivel - 1).Value)
-    motivo = InputBox("Inativar este resultado (" & an & ", nivel " & nivel & ")?" & vbCrLf & dica & vbCrLf & vbCrLf & _
-                      "Escreva o motivo (obrigatorio). Cancelar = nada muda.", "Inativar resultado")
+    motivo = InputBox(TextoAnsi("Inativar este resultado (" & an & ", nivel " & nivel & ")?" & vbCrLf & dica & vbCrLf & vbCrLf & _
+                      "Escreva o motivo (obrigatorio). Simbolos como >=, sigma e delta: escreva por extenso -- esta " & _
+                      "caixa nao os aceita. Cancelar = nada muda."), "Inativar resultado")
     If Len(Trim$(motivo)) = 0 Then Exit Sub
+    If InStr(motivo, "?") > 0 Then
+        If MsgBox(TextoAnsi("O motivo contem '?':" & vbCrLf & motivo & vbCrLf & vbCrLf & _
+                  "Se voce digitou ou colou um simbolo (>=, sigma, delta...), esta caixa do Excel o trocou por '?'. " & _
+                  "Gravar assim mesmo? (Nao = cancelar; escreva o simbolo por extenso ou digite o motivo direto na " & _
+                  "aba Inativar.)"), vbYesNo + vbQuestion + vbDefaultButton2, "Inativar resultado") <> vbYes Then Exit Sub
+    End If
     r = mIntegracao.RegistrarInativacao(idv, an, motivo)
     If Left$(r, 3) = "OK|" Then
-        MsgBox "Gravado na aba Inativar (linha " & Mid$(r, 4) & "): ID " & IdCurto(idv) & ", " & an & "." & vbCrLf & _
-               "Clique ATUALIZAR DADOS para aplicar.", vbInformation, "Inativar resultado"
+        MsgBox TextoAnsi("Gravado na aba Inativar (linha " & Mid$(r, 4) & "): ID " & IdCurto(idv) & ", " & an & "." & vbCrLf & _
+               "Clique ATUALIZAR DADOS para aplicar."), vbInformation, "Inativar resultado"
     Else
         MsgBox Mid$(r, InStr(r, "|") + 1), vbExclamation, "Inativar resultado"
     End If
@@ -694,3 +702,70 @@ Public Sub InativarPeloGrafico(ByVal nivel As Long, ByVal serie As Long, ByVal p
 falha:
     MsgBox "Nao foi possivel gravar a inativacao: " & Err.Description, vbExclamation, "Inativar resultado"
 End Sub
+
+' ADR-070 (revisao 07/10/2026): o motor republicou o Eng_Saida (troca de periodo, analito, lote ou
+' equipamento) -- o slot sob o mouse pode ter virado OUTRA corrida, e a caixa "tip" continuava com o ID
+' antigo (o clsCht so reescreve quando o elemento sob o mouse muda). Apaga o texto da caixa em todos os
+' graficos do Painel e muda a geracao das dicas: o proximo movimento do mouse reescreve, mesmo parado no
+' mesmo ponto. Chamada pelo AtualizarCalc a cada publicacao. Nao suja a pasta (como a propria dica).
+Public Function GeracaoDica() As Long
+    GeracaoDica = mGeracaoDica
+End Function
+
+Public Sub LimparDicas()
+    Dim co As ChartObject, tb As Shape, salvo As Boolean
+    On Error Resume Next
+    mGeracaoDica = mGeracaoDica + 1
+    salvo = ThisWorkbook.Saved
+    For Each co In ThisWorkbook.Worksheets("Painel").ChartObjects
+        Set tb = Nothing
+        Set tb = co.Chart.Shapes("tip")
+        If Not tb Is Nothing Then
+            If Len(CStr(tb.TextFrame2.TextRange.Text)) > 0 Then tb.TextFrame2.TextRange.Text = ""
+        End If
+    Next co
+    If salvo Then ThisWorkbook.Saved = True
+End Sub
+
+' ADR-070 (revisao): o InputBox do VBA e um dialogo ANSI (cp1252 no Windows pt-BR). Simbolos fora dele
+' (>= U+2265, sigma U+03C3, Delta U+0394 ...) chegam como "?" (ou trocados por "melhor aproximacao") e o
+' MOTIVO -- justificativa oficial da inativacao -- seria gravado diferente do que o tecnico escreveu, sem
+' aviso. Duas defesas, sem UserForm (limitacao registrada no ADR-070):
+'  1. o texto MOSTRADO no dialogo (analito, dica) passa por TextoAnsi: os simbolos conhecidos viram texto
+'     visivel (">=", "sigma", "delta"...) e o resto vira "[?]" -- nunca um "?" mudo;
+'  2. se o motivo digitado contem "?", pergunta antes de gravar: o "?" pode ser um simbolo perdido.
+Public Function TextoAnsi(ByVal s As String) As String
+    Dim i As Long, c As String, w As Long, out As String
+    For i = 1 To Len(s)
+        c = Mid$(s, i, 1)
+        w = AscW(c) And &HFFFF&
+        If w < 256 Then
+            out = out & c
+        ElseIf InStr(1, CP1252_EXTRA, c, vbBinaryCompare) > 0 Then
+            out = out & c                       ' "euro", aspas curvas, travessao...: existem no cp1252
+        Else
+            Select Case w
+                Case &H2265: out = out & ">="
+                Case &H2264: out = out & "<="
+                Case &H2260: out = out & "<>"
+                Case &H3C3, &H3A3: out = out & "sigma"
+                Case &H394, &H3B4: out = out & "delta"
+                Case &H3BC: out = out & "u"
+                Case &H2248: out = out & "~"
+                Case &H2192: out = out & "->"
+                Case Else: out = out & "[?]"
+            End Select
+        End If
+    Next i
+    TextoAnsi = out
+End Function
+
+Private Function CP1252_EXTRA() As String
+    ' os caracteres de 0x80-0x9F do cp1252 que no Unicode ficam acima de 255
+    CP1252_EXTRA = ChrW$(&H20AC) & ChrW$(&H201A) & ChrW$(&H192) & ChrW$(&H201E) & ChrW$(&H2026) & _
+                   ChrW$(&H2020) & ChrW$(&H2021) & ChrW$(&H2C6) & ChrW$(&H2030) & ChrW$(&H160) & _
+                   ChrW$(&H2039) & ChrW$(&H152) & ChrW$(&H17D) & ChrW$(&H2018) & ChrW$(&H2019) & _
+                   ChrW$(&H201C) & ChrW$(&H201D) & ChrW$(&H2022) & ChrW$(&H2013) & ChrW$(&H2014) & _
+                   ChrW$(&H2DC) & ChrW$(&H2122) & ChrW$(&H161) & ChrW$(&H203A) & ChrW$(&H153) & _
+                   ChrW$(&H17E) & ChrW$(&H178) & ChrW$(&HB7)
+End Function

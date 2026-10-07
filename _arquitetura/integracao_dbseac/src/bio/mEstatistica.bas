@@ -1160,6 +1160,8 @@ Public Sub AtualizarCalc()
     ws.Range("E1").Value = lote
     ws.Range("G1").Value = Now
     ws.Range("I1").Value = 0
+    ' ADR-070 (revisao): nova publicacao -- a dica do LJ na tela pode ser de outro ponto agora
+    mUI.LimparDicas
     ws.Range("K1").Value = 0
     ws.Range("M1").Value = 0
     ws.Range("O1").Value = ""
