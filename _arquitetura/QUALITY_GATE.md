@@ -498,6 +498,22 @@ Gestor antes de entrar; o que não se sustentou foi descartado. Detalhe dos acha
 | 18.8 | Painel DESEMPENHO: CV ao lado do Sigma = CVp (fecha a conta) | ✅ | R04 |
 | 18.9 | R00 roda na entrega contra a produção original; R01/R02 fixam TODAS na cópia; R05 isola o Controllab | ✅ | `entregar.py` (QC_PROD_ORIGINAL); `qa_rodadas_cv.py` |
 
+Bateria da revisão (07/10/2026). As cópias vêm da cadeia inteira do `entregar.py --modo HISTORICO --sem-testes`, rodada
+sobre cópias da produção; a produção nunca foi aberta.
+
+| Suíte | Hematologia | Bioquímica |
+|---|---|---|
+| `qa_rodadas_cv` (R00 contra a produção original) | 12/12 | 12/12 |
+| `qa_inativar` | 12/12 (rodada isolada) | 12/12 |
+| `qa_migracao_adr070` (M01–M06) | 6/6 | 6/6 |
+| `qa_incerteza` | 16/16 | 15/15 |
+| `qa_final` | 29/29 | 29/29 (rodada isolada) |
+
+- Instaladores 070 e 071 rodados duas vezes na mesma cópia: sem erro, nada migrado de novo e o mesmo conjunto de
+  inativados.
+- Na 1ª execução da Bioquímica, o `qa_final` parou no T00: o `AtualizarDadosAutomatico` passou de 1500 s enquanto o
+  `qa_final` da Hematologia e a tarefa agendada do DB_SEAC rodavam ao mesmo tempo. Rodado sozinho, passou 29/29.
+
 ---
 
 ## Resumo
