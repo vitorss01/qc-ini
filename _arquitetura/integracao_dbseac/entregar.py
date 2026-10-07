@@ -19,7 +19,10 @@ Para cada produto:
   3. guarda os bytes instalados e roda, cada suite numa copia propria deles:
      qa_seguranca, qa_casos_extremos, qa_troca_lote, qa_lotes_auto, qa_graficos (Excel VISIVEL),
      qa_incerteza (recalculo independente), qa_desempenho, qa_final, qa_etl_recebimento, qa_etl, qa_rodadas_cv,
-     qa_inativar;
+     qa_inativar, qa_migracao_adr070. A producao ORIGINAL (copiada para <produto>/producao_original/ antes de
+     instalar, conferida por SHA-256) vai para as suites pela variavel QC_PROD_ORIGINAL: o R00 do qa_rodadas_cv
+     compara a copia instalada com ela (regressao do gate) e o qa_migracao_adr070 testa a migracao sobre ela e
+     confere que as inativacoes reais sobrevivem (M06) -- nenhum caminho de rede no codigo;
   4. SO SE TODAS PASSAREM E A PRODUCAO NAO TIVER SIDO GRAVADA DURANTE OS TESTES: backup da producao em _backup_pre_integracao_<data>/ conferido por
      SHA-256, e troca pelos MESMOS bytes que passaram nos testes (SHA-256 conferido de novo).
 Falhou qualquer passo: a producao fica como estava, e o relatorio diz onde parou.
@@ -41,7 +44,8 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_graficos.py', 'qa_incerteza.py', 'qa_desempenho.py', 'qa_final.py',
           'qa_etl_recebimento.py', 'qa_etl.py',          # ADR-066: QA-ETL-001, gate obrigatorio da camada de dados
           'qa_rodadas_cv.py',                            # ADR-071: selecao de rodadas do CEQ e Sigma com CV pooled
-          'qa_inativar.py']                              # ADR-070: Inativar por ID + analito, ID na dica do LJ
+          'qa_inativar.py',                              # ADR-070: Inativar por ID + analito, ID na dica do LJ
+          'qa_migracao_adr070.py']                       # ADR-070: migracao e inativacoes reais contra a producao
 
 
 def sha(p):
@@ -52,8 +56,10 @@ def sha(p):
     return h.hexdigest()
 
 
-def rodar(log, cwd, *args):
+def rodar(log, cwd, *args, original=None):
     env = dict(os.environ, PYTHONIOENCODING='utf-8')
+    if original:
+        env['QC_PROD_ORIGINAL'] = original
     with open(log, 'w', encoding='utf-8') as f:
         r = subprocess.run([sys.executable, '-u', '-W', 'ignore', *args], cwd=cwd, env=env,
                            stdout=f, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace')
@@ -69,6 +75,12 @@ def entregar(produto, modo, testar, pasta, origem=None):
     alvo = os.path.join(trab, ARQ[produto])
     shutil.copy2(prod, alvo)
     sha_inicio = sha(alvo)
+    # a producao como estava ANTES de instalar: referencia do R00 (qa_rodadas_cv) e do M06 (qa_migracao_adr070)
+    original = os.path.join(trab, 'producao_original', ARQ[produto])
+    os.makedirs(os.path.dirname(original), exist_ok=True)
+    shutil.copy2(prod, original)
+    if sha(original) != sha_inicio:
+        return False, 'a producao mudou enquanto era copiada: rodar de novo com o arquivo fechado'
     print(f'\n## {produto}\n   producao sha256 {sha_inicio[:16]} -> copia de trabalho', flush=True)
 
     # cada instalador instala TODO o VBA atual (codigo_atual.py) e cuida da sua parte de planilha
@@ -99,12 +111,14 @@ def entregar(produto, modo, testar, pasta, origem=None):
         os.makedirs(os.path.dirname(copia), exist_ok=True)
         shutil.copy2(alvo, copia)
         ok, fim = rodar(os.path.join(trab, suite.replace('.py', '.log')), os.path.join(AQUI, 'testes'),
-                        suite, produto, copia, os.path.join(trab, suite.replace('.py', '.json')))
+                        suite, produto, copia, os.path.join(trab, suite.replace('.py', '.json')), original=original)
         print(f'   {suite:22s} {"OK" if ok else "FALHOU"}  {" | ".join(fim)[:300]}', flush=True)
         if not ok:
             return False, f'{suite} falhou (ver {trab})'
     if sha(alvo) != instalado:
         return False, 'o arquivo instalado mudou durante os testes'
+    if sha(original) != sha_inicio:
+        return False, 'a copia da producao original mudou durante os testes (uma suite a alterou)'
 
     # a producao foi gravada no laboratorio durante as horas de teste: trocar agora apagaria o que foi lancado
     # (inativacoes, manuais, comentarios). Nao troca; rodar de novo com o arquivo fechado (06/10/2026)
