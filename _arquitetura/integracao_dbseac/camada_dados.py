@@ -519,9 +519,9 @@ def validacoes(wb, produto, nome, lo):
         # origem; com Parar o nome nao podia ser digitado e esse resultado deixara de ser inativavel. A
         # conferencia ID x analito continua no Power Query (DB_CQ_FINAL: _ANI = AnKey(ANALITO); senao E10/E11).
         lista('ANALITO', '=lstAnalitos',
-              'Este nome nao esta no cadastro (aba Analitos). Para um analito sem cadastro, digite o nome exatamente '
-              'como na coluna ANALITO da Principal - Resultados (ex.: FERR) e clique Sim. A conferencia do ID com o '
-              'analito e feita no ATUALIZAR DADOS (E10/E11 no QA se nao casar).', estilo=2,
+              # (ErrorMessage do Excel: no maximo 225 caracteres)
+              'Nome fora do cadastro. Analito sem cadastro: digite como na coluna ANALITO da Principal - '
+              'Resultados (ex.: FERR) e clique Sim. O ATUALIZAR confere o ID com o analito (E10/E11).', estilo=2,
               titulo='Analito fora do cadastro')
 
         def dica(col, titulo, msg):
