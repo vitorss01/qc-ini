@@ -386,16 +386,16 @@ def igualar_largura_cabecalho(ws, ncols_tabela, alvo, ncols=12):
     resto = list(range(ncols_tabela + 1, ncols + 1))
     if not resto or not alvo:
         return
-    for _ in range(4):
-        atual = sum(ws.Columns(c).Width for c in range(1, ncols + 1))
-        dif = alvo - atual
-        if abs(dif) < 1:
-            return
-        ref = ws.Columns(resto[0])
-        pt_por_car = (ref.Width / ref.ColumnWidth) if ref.ColumnWidth else 5.25
-        for c in resto:
-            w = ws.Columns(c).ColumnWidth + dif / len(resto) / pt_por_car
-            ws.Columns(c).ColumnWidth = max(0.5, min(60, w))
+    tabela = sum(ws.Columns(c).Width for c in range(1, ncols_tabela + 1))
+    alvo_col = max(3.0, (alvo - tabela) / len(resto))           # pontos por coluna, iguais
+    for c in resto:
+        col = ws.Columns(c)
+        for _ in range(3):                                      # largura em caracteres -> pontos nao e linear
+            pt_por_car = (col.Width / col.ColumnWidth) if col.ColumnWidth else 5.25
+            w = col.ColumnWidth + (alvo_col - col.Width) / pt_por_car
+            col.ColumnWidth = max(0.5, min(60, w))
+            if abs(col.Width - alvo_col) < 1:
+                break
 
 
 def montar_entrada(wb, produto, nome):

@@ -72,6 +72,7 @@ def executar(produto, caminho, saida):
         q = QA(produto, tmp)
         lo = q.lo(TB)
         cab0 = [c.Name for c in lo.ListColumns]
+        faixa0 = float(lo.Parent.Range('A1').MergeArea.Width)        # a barra de navegacao foi montada sobre ela
         if 'MOTIVO' in cab0:
             raise RuntimeError(f'pré-condição ausente: o arquivo já está no layout do ADR-070: {cab0}')
         fin0 = q.final_por_id()
@@ -108,7 +109,14 @@ def executar(produto, caminho, saida):
                and antes_fin[C['ID_REGISTRO']]['GOVERNANCA'] != 'OK')
         if not pre:
             raise RuntimeError(f'pré-condição ausente: inativação no layout antigo não ficou como esperado: {antes_fin}')
-        q.fechar(salvar=True)                                  # salva SO a copia temporaria
+        # salva SO a copia temporaria. Eventos DESLIGADOS: com eles, o Workbook_BeforeSave (ADR-065) cancela a
+        # gravacao do Excel e grava a propria -- por automacao (COM) ela nao chega ao disco (medido: mtime igual)
+        t_antes = os.path.getmtime(tmp)
+        q.ex.xl.EnableEvents = False
+        q.wb.Save()
+        q.fechar(salvar=False)
+        if os.path.getmtime(tmp) == t_antes:
+            raise RuntimeError('pré-condição ausente: a cópia com as inativações do layout antigo não foi gravada')
         q = None
 
         # ------------------------------------------------------------ 2. instalador
@@ -120,14 +128,17 @@ def executar(produto, caminho, saida):
         q = QA(produto, tmp)
         lo = q.lo(TB)
         cab1 = [c.Name for c in lo.ListColumns]
+        faixa1 = float(lo.Parent.Range('A1').MergeArea.Width)
         formulas = [c.Name for c in lo.ListColumns if c.DataBodyRange.Cells(1, 1).HasFormula]
         try:
             caixa = int(lo.ListColumns('REGISTRAR - LJ').DataBodyRange.Cells(1, 1).CellControl.Type)
         except Exception:                                      # noqa: BLE001
             caixa = None
-        reg('M01 Migração: a tabela fica só com ID | ANALITO | REGISTRAR - LJ | MOTIVO | DATA_INATIVACAO | USUARIO, sem fórmula',
-            cab1 == CAB_NOVO and not formulas,
-            {'antes': cab0, 'depois': cab1, 'formulas': formulas, 'caixa_nativa_tipo': caixa})
+        reg('M01 Migração: a tabela fica só com ID | ANALITO | REGISTRAR - LJ | MOTIVO | DATA_INATIVACAO | USUARIO, sem fórmula; '
+            'a faixa do título (onde ficam os botões) mantém a largura',
+            cab1 == CAB_NOVO and not formulas and abs(faixa1 - faixa0) < 6,
+            {'antes': cab0, 'depois': cab1, 'formulas': formulas, 'caixa_nativa_tipo': caixa,
+             'largura_faixa_do_titulo': [faixa0, faixa1]})
         depois_tab = linhas_tabela(q, n_lin)
         dif = []
         for k, (a, d) in enumerate(zip(antes_tab, depois_tab), start=1):
