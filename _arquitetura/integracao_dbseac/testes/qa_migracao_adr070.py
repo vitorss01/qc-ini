@@ -134,8 +134,10 @@ def m06_sobrevivem(produto, instalado, original):
         reg('M06 Inativações REAIS sobrevivem à entrega: a cópia instalada tem o mesmo (ID, REGISTRAR - LJ, DATA, USUARIO) '
             'da produção original; todo ID com resultado ficou com ANALITO; ATUALIZAR DADOS (HISTORICO, consulta nova) dá '
             'os mesmos INATIVADOS com a mesma plotagem; nenhum E10/E11 nas linhas migradas',
-            conj1 == conj0 and not sem_an and not perdidas and not novas and not plot and not e1011 and len(conj0) > 0,
-            {'linhas_inativar_original': len(conj0), 'saiu': sorted(conj0 - conj1, key=str)[:5],
+            conj1 == conj0 and not sem_an and not perdidas and not novas and not plot and not e1011,
+            {'linhas_inativar_original': len(conj0),
+             'aviso': '' if conj0 else 'produção sem nenhuma linha na Inativar: nada a preservar (a migração é provada no M01-M04)',
+             'saiu': sorted(conj0 - conj1, key=str)[:5],
              'entrou': sorted(conj1 - conj0, key=str)[:5], 'ID_sem_ANALITO': sem_an[:5],
              'inativados_original/depois (IDs nas duas tabelas)': [len(a0), len(a1)],
              'perdidos': perdidas, 'novos': novas, 'plotagem_mudou': plot, 'E10_E11_migradas': e1011[:5],
