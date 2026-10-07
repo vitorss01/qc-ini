@@ -13,11 +13,12 @@ Para cada produto:
   1. copia o .xlsm de producao para _entrega_<data>/<produto>/ (a producao nao e tocada);
   2. na copia: MODO_FONTE (058), lotes automaticos e validade (060, registra os lotes ja recebidos),
      papeis e sessao (059), graficos: zoom (061) e todos a vista (063), troca de analito rapida (062),
-     incerteza de medicao e correcoes do CEQ (064/067), ETp ausente = "-" (068) e blindagem.
+     incerteza de medicao e correcoes do CEQ (064/067), ETp ausente = "-" (068), selecao de rodadas do CEQ e
+     Sigma com CV pooled de N meses (071) e blindagem.
      Todos idempotentes; cada um instala o VBA inteiro das fontes (codigo_atual.py);
   3. guarda os bytes instalados e roda, cada suite numa copia propria deles:
      qa_seguranca, qa_casos_extremos, qa_troca_lote, qa_lotes_auto, qa_graficos (Excel VISIVEL),
-     qa_incerteza (recalculo independente), qa_desempenho, qa_final;
+     qa_incerteza (recalculo independente), qa_desempenho, qa_final, qa_etl_recebimento, qa_etl, qa_rodadas_cv;
   4. SO SE TODAS PASSAREM E A PRODUCAO NAO TIVER SIDO GRAVADA DURANTE OS TESTES: backup da producao em _backup_pre_integracao_<data>/ conferido por
      SHA-256, e troca pelos MESMOS bytes que passaram nos testes (SHA-256 conferido de novo).
 Falhou qualquer passo: a producao fica como estava, e o relatorio diz onde parou.
@@ -37,7 +38,8 @@ RAIZ = os.path.abspath(os.path.join(AQUI, '..', '..'))
 ARQ = {'Hematologia': 'QC_Hematologia.xlsm', 'Bioquimica': 'QC_Bioquimica.xlsm'}
 SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lotes_auto.py',
           'qa_graficos.py', 'qa_incerteza.py', 'qa_desempenho.py', 'qa_final.py',
-          'qa_etl_recebimento.py', 'qa_etl.py']          # ADR-066: QA-ETL-001, gate obrigatorio da camada de dados
+          'qa_etl_recebimento.py', 'qa_etl.py',          # ADR-066: QA-ETL-001, gate obrigatorio da camada de dados
+          'qa_rodadas_cv.py']                            # ADR-071: selecao de rodadas do CEQ e Sigma com CV pooled
 
 
 def sha(p):
@@ -77,6 +79,7 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('incerteza', ['instalar_adr064.py', produto, alvo]),
               ('espec_etp', ['instalar_adr069.py', produto, alvo]),
               ('sem_etp', ['instalar_adr068.py', produto, alvo]),
+              ('rodadas_cv', ['instalar_adr071.py', produto, alvo]),     # ADR-071: rodadas do CEQ + Sigma CV pooled
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:
         ok, fim = rodar(os.path.join(trab, f'{nome}.log'), AQUI, *args)

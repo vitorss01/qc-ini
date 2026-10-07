@@ -284,6 +284,8 @@ Public Sub AtualizarEQABase()
     ' que dependem dela e mostrariam o CEQ antigo ate o proximo ATUALIZAR DADOS (auditoria 04/10/2026).
     On Error Resume Next
     mCEQ.InvalidarEQ
+    ' ADR-071: rodada/ano novos entram nas listas de selecao (Estatistica!N4/P4) sem reabrir o arquivo
+    mDados.AtualizarListasAno
     mIncerteza.RecalcularIncerteza
 End Sub
 

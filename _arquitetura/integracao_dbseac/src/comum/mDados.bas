@@ -115,9 +115,8 @@ End Function
 Public Sub AtualizarListasAno()
     Dim wsCfg As Worksheet
     Set wsCfg = ThisWorkbook.Sheets("Configuração")
-    Dim anosCIQ As Object, anosCEQ As Object
+    Dim anosCIQ As Object
     Set anosCIQ = CreateObject("Scripting.Dictionary")
-    Set anosCEQ = CreateObject("Scripting.Dictionary")
     Dim dados As Variant
     dados = CarregarDB()
     If Not IsEmpty(dados) Then
@@ -129,42 +128,41 @@ Public Sub AtualizarListasAno()
             End If
         Next i
     End If
-    Dim wsEqa As Worksheet
-    Set wsEqa = ThisWorkbook.Sheets("EQA_Base")
-    Dim ultEqa As Long
-    ultEqa = wsEqa.Cells(wsEqa.rows.Count, 2).End(xlUp).Row
-    If ultEqa >= 2 Then
-        Dim r As Long, v As Variant, ae As Long
-        For r = 2 To ultEqa
-            v = wsEqa.Cells(r, 2).Value
-            If IsNumeric(v) Then
-                ae = CLng(v)
-                If ae > 1900 And ae < 2200 Then
-                    If Not anosCEQ.Exists(ae) Then anosCEQ.Add ae, True
-                End If
-            End If
-        Next r
-    End If
-    ' ADR-050: so regrava se a lista MUDOU. Regravar igual invalidava
+    ' ADR-071: as listas do CEQ saem do mCEQ -- a MESMA regra de "rodada existente" do calculo
+    ' (Uso_Analitico <> NAO, analito canonico, |bias| numerico): rodada de simulacao (Uso = NAO)
+    ' e linha sem analito canonico nunca aparecem. Antes a lista de anos lia EQA_Base!B inteira.
+    Dim lst(1 To 7) As Variant, cols As Variant, cabs As Variant, k As Long, mudou As Boolean, igual(1 To 7) As Boolean
+    lst(1) = AnosOrdenados(anosCIQ)
+    lst(2) = mCEQ.AnosExistentes("")
+    If UBound(lst(2)) < 0 Then lst(2) = AnosOrdenados(CreateObject("Scripting.Dictionary"))  ' nenhum: um 0, como antes
+    lst(3) = mCEQ.AnosExistentes("CAP")
+    lst(4) = mCEQ.AnosExistentes("Controllab")
+    lst(5) = ComFixos(mCEQ.RodadasExistentes("CAP"))
+    lst(6) = ComFixos(mCEQ.RodadasExistentes("Controllab"))
+    lst(7) = ComFixos(mCEQ.RodadasExistentes(""))
+    '            Z    AA   AF   AG   AH   AI   AJ
+    cols = Array(26, 27, 32, 33, 34, 35, 36)
+    cabs = Array("lstAnosCIQ", "lstAnosCEQ", "lstAnosCAP", "lstAnosCTL", "lstRodadasCAP", "lstRodadasCTL", "lstRodadasEQA")
+    ' ADR-050: so regrava a lista que MUDOU. Regravar igual invalidava
     ' lstAnosCEQ -> Estatistica!N4 (ano de EQA) -> ~480 funcoes de EQA: 10 s
     ' extras em TODA atualizacao, para escrever os mesmos anos de sempre.
-    If ListaIgual(wsCfg.Range("Z2:Z50").Value, AnosOrdenados(anosCIQ)) And _
-       ListaIgual(wsCfg.Range("AA2:AA50").Value, AnosOrdenados(anosCEQ)) Then Exit Sub
+    For k = 1 To 7
+        igual(k) = ListaIgual(wsCfg.Range(wsCfg.Cells(2, cols(k - 1)), wsCfg.Cells(LinhasLista(k), cols(k - 1))).Value, lst(k))
+        If Not igual(k) Then mudou = True
+    Next k
+    If Not mudou Then Exit Sub
     Dim protEstava As Boolean
     On Error GoTo restaura
     protEstava = LiberarEscrita(wsCfg)
-    wsCfg.Range("Z1:Z50").ClearContents
-    wsCfg.Range("AA1:AA50").ClearContents
-    wsCfg.Range("Z1").Value = "lstAnosCIQ (auto - nao editar)"
-    wsCfg.Range("AA1").Value = "lstAnosCEQ (auto - nao editar)"
-    Dim lst As Variant, k As Long
-    lst = AnosOrdenados(anosCIQ)
-    For k = 0 To UBound(lst)
-        wsCfg.Cells(2 + k, 26).Value = lst(k)
-    Next k
-    lst = AnosOrdenados(anosCEQ)
-    For k = 0 To UBound(lst)
-        wsCfg.Cells(2 + k, 27).Value = lst(k)
+    Dim j As Long
+    For k = 1 To 7
+        If Not igual(k) Then
+            wsCfg.Range(wsCfg.Cells(1, cols(k - 1)), wsCfg.Cells(LinhasLista(k), cols(k - 1))).ClearContents
+            wsCfg.Cells(1, cols(k - 1)).Value = cabs(k - 1) & " (auto - nao editar)"
+            For j = 0 To UBound(lst(k))
+                If 2 + j <= LinhasLista(k) Then wsCfg.Cells(2 + j, cols(k - 1)).Value = lst(k)(j)
+            Next j
+        End If
     Next k
     RestaurarProtecao wsCfg, protEstava
     Exit Sub
@@ -175,6 +173,23 @@ restaura:
     On Error GoTo 0
     If nErrP <> 0 Then Err.Raise nErrP, "mDados.AtualizarListasAno", sErrP
 End Sub
+
+' Ultima linha de cada lista: Z/AA ate 50 (como antes); as do ADR-071 ate 101.
+Private Function LinhasLista(ByVal k As Long) As Long
+    LinhasLista = IIf(k <= 2, 50, 101)
+End Function
+
+' ADR-071: itens fixos da selecao de rodadas antes das rodadas existentes (ano|rodada).
+Private Function ComFixos(ByVal rods As Variant) As Variant
+    Dim out() As String, i As Long, n As Long
+    n = UBound(rods) + 1
+    ReDim out(0 To 3 + n)
+    out(0) = "TODAS": out(1) = "ACUMULADAS": out(2) = "ULTIMAS 3": out(3) = "ULTIMAS 6"
+    For i = 0 To n - 1
+        out(4 + i) = rods(i)
+    Next i
+    ComFixos = out
+End Function
 
 ' A coluna (Z2:Z50 lida da planilha) tem exatamente o que a rotina escreveria?
 ' (AnosOrdenados devolve um unico 0 quando nao ha ano -- e ele e escrito.)

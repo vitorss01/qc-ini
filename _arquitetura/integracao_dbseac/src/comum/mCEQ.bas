@@ -366,18 +366,29 @@ Private Function RodadaAntes(ByVal a1 As Long, ByVal r1 As String, ByVal a2 As L
     End If
 End Function
 
-' Rodadas do provedor com ano <= teto, da mais recente para a mais antiga.
+' Rodadas do provedor com ano <= teto, da mais recente para a mais antiga (matriz 1..n; Empty se
+' nenhuma). provedor "" junta todos os provedores (so para a lista da Bioquimica).
 Private Function RodadasDoProvedor(ByVal provedor As Variant, ByVal aRef As Long) As Variant
-    Dim pv As String, k As Variant, it As Variant, n As Long, i As Long, j As Long
+    Dim pv As String, k As Variant, it As Variant, n As Long, i As Long, j As Long, pk As Variant
     Dim anos() As Long, rots() As String, chs() As String, ta As Long, tr As String, tc As String
+    Dim todos As Object, tot As Long
     pv = UCase$(Trim$(CStr(provedor)))
     If mRodPorProv Is Nothing Then Exit Function
-    If Not mRodPorProv.Exists(pv) Then Exit Function
-    ReDim anos(1 To mRodPorProv(pv).Count)
-    ReDim rots(1 To mRodPorProv(pv).Count)
-    ReDim chs(1 To mRodPorProv(pv).Count)
-    For Each k In mRodPorProv(pv).Keys
-        it = mRodPorProv(pv)(k)
+    Set todos = CreateObject("Scripting.Dictionary")
+    For Each pk In mRodPorProv.Keys
+        If pv = "" Or pk = pv Then
+            For Each k In mRodPorProv(pk).Keys
+                If Not todos.Exists(k) Then todos.Add k, mRodPorProv(pk)(k)
+            Next k
+        End If
+    Next pk
+    tot = todos.Count
+    If tot = 0 Then Exit Function
+    ReDim anos(1 To tot)
+    ReDim rots(1 To tot)
+    ReDim chs(1 To tot)
+    For Each k In todos.Keys
+        it = todos(k)
         If it(0) <= aRef Then
             n = n + 1
             anos(n) = it(0): rots(n) = it(1): chs(n) = CStr(k)
@@ -415,6 +426,49 @@ Private Function ConjuntoUltimas(ByVal provedor As Variant, ByVal anoRef As Vari
     End If
     mUltCache.Add key, s
     Set ConjuntoUltimas = s
+End Function
+
+' ADR-071: listas das validacoes (mDados.AtualizarListasAno) saem DAQUI -- a mesma regra de
+' "rodada existente" que o BiasEQ usa (Uso <> NAO, analito canonico, |bias| numerico): a lista
+' nunca oferece rodada de simulacao nem rodada que o calculo nao enxerga.
+' Rodadas "ANO|ROTULO" do provedor ("" = todos), da mais recente para a mais antiga; matriz 0..n-1.
+Public Function RodadasExistentes(Optional ByVal provedor As String = "") As Variant
+    Dim lst As Variant, i As Long, out() As String
+    GarantirEQ
+    lst = RodadasDoProvedor(provedor, 32767)
+    If Not IsArray(lst) Then RodadasExistentes = Array(): Exit Function
+    ReDim out(0 To UBound(lst) - 1)
+    For i = 1 To UBound(lst)
+        out(i - 1) = lst(i)
+    Next i
+    RodadasExistentes = out
+End Function
+
+' Anos com rodada existente do provedor ("" = todos), em ordem crescente; matriz 0..n-1.
+Public Function AnosExistentes(Optional ByVal provedor As String = "") As Variant
+    Dim lst As Variant, i As Long, j As Long, a As Long, anos As Object, out() As Long, k As Variant, t As Long
+    GarantirEQ
+    lst = RodadasDoProvedor(provedor, 32767)
+    If Not IsArray(lst) Then AnosExistentes = Array(): Exit Function
+    Set anos = CreateObject("Scripting.Dictionary")
+    For i = 1 To UBound(lst)
+        a = CLng(Val(Split(lst(i), SEP_ROD)(0)))
+        anos(a) = 1
+    Next i
+    ReDim out(0 To anos.Count - 1)
+    i = 0
+    For Each k In anos.Keys
+        out(i) = CLng(k): i = i + 1
+    Next k
+    For i = 1 To UBound(out)                         ' insercao, crescente
+        t = out(i): j = i - 1
+        Do While j >= 0
+            If out(j) <= t Then Exit Do
+            out(j + 1) = out(j): j = j - 1
+        Loop
+        out(j + 1) = t
+    Next i
+    AnosExistentes = out
 End Function
 
 ' A linha pertence ao analito, ao provedor e a rodada pedidos?
