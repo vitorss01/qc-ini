@@ -24,7 +24,7 @@ defeito estava em **Digitar Resultados** (STATUS e DETALHE, justamente as coluna
 
 | ID_REGISTRO | ANALITO | REGISTRAR - LJ | MOTIVO | DATA_INATIVACAO | USUARIO |
 |---|---|---|---|---|---|
-| digitado: o número que aparece na dica do gráfico (o evento normaliza para `BIO-`/`HEM-`) | lista do cadastro (`lstAnalitos`) | caixa, marcada por padrão (X vermelho); desmarcada = não plota | texto | carimbo do VBA, travado | carimbo do VBA, travado |
+| digitado: o número que aparece na dica do gráfico (o evento normaliza para `BIO-`/`HEM-`) | lista do cadastro (`lstAnalitos`), em estilo **Aviso** (revisão 07/10: aceita analito sem cadastro) | caixa, marcada por padrão (X vermelho); desmarcada = não plota | texto | carimbo do VBA, travado | carimbo do VBA, travado |
 
 - As oito colunas de fórmula saíram (ANALITO por XLOOKUP, NIVEL, LOTE, DATA_HORA, RUN, RESULTADO, PLOTAGEM_LJ,
   JUSTIFICATIVA). Ninguém as lia (VBA, Power Query, testes, BI); a conferência agora é a dica do gráfico e o QA.
@@ -82,3 +82,49 @@ reescritas; elas voltam a calcular. Em `camada_dados.py`, coluna de fórmula nun
   na mesma posição, com o analito preenchido, os mesmos inativados e a mesma governança; idempotência.
 - `qa_final`, `qa_etl` e `qa_casos_extremos` ajustados: as inativações levam o analito. O E07 confere
   INATIVACAO_REGISTRADA = (1ª linha do ID na Inativar com o analito certo) ∩ final.
+
+## Revisão adversarial (07/10/2026)
+
+Uma revisão confirmou seis defeitos nesta entrega. Todos corrigidos; o último é uma limitação registrada.
+
+1. **Analito sem cadastro tinha deixado de ser inativável (regressão).** A validação de ANALITO era *Parar* com a
+   lista do cadastro. O resultado de um analito sem cadastro (Bio FERR, TNIH, UCFP, CRE2/PHOS/MALB de urina; Hema
+   RET-HE, IPF, IPF#) continua ATIVO na tblCQ_Final com ANALITO = nome de origem, e esse nome não podia ser digitado.
+   **Agora a validação é *Aviso*:** a lista continua sugerindo o cadastro, e um nome fora dela pede confirmação
+   (a mensagem manda digitar como está na coluna ANALITO da Principal - Resultados, ex.: FERR). A conferência
+   ID × analito continua no Power Query (`_ANI = AnKey(ANALITO)`; senão E10/E11). Prova: `qa_inativar` N10.
+2. **Linha "livre" com carimbo residual.** `RegistrarInativacao` (duplo clique) reaproveitava a primeira linha com ID,
+   ANALITO e MOTIVO vazios. Se ela tivesse data/usuário de sobra, o carimbo antigo ficava e a caixa não era marcada, e
+   o ponto virava NAO_PLOTAR em vez de X vermelho. **Agora só reaproveita linha totalmente vazia** (as seis colunas,
+   caixa desmarcada). Também o `EntradaMudou` percorre todas as áreas de uma seleção com Ctrl, que era uma das origens
+   da sobra. Prova: N11.
+3. **Dica do LJ desatualizada depois de republicar.** A caixa "tip" só era reescrita quando o elemento sob o mouse
+   mudava. Trocar o período, o lote ou o analito com o mouse parado num ponto deixava na tela o ID de outra corrida.
+   **Agora o `AtualizarCalc` chama `mUI.LimparDicas`** a cada publicação: apaga o texto da caixa em todos os gráficos e
+   muda a geração das dicas. O `clsCht` põe a geração na chave e reescreve no próximo movimento. Prova: N12.
+4. **M03 passava sem testar nada em SEAC.** Em SEAC o instalador não roda o ATUALIZAR, e o M03 comparava a tblCQ_Final
+   de antes da migração com ela mesma. **Agora a `qa_migracao_adr070` põe a cópia em HISTÓRICO** antes de inativar no
+   layout antigo, o instalador roda a consulta nova sobre a tabela migrada, e o M03 **falha** se o log não mostrar
+   essa atualização.
+5. **Na entrega em SEAC nada conferia que as inativações reais sobrevivem.**
+   - O instalador confere em **qualquer modo** o conjunto (ID, REGISTRAR - LJ, DATA_INATIVACAO, USUARIO), lido direto
+     da tabela antes e depois, e aborta se divergir. Na migração ele também exige o ANALITO de todo ID que tem
+     resultado.
+   - A migração também busca o analito do **manual digitado e ainda não atualizado** (`tblResultados_Manuais`). Antes,
+     esse MAN_ inativado migrava com ANALITO vazio e voltava a ATIVO no próximo ATUALIZAR.
+   - A `qa_migracao_adr070.py` entrou nas suítes do `entregar.py`. O entregar copia a produção original antes de
+     instalar (`<produto>/producao_original/`, SHA-256 conferido) e a passa às suítes por `QC_PROD_ORIGINAL`. Não há
+     caminho de rede no código.
+   - A suíte testa a migração sobre essa cópia (M01–M04) e acrescenta o **M06**: a cópia instalada tem o mesmo
+     conjunto da produção; todo ID com resultado tem ANALITO; e um ATUALIZAR (HISTÓRICO, consulta nova) numa cópia dela
+     dá os mesmos INATIVADOS, com a mesma plotagem e sem E10/E11 nas linhas migradas. Se a produção já estiver no
+     layout novo, o log diz que M01–M04 não se aplicam e o M06 roda.
+6. **InputBox ANSI (limitação, sem UserForm).** O motivo do duplo clique passa pelo `InputBox` do VBA, que é um
+   diálogo ANSI (cp1252 no Windows pt-BR). Símbolos fora dele (≥, σ, Δ…) chegam como "?" ou trocados por "melhor
+   aproximação", e o MOTIVO é a justificativa oficial. O que foi feito:
+   - o texto mostrado no diálogo e nos avisos passa por `mUI.TextoAnsi`, que troca os símbolos conhecidos por texto
+     visível (">=", "sigma", "delta"…) e o resto por "[?]", nunca por um "?" mudo;
+   - o prompt pede que esses símbolos sejam escritos por extenso;
+   - se o motivo digitado tiver "?", o sistema pergunta antes de gravar (Não = cancelar).
+   Quem precisa do símbolo digita o motivo direto na aba Inativar, que aceita Unicode. Os acentos do português existem
+   no cp1252 e não são afetados.
