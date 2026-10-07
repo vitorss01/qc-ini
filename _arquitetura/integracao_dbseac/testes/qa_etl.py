@@ -1290,11 +1290,67 @@ def conferir_contaminacao(rot, s0, s2, run_m, extremo, esperado_cont, prova=''):
          'AQ_alertas': [[l[IDX_AQ] for l in s0['estat']], [l[IDX_AQ] for l in s2['estat']]]})
 
 
+def _menos_meses(fim_serial, meses):
+    """EDATE(fim, -meses) + 1, em serial do Excel."""
+    import calendar
+    d = de_serial(math.floor(fim_serial)).date()
+    m0 = d.month - 1 - meses
+    y, m = d.year + m0 // 12, m0 % 12 + 1
+    dd = min(d.day, calendar.monthrange(y, m)[1])
+    return dia(dt.datetime(y, m, dd)) + 1
+
+
+def janela_sigma_cobrir(ctx, ini_serial):
+    """ADR-071: a janela do Sigma (Sigma_Meses ate MU_Fim) passa a cobrir o lote inteiro do analito do E11, para o
+    lote entrar no CV pooled (n >= 20) e o extremo de S1 mover o Sigma. Devolve (meses antes, meses usados) ou None."""
+    q = ctx.q
+    if not any(n.Name == 'Sigma_Meses' for n in q.wb.Names):
+        return None
+    cel = q.nome('Sigma_Meses')
+    m0 = cel.Value
+    fim = q.ws('Estatística').Range('AI11').Value
+    if not hasattr(fim, 'year'):
+        return None
+    f = serial(fim)
+    m = next((k for k in range(6, 25) if _menos_meses(f, k) <= math.floor(ini_serial)), 24)
+    q.ws('Estatística').Unprotect(SENHA)
+    q.ex.xl.EnableEvents = False
+    try:
+        cel.Value = m
+    finally:
+        q.ex.xl.EnableEvents = True
+    q.ex.esperar()
+    return m0, m
+
+
+def sigma_n1(estat):
+    """Estatistica!L (indice 11) do nivel 1 nas linhas do analito."""
+    return next((l[11] for l in estat if iint(l[1]) == 1), None)
+
+
 def e11(ctx, fin0):
+    ctx.sigma_e11 = None
+    try:
+        return _e11(ctx, fin0)
+    finally:
+        if ctx.sigma_e11:                            # devolve os meses do Sigma como estavam
+            q = ctx.q
+            q.ex.xl.EnableEvents = False
+            try:
+                q.nome('Sigma_Meses').Value = ctx.sigma_e11[0]
+            finally:
+                q.ex.xl.EnableEvents = True
+            q.ex.esperar()
+
+
+def _e11(ctx, fin0):
     q = ctx.q
     lote, eqp = ctx.tela['lote'], ctx.tela['equip']
     hoje_s = dia(meia_noite(ctx.hoje))
     cands = analitos_candidatos(ctx, fin0, lote, eqp)
+    # ADR-071: prefere analito com Sigma (L) numerico no nivel 1 -- o E11f prova que o Sigma acompanha o refresh
+    sig1 = {str(l[0] or '').strip().upper() for l in snap_estat(q) if iint(l[1]) == 1 and eh_num(l[11])}
+    cands = sorted(cands, key=lambda a: a.upper() not in sig1)
     # ---- variante A: janela NAO saturada, lote com media/DP (para o 1_3s)
     A = None
     for a in cands:
@@ -1346,6 +1402,7 @@ def e11(ctx, fin0):
     if B:
         ctx.usados.add(B[0].upper())
     # ---- S0 (A)
+    ctx.sigma_e11 = janela_sigma_cobrir(ctx, iniA)
     ctx.configurar(analito=aA, de=de_serial(iniA), ate=de_serial(dA))
     s0 = snap_e11(ctx, aA, lote)
     pre_a = s0['eng']['n'] <= 178 and s0['cortadas'] == 0 and painel_n(s0['painel']) > 1
@@ -1388,6 +1445,16 @@ def e11(ctx, fin0):
     conferir_contaminacao('E11b S2 = S0 (|Δ| < 1e-9): engPainel completo, linha da Estatística (u(Rw) incluída, '
                           'AQ/PEXCL permitida), Eventos_Westgard, RUNs; só X_VERMELHO/INATIVADO +1 e o X extremo no '
                           'RUN do manual', s0, s2, run_m, ext_a, {('INATIVADO', 'X_VERMELHO'): 1})
+    # ADR-071: o Sigma (L) usa o CV pooled de N meses da tblCQ_Final e so recalcula porque o refresh suja Sigma_Faixa.
+    # Sem esta prova, um L PARADO passaria no E11b como "igual a S0"
+    l0, l1, l2 = sigma_n1(s0['estat']), sigma_n1(s1['estat']), sigma_n1(s2['estat'])
+    pre_f = ctx.sigma_e11 is not None and eh_num(l0)
+    reg('E11f Sigma (Estatística!L, CV pooled de N meses -- ADR-071) acompanha o refresh: com o extremo ATIVO dentro '
+        'da janela (S1) o Sigma do nível 1 MUDA e, inativado (S2), volta ao de S0'
+        + ('' if pre_f else ' -- pré-condição ausente: ADR-071 não instalado ou Sigma sem número no analito'),
+        pre_f and eh_num(l1) and not perto(l1, l0) and perto(l2, l0),
+        {'analito': aA, 'sigma_S0_S1_S2': [l0, l1, l2], 'meses_antes_usados': ctx.sigma_e11,
+         'janela': [q.ws('Estatística').Range('N11').Text, q.ws('Estatística').Range('AI11').Text]})
     # ---- S3 (A): LJ = NAO; no mesmo refresh entra o extremo B (outro analito, outra serie)
     ctx.cel(TB_INAT, COL_LJ, rIA).Value = False
     idB = rB_ = None
