@@ -21,6 +21,13 @@ a mesma funcao que a clsCht chama no evento do mouse, com o mesmo (nivel, serie,
       caixa marcada, motivo, carimbo), recusa o mesmo ID de novo, e a inativacao vale na atualizacao
   N08 corrigir o analito aplica; apagar o ID reativa e limpa a linha inteira (analito e motivo nao ficam)
   N09 seguranca do teste: arquivo de entrada intacto
+  Revisao 07/10/2026:
+  N10 analito SEM cadastro (Bio FERR..., Hema RET-HE/IPF...) continua inativavel: validacao de ANALITO em estilo
+      Aviso (aceita o nome fora da lista) e o ID + nome de origem inativa na atualizacao, sem E10/E11
+  N11 RegistrarInativacao nao reaproveita linha com carimbo residual (data/usuario sem ID): grava numa linha
+      totalmente vazia, com caixa marcada e carimbo novo; a linha residual fica como estava
+  N12 dica do LJ: a republicacao do motor (AtualizarCalc) apaga o texto da caixa "tip" e muda a geracao das dicas;
+      InputBox ANSI: mUI.TextoAnsi troca simbolos fora do cp1252 por texto visivel (">=", "sigma", "delta", "[?]")
 """
 import datetime as dt
 import json
@@ -82,8 +89,10 @@ def executar(produto, caminho, saida):
         trav = {c.Name: bool(c.DataBodyRange.Cells(1, 1).Locked) for c in lo.ListColumns}
         try:
             val_an = str(lo.ListColumns('ANALITO').DataBodyRange.Cells(1, 1).Validation.Formula1)
+            estilo_an = int(lo.ListColumns('ANALITO').DataBodyRange.Cells(1, 1).Validation.AlertStyle)
         except Exception as e:                      # noqa: BLE001
             val_an = f'sem validacao: {e}'
+            estilo_an = None
         try:
             caixa = int(lo.ListColumns('REGISTRAR - LJ').DataBodyRange.Cells(1, 1).CellControl.Type)
         except Exception:                           # noqa: BLE001 -- Excel sem caixa nativa: lista SIM/NAO
@@ -173,6 +182,28 @@ def executar(produto, caminho, saida):
         rB = q.escrever_linha(TB, {'ID_REGISTRO': B['ID_REGISTRO'], 'ANALITO': outro, 'MOTIVO': 'QA ADR-070: analito errado'})
         rC = q.escrever_linha(TB, {'ID_REGISTRO': curto(C['ID_REGISTRO']), 'MOTIVO': 'QA ADR-070: sem analito'})
         rD = q.escrever_linha(TB, {'ID_REGISTRO': D['ID_REGISTRO'], 'ANALITO': f'  {str(analito).lower()} '})
+        # N10: um resultado de analito SEM cadastro (ANALITO = nome de origem na tblCQ_Final), ATIVO
+        sem_cad = next((r for r in fin0.values() if r['ANALITO'] and str(r['ANALITO']).strip() not in cadastro
+                        and r['STATUS_ANALITICO'] == 'ATIVO' and r['PARTICIPA_ESTATISTICA'] == SIM
+                        and str(r['ID_REGISTRO'] or '').strip()), None)
+        rF = None
+        if sem_cad is not None:
+            rF = q.escrever_linha(TB, {'ID_REGISTRO': curto(sem_cad['ID_REGISTRO']), 'ANALITO': sem_cad['ANALITO'],
+                                       'MOTIVO': 'QA revisao: analito sem cadastro'})
+        # N11: linha com carimbo RESIDUAL (data e usuario sem ID/analito/motivo), como a migracao ou uma exclusao em
+        # varias areas deixam -- a primeira linha "livre" pela regra antiga
+        col_id = lo.ListColumns('ID_REGISTRO').DataBodyRange.Value
+        r_res = next(i for i, v in enumerate(col_id, start=1) if v[0] in (None, ''))
+        data_res = dt.datetime(2001, 1, 1, 8, 0)
+        q.ex.xl.EnableEvents = False
+        try:
+            ws.Unprotect('qcini2025')
+        except Exception:                                    # noqa: BLE001
+            pass
+        lo.ListColumns('DATA_INATIVACAO').DataBodyRange.Cells(r_res, 1).Value = data_res
+        lo.ListColumns('USUARIO').DataBodyRange.Cells(r_res, 1).Value = 'QA_RESIDUO'
+        q.ex.xl.EnableEvents = True
+        residuo0 = {c: lo.ListColumns(c).DataBodyRange.Cells(r_res, 1).Value for c in CAB}
         linhas = {k: {c: lo.ListColumns(c).DataBodyRange.Cells(r, 1).Value for c in CAB}
                   for k, r in (('A', rA), ('B', rB), ('C', rC), ('D', rD))}
         motE = 'QA ADR-070: inativado pelo duplo clique no gráfico'
@@ -180,6 +211,7 @@ def executar(produto, caminho, saida):
         regE2 = str(q.run('mIntegracao.RegistrarInativacao', E['ID_REGISTRO'], analito, motE, teto=120))
         rE = int(regE.split('|')[1]) if regE.startswith('OK|') else None
         linE = {c: lo.ListColumns(c).DataBodyRange.Cells(rE, 1).Value for c in CAB} if rE else {}
+        residuo1 = {c: lo.ListColumns(c).DataBodyRange.Cells(r_res, 1).Value for c in CAB}
         _, t1 = q.atualizar()
         fin1 = q.final_por_id()
         qa1 = q.ler('tblQA_Integracao')
@@ -258,6 +290,27 @@ def executar(produto, caminho, saida):
             {'retorno': regE, 'retorno_repetido': regE2, 'linha': linE,
              'final': {k: fE[k] for k in ('STATUS_ANALITICO', 'TIPO_PLOTAGEM_LJ', 'MOTIVO_INATIVACAO')}})
 
+        # ------------------------------------------------------------ N10 analito sem cadastro
+        if sem_cad is not None:
+            fF = fin1.get(sem_cad['ID_REGISTRO'], {})
+            okF = (fF.get('STATUS_ANALITICO') == 'INATIVADO' and fF.get('PARTICIPA_ESTATISTICA') == NAO
+                   and not cod('E10', sem_cad['ID_REGISTRO']) and not cod('E11', sem_cad['ID_REGISTRO']))
+            evF = {'ID': sem_cad['ID_REGISTRO'], 'ANALITO': sem_cad['ANALITO'], 'linha': rF,
+                   'final': {k: fF.get(k) for k in ('STATUS_ANALITICO', 'PARTICIPA_ESTATISTICA', 'TIPO_PLOTAGEM_LJ')}}
+        else:
+            okF, evF = True, {'aviso': 'nenhum resultado ATIVO de analito sem cadastro nesta base: so a validacao conferida'}
+        reg('N10 Analito SEM cadastro continua inativável: a validação de ANALITO é Aviso (aceita o nome de origem, ex. FERR, '
+            'IPF) e ID + esse nome inativa na atualização, sem E10/E11 (a conferência ID × analito fica no Power Query)',
+            estilo_an == 2 and okF, dict(evF, estilo_validacao=estilo_an))
+
+        # ------------------------------------------------------------ N11 linha com carimbo residual
+        reg('N11 RegistrarInativacao não reaproveita a linha com carimbo residual (data/usuário sem ID): grava numa linha '
+            'TOTALMENTE vazia, com a caixa marcada e carimbo novo; a linha residual continua como estava',
+            rE is not None and rE != r_res and residuo1 == residuo0 and linE.get('REGISTRAR - LJ') is True
+            and linE.get('USUARIO') != 'QA_RESIDUO' and fE['TIPO_PLOTAGEM_LJ'] == 'X_VERMELHO',
+            {'linha_residual': r_res, 'linha_gravada': rE, 'residuo_antes': residuo0, 'residuo_depois': residuo1,
+             'linha_E': linE})
+
         # ------------------------------------------------------------ N08 corrigir o analito; reativar
         lo.ListColumns('ANALITO').DataBodyRange.Cells(rB, 1).Value = analito
         lo.ListColumns('ID_REGISTRO').DataBodyRange.Cells(rA, 1).ClearContents()      # evento: reativacao
@@ -274,6 +327,26 @@ def executar(produto, caminho, saida):
             {'B_depois': {k: fB2[k] for k in ('STATUS_ANALITICO', 'TIPO_PLOTAGEM_LJ', 'MOTIVO_INATIVACAO')},
              'A_depois': {k: fA2[k] for k in ('STATUS_ANALITICO', 'TIPO_PLOTAGEM_LJ', 'RUN')}, 'linha_A_apos_apagar_ID': linA2,
              'tempo_atualizacao_s': round(t2, 1)})
+
+        # ------------------------------------------------------------ N12 dica limpa na republicacao; InputBox ANSI
+        ch1 = q.ws('Painel').ChartObjects(1).Chart
+        try:
+            tip = ch1.Shapes('tip')
+        except Exception:                                    # noqa: BLE001
+            tip = ch1.Shapes.AddTextbox(1, 6, 2, 480, 16)
+            tip.Name = 'tip'
+        tip.TextFrame2.TextRange.Text = 'ID 999999 · RUN 1 · QA dica antiga'
+        g0 = q.run('mUI.GeracaoDica', teto=60)
+        q.run('mEstatistica.AtualizarCalc')
+        txt_tip = str(ch1.Shapes('tip').TextFrame2.TextRange.Text)
+        g1 = q.run('mUI.GeracaoDica', teto=60)
+        ansi = str(q.run('mUI.TextoAnsi', 'z \u2265 3\u03c3, \u0394 > ET; a\u00e7\u00e3o \u2013 ok \u2603', teto=60))
+        ansi_esp = 'z >= 3sigma, delta > ET; a\u00e7\u00e3o \u2013 ok [?]'
+        reg('N12 Dica do LJ: a republicação do motor (AtualizarCalc, como na troca de período/lote/analito) apaga o texto '
+            'da caixa "tip" e muda a geração das dicas; InputBox ANSI: TextoAnsi troca ≥ σ Δ por texto visível, mantém '
+            'acentos e o travessão do cp1252 e marca o resto como [?]',
+            txt_tip == '' and isinstance(g1, (int, float)) and isinstance(g0, (int, float)) and g1 > g0 and ansi == ansi_esp,
+            {'texto_tip_depois': txt_tip, 'geracao': [g0, g1], 'TextoAnsi': ansi, 'esperado': ansi_esp})
     except Exception as ex_geral:
         reg('N00 Execução interrompida: os testes seguintes a este ponto não rodaram', False,
             {'erro': f'{type(ex_geral).__name__}: {ex_geral}', 'traceback': traceback.format_exc()[-1500:]})

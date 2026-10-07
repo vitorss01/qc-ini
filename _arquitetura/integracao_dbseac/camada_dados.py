@@ -332,6 +332,16 @@ def migrar_inativacao(wb, lo, cols):
                 prefixo = str(r.get('VALOR') or '').strip().upper()
     fin = pqlib.tabela(wb, 'tblCQ_Final')
     analito_de = {}
+    # revisao 07/10/2026: alem da tblCQ_Final, o manual DIGITADO e ainda nao atualizado (o MAN_nnnn existe
+    # desde a digitacao e ja podia estar inativado pela regra antiga, so por ID). Sem isso a linha migrava
+    # com ANALITO vazio e, no proximo ATUALIZAR, o resultado voltava a ATIVO (so um E11 no QA).
+    man = pqlib.tabela(wb, 'tblResultados_Manuais')
+    if man is not None and man.ListRows.Count:
+        nm = man.ListRows.Count
+        for i, a in zip(_coluna(man, 'ID_REGISTRO', nm), _coluna(man, 'ANALITO', nm)):
+            idn = _norm_id(i, prefixo)
+            if idn and idn.startswith('MAN_') and a not in (None, ''):
+                analito_de[idn] = a
     if fin is not None and fin.ListRows.Count:
         nf = fin.ListRows.Count
         for i, a in zip(_coluna(fin, 'ID_REGISTRO', nf), _coluna(fin, 'ANALITO', nf)):
@@ -470,12 +480,15 @@ def montar_entrada(wb, produto, nome):
 
 
 def validacoes(wb, produto, nome, lo):
-    def lista(col, itens_ou_formula, msg):
+    def lista(col, itens_ou_formula, msg, estilo=1, titulo=None):
+        # estilo: 1 = Parar (xlValidAlertStop), 2 = Aviso (xlValidAlertWarning: o usuario pode confirmar)
         r = lo.ListColumns(col).DataBodyRange
         r.Validation.Delete()
         src = itens_ou_formula if itens_ou_formula.startswith('=') else itens_ou_formula
-        r.Validation.Add(3, 1, 1, src)
+        r.Validation.Add(3, estilo, 1, src)
         r.Validation.IgnoreBlank = True
+        if titulo:
+            r.Validation.ErrorTitle = titulo
         r.Validation.ErrorMessage = msg
         r.Validation.ShowError = True
 
@@ -500,8 +513,16 @@ def validacoes(wb, produto, nome, lo):
         r.Validation.Add(2, 1, 7, '-1E+307')                              # decimal
         r.Validation.ErrorMessage = 'Resultado numérico.'
     elif nome == 'tblInativacao_NaoConformes':
-        # ADR-070: o analito e a CONFERENCIA do ID -- escolhido da lista do cadastro (a mesma do Painel)
-        lista('ANALITO', '=lstAnalitos', 'Escolha o analito da lista (o mesmo nome da aba Analitos).')
+        # ADR-070: o analito e a CONFERENCIA do ID -- sugerido pela lista do cadastro (a mesma do Painel).
+        # Revisao 07/10/2026: estilo AVISO, nao Parar. Resultado de analito SEM cadastro (Bio FERR, TNIH, UCFP,
+        # CRE2/PHOS/MALB de urina; Hema RET-HE, IPF, IPF#) continua ATIVO na tblCQ_Final com ANALITO = o nome de
+        # origem; com Parar o nome nao podia ser digitado e esse resultado deixara de ser inativavel. A
+        # conferencia ID x analito continua no Power Query (DB_CQ_FINAL: _ANI = AnKey(ANALITO); senao E10/E11).
+        lista('ANALITO', '=lstAnalitos',
+              # (ErrorMessage do Excel: no maximo 225 caracteres)
+              'Nome fora do cadastro. Analito sem cadastro: digite como na coluna ANALITO da Principal - '
+              'Resultados (ex.: FERR) e clique Sim. O ATUALIZAR confere o ID com o analito (E10/E11).', estilo=2,
+              titulo='Analito fora do cadastro')
 
         def dica(col, titulo, msg):
             r = lo.ListColumns(col).DataBodyRange

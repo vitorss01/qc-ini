@@ -480,8 +480,39 @@ Gestor antes de entrar; o que não se sustentou foi descartado. Detalhe dos acha
 | 17.2 | Inativação exige ANALITO de conferência: ID de outro analito ou sem analito NÃO inativa e vira ERRO (E10/E11) | ✅ | `qa_inativar.py` N05, N08 |
 | 17.3 | MOTIVO na linha da Inativar satisfaz a governança (E01) sem comentário técnico; sem nenhum dos dois continua E01 | ✅ | N04 |
 | 17.4 | Dica do LJ mostra ID, RUN real, data/hora e valor (X vermelho: INATIVADO); `clsCht` versionada | ✅ | N02, N06; fumaça no instalador |
-| 17.5 | Migração dos arquivos em uso: linhas na mesma posição, analito preenchido pela final, mesmos inativados, idempotente | ✅ | `qa_migracao_adr070.py` M01–M05; o instalador exige o mesmo conjunto de inativados (modo histórico) |
+| 17.5 | Migração dos arquivos em uso: linhas na mesma posição, analito preenchido pela final (e pelo manual digitado), mesmos inativados, idempotente | ✅ | `qa_migracao_adr070.py` M01–M05 (cópia em HISTÓRICO; M03 falha se a consulta nova não rodou) e M06 contra a produção original, **no `entregar.py`**; o instalador confere (ID, caixa, data, usuário) antes × depois em qualquer modo |
 | 17.6 | Regressão (qa_final, qa_etl, qa_casos_extremos) com as inativações informando o analito | ✅ | ver ADR-070 |
+| 17.7 | Revisão 07/10: analito sem cadastro inativável (validação Aviso); linha com carimbo residual não reaproveitada; dica do LJ limpa na republicação; InputBox ANSI (limitação registrada, símbolos visíveis e confirmação) | ✅ | `qa_inativar.py` N10–N12; ADR-070 "Revisão adversarial" |
+
+## 18. Revisão adversarial do ADR-071 (07/10/2026)
+
+| # | Item | Status | Evidência |
+|---|---|---|---|
+| 18.1 | ULTIMAS n por analito (não do provedor inteiro) | ✅ corrigido | `qa_rodadas_cv.py` R05/R08 (família LN2-x no mesmo ano) |
+| 18.2 | Uma regra de número (IsNumeric E não vazio) em BiasEQ/AnoVigente/SDI/limites/K5/listas, inclusive TODAS (defeito antigo) | ✅ corrigido | R05 (rodada sem alvo, ano só sem alvo), oráculo com a mesma regra |
+| 18.3 | Sem teto de 64 rodadas | ✅ corrigido | R10 (70 rodadas) |
+| 18.4 | Cache da EQA_Base só vale depois de montado; erro de célula não derruba o CEQ | ✅ corrigido | R11 |
+| 18.5 | K5 com o ano vigente de cada analito | ✅ corrigido | R06 |
+| 18.6 | Consolidar o CEQ recalcula G/R/S/T/AC/AD e K5 | ✅ corrigido | R09 |
+| 18.7 | Plano: aviso "Sigma em k de N níveis" quando um nível fica sem Sigma | ✅ | R04 |
+| 18.8 | Painel DESEMPENHO: CV ao lado do Sigma = CVp (fecha a conta) | ✅ | R04 |
+| 18.9 | R00 roda na entrega contra a produção original; R01/R02 fixam TODAS na cópia; R05 isola o Controllab | ✅ | `entregar.py` (QC_PROD_ORIGINAL); `qa_rodadas_cv.py` |
+
+Bateria da revisão (07/10/2026). As cópias vêm da cadeia inteira do `entregar.py --modo HISTORICO --sem-testes`, rodada
+sobre cópias da produção; a produção nunca foi aberta.
+
+| Suíte | Hematologia | Bioquímica |
+|---|---|---|
+| `qa_rodadas_cv` (R00 contra a produção original) | 12/12 | 12/12 |
+| `qa_inativar` | 12/12 (rodada isolada) | 12/12 |
+| `qa_migracao_adr070` (M01–M06) | 6/6 | 6/6 |
+| `qa_incerteza` | 16/16 | 15/15 |
+| `qa_final` | 29/29 | 29/29 (rodada isolada) |
+
+- Instaladores 070 e 071 rodados duas vezes na mesma cópia: sem erro, nada migrado de novo e o mesmo conjunto de
+  inativados.
+- Na 1ª execução da Bioquímica, o `qa_final` parou no T00: o `AtualizarDadosAutomatico` passou de 1500 s enquanto o
+  `qa_final` da Hematologia e a tarefa agendada do DB_SEAC rodavam ao mesmo tempo. Rodado sozinho, passou 29/29.
 
 ---
 

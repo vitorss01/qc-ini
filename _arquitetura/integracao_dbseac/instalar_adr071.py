@@ -15,7 +15,10 @@ Roda DEPOIS do instalar_adr068.py (exige o "-" do ADR-068 em Estatistica!L e Pai
      com o "-" do ADR-068; nome Sigma_Faixa (sujo no RecalcularIncerteza); rotulo L13 diz a janela;
      H (ET%) continua com o CV do lote (F) -- decisao D6;
   5. Painel!I7:I8 (Bio) / I7:I9 (Hema) leem o Sigma de Estatistica!L pela chave AB (padrao de G7), com o "-";
-     Cfg_PlanoQC!B1 = MIN(I7:I9) acompanha sem mudar (D2); rotulo I6;
+     Cfg_PlanoQC!B1 = MIN(I7:I9) acompanha sem mudar (D2); rotulo I6. Revisao 07/10/2026: o rotulo O3 do cartao
+     SIGMA DO PLANO avisa "SIGMA EM k DE N NIVEIS" quando um nivel com dados ficou sem Sigma (o MIN o ignora);
+     no bloco DESEMPENHO SIX SIGMA o CV ao lado do Sigma passa a ser o CV POOLED usado no Sigma (CVp, nome
+     Sigma_CVp, sujo no RecalcularIncerteza) e a nota diz qual e qual -- antes era o CV do lote (F);
   6. CEQ: Hematologia R4 sem vazio; N4/P4 com listas do provedor (estilo Aviso: o conjunto e digitado);
      Bioquimica P4 com a uniao CAP+Controllab e N4 com lstAnosCEQ; K5 = ResumoFiltroEQ (sem TEXTO/SOMARPRODUTO);
   7. FUMACA: janela, L = (ETp - |G|)/CV pooled pela propria funcao, Painel I = L, K5, listas = rodadas
@@ -207,7 +210,74 @@ def painel(wb, nlv, ult):
     b1 = str(c.Range('B1').Formula)
     if f'Painel!$I$7:$I${6 + nlv}' not in b1:
         raise SystemExit(f'Cfg_PlanoQC!B1 inesperada (sigmaDoPlano deveria ser MIN(Painel!I7:I{6 + nlv})): {b1[:120]}')
+    # revisao 07/10/2026 (achado 7): B1 = MIN dos niveis COM Sigma -- um nivel sem lote n>=20 na janela (ou sem
+    # bias) some do MIN em silencio e o plano sai do nivel melhor. O3 continua o rotulo do cartao, mas avisa.
+    p.Range('O3').Formula = formula_o3(nlv)
+    p.Range('O3').ShrinkToFit = True
+    feitos.append('O3 (Sigma em k de N niveis)')
     return feitos
+
+
+def formula_o3(nlv):
+    i_ = f'$I$7:$I${6 + nlv}'
+    e_ = f'$E$7:$E${6 + nlv}'
+    n_ = f'SUMPRODUCT(({i_}<>"-")*((ISNUMBER({e_})+ISNUMBER({i_}))>0))'
+    return (f'=IF(AND(COUNT({i_})>0,COUNT({i_})<{n_}),'
+            f'"⚠ SIGMA EM "&COUNT({i_})&" DE "&{n_}&" NÍVEIS","SIGMA DO PLANO")')
+
+
+NOTA_DESEMP = ('Valores da aba Estatística (filtro de EQA: provedor / ano / rodada definidos lá). Sigma = (ETp − |Bias|) / '
+               'CVp, e o CVp ao lado é o CV POOLED dos lotes com n ≥ 20 dos últimos N meses (Estatística L11) — o mesmo '
+               'divisor do Sigma, não o CV do lote no período (Estatística F, usado no ET %). O filtro de datas deste '
+               'Painel manda no gráfico e nos descritivos, não aqui.')
+
+
+def formula_cvp(k, exc):
+    return (f'=IF(OR(selAnalito="",NOT(ISNUMBER(Sigma_Ini)),NOT(ISNUMBER(MU_Fim))),"",'
+            f'IFERROR(mIncerteza.IncertezaCIQ(selAnalito,{k},"CV",Sigma_Ini,MU_Fim{exc}),""))')
+
+
+def bloco_desempenho(wb, nlv, exc):
+    """Achado 8: no bloco DESEMPENHO SIX SIGMA (painel.py) o 'CV % obs' (Estatistica!F, CV do lote no periodo)
+    ficava ao lado do Sigma calculado com o CV pooled de N meses -- a linha nao fechava a conta. Troca a coluna
+    pelo CVp (a mesma funcao e a mesma janela de Estatistica!L), renomeia CV e Sigma e reescreve a nota.
+    Localiza pelo cabecalho (instalacoes antigas tem o bloco em linhas diferentes); sem o bloco, nada a fazer."""
+    p = wb.Worksheets('Painel')
+    alvo = None
+    for r in range(20, 120):
+        linha = p.Range(f'A{r}:N{r}').Value[0]
+        for c, v in enumerate(linha, start=1):
+            t = str(v or '').strip()
+            if t == 'CV % obs' or t.startswith('CVp %') or t == 'CV % pooled':
+                alvo = (r, c)
+                break
+        if alvo:
+            break
+    if not alvo:
+        return 'bloco DESEMPENHO SIX SIGMA ausente (nada a fazer)'
+    r0, c0 = alvo
+    cab = p.Range(f'A{r0}:N{r0}').Value[0]
+    c_sig = next((c for c, v in enumerate(cab, start=1) if str(v or '').strip().startswith('Sigma')), None)
+    if c_sig is None:
+        raise SystemExit(f'Painel linha {r0}: cabecalho do bloco de desempenho sem a coluna Sigma: {cab}')
+    for k in range(1, nlv + 1):
+        if str(p.Cells(r0 + k, 1).Value or '').strip() != f'N{k}':
+            raise SystemExit(f'Painel!A{r0 + k}: esperado N{k} no bloco de desempenho, achado {p.Cells(r0 + k, 1).Value!r}')
+    p.Cells(r0, c0).Formula = '=IF(N(Sigma_Meses)>=1,"CVp % ("&Sigma_Meses&" m)","CV % pooled")'
+    p.Cells(r0, c_sig).Formula = '=IF(N(Sigma_Meses)>=1,"Sigma (CVp "&Sigma_Meses&" m)","Sigma")'
+    for k in range(1, nlv + 1):
+        p.Cells(r0 + k, c0).Formula = formula_cvp(k, exc)
+    col = chr(64 + c0)
+    ii.nome(wb, 'Sigma_CVp', f"='Painel'!${col}${r0 + 1}:${col}${r0 + nlv}")
+    nota = None
+    for r in range(r0 - 1, max(r0 - 5, 1), -1):
+        t = str(p.Cells(r, 1).Value or '')
+        if t.startswith('Valores vindos da aba Estat') or t.startswith('Valores da aba Estat'):
+            nota = r
+            break
+    if nota:
+        p.Cells(nota, 1).Value = NOTA_DESEMP
+    return f'linha {r0}: {col}{r0 + 1}:{col}{r0 + nlv} = CVp (Sigma_CVp); nota {"reescrita" if nota else "nao achada"}'
 
 
 # ---------------------------------------------------------------------------------------------- 6. CEQ
@@ -384,6 +454,7 @@ def main(produto, caminho, salvar=True):
         log(f'3. janela do Sigma (Estatistica {C_ROT}11:{C_NOTA}11): {janela(wb, e)}')
         log(f'4. Estatistica!L{LIN_TAB}:L{ult} (Sigma com CV pooled{" e exclusoes" if exc else ""}): {coluna_l(wb, e, ult, exc)}')
         log(f'5. Painel I7:I{6 + nlv} le Estatistica!L: {painel(wb, nlv, ult) or "ja instalado"}')
+        log(f'5b. Painel, bloco DESEMPENHO SIX SIGMA: {bloco_desempenho(wb, nlv, exc)}')
         log(f'6. CEQ: {ceq(wb, e, bio)}')
 
         log('7. fumaca')

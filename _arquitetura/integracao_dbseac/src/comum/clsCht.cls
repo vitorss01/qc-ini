@@ -14,7 +14,7 @@ Option Explicit
 ' ============================================================================
 Public WithEvents c As Chart
 Public Nivel As Long
-Private mUltimo As String                  ' ultimo elemento sob o mouse: nao reescreve a caixa a cada pixel
+Private mUltimo As String                  ' geracao|elemento sob o mouse: nao reescreve a caixa a cada pixel
 
 Private Sub c_MouseMove(ByVal Button As Long, ByVal Shift As Long, ByVal x As Long, ByVal y As Long)
     Apontar x, y, False
@@ -34,7 +34,9 @@ Private Sub Apontar(ByVal x As Long, ByVal y As Long, ByVal sempre As Boolean)
     Dim eid As Long, a1 As Long, a2 As Long, chave As String, msg As String
     On Error Resume Next
     c.GetChartElement x, y, eid, a1, a2
-    chave = eid & "|" & a1 & "|" & a2
+    ' a geracao muda a cada publicacao do motor (mUI.LimparDicas): o mesmo (serie, ponto) depois de trocar
+    ' periodo/lote/analito e OUTRA corrida -- a dica e reescrita mesmo com o mouse parado no ponto
+    chave = mUI.GeracaoDica() & "|" & eid & "|" & a1 & "|" & a2
     If chave = mUltimo And Not sempre Then Exit Sub
     mUltimo = chave
     If eid = xlSeries And a2 >= 1 Then msg = mUI.DicaPonto(Nivel, a1, a2)

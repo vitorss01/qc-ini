@@ -286,6 +286,9 @@ Public Sub AtualizarEQABase()
     mCEQ.InvalidarEQ
     ' ADR-071: rodada/ano novos entram nas listas de selecao (Estatistica!N4/P4) sem reabrir o arquivo
     mDados.AtualizarListasAno
+    ' ADR-071 (revisao): G/R/S/T/AC/AD e K5 leem a EQA_Base pelo VBA e nao dependem de celula que mudou:
+    ' marca-os sujos para o Calculate do RecalcularIncerteza (senao ficavam com o conjunto antigo)
+    mCEQ.MarcarCEQSujo
     mIncerteza.RecalcularIncerteza
 End Sub
 

@@ -493,8 +493,7 @@ Public Function RegistrarInativacao(ByVal id As String, ByVal analito As String,
             RegistrarInativacao = "ERRO|o ID " & idN & " ja esta na aba Inativar (linha " & i & ")": Exit Function
         End If
         If livre = 0 And Len(Trim$(CStr(v(i, 1)))) = 0 Then
-            If Len(Trim$(CStr(Celula(lo, i, "ANALITO").Value))) = 0 And _
-               Len(Trim$(CStr(Celula(lo, i, "MOTIVO").Value))) = 0 Then livre = i
+            If LinhaInatVazia(lo, i) Then livre = i
         End If
     Next i
     ev = Application.EnableEvents
@@ -520,6 +519,31 @@ falha:
     If Not ws Is Nothing Then RestaurarProtecao ws, prot
     If ev Then Application.EnableEvents = True
     RegistrarInativacao = "ERRO|" & sE
+End Function
+
+' ADR-070 (revisao 07/10/2026): linha da aba Inativar TOTALMENTE vazia -- sem ID, analito, motivo, data,
+' usuario e com a caixa desmarcada. So ela e reaproveitada pelo RegistrarInativacao. Antes bastavam ID,
+' ANALITO e MOTIVO vazios: uma linha com carimbo residual (sobra da migracao, de exclusao em varias areas
+' ou de edicao com eventos desligados) era reaproveitada, o Carimbar mantinha a data e o usuario antigos e
+' a caixa nao era marcada (o PrepararLinha so marca linha sem data) -- o ponto inativado pelo grafico
+' virava NAO_PLOTAR em vez de X vermelho, e a trilha registrava outra data e outro usuario.
+Private Function LinhaInatVazia(ByVal lo As ListObject, ByVal r As Long) As Boolean
+    Dim c As Variant, v As Variant
+    On Error GoTo nao
+    For Each c In Array("ID_REGISTRO", "ANALITO", "MOTIVO", "DATA_INATIVACAO", "USUARIO")
+        v = Celula(lo, r, CStr(c)).Value
+        If IsError(v) Then Exit Function
+        If Len(Trim$(CStr(v))) > 0 Then Exit Function
+    Next c
+    v = Celula(lo, r, COL_LJ).Value
+    If IsError(v) Then Exit Function
+    If VarType(v) = vbBoolean Then
+        If v Then Exit Function
+    ElseIf Len(Trim$(CStr(v))) > 0 Then
+        Exit Function
+    End If
+    LinhaInatVazia = True
+nao:
 End Function
 
 Private Sub Carimbar(ByVal cData As Range, ByVal cUsuario As Range)
@@ -598,7 +622,7 @@ End Sub
 
 ' Chamado pelo Worksheet_Change das abas de entrada.
 Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
-    Dim lo As ListObject, cel As Range, r As Long, prot As Boolean
+    Dim lo As ListObject, cel As Range, ar As Range, r As Long, prot As Boolean
     If mApp.Ocupado() Then Exit Sub
     Set lo = Nothing
     On Error Resume Next
@@ -614,7 +638,10 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
     Application.EnableEvents = False
     On Error GoTo fim
     prot = LiberarEscrita(ws)
-    For Each cel In Intersect(Target, lo.DataBodyRange).Rows
+    ' ADR-070 (revisao): percorre TODAS as areas da selecao -- .Rows de um intervalo com varias areas
+    ' (Ctrl+selecao) so cobre a primeira, e as outras linhas apagadas ficavam com o carimbo residual
+    For Each ar In Intersect(Target, lo.DataBodyRange).Areas
+    For Each cel In ar.Rows
         r = cel.Row - lo.DataBodyRange.Row + 1
         If ws.Name = ABA_INAT Then
             ' apagou o ID = reativacao: limpa o carimbo e a caixa (volta ao padrao)
@@ -632,6 +659,7 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
         End If
         PrepararLinha lo, r
     Next cel
+    Next ar
     ' tabela quase cheia: acrescenta FOLGA linhas (a aba protegida nao deixa a
     ' tabela crescer sozinha)
     If lo.ListRows.Count - (Intersect(Target, lo.DataBodyRange).Row - lo.DataBodyRange.Row + 1) < 10 Then
