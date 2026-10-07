@@ -112,6 +112,46 @@ Private mEQSig As String
 Private mEQPorAn As Object          ' ANALITO -> matriz (linhas do analito, colunas 1..EQ_NCOL)
 Private mEQExiste As Boolean
 
+' ---------------------------------------------------------------------------
+' ADR-071: SELECAO DE RODADAS (texto de eqRodada, Estatistica!P4)
+'
+' Nenhuma formula da pasta mudou: as ~1.200 (Bio) / ~1.800 (Hema) chamadas
+' continuam recebendo eqRodada. Muda o TEXTO aceito e a leitura dele aqui:
+'
+'   ""/TODAS/TODOS          todas as rodadas do ano vigente (<= eqAnoEP)  -- como antes
+'   "C-A 2025"              uma rodada, rotulo sem ano                    -- como antes
+'   "2025|C-A 2025"         uma rodada com o ano explicito
+'   "2025|C-A 2025; 2026|C-B 2026; ..."  conjunto livre (pode atravessar anos)
+'   "ULTIMAS n"             as n rodadas (ano|rodada) mais recentes do provedor, ano <= eqAnoEP
+'   "ACUMULADAS"            todas as rodadas do provedor com ano <= eqAnoEP
+'
+' Nos modos novos o PROVEDOR e obrigatorio (D1): vazio = SEM EP, CAP e
+' Controllab nunca se misturam. Texto que nao se le = SEM EP (K5 diz por que),
+' nunca #VALOR!. O estimador (BiasEQ "ABS", duas etapas) NAO muda: muda so o
+' conjunto de linhas que entra. 3 rodadas sao opcao operacional, nao
+' equivalencia estatistica a 6.
+Private Const MR_INVALIDO As Long = -1
+Private Const MR_LIVRE As Long = 0
+Private Const MR_ROTULO As Long = 1
+Private Const MR_CONJUNTO As Long = 2
+Private Const MR_ACUM As Long = 3
+Private Const MR_ULTIMAS As Long = 4
+Private Const MR_MAX_ULT As Long = 64
+Private Const SEP_ROD As String = "|"
+Private Const SEP_CONJ As String = ";"
+
+' o texto lido por ultimo (todas as chamadas de um recalculo usam o mesmo)
+Private mRodOk As Boolean
+Private mRodTxt As String
+Private mRodModo As Long
+Private mRodN As Long
+Private mRodConj As Object           ' "ANO|ROTULO" -> 1 (modo conjunto, na ordem digitada)
+Private mRodErro As String
+' rodadas existentes por provedor (montado com o cache da EQA_Base)
+Private mRodPorProv As Object        ' PROVEDOR -> Dictionary("ANO|ROTULO" -> Array(ano, ROTULO))
+Private mUltCache As Object          ' "PROV|TETO|N" -> Dictionary("ANO|ROTULO" -> 1)
+Private mResumoCache As Object       ' "prov|ano|rodada" -> texto do K5
+
 
 Private Function Igual(ByVal a As Variant, ByVal b As String) As Boolean
     Igual = (UCase$(Trim$(CStr(a))) = UCase$(Trim$(b)))
@@ -141,16 +181,23 @@ End Function
 Public Sub InvalidarEQ()
     mEQSig = ""
     Set mEQPorAn = Nothing
+    Set mRodPorProv = Nothing
+    Set mUltCache = Nothing
+    Set mResumoCache = Nothing
 End Sub
 
 Private Sub GarantirEQ()
     Dim sig As String, ws As Worksheet, d As Variant, i As Long, j As Long, c As Long
     Dim an As String, grupos As Object, k As Variant, x As Variant, m() As Variant
+    Dim pv As String, ch As String
     sig = mEQA.CarimboEQA()
     If Not mEQPorAn Is Nothing Then
         If sig = mEQSig Then Exit Sub
     End If
     Set mEQPorAn = CreateObject("Scripting.Dictionary")
+    Set mRodPorProv = CreateObject("Scripting.Dictionary")
+    Set mUltCache = CreateObject("Scripting.Dictionary")
+    Set mResumoCache = CreateObject("Scripting.Dictionary")
     mEQSig = sig
     mEQExiste = False
     On Error Resume Next
@@ -167,6 +214,18 @@ Private Sub GarantirEQ()
         If Len(an) > 0 Then
             If Not grupos.Exists(an) Then grupos.Add an, New Collection
             grupos(an).Add i
+            ' ADR-071: a rodada EXISTE para o provedor se tem linha utilizavel (Uso <> NAO,
+            ' analito canonico, |bias| numerico) -- a mesma regra das listas (mDados)
+            If Not Igual(d(i, EQ_C_USO), "NAO") And IsNumeric(d(i, EQ_C_BIASABS)) _
+               And Len(Trim$(CStr(d(i, EQ_C_BIASABS)))) > 0 Then
+                ch = ChaveRodada(d, i)
+                If Len(ch) > 0 Then
+                    pv = UCase$(Trim$(CStr(d(i, EQ_C_PROVEDOR))))
+                    If Not mRodPorProv.Exists(pv) Then mRodPorProv.Add pv, CreateObject("Scripting.Dictionary")
+                    If Not mRodPorProv(pv).Exists(ch) Then _
+                        mRodPorProv(pv).Add ch, Array(CLng(Val(CStr(d(i, EQ_C_ANO)))), UCase$(Trim$(CStr(d(i, EQ_C_RODADA)))))
+                End If
+            End If
         End If
     Next i
     For Each k In grupos.Keys
@@ -191,14 +250,198 @@ Private Function LerBanco(ByVal analito As String) As Variant
     If mEQPorAn.Exists(k) Then LerBanco = mEQPorAn(k)
 End Function
 
+' ---------------------------------------------------------------------------
+' ADR-071: leitura do texto de eqRodada
+Private Function SoDigitos(ByVal s As String) As Boolean
+    Dim i As Long
+    If Len(s) = 0 Then Exit Function
+    For i = 1 To Len(s)
+        If Mid$(s, i, 1) < "0" Or Mid$(s, i, 1) > "9" Then Exit Function
+    Next i
+    SoDigitos = True
+End Function
+
+' Texto da celula (ou do valor) em maiusculas; ok = False para erro, matriz ou intervalo de varias celulas.
+Private Function TextoRodada(ByVal rodada As Variant, ByRef ok As Boolean) As String
+    Dim v As Variant
+    ok = False
+    On Error GoTo fim
+    If IsObject(rodada) Then v = rodada.Value Else v = rodada
+    If IsArray(v) Or IsError(v) Then Exit Function
+    TextoRodada = UCase$(Trim$(CStr(v)))
+    ok = True
+fim:
+End Function
+
+Private Sub LerRodada(ByVal s As String)
+    Dim partes() As String, i As Long, tok As String, p As Long, a As String, r As String
+    mRodTxt = s
+    mRodOk = True
+    mRodN = 0
+    mRodErro = ""
+    Set mRodConj = Nothing
+    If s = "" Or s = "TODAS" Or s = "TODOS" Then mRodModo = MR_LIVRE: Exit Sub
+    If s = "ACUMULADAS" Then mRodModo = MR_ACUM: Exit Sub
+    If Left$(s, 7) = "ULTIMAS" Or Left$(s, 7) = "ÚLTIMAS" Then
+        a = Trim$(Mid$(s, 8))
+        mRodModo = MR_INVALIDO
+        mRodErro = "ULTIMAS n: n inteiro de 1 a " & MR_MAX_ULT
+        If SoDigitos(a) And Len(a) <= 3 Then
+            If CLng(a) >= 1 And CLng(a) <= MR_MAX_ULT Then
+                mRodModo = MR_ULTIMAS
+                mRodN = CLng(a)
+                mRodErro = ""
+            End If
+        End If
+        Exit Sub
+    End If
+    If InStr(s, SEP_ROD) = 0 And InStr(s, SEP_CONJ) = 0 Then mRodModo = MR_ROTULO: Exit Sub
+    ' conjunto: itens ano|rodada separados por ";"
+    mRodModo = MR_INVALIDO
+    Set mRodConj = CreateObject("Scripting.Dictionary")
+    partes = Split(s, SEP_CONJ)
+    For i = LBound(partes) To UBound(partes)
+        tok = Trim$(partes(i))
+        If Len(tok) > 0 Then
+            p = InStr(tok, SEP_ROD)
+            If p = 0 Then
+                mRodErro = "item sem ano (use ano|rodada): " & tok
+                Set mRodConj = Nothing
+                Exit Sub
+            End If
+            a = Trim$(Left$(tok, p - 1))
+            r = Trim$(Mid$(tok, p + 1))
+            If Not SoDigitos(a) Or Len(a) <> 4 Or Len(r) = 0 Or InStr(r, SEP_ROD) > 0 Then
+                mRodErro = "item invalido: " & tok
+                Set mRodConj = Nothing
+                Exit Sub
+            End If
+            mRodConj(a & SEP_ROD & r) = 1
+        End If
+    Next i
+    If mRodConj.Count = 0 Then
+        mRodErro = "conjunto vazio"
+        Set mRodConj = Nothing
+        Exit Sub
+    End If
+    mRodModo = MR_CONJUNTO
+End Sub
+
+' Modo do texto de eqRodada (cache do ultimo texto lido).
+Private Function ModoRodada(ByVal rodada As Variant) As Long
+    Dim s As String, ok As Boolean
+    s = TextoRodada(rodada, ok)
+    If Not ok Then
+        ModoRodada = MR_INVALIDO
+        Exit Function
+    End If
+    If Not (mRodOk And s = mRodTxt) Then LerRodada s
+    ModoRodada = mRodModo
+End Function
+
+' "ANO|ROTULO" da linha ("" se o ano nao e numero).
+Private Function ChaveRodada(ByRef d As Variant, ByVal i As Long) As String
+    If Not IsNumeric(d(i, EQ_C_ANO)) Then Exit Function
+    If Len(Trim$(CStr(d(i, EQ_C_ANO)))) = 0 Then Exit Function
+    ChaveRodada = CStr(CLng(Val(CStr(d(i, EQ_C_ANO))))) & SEP_ROD & UCase$(Trim$(CStr(d(i, EQ_C_RODADA))))
+End Function
+
+Private Function TetoAno(ByVal anoRef As Variant) As Long
+    TetoAno = 32767
+    On Error Resume Next
+    If IsObject(anoRef) Then anoRef = anoRef.Value
+    If IsNumeric(anoRef) Then
+        If Len(Trim$(CStr(anoRef))) > 0 Then TetoAno = CLng(Val(CStr(anoRef)))
+    End If
+End Function
+
+' Ordem cronologica das rodadas: ano e, no mesmo ano, o rotulo (numerico quando os dois sao numeros).
+' A EQA_Base nao tem data da rodada -- e a unica ordem possivel (ADR-071, limitacao).
+Private Function RodadaAntes(ByVal a1 As Long, ByVal r1 As String, ByVal a2 As Long, ByVal r2 As String) As Boolean
+    If a1 <> a2 Then RodadaAntes = (a1 < a2): Exit Function
+    If SoDigitos(r1) And SoDigitos(r2) And Len(r1) <= 9 And Len(r2) <= 9 Then
+        RodadaAntes = (CLng(r1) < CLng(r2))
+    Else
+        RodadaAntes = (StrComp(r1, r2, vbBinaryCompare) < 0)
+    End If
+End Function
+
+' Rodadas do provedor com ano <= teto, da mais recente para a mais antiga.
+Private Function RodadasDoProvedor(ByVal provedor As Variant, ByVal aRef As Long) As Variant
+    Dim pv As String, k As Variant, it As Variant, n As Long, i As Long, j As Long
+    Dim anos() As Long, rots() As String, chs() As String, ta As Long, tr As String, tc As String
+    pv = UCase$(Trim$(CStr(provedor)))
+    If mRodPorProv Is Nothing Then Exit Function
+    If Not mRodPorProv.Exists(pv) Then Exit Function
+    ReDim anos(1 To mRodPorProv(pv).Count)
+    ReDim rots(1 To mRodPorProv(pv).Count)
+    ReDim chs(1 To mRodPorProv(pv).Count)
+    For Each k In mRodPorProv(pv).Keys
+        it = mRodPorProv(pv)(k)
+        If it(0) <= aRef Then
+            n = n + 1
+            anos(n) = it(0): rots(n) = it(1): chs(n) = CStr(k)
+        End If
+    Next k
+    If n = 0 Then Exit Function
+    For i = 2 To n                                 ' insercao, decrescente
+        ta = anos(i): tr = rots(i): tc = chs(i)
+        j = i - 1
+        Do While j >= 1
+            If Not RodadaAntes(anos(j), rots(j), ta, tr) Then Exit Do
+            anos(j + 1) = anos(j): rots(j + 1) = rots(j): chs(j + 1) = chs(j)
+            j = j - 1
+        Loop
+        anos(j + 1) = ta: rots(j + 1) = tr: chs(j + 1) = tc
+    Next i
+    ReDim Preserve chs(1 To n)
+    RodadasDoProvedor = chs
+End Function
+
+' Conjunto das ULTIMAS n rodadas do provedor (ano <= teto), em cache por provedor|teto|n.
+Private Function ConjuntoUltimas(ByVal provedor As Variant, ByVal anoRef As Variant) As Object
+    Dim aRef As Long, key As String, lst As Variant, i As Long, s As Object
+    aRef = TetoAno(anoRef)
+    key = UCase$(Trim$(CStr(provedor))) & SEP_ROD & aRef & SEP_ROD & mRodN
+    If mUltCache Is Nothing Then Set mUltCache = CreateObject("Scripting.Dictionary")
+    If mUltCache.Exists(key) Then Set ConjuntoUltimas = mUltCache(key): Exit Function
+    Set s = CreateObject("Scripting.Dictionary")
+    lst = RodadasDoProvedor(provedor, aRef)
+    If IsArray(lst) Then
+        For i = 1 To UBound(lst)
+            If i > mRodN Then Exit For
+            s(lst(i)) = 1
+        Next i
+    End If
+    mUltCache.Add key, s
+    Set ConjuntoUltimas = s
+End Function
+
 ' A linha pertence ao analito, ao provedor e a rodada pedidos?
 Private Function Casa(ByRef d As Variant, ByVal i As Long, ByVal analito As String, _
-                      ByVal provedor As Variant, ByVal rodada As Variant) As Boolean
+                      ByVal provedor As Variant, ByVal rodada As Variant, _
+                      Optional ByVal anoRef As Variant = "") As Boolean
+    Dim md As Long
     If Not Igual(d(i, EQ_C_ANALITO), analito) Then Exit Function
     ' Uso_Analitico = NAO marca dado preservado por historico que nao pode
     ' entrar em bias, Sigma nem ET -- hoje, os 90 registros de simulacao que
     ' vinham da EQC_Dados. Ver o cabecalho do mEQA.
     If Igual(d(i, EQ_C_USO), "NAO") Then Exit Function
+    md = ModoRodada(rodada)
+    If md = MR_INVALIDO Then Exit Function
+    If md >= MR_CONJUNTO Then
+        ' ADR-071 (D1): modos novos exigem o provedor -- CAP e Controllab nunca se misturam
+        If Livre(provedor) Then Exit Function
+        If Not Igual(d(i, EQ_C_PROVEDOR), CStr(provedor)) Then Exit Function
+        If md = MR_CONJUNTO Then
+            If Not mRodConj.Exists(ChaveRodada(d, i)) Then Exit Function
+        ElseIf md = MR_ULTIMAS Then
+            If Not ConjuntoUltimas(provedor, anoRef).Exists(ChaveRodada(d, i)) Then Exit Function
+        End If
+        Casa = True
+        Exit Function
+    End If
+    ' modos de antes (TODAS / rotulo unico): regra do ADR-032, intacta
     If Not Livre(provedor) Then
         If Not Igual(d(i, EQ_C_PROVEDOR), CStr(provedor)) Then Exit Function
     End If
@@ -208,24 +451,38 @@ Private Function Casa(ByRef d As Variant, ByVal i As Long, ByVal analito As Stri
     Casa = True
 End Function
 
-' Maior ano que nao ultrapassa anoRef, ja respeitando provedor e rodada.
+' Maior ano que nao ultrapassa anoRef, ja respeitando provedor e rodada. No conjunto explicito
+' (ADR-071) o ano vem de cada item: sem teto.
 Private Function AnoVigente(ByRef d As Variant, ByVal analito As String, _
                             ByVal anoRef As Variant, ByVal provedor As Variant, _
                             ByVal rodada As Variant, ByVal colExigida As Long) As Long
     Dim i As Long, aRef As Long, ano As Long
     AnoVigente = -32768
-    aRef = 32767
-    If IsNumeric(anoRef) Then
-        If Len(Trim$(CStr(anoRef))) > 0 Then aRef = CLng(Val(CStr(anoRef)))
-    End If
+    aRef = TetoAno(anoRef)
+    If ModoRodada(rodada) = MR_CONJUNTO Then aRef = 32767
     For i = 1 To UBound(d, 1)
-        If Not Casa(d, i, analito, provedor, rodada) Then GoTo prox
+        If Not Casa(d, i, analito, provedor, rodada, anoRef) Then GoTo prox
         If Not IsNumeric(d(i, EQ_C_ANO)) Then GoTo prox
         If Not IsNumeric(d(i, colExigida)) Then GoTo prox
         ano = CLng(Val(CStr(d(i, EQ_C_ANO))))
         If ano <= aRef And ano > AnoVigente Then AnoVigente = ano
 prox:
     Next i
+End Function
+
+' O ano da linha entra? Modos de antes: SO o ano vigente (ADR-030). Modos novos: todo ano ate o
+' vigente (que ja respeita o teto em ACUMULADAS/ULTIMAS; no conjunto o filtro e o proprio item).
+' novo = ModoRodada(rodada) >= MR_CONJUNTO (calculado uma vez antes do laco).
+Private Function AnoEntra(ByVal ano As Long, ByVal anoVig As Long, ByVal novo As Boolean) As Boolean
+    If novo Then
+        AnoEntra = (ano <= anoVig)
+    Else
+        AnoEntra = (ano = anoVig)
+    End If
+End Function
+
+Private Function ModoNovo(ByVal rodada As Variant) As Boolean
+    ModoNovo = (ModoRodada(rodada) >= MR_CONJUNTO)
 End Function
 
 ' ---------------------------------------------------------------------------
@@ -275,7 +532,7 @@ Public Function BiasEQ(ByVal analito As String, ByVal anoRef As Variant, _
     Dim somaSig(1 To MAX_ROD) As Double
     Dim cnt(1 To MAX_ROD) As Long
     Dim nRod As Long, nAmostras As Long
-    Dim acc As Double, mr As Double, det As String
+    Dim acc As Double, mr As Double, det As String, novo As Boolean
 
     BiasEQ = SEM_EP
     If Len(Trim$(analito)) = 0 Then Exit Function
@@ -293,15 +550,18 @@ Public Function BiasEQ(ByVal analito As String, ByVal anoRef As Variant, _
     anoVig = AnoVigente(d, analito, anoRef, provedor, rodada, EQ_C_BIASABS)
     If anoVig = -32768 Then Exit Function
     If md = "ANO" Then BiasEQ = anoVig: Exit Function
+    novo = ModoNovo(rodada)
 
     ' ---- etapa 1: acumula por rodada ---------------------------------
     For i = 1 To UBound(d, 1)
-        If Not Casa(d, i, analito, provedor, rodada) Then GoTo prox
+        If Not Casa(d, i, analito, provedor, rodada, anoRef) Then GoTo prox
         If Not IsNumeric(d(i, EQ_C_ANO)) Then GoTo prox
-        If CLng(Val(CStr(d(i, EQ_C_ANO)))) <> anoVig Then GoTo prox
+        If Not AnoEntra(CLng(Val(CStr(d(i, EQ_C_ANO)))), anoVig, novo) Then GoTo prox
         If Not IsNumeric(d(i, col)) Then GoTo prox
 
-        r = UCase$(Trim$(CStr(d(i, EQ_C_RODADA))))
+        ' ADR-071: a rodada e ANO|ROTULO (como no ViesEQ) -- rotulos repetidos em anos diferentes
+        ' ('A', '1') nao viram uma rodada so. No modo TODAS so ha um ano: nada muda.
+        r = ChaveRodada(d, i)
         k = 0
         For j = 1 To nRod
             If rot(j) = r Then k = j: Exit For
@@ -366,7 +626,7 @@ Public Function SDIeq(ByVal analito As String, ByVal anoRef As Variant, _
                       Optional ByVal provedor As Variant = "", _
                       Optional ByVal rodada As Variant = "") As Variant
     Dim d As Variant, i As Long, anoVig As Long
-    Dim soma As Double, n As Long, maxAbs As Double, v As Variant
+    Dim soma As Double, n As Long, maxAbs As Double, v As Variant, novo As Boolean
 
     SDIeq = SEM_EP
     If Len(Trim$(analito)) = 0 Then Exit Function
@@ -375,11 +635,12 @@ Public Function SDIeq(ByVal analito As String, ByVal anoRef As Variant, _
 
     anoVig = AnoVigente(d, analito, anoRef, provedor, rodada, EQ_C_SDI)
     If anoVig = -32768 Then Exit Function
+    novo = ModoNovo(rodada)
 
     For i = 1 To UBound(d, 1)
-        If Not Casa(d, i, analito, provedor, rodada) Then GoTo prox
+        If Not Casa(d, i, analito, provedor, rodada, anoRef) Then GoTo prox
         If Not IsNumeric(d(i, EQ_C_ANO)) Then GoTo prox
-        If CLng(Val(CStr(d(i, EQ_C_ANO)))) <> anoVig Then GoTo prox
+        If Not AnoEntra(CLng(Val(CStr(d(i, EQ_C_ANO)))), anoVig, novo) Then GoTo prox
         v = d(i, EQ_C_SDI)
         If Not IsNumeric(v) Then GoTo prox
         soma = soma + CDbl(v)
@@ -427,7 +688,7 @@ Public Function StatusLimitesEQ(ByVal analito As String, ByVal anoRef As Variant
                                 Optional ByVal rodada As Variant = "") As Variant
     Dim d As Variant, i As Long, anoVig As Long
     Dim dentro As Long, fora As Long, semLim As Long
-    Dim x As Variant, li As Variant, ls As Variant
+    Dim x As Variant, li As Variant, ls As Variant, novo As Boolean
 
     StatusLimitesEQ = SEM_EP
     If Len(Trim$(analito)) = 0 Then Exit Function
@@ -436,11 +697,12 @@ Public Function StatusLimitesEQ(ByVal analito As String, ByVal anoRef As Variant
 
     anoVig = AnoVigente(d, analito, anoRef, provedor, rodada, EQ_C_XLAB)
     If anoVig = -32768 Then Exit Function
+    novo = ModoNovo(rodada)
 
     For i = 1 To UBound(d, 1)
-        If Not Casa(d, i, analito, provedor, rodada) Then GoTo prox
+        If Not Casa(d, i, analito, provedor, rodada, anoRef) Then GoTo prox
         If Not IsNumeric(d(i, EQ_C_ANO)) Then GoTo prox
-        If CLng(Val(CStr(d(i, EQ_C_ANO)))) <> anoVig Then GoTo prox
+        If Not AnoEntra(CLng(Val(CStr(d(i, EQ_C_ANO)))), anoVig, novo) Then GoTo prox
         x = d(i, EQ_C_XLAB)
         If Not IsNumeric(x) Then GoTo prox
         li = d(i, EQ_C_LIMINF)
@@ -471,7 +733,7 @@ Public Function BiasEQMemoria(ByVal analito As String, ByVal anoRef As Variant, 
                               Optional ByVal provedor As Variant = "", _
                               Optional ByVal rodada As Variant = "") As String
     Dim d As Variant, i As Long, anoVig As Long, s As String, n As Long
-    Dim somaAbs As Double, somaSig As Double
+    Dim somaAbs As Double, somaSig As Double, novo As Boolean
 
     d = LerBanco(analito)
     If IsEmpty(d) Then
@@ -480,17 +742,18 @@ Public Function BiasEQMemoria(ByVal analito As String, ByVal anoRef As Variant, 
     End If
     anoVig = AnoVigente(d, analito, anoRef, provedor, rodada, EQ_C_BIASABS)
     If anoVig = -32768 Then BiasEQMemoria = "sem rodada utilizavel": Exit Function
+    novo = ModoNovo(rodada)
 
     For i = 1 To UBound(d, 1)
-        If Not Casa(d, i, analito, provedor, rodada) Then GoTo prox
+        If Not Casa(d, i, analito, provedor, rodada, anoRef) Then GoTo prox
         If Not IsNumeric(d(i, EQ_C_ANO)) Then GoTo prox
-        If CLng(Val(CStr(d(i, EQ_C_ANO)))) <> anoVig Then GoTo prox
+        If Not AnoEntra(CLng(Val(CStr(d(i, EQ_C_ANO)))), anoVig, novo) Then GoTo prox
         If Not IsNumeric(d(i, EQ_C_BIAS)) Then GoTo prox
         n = n + 1
         somaSig = somaSig + CDbl(d(i, EQ_C_BIAS))
         somaAbs = somaAbs + CDbl(d(i, EQ_C_BIASABS))
         s = s & CStr(d(i, EQ_C_PROVEDOR)) & "/" & CStr(d(i, EQ_C_RODADA)) & _
-                "|ano=" & CStr(anoVig) & _
+                "|ano=" & CStr(CLng(Val(CStr(d(i, EQ_C_ANO))))) & _
                 "|Xlab=" & Format$(d(i, EQ_C_XLAB), "0.####") & _
                 "|Xref=" & Format$(d(i, EQ_C_XREF), "0.####") & _
                 "|SDI=" & Format$(d(i, EQ_C_SDI), "0.##") & _
@@ -503,14 +766,120 @@ prox:
                     " mediaAssinada=" & Format$(somaSig / n, "0.######")
 End Function
 
-' Resumo do filtro em uso, para a propria aba dizer o que esta usando.
+' Resumo do filtro em uso, para a propria aba dizer o que esta usando (Estatistica!K5).
+' ADR-071: descreve o modo e CONTA, pela mesma regra do BiasEQ, as linhas analiticas (analito
+' canonico, |bias| numerico) e as rodadas que casaram -- texto montado aqui (CStr), nunca
+' TEXTO(...;"0,00") na planilha (o defeito pt-BR de AT14). Erro de digitacao nao passa calado:
+' texto invalido diz "INVALIDA" e item do conjunto sem dado aparece como "sem dado".
 Public Function ResumoFiltroEQ(ByVal provedor As Variant, ByVal ano As Variant, _
                                ByVal rodada As Variant) As String
-    Dim p As String, r As String, a As String
-    p = IIf(Livre(provedor), "todos os provedores", Trim$(CStr(provedor)))
-    r = IIf(Livre(rodada), "media de todas as rodadas", "rodada " & Trim$(CStr(rodada)))
-    a = IIf(Len(Trim$(CStr(ano))) = 0, "ano vigente do periodo", "ano " & Trim$(CStr(ano)))
-    ResumoFiltroEQ = "Bias do EP: " & p & " | " & a & " | " & r
+    Dim p As String, r As String, a As String, md As Long, okT As Boolean, sTxt As String
+    Dim key As String, k As Variant, d As Variant, i As Long, an As String, aRef As Long
+    Dim anoVig As Long, aMin As Long, aMax As Long, ano_ As Long, nLin As Long
+    Dim rods As Object, semDado As String, prov As Variant, nItens As Long
+    On Error GoTo falhou
+    If IsObject(provedor) Then prov = provedor.Value Else prov = provedor
+    If IsObject(ano) Then ano = ano.Value
+    sTxt = TextoRodada(rodada, okT)
+    GarantirEQ
+    key = UCase$(Trim$(CStr(prov))) & "|" & Trim$(CStr(ano)) & "|" & sTxt & "|" & okT
+    If Not mResumoCache Is Nothing Then
+        If mResumoCache.Exists(key) Then ResumoFiltroEQ = mResumoCache(key): Exit Function
+    End If
+    md = ModoRodada(rodada)
+    p = IIf(Livre(prov), "todos os provedores", Trim$(CStr(prov)))
+    aRef = TetoAno(ano)
+    If md = MR_INVALIDO Then
+        If okT Then
+            r = "rodada INVALIDA (" & mRodErro & "): SEM EP"
+        Else
+            r = "rodada INVALIDA (celula com erro): SEM EP"
+        End If
+        ResumoFiltroEQ = "Bias do EP: " & p & " | " & r & " | 0 rodada(s), 0 linha(s) analiticas"
+        GoTo guardar
+    End If
+    If md >= MR_CONJUNTO And Livre(prov) Then
+        ResumoFiltroEQ = "Bias do EP: provedor nao definido -- nos modos conjunto/ULTIMAS/ACUMULADAS o provedor e " & _
+                         "obrigatorio (CAP e Controllab nunca se misturam): SEM EP | 0 rodada(s), 0 linha(s) analiticas"
+        GoTo guardar
+    End If
+    ' ano vigente do recorte (modos de antes): o maior ano <= teto entre as linhas que casam
+    Set rods = CreateObject("Scripting.Dictionary")
+    anoVig = -32768
+    aMin = 32767
+    If md < MR_CONJUNTO Then
+        For Each k In mEQPorAn.Keys
+            d = mEQPorAn(k)
+            an = CStr(k)
+            For i = 1 To UBound(d, 1)
+                If Casa(d, i, an, prov, rodada, ano) Then
+                    If IsNumeric(d(i, EQ_C_ANO)) And IsNumeric(d(i, EQ_C_BIASABS)) Then
+                        ano_ = CLng(Val(CStr(d(i, EQ_C_ANO))))
+                        If ano_ <= aRef And ano_ > anoVig Then anoVig = ano_
+                    End If
+                End If
+            Next i
+        Next k
+    End If
+    For Each k In mEQPorAn.Keys
+        d = mEQPorAn(k)
+        an = CStr(k)
+        For i = 1 To UBound(d, 1)
+            If Not Casa(d, i, an, prov, rodada, ano) Then GoTo prox
+            If Not IsNumeric(d(i, EQ_C_ANO)) Or Not IsNumeric(d(i, EQ_C_BIASABS)) Then GoTo prox
+            ano_ = CLng(Val(CStr(d(i, EQ_C_ANO))))
+            If md < MR_CONJUNTO Then
+                If ano_ <> anoVig Then GoTo prox
+            ElseIf md <> MR_CONJUNTO Then
+                If ano_ > aRef Then GoTo prox
+            End If
+            nLin = nLin + 1
+            rods(ChaveRodada(d, i)) = 1
+            If ano_ < aMin Then aMin = ano_
+            If ano_ > aMax Then aMax = ano_
+prox:
+        Next i
+    Next k
+    If nLin = 0 Then
+        a = ""
+    ElseIf aMin = aMax Then
+        a = "ano " & aMax
+    Else
+        a = "anos " & aMin & " a " & aMax
+    End If
+    Select Case md
+        Case MR_LIVRE
+            r = IIf(nLin = 0, "ano vigente ate " & IIf(aRef = 32767, "o mais recente", CStr(aRef)), a) & _
+                " | media de todas as rodadas"
+        Case MR_ROTULO
+            r = IIf(nLin = 0, "ate " & IIf(aRef = 32767, "o ano mais recente", CStr(aRef)), a) & _
+                " | rodada " & Trim$(CStr(sTxt))
+        Case MR_CONJUNTO
+            For Each k In mRodConj.Keys
+                nItens = nItens + 1
+                If Not rods.Exists(k) Then semDado = semDado & IIf(Len(semDado) > 0, "; ", "") & k
+            Next k
+            r = "conjunto de " & nItens & " rodada(s) informada(s), " & (nItens - CountSemDado(semDado)) & " com dado" & _
+                IIf(Len(semDado) > 0, " -- SEM DADO: " & semDado, "") & IIf(nLin > 0, " | " & a, "")
+        Case MR_ACUM
+            r = "todas as rodadas acumuladas ate " & IIf(aRef = 32767, "o ano mais recente", CStr(aRef)) & _
+                IIf(nLin > 0, " (" & a & ")", "")
+        Case MR_ULTIMAS
+            r = "ultimas " & mRodN & " rodada(s) ate " & IIf(aRef = 32767, "o ano mais recente", CStr(aRef)) & _
+                IIf(rods.Count < mRodN, " (so " & rods.Count & " existe(m) com dado)", "") & _
+                IIf(nLin > 0, " (" & a & ")", "")
+    End Select
+    ResumoFiltroEQ = "Bias do EP: " & p & " | " & r & " | " & rods.Count & " rodada(s), " & nLin & " linha(s) analiticas"
+guardar:
+    If Not mResumoCache Is Nothing Then mResumoCache(key) = ResumoFiltroEQ
+    Exit Function
+falhou:
+    ResumoFiltroEQ = "Bias do EP: resumo indisponivel (" & Err.Description & ")"
+End Function
+
+Private Function CountSemDado(ByVal s As String) As Long
+    If Len(s) = 0 Then Exit Function
+    CountSemDado = UBound(Split(s, "; ")) + 1
 End Function
 
 ' ===========================================================================
@@ -558,6 +927,10 @@ Public Function ViesEQ(ByVal analito As String, ByVal anoRef As Variant, ByVal m
     Dim media As Double, dp As Double, ep As Double, rms As Double, ucref As Double, ok As Boolean, ch As String
 
     md = UCase$(Trim$(modo))
+    ' ADR-071 (D3): a incerteza NAO segue a selecao nova de rodadas (conjunto, ULTIMAS, ACUMULADAS
+    ' ou texto invalido) -- continua na janela do ADR-067 (ano vigente + anterior, >= 6 amostras de
+    ' >= 2 rodadas). TODAS e rotulo unico seguem como antes (ADR-032).
+    If ModoRodada(rodada) >= MR_CONJUNTO Or ModoRodada(rodada) = MR_INVALIDO Then rodada = "TODAS"
     ViesEQ = SEM_EP
     If md = "TRIAGEM" Then ViesEQ = "não verificável (sem CEQ)"   ' analito sem nenhuma amostra tambem
     If md = "SITUACAO" Then ViesEQ = "sem CEQ para o analito"
@@ -574,7 +947,7 @@ Public Function ViesEQ(ByVal analito As String, ByVal anoRef As Variant, ByVal m
         Set rods = CreateObject("Scripting.Dictionary")
         Set vistos = CreateObject("Scripting.Dictionary")
         For i = 1 To UBound(d, 1)
-            If Not Casa(d, i, analito, provedor, rodada) Then GoTo prox
+            If Not Casa(d, i, analito, provedor, rodada, anoRef) Then GoTo prox
             If Not IsNumeric(d(i, EQ_C_ANO)) Then GoTo prox
             ano = CLng(Val(CStr(d(i, EQ_C_ANO))))
             If ano > anoVig Or ano < anoMin Then GoTo prox
