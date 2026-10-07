@@ -77,6 +77,8 @@ Public Sub RecalcularIncerteza()
     mEQA.InvalidarNLabs                  ' n de laboratorios digitado depois da consolidacao
     ThisWorkbook.Names("MU_Faixa").RefersToRange.Dirty
     ThisWorkbook.Names("Sigma_Faixa").RefersToRange.Dirty
+    ' revisao 07/10/2026: o CVp do bloco DESEMPENHO SIX SIGMA do Painel (o divisor do Sigma, ao lado dele)
+    ThisWorkbook.Names("Sigma_CVp").RefersToRange.Dirty
     Application.Calculate
 End Sub
 

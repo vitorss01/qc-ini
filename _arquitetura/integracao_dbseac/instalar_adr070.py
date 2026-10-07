@@ -10,7 +10,9 @@ Idempotente (rodar de novo nao muda nada). So:
      ID_REGISTRO | ANALITO | REGISTRAR - LJ | MOTIVO | DATA_INATIVACAO | USUARIO, sem as 8 colunas de formula.
      Toda linha existente fica, na mesma posicao, com ID, caixa, data e usuario; o ANALITO das linhas antigas
      vem da tblCQ_Final pelo ID; o MOTIVO fica vazio (a justificativa antiga continua valendo pelos
-     COMENTARIOS_TECNICOS). Conferido linha a linha;
+     COMENTARIOS_TECNICOS). Conferido linha a linha; e, em QUALQUER modo (revisao 07/10/2026), o conjunto
+     (ID, REGISTRAR - LJ, DATA_INATIVACAO, USUARIO) lido direto da tabela antes x depois e o ANALITO de todo ID que
+     tem resultado (tblCQ_Final ou manual digitado) -- divergiu, aborta sem salvar;
   4. Digitar Resultados e COMENTARIOS_TECNICOS: as colunas de formula (formato '@' guardava a formula como
      TEXTO) voltam a calcular; conferido que nenhuma celula de formula mostra "=...";
   5. textos do topo das abas Inativar, COMENTARIOS_TECNICOS e Principal - Resultados;
@@ -98,6 +100,78 @@ def conferir_migracao(lo, mig):
             f"ANALITO preenchido pela tblCQ_Final em {mig['analito_preenchido']}")
 
 
+def prefixo_id(wb):
+    for r in pqlib.ler_tabela(pqlib.tabela(wb, 'tblConfigIntegracao')):
+        if str(r.get('CHAVE') or '').strip().upper() == 'PREFIXO_ID':
+            return str(r.get('VALOR') or '').strip().upper()
+    return ''
+
+
+def conjunto_inativacao(wb):
+    """Revisao 07/10/2026 (achado 14): o que a aba Inativar tem de DIGITADO/CARIMBADO -- (ID normalizado, caixa
+    REGISTRAR - LJ, DATA_INATIVACAO, USUARIO) de cada linha com conteudo --, lido direto da tabela, em qualquer
+    layout. Outra leitura, independente do que migrar_inativacao guarda: a fumaca compara antes x depois."""
+    lo = pqlib.tabela(wb, TB)
+    cols = [c.Name for c in lo.ListColumns]
+    n = lo.ListRows.Count
+    pref = prefixo_id(wb)
+
+    def col(h):
+        return coluna(lo, h) if h in cols and n else [None] * n
+
+    ids, lj, dt, us = col('ID_REGISTRO'), col('REGISTRAR - LJ'), col('DATA_INATIVACAO'), col('USUARIO')
+    out = set()
+    for k in range(n):
+        caixa = lj[k] is True or str(lj[k] or '').strip().upper() == 'SIM'
+        data = round(float(dt[k]), 8) if isinstance(dt[k], (int, float)) and not isinstance(dt[k], bool) else (
+            str(dt[k]).strip() if dt[k] not in (None, '') else None)
+        t = (cd._norm_id(ids[k], pref) or '', caixa, data, str(us[k] or '').strip())
+        if t != ('', False, None, ''):
+            out.add(t)
+    return out
+
+
+def ids_com_resultado(wb):
+    """IDs que existem como resultado (tblCQ_Final e manuais digitados): os que uma inativacao pode atingir."""
+    pref = prefixo_id(wb)
+    out = set()
+    for nome in ('tblCQ_Final', 'tblResultados_Manuais'):
+        lo = pqlib.tabela(wb, nome)
+        if lo is not None and lo.ListRows.Count:
+            for i in coluna(lo, 'ID_REGISTRO'):
+                idn = cd._norm_id(i, pref)
+                if idn:
+                    out.add(idn.split('~')[0])
+    return out
+
+
+def conferir_sobrevivem(wb, antes, migrada):
+    """Fumaca da migracao em QUALQUER modo (em SEAC o ATUALIZAR nao roda aqui): o conjunto (ID, caixa, data,
+    usuario) e o mesmo de antes, e toda linha cujo ID tem resultado ficou com o ANALITO -- senao, no proximo
+    ATUALIZAR DADOS, a regra nova (ID + analito) devolveria o resultado a ATIVO."""
+    depois = conjunto_inativacao(wb)
+    if depois != antes:
+        raise SystemExit(f'a aba Inativar mudou na migracao (ID, caixa, data, usuario): saiu '
+                         f'{sorted(antes - depois, key=str)[:6]}, entrou {sorted(depois - antes, key=str)[:6]}')
+    lo = pqlib.tabela(wb, TB)
+    pref = prefixo_id(wb)
+    conhecidos = ids_com_resultado(wb)
+    sem_an, orfaos = [], []
+    for k, (i, a) in enumerate(zip(coluna(lo, 'ID_REGISTRO'), coluna(lo, 'ANALITO')), start=1):
+        idn = cd._norm_id(i, pref)
+        if idn and a in (None, ''):
+            (sem_an if idn in conhecidos else orfaos).append((k, idn))
+    if sem_an and migrada:
+        raise SystemExit(f'linhas da Inativar com ID de resultado existente e ANALITO vazio (a inativacao se '
+                         f'perderia no proximo ATUALIZAR): {sem_an[:10]}')
+    msg = f'{len(depois)} linha(s) com conteudo: mesmo (ID, caixa, data, usuario) de antes; todo ID com resultado tem ANALITO'
+    if sem_an:          # tabela ja no layout novo: e digitacao do usuario (o QA acusa E11), nao da migracao
+        msg += f'; AVISO: {len(sem_an)} linha(s) digitada(s) sem ANALITO (E11 no QA): {sem_an[:5]}'
+    if orfaos:
+        msg += f'; {len(orfaos)} ID(s) sem resultado em lugar nenhum (nada a inativar): {orfaos[:5]}'
+    return msg
+
+
 def conferir_formulas(wb):
     """Nenhuma celula de formula das abas de entrada mostra o texto da formula (o defeito do formato '@')."""
     ruins, n = [], 0
@@ -150,11 +224,13 @@ def main(produto, caminho, salvar=True):
         log(f'   {", ".join(CONSULTAS)}: identicas a pq/')
 
         log('3. aba Inativar: layout novo (ID | ANALITO | REGISTRAR - LJ | MOTIVO | DATA_INATIVACAO | USUARIO)')
+        inat_antes = conjunto_inativacao(wb)
         mig = cd.migrar_inativacao(wb, pqlib.tabela(wb, TB), cd.ENTRADAS[TB][1])   # no layout novo: nada
         lo = cd.montar_entrada(wb, produto, TB)            # formatos, travas, validacoes, caixa de selecao
         if mig.get('migrada'):
             cd.igualar_largura_cabecalho(lo.Parent, len(cd.ENTRADAS[TB][1]), mig['largura_cab'])
         log('   ' + conferir_migracao(lo, mig))
+        log('   ' + conferir_sobrevivem(wb, inat_antes, bool(mig.get('migrada'))))
 
         log('4. Digitar Resultados e COMENTARIOS_TECNICOS: colunas de formula calculando')
         for nome in ('tblResultados_Manuais', 'tblComentariosTecnicos'):
