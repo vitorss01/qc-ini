@@ -897,6 +897,9 @@ prox:
     If dentro + fora + semLim = 0 Then Exit Function
     If fora > 0 Then
         StatusLimitesEQ = "NAO OK (" & fora & " fora dos limites)"
+    ElseIf dentro = 0 Then
+        ' revisao 07/10/2026: nenhuma amostra com limite (ex.: CAP NAO AVALIADO em IG/NRBC) -- nao e "OK"
+        StatusLimitesEQ = "NAO AVALIADO (" & semLim & " sem limite do provedor)"
     ElseIf semLim > 0 Then
         StatusLimitesEQ = "OK (" & dentro & " dentro; " & semLim & " sem limite)"
     Else

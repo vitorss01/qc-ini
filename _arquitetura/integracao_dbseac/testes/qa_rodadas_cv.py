@@ -313,6 +313,8 @@ class Oraculo:
                 dentro += 1
         if fora:
             return f'NAO OK ({fora} fora dos limites)'
+        if not dentro:
+            return f'NAO AVALIADO ({sem} sem limite do provedor)'
         if sem:
             return f'OK ({dentro} dentro; {sem} sem limite)'
         return f'OK ({dentro} dentro dos limites)'
@@ -772,6 +774,42 @@ def r04_painel(q, e, ult, bio):
     definir(q, e, 'L11', meses0)
     q.run('mIncerteza.RecalcularIncerteza')
     q.ex.esperar()
+    # caso deterministico (achado 7): um nivel COM dados perde o Sigma -- I desse nivel vazio nesta copia (a
+    # formula volta logo depois) --> O3 avisa "SIGMA EM k DE N NIVEIS" e B1 continua o MIN dos que tem Sigma
+    forcado = {}
+    for an in cad[:6]:
+        mostrar(an)
+        iv = [p.Range(f'I{6 + k}').Value for k in range(1, nlv + 1)]
+        evv = [p.Range(f'E{6 + k}').Value for k in range(1, nlv + 1)]
+        alvos = [k for k in range(nlv) if num(iv[k]) and num(evv[k])]
+        if len(alvos) < 2:
+            continue
+        k0 = alvos[-1]
+        cel = p.Range(f'I{7 + k0}')
+        f_ = cel.Formula
+        q.ex.xl.EnableEvents = False
+        try:
+            cel.Value = ''
+        finally:
+            q.ex.xl.EnableEvents = True
+        recalc(q)
+        iv2 = list(iv)
+        iv2[k0] = ''
+        o3f_ = str(p.Range('O3').Value or '')
+        b1f_ = c.Range('B1').Value
+        esp_o3 = o3_esperado(iv2, evv)
+        esp_b1 = min(x for x in iv2 if num(x))
+        forcado = {'analito': an, 'nivel_sem_sigma': k0 + 1, 'O3': o3f_, 'O3_esperado': esp_o3, 'B1': b1f_,
+                   'B1_esperado': esp_b1, 'ok': esp_o3 != 'SIGMA DO PLANO' and esp_o3 in o3f_ and igual_valor(b1f_, esp_b1)}
+        q.ex.xl.EnableEvents = False
+        try:
+            cel.Formula = f_
+        finally:
+            q.ex.xl.EnableEvents = True
+        recalc(q)
+        forcado['O3_depois_de_restaurar'] = str(p.Range('O3').Value or '')
+        forcado['ok'] = forcado['ok'] and forcado['O3_depois_de_restaurar'] == o3_esperado(iv, evv)
+        break
     q.ex.xl.EnableEvents = False
     try:
         p.Range('B3').Value = b30
@@ -785,8 +823,9 @@ def r04_painel(q, e, ult, bio):
         'vazio, nunca bias 0); Cfg_PlanoQC!B1 = MIN dos níveis; O3 avisa "SIGMA EM k DE N NÍVEIS" quando um nível com '
         'dados fica sem Sigma (o MIN o ignora); no bloco DESEMPENHO o CVp ao lado fecha a conta (ETp − |Bias|)/CVp = '
         'Sigma; "-" sem ETp (ADR-068)',
-        not dif and 'CVp' in rot and 'SIGMA EM' in o3f,
-        {'analitos': ev, 'rotulo_I6': rot, 'caso_parcial_exercitado': parcial, 'divergencias': dif[:4]})
+        not dif and 'CVp' in rot and 'SIGMA EM' in o3f and bool(forcado.get('ok')),
+        {'analitos': ev, 'rotulo_I6': rot, 'caso_parcial_janela_1_mes': parcial, 'nivel_sem_sigma_forcado': forcado,
+         'divergencias': dif[:4]})
 
 
 # ------------------------------------------------------------------ CEQ sintetico
