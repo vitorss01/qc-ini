@@ -58,6 +58,28 @@ Public Const MU_F_MINIMO As Double = 0.75
 Public Const MU_CEQ_PREF As Long = 10        ' amostras de CEQ preferenciais (Nordtest TR 537)
 
 
+' ADR-071 (desempenho, 07/10/2026): ao abrir a pasta o cache esta vazio e a 1a troca de analito
+' pagava a leitura da tblCQ_Final inteira no CVp do Painel (~1 s medido na Hematologia, teto 600 ms).
+' Chamado por mEstatistica.AquecerMotor (login / entrada no Painel): monta a janela do Sigma com os
+' MESMOS argumentos da formula do Painel, para o carimbo bater. Quente: sai na hora.
+Public Sub AquecerJanelaSigma()
+    Dim ini As Variant, fim As Variant, a As Variant, v As Variant, temExc As Boolean, nm As Name
+    On Error GoTo sai
+    ini = ThisWorkbook.Names("Sigma_Ini").RefersToRange.Value
+    fim = ThisWorkbook.Names("MU_Fim").RefersToRange.Value
+    a = ThisWorkbook.Names("selAnalito").RefersToRange.Value
+    If Len(Trim$(CStr(a))) = 0 Then Exit Sub
+    For Each nm In ThisWorkbook.Names
+        If nm.Name = "Estat_Exclusoes" Then temExc = True
+    Next nm
+    If temExc Then
+        v = IncertezaCIQ(CStr(a), 1, "CV", ini, fim, ThisWorkbook.Names("Estat_Exclusoes").RefersToRange)
+    Else
+        v = IncertezaCIQ(CStr(a), 1, "CV", ini, fim)
+    End If
+sai:
+End Sub
+
 Public Sub InvalidarIncerteza()
     mSnapMU = Empty
     Set mAggMU = Nothing

@@ -2515,4 +2515,5 @@ Public Sub AquecerMotor()
     On Error Resume Next
     GarantirIndice
     If mAgg Is Nothing Then RegistrarEventosWestgard
+    mIncerteza.AquecerJanelaSigma         ' ADR-071: CVp do Painel quente na 1a troca de analito
 End Sub
