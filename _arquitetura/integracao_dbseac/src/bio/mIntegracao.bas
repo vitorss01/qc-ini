@@ -201,8 +201,11 @@ End Sub
 Private Function OrigemOcupada(ByVal msg As String) As Boolean
     Dim m As String
     m = LCase$(msg)
+    ' 13/10/2026: lido no meio do Save o Power Query tambem da "[Expression.Error] O valor nao foi
+    ' especificado" (medido na entrega: passou na repeticao isolada) -- tratado como origem ocupada
     OrigemOcupada = (InStr(m, "dataformat.error") > 0) Or (InStr(m, "sendo usado") > 0) Or _
-                    (InStr(m, "being used") > 0) Or (InStr(m, "em uso") > 0)
+                    (InStr(m, "being used") > 0) Or (InStr(m, "em uso") > 0) Or _
+                    (InStr(m, "foi especificado") > 0) Or (InStr(m, "was not specified") > 0)
 End Function
 
 Public Function AcharTabela(ByVal nome As String) As ListObject
