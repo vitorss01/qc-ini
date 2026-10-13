@@ -11,6 +11,7 @@ público — decisão do gestor em `estudos/DECISAO_GESTOR_2026-10-06.md`). A ve
 | 07/10/2026 | QC_Bioquimica.xlsm | 15473750 | `952dc3af7e009a180cd1cdfc648cc844c10ebc699eb4a05cf985c587df3699b9` | 94c4791 | 13 suítes PASS, MODO_FONTE=SEAC — ADR-069, 070, 071 |
 | 08/10/2026 | QC_Hematologia.xlsm | 13271260 | `1505bd5380471ea845b322a81f08cae6cbf2421e30b47762fdad87192110ce7b` | eff6af7 | 13 suítes PASS, MODO_FONTE=SEAC — ADR-070, 071 (+ aquecimento da janela do Sigma) |
 | 13/10/2026 | QC_Hematologia.xlsm | 13289510 | `a1dd5c25317f4ddcc6dc352ce61f397ef439a5ae6eabe31a7d5c31b388bb0c6b` | 5db9b6e | 13 suítes PASS, MODO_FONTE=SEAC — ADR-072 (D-01 em 3 opções) |
+| 13/10/2026 | QC_Bioquimica.xlsm | 15498129 | `37d7d97c8b9010ede8a6ccf395ee8f4dccc2949090235cc2b1ddb96e11b11853` | e5f2575 | 13 suítes PASS, MODO_FONTE=SEAC — ADR-072 (D-01 em 3 opções) |
 
 O hash muda a cada gravação no laboratório (uso normal). Para conferir a versão entregue, compare com o arquivo
 `_entrega_<data>/<produto>/<arquivo>.xlsm` da pasta de entrega (não versionada).
