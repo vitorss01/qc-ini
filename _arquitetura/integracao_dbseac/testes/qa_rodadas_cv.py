@@ -46,7 +46,7 @@ from qa_final import QA, reg, RES  # noqa: E402
 
 SENHA = 'qcini2025'
 TOL = 1e-9
-FIXOS = ['TODAS', 'ACUMULADAS', 'ULTIMAS 3', 'ULTIMAS 6']
+FIXOS = ['TODAS']                                   # ADR-072: so TODAS + rodadas existentes na lista
 LISTAS = {'lstAnosCAP': 'AF', 'lstAnosCTL': 'AG', 'lstRodadasCAP': 'AH', 'lstRodadasCTL': 'AI', 'lstRodadasEQA': 'AJ'}
 # colunas que NAO dependem do Sigma (com TODAS tem de ficar identicas ao arquivo antes do ADR-071)
 COLS_IGUAIS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'Q', 'R', 'S', 'T', 'AB', 'AC', 'AD',
@@ -127,6 +127,17 @@ def U(v):
 
 def livre(v):
     return U(v) in ('', 'TODOS', 'TODAS')
+
+
+def ano_todos(ano):
+    return U(ano) in ('TODOS', 'TODAS', 'TODOS OS ANOS')
+
+
+def efetiva(rodada, ano):
+    """ADR-072: TODAS com Ano EP = TODOS vira ACUMULADAS (todos os anos)."""
+    if ano_todos(ano) and modo(rodada)[0] == 0:
+        return 'ACUMULADAS'
+    return rodada
 
 
 def teto(ano):
@@ -244,6 +255,7 @@ class Oraculo:
         return self._ult[k_]
 
     def ano_vigente(self, analito, ano, prov, rodada, col_vig):
+        rodada = efetiva(rodada, ano)
         md = modo(rodada)
         aref = teto(ano)
         aref_vig = 32767 if md[0] == 2 else aref
@@ -253,9 +265,13 @@ class Oraculo:
                 a = self.ano(r)
                 if a is not None and a <= aref_vig and (vig is None or a > vig):
                     vig = a
+        # ADR-072: com provedor e ano escolhidos, TODAS / rotulo unico usam EXATAMENTE aquele ano
+        if vig is not None and not livre(prov) and isnum_vba(ano) and md[0] in (0, 1) and vig != aref:
+            return None
         return vig
 
     def selecao(self, analito, ano, prov, rodada, col_vig, col):
+        rodada = efetiva(rodada, ano)
         md = modo(rodada)
         aref = teto(ano)
         vig = self.ano_vigente(analito, ano, prov, rodada, col_vig)
@@ -322,6 +338,7 @@ class Oraculo:
     def resumo(self, prov, ano, rodada):
         """('INVALIDA'|'PROVEDOR'|None, n_rodadas, n_linhas, extra) -- a contagem do K5, ANALITO A ANALITO com o
         recorte do BiasEQ de cada um (ano vigente dele nos modos de antes; ULTIMAS n dele)."""
+        rodada = efetiva(rodada, ano)
         md = modo(rodada)
         extra = {'ncurto': 0, 'nanal': 0, 'anos_vig': []}
         if md[0] < 0:
@@ -649,12 +666,12 @@ def r03_listas(q, e, orc, bio, codigo, rotulo):
             dif.append((nome, 'nome ausente', str(ex)[:60]))
     for nome, prov in (('lstAnosCAP', 'CAP'), ('lstAnosCTL', 'CONTROLLAB')):
         col = LISTAS[nome]
-        vals = [int(v[0]) for v in cfg.Range(f'{col}2:{col}101').Value if v[0] not in (None, '')]
-        esp = sorted({int(k.split('|')[0]) for k in existentes(orc.rows, prov)})
+        vals = [str(v[0]).replace('.0', '') for v in cfg.Range(f'{col}2:{col}101').Value if v[0] not in (None, '')]
+        esp = ['TODOS'] + [str(a) for a in sorted({int(k.split('|')[0]) for k in existentes(orc.rows, prov)})]
         if vals != esp:
             dif.append((nome, vals, esp))
-    anos_ceq = [int(v[0]) for v in cfg.Range('AA2:AA50').Value if v[0] not in (None, '')]
-    esp_ceq = sorted({int(k.split('|')[0]) for k in existentes(orc.rows, '')}) or [0]
+    anos_ceq = [str(v[0]).replace('.0', '') for v in cfg.Range('AA2:AA50').Value if v[0] not in (None, '')]
+    esp_ceq = ['TODOS'] + [str(a) for a in sorted({int(k.split('|')[0]) for k in existentes(orc.rows, '')})]
     if anos_ceq != esp_ceq:
         dif.append(('lstAnosCEQ', anos_ceq, esp_ceq))
     # rodadas que so tem linha Uso = NAO (simulacao) nunca entram
@@ -686,7 +703,7 @@ def r03_listas(q, e, orc, bio, codigo, rotulo):
     k5f = str(e.Range('K5').Formula)
     val_ok = val_ok and k5f.upper().startswith('=RESUMOFILTROEQ(') and 'TEXT(' not in k5f.upper() and 'linha(s)' in k5
     reg(f'{codigo} {rotulo}: listas de seleção = rodadas EXISTENTES por provedor (Uso ≠ NAO, analito canônico, |bias|), '
-        f'itens fixos TODAS/ACUMULADAS/ULTIMAS 3/ULTIMAS 6 antes; nunca rodada de simulação nem sem alvo; validações de '
+        f'item fixo TODAS antes (anos: TODOS antes); nunca rodada de simulação nem sem alvo; validações de '
         f'N4/P4 (estilo Aviso) apontam para as listas{"" if bio else ", R4 sem vazio"}; K5 = ResumoFiltroEQ (sem TEXTO)',
         not dif and val_ok, {'divergencias': dif[:6], 'simulacao_existente': simul[:6], 'validacoes': ev,
                               'K5': k5[:120]})
@@ -900,6 +917,9 @@ def r05_funcoes(q, orc, analito, analito2):
              ('ACUMULADAS', 2026, 'Controllab'), ('ULTIMAS 1', 2026, 'Controllab'), ('TODAS', 2026, 'Controllab'),
              ('2025|1; 2026|1', 2026, 'Controllab'),
              ('ACUMULADAS', 2026, ''), ('2024|A', 2026, ''), ('ULTIMAS 3', 2026, 'TODOS'), ('TODAS', 2026, ''),
+             # ADR-072 (decisao D-01): (1) rodada especifica, (2) ano + TODAS (exato), (3) TODOS + TODAS
+             ('2025|A', 'TODOS', 'CAP'), ('TODAS', 2024, 'CAP'), ('TODAS', 2025, 'CAP'), ('TODAS', 2023, 'CAP'),
+             ('TODAS', 'TODOS', 'CAP'), ('TODAS', 'TODOS', 'Controllab'), ('TODAS', 'TODOS', ''),
              ('2025|', 2026, 'CAP'), ('C-A 2025; C-B 2025', 2026, 'CAP'), ('ULTIMAS 0', 2026, 'CAP'),
              ('ULTIMAS X', 2026, 'CAP'), ('2025|A|B', 2026, 'CAP'), ('25|A', 2026, 'CAP')]
     casos2 = [('ULTIMAS 3', 2026, 'CAP'), ('ULTIMAS 1', 2026, 'CAP'), ('ULTIMAS 6', 2026, 'CAP'), ('TODAS', 2026, 'CAP'),
@@ -926,6 +946,12 @@ def r05_funcoes(q, orc, analito, analito2):
             for t in ('ACUMULADAS', 'ULTIMAS 6', '2025|1; 2026|1')),
         'Uso=NAO (2026|Z, bias 99) nunca entra': b(analito, 2026, 'ABS', 'CAP', '2026|Z') == SEM_EP,
         'provedor vazio nos modos novos = SEM EP (D1)': b(analito, 2026, 'ABS', '', 'ACUMULADAS') == SEM_EP,
+        'ADR-072 (3): Ano = TODOS + TODAS junta as rodadas do CAP de TODOS os anos do analito':
+            b(analito, 'TODOS', 'NRODADAS', 'CAP', 'TODAS') == len(existentes(orc.rows, 'CAP', analito)),
+        'ADR-072 (2): ano escolhido sem dado do analito = SEM EP (nao cai para o ano anterior)':
+            b(analito, 2027, 'ABS', 'CAP', 'TODAS') == SEM_EP,
+        'ADR-072 (1): rodada especifica entra sozinha, qualquer que seja o Ano':
+            b(analito, 'TODOS', 'NRODADAS', 'CAP', '2024|A') == 1,
         'texto invalido = SEM EP (nunca #VALOR!)': b(analito, 2026, 'ABS', 'CAP', '2025|') == SEM_EP,
         'conjunto atravessando anos ignora o teto': num(b(analito, 2000, 'ABS', 'CAP', '2024|A; 2026|B')),
         # revisao 07/10/2026
@@ -934,7 +960,8 @@ def r05_funcoes(q, orc, analito, analito2):
             and num(b(analito, 2026, 'ABS', 'CAP', 'ULTIMAS 3'))),
         'rodada sem alvo (|bias| vazio) nao entra em TODAS (2026: so A e B)': b(analito, 2026, 'NRODADAS', 'CAP', 'TODAS') == 2,
         'rodada so sem alvo = SEM EP, nunca 0': b(analito, 2026, 'ABS', 'CAP', '2026|C') == SEM_EP,
-        'ano so com linha sem alvo nao vira vigente (Ano EP 2027 -> 2026)': b(analito, 2027, 'ANO', 'CAP', 'TODAS') == 2026,
+        'sem provedor (caminho do BI): ano so com linha sem alvo nao vira vigente (Ano EP 2027 -> 2026)':
+            b(analito, 2027, 'ANO', '', 'TODAS') == 2026,
         'ACUMULADAS = ULTIMAS 64 com rodada sem alvo na base': igual_valor(
             b(analito, 2027, 'ABS', 'CAP', 'ACUMULADAS'), b(analito, 2027, 'ABS', 'CAP', 'ULTIMAS 64')),
     }
@@ -990,7 +1017,8 @@ def r06_resumo(q, orc):
         'cálculo (ano vigente de cada analito; ULTIMAS n de cada analito, dizendo quantos têm menos de n); |bias| vazio '
         'não conta; texto inválido diz INVALIDA, item do conjunto sem dado aparece como SEM DADO, provedor vazio nos '
         'modos novos é avisado',
-        not dif and len(ex26['anos_vig']) > 1, {'textos': ev, 'divergencias': dif[:5], 'anos_vigentes_TODAS_2026': ex26['anos_vig']})
+        # ADR-072: o ano escolhido e EXATO -- todos os analitos contados no mesmo ano
+        not dif and len(ex26['anos_vig']) <= 1, {'textos': ev, 'divergencias': dif[:5], 'anos_vigentes_TODAS_2026': ex26['anos_vig']})
 
 
 def r07_listas_sint(q, e, orc, bio):

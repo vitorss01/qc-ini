@@ -133,10 +133,9 @@ Public Sub AtualizarListasAno()
     ' e linha sem analito canonico nunca aparecem. Antes a lista de anos lia EQA_Base!B inteira.
     Dim lst(1 To 7) As Variant, cols As Variant, cabs As Variant, k As Long, mudou As Boolean, igual(1 To 7) As Boolean
     lst(1) = AnosOrdenados(anosCIQ)
-    lst(2) = mCEQ.AnosExistentes("")
-    If UBound(lst(2)) < 0 Then lst(2) = AnosOrdenados(CreateObject("Scripting.Dictionary"))  ' nenhum: um 0, como antes
-    lst(3) = mCEQ.AnosExistentes("CAP")
-    lst(4) = mCEQ.AnosExistentes("Controllab")
+    lst(2) = ComTodos(mCEQ.AnosExistentes(""))          ' ADR-072: "TODOS" (todos os anos) + anos com dado
+    lst(3) = ComTodos(mCEQ.AnosExistentes("CAP"))
+    lst(4) = ComTodos(mCEQ.AnosExistentes("Controllab"))
     lst(5) = ComFixos(mCEQ.RodadasExistentes("CAP"))
     lst(6) = ComFixos(mCEQ.RodadasExistentes("Controllab"))
     lst(7) = ComFixos(mCEQ.RodadasExistentes(""))
@@ -179,16 +178,29 @@ Private Function LinhasLista(ByVal k As Long) As Long
     LinhasLista = IIf(k <= 2, 50, 101)
 End Function
 
-' ADR-071: itens fixos da selecao de rodadas antes das rodadas existentes (ano|rodada).
+' ADR-072 (decisao D-01): a lista de rodadas e so "TODAS" + as rodadas existentes (ano|rodada).
+' ULTIMAS n / ACUMULADAS / conjunto continuam aceitos se digitados, mas saem da lista.
 Private Function ComFixos(ByVal rods As Variant) As Variant
     Dim out() As String, i As Long, n As Long
     n = UBound(rods) + 1
-    ReDim out(0 To 3 + n)
-    out(0) = "TODAS": out(1) = "ACUMULADAS": out(2) = "ULTIMAS 3": out(3) = "ULTIMAS 6"
+    ReDim out(0 To n)
+    out(0) = "TODAS"
     For i = 0 To n - 1
-        out(4 + i) = rods(i)
+        out(1 + i) = rods(i)
     Next i
     ComFixos = out
+End Function
+
+' ADR-072: lista de anos = "TODOS" (todos os anos) + os anos com dado, do mais recente ao mais antigo.
+Private Function ComTodos(ByVal anos As Variant) As Variant
+    Dim out() As String, i As Long, n As Long
+    n = UBound(anos) + 1
+    ReDim out(0 To n)
+    out(0) = "TODOS"
+    For i = 0 To n - 1
+        out(1 + i) = CStr(anos(i))
+    Next i
+    ComTodos = out
 End Function
 
 ' A coluna (Z2:Z50 lida da planilha) tem exatamente o que a rotina escreveria?

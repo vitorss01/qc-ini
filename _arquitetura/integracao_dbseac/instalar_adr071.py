@@ -39,7 +39,7 @@ from instalar_seguranca_usuarios import foto_protecao, devolver_protecao  # noqa
 from instalar_adr064 import LIN_TAB, ultima_linha_tabela, selecionar_a1, formato_data  # noqa: E402
 
 MESES_PADRAO = 6
-FIXOS = ['TODAS', 'ACUMULADAS', 'ULTIMAS 3', 'ULTIMAS 6']
+FIXOS = ['TODAS']                                   # ADR-072: lista = TODAS + rodadas existentes
 # Configuracao: colunas das listas geradas por mDados.AtualizarListasAno (ADR-071)
 LISTAS = {'lstAnosCAP': 'AF', 'lstAnosCTL': 'AG', 'lstRodadasCAP': 'AH', 'lstRodadasCTL': 'AI', 'lstRodadasEQA': 'AJ'}
 # Estatistica linha 11: rotulo, meses, "de", inicio, "a", fim, nota
@@ -281,8 +281,11 @@ def bloco_desempenho(wb, nlv, exc):
 
 
 # ---------------------------------------------------------------------------------------------- 6. CEQ
-MSG_P4 = ('TODAS = ano vigente (<= Ano EP) | ACUMULADAS = todas ate o Ano EP | ULTIMAS n = as n mais recentes | '
-          'conjunto: ano|rodada; ano|rodada (pode atravessar anos). Modos novos exigem o provedor. K5 confere.')
+# ADR-072 (decisao D-01 do usuario): 3 opcoes -- rodada especifica | ano + TODAS | TODOS + TODAS
+MSG_P4 = ('TODAS = todas as rodadas do Ano EP escolhido (com Ano EP = TODOS: todos os anos). '
+          'Ou escolha UMA rodada da lista (ano|rodada). K5 mostra o que entrou.')
+MSG_N4 = ('Ano do CEQ: um ano = so as rodadas daquele ano; TODOS = todos os anos. '
+          'Com Rodada = TODAS faz o pooled das rodadas.')
 
 
 def validar(cel, formula, estilo, titulo, msg, ignorar_vazio=True):
@@ -313,13 +316,17 @@ def ceq(wb, e, bio):
         r4.Validation.ErrorMessage = 'Escolha CAP ou Controllab (o provedor e obrigatorio).'
         feitos.append('R4 sem vazio')
         validar(e.Range('N4'), traduzir(e, '=IF(eqProvedor="Controllab",lstAnosCTL,lstAnosCAP)'), XL_WARNING,
-                'Ano EP (teto)', 'Maior ano do CEQ usado em TODAS/ACUMULADAS/ULTIMAS n. Lista: anos com rodada do provedor.')
+                'Ano do CEQ', MSG_N4)
         validar(e.Range('P4'), traduzir(e, '=IF(eqProvedor="Controllab",lstRodadasCTL,lstRodadasCAP)'), XL_WARNING,
                 'Rodada(s) do CEQ', MSG_P4)
         feitos.append('N4/P4 com listas do provedor')
     else:
-        validar(e.Range('N4'), traduzir(e, '=lstAnosCEQ'), XL_WARNING, 'Ano EP (teto)',
-                'Maior ano do CEQ usado em TODAS/ACUMULADAS/ULTIMAS n (formula: o ano mais recente).')
+        # ADR-072: N4 da Bioquimica era formula (sempre o maior ano); vira escolha do usuario (ano ou TODOS),
+        # comecando no valor que a formula dava -- o resultado de hoje nao muda
+        if e.Range('N4').HasFormula:
+            e.Range('N4').Value = e.Range('N4').Value
+            feitos.append('N4 da Bioquimica: formula -> escolha (valor mantido)')
+        validar(e.Range('N4'), traduzir(e, '=lstAnosCEQ'), XL_WARNING, 'Ano do CEQ', MSG_N4)
         validar(e.Range('P4'), traduzir(e, '=lstRodadasEQA'), XL_WARNING, 'Rodada(s) do CEQ', MSG_P4)
         feitos.append('N4/P4 com listas (provedor por analito: Analitos!AR)')
     for a in ('N4', 'P4'):

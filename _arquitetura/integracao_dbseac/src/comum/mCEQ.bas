@@ -436,6 +436,38 @@ Private Function ChaveRodada(ByRef d As Variant, ByVal i As Long) As String
     ChaveRodada = CStr(CLng(Val(CStr(d(i, EQ_C_ANO))))) & SEP_ROD & UCase$(Trim$(TxtEQ(d(i, EQ_C_RODADA))))
 End Function
 
+' ADR-072 (decisao D-01 do usuario, 13/10/2026): tres jeitos de escolher o CEQ do bias --
+'   (1) uma rodada especifica (lista de P4: ano|rodada)
+'   (2) Ano EP = um ano + Rodada = TODAS  -> pooled das rodadas DAQUELE ano (exato, sem cair p/ o anterior)
+'   (3) Ano EP = TODOS + Rodada = TODAS   -> pooled das rodadas de TODOS os anos (= ACUMULADAS sem teto)
+' O estimador (BiasEQ "ABS", duas etapas) nao muda. CAP e Controllab nunca se misturam.
+Private Function AnoTodos(ByVal anoRef As Variant) As Boolean
+    Dim v As Variant, s As String
+    On Error GoTo fim
+    If IsObject(anoRef) Then v = anoRef.Value Else v = anoRef
+    If IsArray(v) Or IsError(v) Then Exit Function
+    s = UCase$(Trim$(CStr(v)))
+    AnoTodos = (s = "TODOS" Or s = "TODAS" Or s = "TODOS OS ANOS")
+fim:
+End Function
+
+Private Function AnoExplicito(ByVal anoRef As Variant) As Boolean
+    Dim v As Variant
+    On Error GoTo fim
+    If IsObject(anoRef) Then v = anoRef.Value Else v = anoRef
+    If IsArray(v) Or IsError(v) Then Exit Function
+    AnoExplicito = NumOk(v)
+fim:
+End Function
+
+' TODAS com Ano EP = TODOS vira ACUMULADAS (todos os anos, provedor obrigatorio). Demais: como esta.
+Private Function RodadaEfetiva(ByVal rodada As Variant, ByVal anoRef As Variant) As Variant
+    If IsObject(rodada) Then RodadaEfetiva = rodada.Value Else RodadaEfetiva = rodada
+    If AnoTodos(anoRef) Then
+        If ModoRodada(rodada) = MR_LIVRE Then RodadaEfetiva = "ACUMULADAS"
+    End If
+End Function
+
 Private Function TetoAno(ByVal anoRef As Variant) As Long
     TetoAno = 32767
     On Error Resume Next
@@ -629,6 +661,13 @@ Private Function AnoVigente(ByRef d As Variant, ByVal analito As String, _
         If ano <= aRef And ano > AnoVigente Then AnoVigente = ano
 prox:
     Next i
+    ' ADR-072: com provedor e ano escolhidos, TODAS / rotulo unico usam EXATAMENTE aquele ano (sem dado
+    ' nele = SEM EP). Sem provedor (ex.: mBI) continua o "maior ano ate o teto" de antes.
+    If AnoVigente <> -32768 And Not Livre(provedor) And AnoExplicito(anoRef) Then
+        If ModoRodada(rodada) = MR_LIVRE Or ModoRodada(rodada) = MR_ROTULO Then
+            If AnoVigente <> aRef Then AnoVigente = -32768
+        End If
+    End If
 End Function
 
 ' O ano da linha entra? Modos de antes: SO o ano vigente (ADR-030). Modos novos: todo ano ate o
@@ -659,6 +698,7 @@ Public Function BiasEQ(ByVal analito As String, ByVal anoRef As Variant, _
                        ByVal modo As String, _
                        Optional ByVal provedor As Variant = "", _
                        Optional ByVal rodada As Variant = "") As Variant
+    rodada = RodadaEfetiva(rodada, anoRef)            ' ADR-072: Ano EP = TODOS
     ' -----------------------------------------------------------------
     ' CONSOLIDACAO EM DUAS ETAPAS (ADR-035)
     '
@@ -800,6 +840,7 @@ Public Function SDIeq(ByVal analito As String, ByVal anoRef As Variant, _
                       ByVal modo As String, _
                       Optional ByVal provedor As Variant = "", _
                       Optional ByVal rodada As Variant = "") As Variant
+    rodada = RodadaEfetiva(rodada, anoRef)            ' ADR-072: Ano EP = TODOS
     Dim d As Variant, i As Long, anoVig As Long
     Dim soma As Double, n As Long, maxAbs As Double, v As Variant, novo As Boolean
 
@@ -861,6 +902,7 @@ End Function
 Public Function StatusLimitesEQ(ByVal analito As String, ByVal anoRef As Variant, _
                                 Optional ByVal provedor As Variant = "", _
                                 Optional ByVal rodada As Variant = "") As Variant
+    rodada = RodadaEfetiva(rodada, anoRef)            ' ADR-072: Ano EP = TODOS
     Dim d As Variant, i As Long, anoVig As Long
     Dim dentro As Long, fora As Long, semLim As Long
     Dim x As Variant, li As Variant, ls As Variant, novo As Boolean
@@ -912,6 +954,7 @@ End Function
 Public Function BiasEQMemoria(ByVal analito As String, ByVal anoRef As Variant, _
                               Optional ByVal provedor As Variant = "", _
                               Optional ByVal rodada As Variant = "") As String
+    rodada = RodadaEfetiva(rodada, anoRef)            ' ADR-072: Ano EP = TODOS
     Dim d As Variant, i As Long, anoVig As Long, s As String, n As Long
     Dim somaAbs As Double, somaSig As Double, novo As Boolean
 
@@ -962,6 +1005,7 @@ End Function
 ' diferem o texto diz "ano vigente por analito"; em ULTIMAS n diz quantos analitos tem menos de n.
 Public Function ResumoFiltroEQ(ByVal provedor As Variant, ByVal ano As Variant, _
                                ByVal rodada As Variant) As String
+    rodada = RodadaEfetiva(rodada, ano)            ' ADR-072: Ano EP = TODOS
     Dim p As String, r As String, a As String, md As Long, okT As Boolean, sTxt As String
     Dim key As String, k As Variant, d As Variant, i As Long, an As String, aRef As Long
     Dim anoVig As Long, aMin As Long, aMax As Long, ano_ As Long, nLin As Long
@@ -1055,7 +1099,7 @@ prox:
             r = "conjunto de " & nItens & " rodada(s) informada(s), " & (nItens - CountSemDado(semDado)) & " com dado" & _
                 IIf(Len(semDado) > 0, " -- SEM DADO: " & semDado, "") & IIf(nLin > 0, " | " & a, "")
         Case MR_ACUM
-            r = "todas as rodadas acumuladas ate " & IIf(aRef = 32767, "o ano mais recente", CStr(aRef)) & _
+            r = IIf(aRef = 32767, "TODOS os anos, todas as rodadas", "todas as rodadas acumuladas ate " & CStr(aRef)) & _
                 IIf(nLin > 0, " (" & a & ")", "")
         Case MR_ULTIMAS
             r = "ultimas " & mRodN & " rodada(s) de cada analito ate " & IIf(aRef = 32767, "o ano mais recente", CStr(aRef)) & _
@@ -1123,6 +1167,7 @@ Public Function ViesEQ(ByVal analito As String, ByVal anoRef As Variant, ByVal m
     ' ADR-071 (D3): a incerteza NAO segue a selecao nova de rodadas (conjunto, ULTIMAS, ACUMULADAS
     ' ou texto invalido) -- continua na janela do ADR-067 (ano vigente + anterior, >= 6 amostras de
     ' >= 2 rodadas). TODAS e rotulo unico seguem como antes (ADR-032).
+    If AnoTodos(anoRef) Then anoRef = ""            ' ADR-072: TODOS os anos nao muda a janela da incerteza
     If ModoRodada(rodada) >= MR_CONJUNTO Or ModoRodada(rodada) = MR_INVALIDO Then rodada = "TODAS"
     ViesEQ = SEM_EP
     If md = "TRIAGEM" Then ViesEQ = "não verificável (sem CEQ)"   ' analito sem nenhuma amostra tambem
