@@ -45,7 +45,8 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_etl_recebimento.py', 'qa_etl.py',          # ADR-066: QA-ETL-001, gate obrigatorio da camada de dados
           'qa_rodadas_cv.py',                            # ADR-071: selecao de rodadas do CEQ e Sigma com CV pooled
           'qa_inativar.py',                              # ADR-070: Inativar por ID + analito, ID na dica do LJ
-          'qa_migracao_adr070.py']                       # ADR-070: migracao e inativacoes reais contra a producao
+          'qa_migracao_adr070.py',                       # ADR-070: migracao e inativacoes reais contra a producao
+          'qa_lotes_limites.py']                         # ADR-073: limites por lote + rastreabilidade
 
 
 def sha(p):
@@ -95,6 +96,7 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('sem_etp', ['instalar_adr068.py', produto, alvo]),
               ('inativar', ['instalar_adr070.py', produto, alvo]),       # ADR-070: Inativar simples + ID no LJ
               ('rodadas_cv', ['instalar_adr071.py', produto, alvo]),     # ADR-071: rodadas do CEQ + Sigma CV pooled
+              ('limites_lote', ['instalar_adr073.py', produto, alvo]),   # ADR-073: central de limites por lote
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:
         ok, fim = rodar(os.path.join(trab, f'{nome}.log'), AQUI, *args)

@@ -25,7 +25,8 @@ NOVOS = ['mIncerteza']                         # ADR-064
 # so existia dentro dos .xlsm; virou fonte versionada
 CLASSES = ['clsCht']
 # modulos de aba: (nome da aba, arquivo-fonte)
-ABAS = [('Painel', 'Painel.cls'), ('Configuração', 'Configuracao.cls')]
+ABAS = [('Painel', 'Painel.cls'), ('Configuração', 'Configuracao.cls'),
+        ('Analitos', 'Analitos.cls')]                  # ADR-073: seletor do lote em edicao
 PASTA = 'EstaPastaDeTrabalho.cls'
 
 

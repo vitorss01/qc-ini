@@ -49,6 +49,17 @@ agendada atualiza a cada 2 minutos.
   A coluna T mostra o ETp em uso. "-" = especificação não cadastrada, e nesse caso o Sigma fica "-".
 - **Hematologia:** a fonte segue a prioridade ETp configurado (P) → CLIA → VB, e a coluna Q mostra qual valeu.
 
+## 4b. Média/DP e limites de cada lote (aba Analitos)
+
+- **Escolher o lote:** escolha o lote em **J1 (LOTE EM EDIÇÃO)** ou no Painel (H3); os dois são o mesmo. O resumo ao
+  lado diz se o lote tem Média/DP, quando foi registrado, por quem e com qual especificação.
+- **Lote sem Média/DP = gráfico sem limites e Westgard sem avaliar.** Para cadastrar, use uma das duas formas:
+  - digite a Média e o DP de cada nível (E:J); ou
+  - clique em **Preencher Média/DP vazios pelo CIQ (20 primeiros)**. O botão usa os 20 primeiros resultados do lote,
+    só preenche o que está vazio, e você revisa depois.
+- **Registro:** cada gravação fica no `LotesStore` com a especificação vigente naquele momento (fonte, ano da
+  referência, ETp, CVTp), data, usuário e origem. Esse é o histórico de limites de cada lote.
+
 ## 5. Controle externo (CEQ) e Sigma (aba Estatística)
 
 **Bias do CEQ.** O programa é escolhido em R4 na Hematologia e por analito em Analitos!AR na Bioquímica. CAP e
@@ -78,7 +89,7 @@ ficou sem Sigma.
 
 - **CEQ:** digite cada rodada nas abas EQA.CAP_Dados / EQA.Controllab_Dados, com o **DP do grupo e o nº de
   laboratórios** de cada amostra. Sem esses dois campos, a incerteza não sai.
-- **Cadastro (aba Analitos):** ETp, CVI e CVG de analito novo.
+- **Cadastro (aba Analitos):** ETp, CVI e CVG de analito novo; **Média/DP de cada lote novo** (seção 4b).
 - **Investigação do CV:** revisar os IDs de `estudos/cv_suspeitos_<produto>.csv` (relatório
   `estudos/CV_INVESTIGACAO_2026-10-13.md`) e inativar os não conformes com motivo.
 
