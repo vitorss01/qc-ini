@@ -69,7 +69,9 @@ def medir(produto, caminho, n=12, visivel=False):
         p = wb.Worksheets('Painel')
         p.Activate()
         sp = p.Spinners('Spinner 1')
-        na = int(ex.xl.WorksheetFunction.CountA(wb.Worksheets('Analitos').Range('A4:A43')))
+        # ADR-074: o catalogo mora na aba do motor (Especificações depois da migracao; antes, Analitos)
+        aba_cat = 'Especificações' if 'Especificações' in [w.Name for w in wb.Worksheets] else 'Analitos'
+        na = int(ex.xl.WorksheetFunction.CountA(wb.Worksheets(aba_cat).Range('A4:A43')))
         out['analitos'] = na
         out['spinner_min_max'] = [int(sp.Min), int(sp.Max)]
         v0 = int(sp.Value)
@@ -97,7 +99,7 @@ def medir(produto, caminho, n=12, visivel=False):
         out['quente_total'] = resumo(tt)
         out['quente_link'] = resumo(tl)
         out['quente_macro'] = resumo(tm)
-        nomes = [str(wb.Worksheets('Analitos').Cells(4 + ((v0 + k) % na), 1).Value) for k in range(4)]
+        nomes = [str(wb.Worksheets(aba_cat).Cells(4 + ((v0 + k) % na), 1).Value) for k in range(4)]
         tlst = []
         for nome in nomes:
             t0 = time.perf_counter()

@@ -302,7 +302,9 @@ def executar(produto, caminho, saida):
             not dif, {'linhas': len(linhas), 'validade': cont, 'com_U_sem_U': cont_u, 'divergencias': dif[:8]})
 
         # meta e classe
-        cvi_col = 'O' if bio else 'M'
+        # CVi pelo cabecalho: na Hematologia saiu de M para O no ADR-075 (layout da Bioquimica)
+        cvi_col = next((chr(64 + c) for c in range(1, 27)
+                        if ' '.join(str(a.Cells(3, c).Value or '').split()) == 'CVi %'), 'O' if bio else 'M')
         dif = []
         for r, an, nv in linhas:
             rr = [i for i in range(4, 44) if str(a.Range(f'A{i}').Value or '').strip() == an]

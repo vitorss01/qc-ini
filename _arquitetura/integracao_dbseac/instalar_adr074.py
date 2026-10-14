@@ -4,6 +4,8 @@ anos de referencia CLIA/VB, especificacoes, ET e Sigma do lote). Fase 1: Bioquim
 
 Uso:  python instalar_adr074.py <Bioquimica|Hematologia> <arquivo.xlsm> [--sem-salvar]
 
+Bioquimica e Hematologia (esta depois do ADR-075, que lhe da a biblioteca anual e a escolha da fonte).
+
 Pedido do usuario (14/10/2026): cada lote cadastrado na Configuracao com o seu bloco na aba Analitos (lote e
 validade herdados do cadastro, linha 2 / B2:D2 / F2:H2; ANO DE REFERENCIA do CLIA em D47:E47 e da Variacao
 Biologica em J47:K47; proximo bloco na linha 56), botao para abrir/recolher cada bloco, e os limites e o
@@ -11,8 +13,8 @@ Sigma de cada lote calculados com a referencia daquele lote.
 
 Idempotente. So:
   1. instala todo o VBA atual das fontes (codigo_atual.py; inclui o mLotesBlocos); EXIGE compilacao;
-  2. Hematologia: so o VBA (fase 2: a Hematologia ainda nao tem a biblioteca anual de especificacoes);
-  3. Bioquimica, MIGRACAO (uma vez): a aba Analitos vira "Especificações" (o motor: catalogo, escolha da fonte,
+  2. sem a biblioteca anual (Hematologia antes do ADR-075): so o VBA;
+  3. MIGRACAO (uma vez): a aba Analitos vira "Especificações" (o motor: catalogo, escolha da fonte,
      biblioteca anual 2025-2029, lote em analise) -- o Excel ajusta sozinho as formulas, nomes e graficos que
      a liam -- e nasce a aba "Analitos" dos blocos, no mesmo lugar;
   4. Especificações: lista de anos da biblioteca (lstAnosEspec), anos em uso do lote em analise (anoCLIAemUso,
@@ -280,11 +282,13 @@ def main(produto, caminho, salvar=True):
         ii.desproteger_tudo(wb)
         ex.xl.Calculation = -4135
         import codigo_atual
-
-        if not produto.startswith('Bio'):
+        nlv = 2 if produto.startswith('Bio') else 3
+        e0 = wb.Worksheets(ii.aba_espec(wb))
+        if str(e0.Range('S3').Value or '').strip().upper() != 'ESPQ FONTE':
+            # Hematologia antes do ADR-075 (sem biblioteca anual nem escolha da fonte): blocos ainda nao
             log('1. VBA (todo o codigo atual das fontes: codigo_atual.py)')
             codigo_atual.instalar(ex, wb, produto, log)
-            log('2. Hematologia: blocos por lote na fase 2 (sem biblioteca anual de especificacoes ainda); so o VBA')
+            log('2. sem a biblioteca anual (ADR-075 nao instalado): blocos por lote nao montados; so o VBA')
         else:
             migrou = migrar(wb)
             if migrou:
@@ -298,7 +302,7 @@ def main(produto, caminho, salvar=True):
             ex.xl.Calculation = -4105
             ex.xl.Calculate()
             ex.esperar()
-            r = ex.run(f"'{wb.Name}'!mLotesBlocos.MontarBlocos", 2, teto=900)
+            r = ex.run(f"'{wb.Name}'!mLotesBlocos.MontarBlocos", nlv, teto=900)
             if not str(r).startswith('OK|'):
                 raise SystemExit(f'MontarBlocos: {r}')
             log(f'4. Analitos: {str(r).split("|")[1]} bloco(s) montado(s)')

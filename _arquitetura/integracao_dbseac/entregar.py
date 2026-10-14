@@ -99,6 +99,7 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('inativar', ['instalar_adr070.py', produto, alvo]),       # ADR-070: Inativar simples + ID no LJ
               ('rodadas_cv', ['instalar_adr071.py', produto, alvo]),     # ADR-071: rodadas do CEQ + Sigma CV pooled
               ('limites_lote', ['instalar_adr073.py', produto, alvo]),   # ADR-073: central de limites por lote
+              ('espec_hema', ['instalar_adr075.py', produto, alvo]),     # ADR-075: Hematologia no modelo da Bioquimica
               ('blocos_lote', ['instalar_adr074.py', produto, alvo]),    # ADR-074: um bloco por lote na aba Analitos
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:

@@ -18,7 +18,7 @@ escolher o lote no Painel, trocar o ano de referencia):
   BH Integridade: nenhum #REF! novo em formulas e nomes; nenhum erro nos blocos; nomes do motor na Especificações
   BI Reabertura: salvar copia, fechar, abrir: blocos, Media/DP, anos e botoes continuam; digitar continua gravando
   BJ Regressao: ETp da Estatistica = ETp em uso do motor; LotesStore integra; arquivo de entrada intacto
-Hematologia: fase 2 (sem biblioteca anual ainda) -- a suite confere que nada mudou para ela.
+Bioquimica e Hematologia (esta depois do ADR-075).
 """
 import datetime as dt
 import json
@@ -128,13 +128,8 @@ def executar(produto, caminho, saida):
     try:
         q.run('mSeguranca.ReprotectAll')                  # sessao de usuario: macros escrevem (UserInterfaceOnly)
         nomes_abas = [w.Name for w in q.wb.Worksheets]
-        if not produto.startswith('Bio'):
-            reg('B00 Hematologia: blocos por lote ficam para a fase 2 (sem biblioteca anual de especificações); a aba '
-                'Analitos continua sendo a do motor e nenhuma Especificações foi criada',
-                'Especificações' not in nomes_abas and 'Analitos' in nomes_abas
-                and not q.run('mLotesBlocos.BlocosAtivos', teto=60),
-                {'abas': [a for a in nomes_abas if a in ('Analitos', 'Especificações')]})
-            return
+        # media/DP do grafico no Calc: Bioquimica AX1/AY1 (N1), AZ1/BA1 (N2); Hematologia BT1/BU1, BV1/BW1
+        cel_md = ('AX1', 'AY1', 'AZ1', 'BA1') if produto.startswith('Bio') else ('BT1', 'BU1', 'BV1', 'BW1')
         b, e, p = q.ws('Analitos'), q.espec(), q.ws('Painel')
         eq = str(q.run('mEstatistica.EquipFiltro', teto=60) or '').strip().upper()
         rows = q.ler('tblCQ_Final')
@@ -206,7 +201,7 @@ def executar(produto, caminho, saida):
         # ------------------------------------------------------------ BC graficos
         selecionar_lote(q, loteX, i_an + 1)
         c = q.ws('Calc')
-        ax = [c.Range(x).Value for x in ('AX1', 'AY1', 'AZ1', 'BA1')]
+        ax = [c.Range(x).Value for x in cel_md]
         v1, v2 = linhas_calc(q)
         lin1 = [l for l in v1 if num(l[3])]
         lin2 = [l for l in v2 if num(l[3])]
@@ -216,7 +211,7 @@ def executar(produto, caminho, saida):
         ok2 = bool(lin2) and all(all(perto(a, e_) for a, e_ in zip(l, exp2)) for l in lin2)
         st7 = [str(p.Range(x).Value or '') for x in ('J7', 'J8')]
         selecionar_lote(q, lote0, i_an + 1)
-        ax0 = [c.Range(x).Value for x in ('AX1', 'AY1', 'AZ1', 'BA1')]
+        ax0 = [c.Range(x).Value for x in cel_md]
         reg('BC Gráficos: com o lote X no Painel, média e DP do gráfico (Calc AX1/AY1, AZ1/BA1) e as 7 linhas de cada '
             'nível (-3DP..+3DP) são as do lote X; de volta ao 1º lote, as dele',
             perto(ax[0], mX[0]) and perto(ax[1], sX[0]) and perto(ax[2], mX[1]) and perto(ax[3], sX[1])
@@ -227,7 +222,7 @@ def executar(produto, caminho, saida):
 
         # ------------------------------------------------------------ BD ausentes
         selecionar_lote(q, loteY, i_an + 1)
-        axY = [c.Range(x).Value for x in ('AX1', 'AY1', 'AZ1', 'BA1')]
+        axY = [c.Range(x).Value for x in cel_md]
         v1, _ = linhas_calc(q)
         sem_linha = all(not num(l[3]) for l in v1)
         stY = [str(p.Range(x).Value or '') for x in ('J7', 'J8')]

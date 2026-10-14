@@ -39,9 +39,10 @@ agendada atualiza a cada 2 minutos.
    - **CONFLITO_MANUAL** = o mesmo resultado já veio pelo interfaceamento. O manual fica guardado, fora do cálculo.
      Manual **nunca** substitui automático.
 
-## 4. Especificação do ETp (aba Analitos)
+## 4. Especificação do ETp (Bioquímica: aba Especificações · Hematologia: aba Analitos)
 
-- **Bioquímica:** a coluna S escolhe a especificação de cada analito:
+- **Bioquímica:** a antiga aba Analitos agora se chama **Especificações** (catálogo, fonte, biblioteca anual CLIA/VB/FAB
+  nas linhas 46–89). A coluna S escolhe a especificação de cada analito:
   - **CLIA** usa a coluna K;
   - **VB** (variação biológica: CVI e CVG nas colunas O e P, desempenho na Q) usa a coluna R;
   - **FAB** usa a coluna M.
@@ -49,7 +50,25 @@ agendada atualiza a cada 2 minutos.
   A coluna T mostra o ETp em uso. "-" = especificação não cadastrada, e nesse caso o Sigma fica "-".
 - **Hematologia:** a fonte segue a prioridade ETp configurado (P) → CLIA → VB, e a coluna Q mostra qual valeu.
 
-## 4b. Média/DP e limites de cada lote (aba Analitos)
+## 4b. Média/DP e limites de cada lote
+
+### Bioquímica: aba Analitos, um bloco por lote (ADR-074)
+
+- **Um bloco por lote do cadastro.** Lote e validade vêm da Configuração; lote novo ganha o bloco sozinho.
+- **Abrir e recolher:**
+  - ▼/▶ abre ou recolhe um bloco;
+  - na linha 1, **Abrir todos** e **Recolher todos**;
+  - **Lote em análise ▸** vai ao bloco do lote do Painel.
+- **Média/DP:** digite nas células amarelas (E:J) do bloco do lote. Grava na hora, com trilha.
+  - Os limites (Média ± 1, 2 e 3 DP), o CV, o ET e o Sigma do lote aparecem ao lado.
+  - O gráfico do Painel usa esses valores quando o lote é escolhido em H3.
+  - O botão **Preencher vazios pelo CIQ (20 primeiros)** do bloco calcula só o que está vazio.
+- **Ano de referência:** abaixo da tabela de cada bloco ficam o **CLIA** (D:E) e a **Variação Biológica** (J:K).
+  - O ano escolhe as especificações do bloco e, com elas, o ETp, o ET e o Sigma daquele lote.
+  - Lote novo nasce com o **ano padrão** (Especificações S2).
+  - A troca de ano fica na trilha de auditoria.
+
+### Hematologia: aba Analitos (até a fase 2)
 
 - **Escolher o lote:** escolha o lote em **J1 (LOTE EM EDIÇÃO)** ou no Painel (H3); os dois são o mesmo. O resumo ao
   lado diz se o lote tem Média/DP, quando foi registrado, por quem e com qual especificação.
@@ -89,7 +108,8 @@ ficou sem Sigma.
 
 - **CEQ:** digite cada rodada nas abas EQA.CAP_Dados / EQA.Controllab_Dados, com o **DP do grupo e o nº de
   laboratórios** de cada amostra. Sem esses dois campos, a incerteza não sai.
-- **Cadastro (aba Analitos):** ETp, CVI e CVG de analito novo; **Média/DP de cada lote novo** (seção 4b).
+- **Cadastro:** ETp, CVI e CVG de analito novo e da biblioteca de cada ano (Bioquímica: aba Especificações);
+  **Média/DP e anos de referência de cada lote novo** (seção 4b).
 - **Investigação do CV:** revisar os IDs de `estudos/cv_suspeitos_<produto>.csv` (relatório
   `estudos/CV_INVESTIGACAO_2026-10-13.md`) e inativar os não conformes com motivo.
 
