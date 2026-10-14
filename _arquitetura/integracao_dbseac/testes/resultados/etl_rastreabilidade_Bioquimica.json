@@ -1,6 +1,6 @@
 {
  "produto": "Bioquimica",
- "gerado_em": "2026-10-13T18:48:52",
+ "gerado_em": "2026-10-14T18:49:35",
  "nota": "Só os IDs dos cenários do qa_etl e uma amostra fixa (semente 57) -- nunca a base inteira.",
  "recorte_estatistica": {
   "produto": "Bioquimica",
@@ -1178,7 +1178,7 @@
    "CENARIOS": []
   },
   {
-   "ID": "BIO-365294",
+   "ID": "BIO-366170",
    "ORIGEM": "INTERFACEAMENTO",
    "NO_RECEBIMENTO": true,
    "LINHA_MANUAL": null,
@@ -1190,7 +1190,7 @@
    "STATUS": "INATIVADO",
    "PARTICIPA": "NÃO",
    "TIPO_PLOTAGEM": "X_VERMELHO",
-   "RUN": 26100904,
+   "RUN": 26101309,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",

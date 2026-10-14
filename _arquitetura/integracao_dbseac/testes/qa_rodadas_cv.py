@@ -511,6 +511,13 @@ def foto_de_arquivo(produto, original, pasta):
 
 
 # ------------------------------------------------------------------ testes
+def motor_neutro(f):
+    """ADR-074: a aba do motor mudou de nome (Analitos -> Especificações) e o Excel reescreveu as referencias.
+    Renomear a aba nao e mudar a formula: as duas viram o mesmo token antes de comparar."""
+    import re
+    return re.sub(r"'?(?:Analitos|Especificações)'?!", 'MOTOR!', str(f))
+
+
 def r00_foto(q, e, ult, foto_antes, orc, prov_de, motivo_sem=None):
     if not foto_antes:
         if motivo_sem == 'pulado':
@@ -559,7 +566,7 @@ def r00_foto(q, e, ult, foto_antes, orc, prov_de, motivo_sem=None):
         for c in COLS_IGUAIS:
             if c in fora:
                 continue
-            if f0 is not None and i < len(f0) and str(f0[i][ci(c)]) != str(f_agora[i][ci(c)]):
+            if f0 is not None and i < len(f0) and motor_neutro(f0[i][ci(c)]) != motor_neutro(f_agora[i][ci(c)]):
                 formula_mudou[c] = formula_mudou.get(c, 0) + 1
                 continue
             if (i, c) in documentada:
