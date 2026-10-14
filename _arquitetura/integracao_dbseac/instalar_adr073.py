@@ -69,7 +69,7 @@ def nome(wb, nm, ref):
 
 
 def cabecalho_analitos(wb):
-    a = wb.Worksheets('Analitos')
+    a = wb.Worksheets(ii.aba_espec(wb))
     p = wb.Worksheets('Painel')
     fim = a.Range('A1').MergeArea.Column + a.Range('A1').MergeArea.Columns.Count - 1
     if str(a.Range('I1').Value or '').upper().startswith('LOTE EM EDI'):
@@ -95,7 +95,7 @@ def cabecalho_analitos(wb):
     v.Add(3, 1, 1, f1)
     v.InputTitle = 'Lote em edição'
     v.InputMessage = 'Escolha o lote: as colunas Média/DP (E:J) passam a ser as dele. É o mesmo lote do Painel (H3).'
-    nome(wb, 'loteEdicao', "='Analitos'!$J$1")
+    nome(wb, 'loteEdicao', f"='{a.Name}'!$J$1")
     sel.Value = str(wb.Names('loteParam').RefersToRange.Value or '')
     res = a.Range(a.Cells(1, 11), a.Cells(1, fim))
     res.Merge()
@@ -105,7 +105,7 @@ def cabecalho_analitos(wb):
     res.WrapText = True
     res.HorizontalAlignment = -4131
     res.VerticalAlignment = -4108
-    nome(wb, 'loteResumo', f"='Analitos'!$K$1:${col(fim)}$1")
+    nome(wb, 'loteResumo', f"='{a.Name}'!$K$1:${col(fim)}$1")
     if a.Rows(1).RowHeight < 30:
         a.Rows(1).RowHeight = 30
     # nota da linha 2 aponta o seletor
@@ -140,7 +140,7 @@ def lotesstore(wb):
         ws.Columns(C_Q + j).ColumnWidth = 22 if h in ('ORIGEM', 'REGISTRADO_EM') else 13
     ws.Columns(C_Q + 4).NumberFormat = 'dd/mm/yyyy hh:mm'
     # retrato nas linhas que ja tem Media/DP e ainda nao tem (anteriores ao ADR-073)
-    a = wb.Worksheets('Analitos')
+    a = wb.Worksheets(ii.aba_espec(wb))
     cF = achar(a, 3, ['ESPQ FONTE', 'ETP FONTE'])
     cE = achar(a, 3, ['ETP EM USO', 'ETP FINAL'])
     cC = achar(a, 3, ['CVTP%', 'CVTP %'])
@@ -195,7 +195,7 @@ def lotesstore(wb):
 
 def fumaca(wb, fim):
     ruins = []
-    a = wb.Worksheets('Analitos')
+    a = wb.Worksheets(ii.aba_espec(wb))
     for n in ('loteEdicao', 'loteResumo', 'loteParam'):
         try:
             wb.Names(n).RefersToRange
@@ -252,8 +252,8 @@ def main(produto, caminho, salvar=True):
         res = fumaca(wb, fim)
         log(f'4. fumaca OK: {res[:140]}')
         try:
-            wb.Worksheets('Analitos').Activate()
-            wb.Worksheets('Analitos').Range('A1').Select()
+            wb.Worksheets(ii.aba_espec(wb)).Activate()
+            wb.Worksheets(ii.aba_espec(wb)).Range('A1').Select()
         except Exception:
             pass
 

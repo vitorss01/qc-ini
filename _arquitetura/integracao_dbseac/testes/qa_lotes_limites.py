@@ -92,7 +92,7 @@ def executar(produto, caminho, saida):
     wb = q.wb
     try:
         q.run('mSeguranca.ReprotectAll')               # sessao de usuario: macros escrevem (UserInterfaceOnly)
-        a = q.ws('Analitos')
+        a = q.espec()                                  # ADR-074: o motor (antes Analitos)
         p = q.ws('Painel')
         eq = str(q.run('mEstatistica.EquipFiltro', teto=60) or '').strip().upper()
         rows = q.ler('tblCQ_Final')

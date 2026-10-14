@@ -43,7 +43,8 @@ Private Const LS_C_IDX As Long = 2            ' B  posicao do analito (legado, i
 Private Const LS_C_MED1 As Long = 3           ' C..H = Med/DP N1, N2, N3
 Private Const LS_C_NOME As Long = 15          ' O  analito
 Private Const LS_C_CHAVE As Long = 16         ' P  LOTE|ANALITO
-Private Const AN_ABA As String = "Analitos"
+Private Const AN_ABA As String = "Analitos"          ' antes do ADR-074; depois, "Especificações" (AbaEspec)
+Private Const ESP_ABA As String = "Especificações"   ' ADR-074: o motor (catalogo, biblioteca anual, lote em analise)
 Private Const AN_R0 As Long = 4
 Private Const AN_C_MED1 As Long = 5           ' Analitos!E
 
@@ -127,6 +128,22 @@ End Sub
 Private Function LoteParamTela() As String
     On Error Resume Next
     LoteParamTela = Trim$(CStr(ThisWorkbook.Names("loteParam").RefersToRange.Value))
+End Function
+
+' Lote cujos Media/DP estao na tela do motor (loteParam). Publico para a aba de blocos (ADR-074).
+Public Function LoteEmTela() As String
+    LoteEmTela = LoteParamTela()
+End Function
+
+' ADR-074: a aba do MOTOR (catalogo, biblioteca anual de especificacoes, lote em analise) chama
+' "Especificações" depois da migracao; a aba "Analitos" passou a ser a dos blocos por lote.
+' Antes da migracao (ou na Hematologia ainda nao migrada) o motor continua sendo a "Analitos".
+Public Function AbaEspec() As String
+    Dim ws As Object
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets(ESP_ABA)
+    On Error GoTo 0
+    If ws Is Nothing Then AbaEspec = AN_ABA Else AbaEspec = ESP_ABA
 End Function
 
 ' ============================ LEITURA (fonte unica) ============================
@@ -228,7 +245,7 @@ Public Sub SalvarParametrosView(ByVal lote As String)
     Dim prot As Boolean, antes As Variant, mudou As Boolean, esp As Variant, criada As Boolean
     lote = Trim$(lote)
     If lote = "" Then Exit Sub
-    Set wa = ThisWorkbook.Sheets(AN_ABA)
+    Set wa = ThisWorkbook.Sheets(AbaEspec())
     Set ws = ThisWorkbook.Sheets(LS_ABA)
     nomes = wa.Range(wa.Cells(AN_R0, 1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, 1)).Value
     vw = wa.Range(wa.Cells(AN_R0, AN_C_MED1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, AN_C_MED1 + 5)).Value
@@ -296,13 +313,99 @@ restaura:
     If nE <> 0 Then Err.Raise nE, "mLotes.SalvarParametrosView", sE
 End Sub
 
+' ADR-074: grava UM valor (j = 1..6: Media N1, DP N1, Media N2, DP N2, Media N3, DP N3) do lote x analito
+' direto na LotesStore, pela chave -- o caminho dos blocos da aba Analitos e do preenchimento pelo CIQ.
+' Cria a linha so quando ha valor. esp = Array(fonte, anos, ETp, CVTp): o retrato da especificacao do
+' lote, gravado com quem/quando/origem quando o valor muda. Devolve o valor ANTERIOR (Empty se nao havia).
+Public Function GravarParametroStore(ByVal lote As String, ByVal analito As String, ByVal j As Long, _
+                                     ByVal valor As Variant, ByVal esp As Variant, ByVal origem As String) As Variant
+    Dim ws As Worksheet, idx As Object, ult As Long, k As String, r As Long, prot As Boolean, antes As Variant
+    Dim nE As Long, sE As String
+    lote = Trim$(lote): analito = Trim$(analito)
+    GravarParametroStore = Empty
+    If lote = "" Or analito = "" Or j < 1 Or j > 6 Then Exit Function
+    If Len(Trim$(CStr(valor))) = 0 Then valor = Empty
+    Set ws = ThisWorkbook.Sheets(LS_ABA)
+    Set idx = IndiceStore(ws, ult)
+    k = ChaveLote(lote, analito)
+    If idx.Exists(k) Then r = idx(k)
+    If r = 0 Then
+        If IsEmpty(valor) Then Exit Function                    ' apagar o que nao existe: nada a fazer
+        r = ult + 1
+        If r > LS_R0 + LS_CAPLINHAS - 1 Then
+            Err.Raise vbObjectError + 491, "mLotes.GravarParametroStore", _
+                "LotesStore cheia (" & LS_CAPLINHAS & " linhas). Ampliar LS_CAPLINHAS e os nomes ls*."
+        End If
+    Else
+        antes = ws.Cells(r, LS_C_MED1 + j - 1).Value
+        If IsError(antes) Then antes = Empty
+    End If
+    GravarParametroStore = antes
+    On Error GoTo restaura
+    prot = LiberarEscrita(ws)
+    ws.Cells(r, LS_C_LOTE).NumberFormat = "@"               ' "010" fica "010"
+    ws.Cells(r, LS_C_LOTE).Value = lote
+    ws.Cells(r, LS_C_IDX).Value = IndiceAnalito(analito)
+    ws.Cells(r, LS_C_NOME).Value = analito
+    ws.Cells(r, LS_C_CHAVE).Value = k
+    ws.Cells(r, LS_C_MED1 + j - 1).Value = valor
+    If CStr(antes) <> CStr(valor) Then
+        If IsArray(esp) Then
+            ws.Cells(r, LS_C_FONTE).Value = esp(0)
+            ws.Cells(r, LS_C_ANO).Value = esp(1)
+            ws.Cells(r, LS_C_ETP).Value = esp(2)
+            ws.Cells(r, LS_C_CVTP).Value = esp(3)
+        End If
+        ws.Cells(r, LS_C_QUANDO).Value = Now
+        ws.Cells(r, LS_C_QUEM).Value = mAuditoria.UsuarioSistema()
+        ws.Cells(r, LS_C_ORIGEM).Value = origem
+    End If
+restaura:
+    nE = Err.Number: sE = Err.Description
+    RestaurarProtecao ws, prot
+    InvalidarLotes
+    If nE <> 0 Then Err.Raise nE, "mLotes.GravarParametroStore", sE
+End Function
+
+' ADR-074: a referencia do lote mudou (ano CLIA/VB no bloco). Atualiza so o retrato (fonte, anos, ETp,
+' CVTp) da linha que TEM Media/DP; quem e quando dos valores ficam. A mudanca em si vai para a trilha.
+Public Sub AtualizarRetratoStore(ByVal lote As String, ByVal analito As String, ByVal esp As Variant)
+    Dim ws As Worksheet, idx As Object, ult As Long, r As Long, j As Long, tem As Boolean, prot As Boolean
+    If Not IsArray(esp) Then Exit Sub
+    Set ws = ThisWorkbook.Sheets(LS_ABA)
+    Set idx = IndiceStore(ws, ult)
+    If Not idx.Exists(ChaveLote(lote, analito)) Then Exit Sub
+    r = idx(ChaveLote(lote, analito))
+    For j = 0 To 5
+        If NumeroValido(ws.Cells(r, LS_C_MED1 + j).Value) Then tem = True
+    Next j
+    If Not tem Then Exit Sub
+    On Error Resume Next
+    prot = LiberarEscrita(ws)
+    ws.Cells(r, LS_C_FONTE).Value = esp(0)
+    ws.Cells(r, LS_C_ANO).Value = esp(1)
+    ws.Cells(r, LS_C_ETP).Value = esp(2)
+    ws.Cells(r, LS_C_CVTP).Value = esp(3)
+    RestaurarProtecao ws, prot
+    InvalidarLotes
+End Sub
+
+' Posicao do analito no catalogo (aba do motor, A4:A43); 0 se nao esta.
+Private Function IndiceAnalito(ByVal analito As String) As Long
+    Dim v As Variant
+    On Error Resume Next
+    v = Application.Match(analito, ThisWorkbook.Sheets(AbaEspec()).Range(ThisWorkbook.Sheets(AbaEspec()).Cells(AN_R0, 1), _
+                          ThisWorkbook.Sheets(AbaEspec()).Cells(AN_R0 + CAP_ANALITOS - 1, 1)), 0)
+    If Not IsError(v) Then IndiceAnalito = CLng(v)
+End Function
+
 ' Carrega na tela os parametros do lote. Sem parametro, a celula fica VAZIA --
 ' nunca a do lote anterior.
 Public Sub CarregarParametrosView(ByVal lote As String)
     Dim wa As Worksheet, nomes As Variant, outp() As Variant
     Dim i As Long, j As Long, r As Long, nm As String, k As String, prot As Boolean
     lote = Trim$(lote)
-    Set wa = ThisWorkbook.Sheets(AN_ABA)
+    Set wa = ThisWorkbook.Sheets(AbaEspec())
     GarantirLotes
     nomes = wa.Range(wa.Cells(AN_R0, 1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, 1)).Value
     ReDim outp(1 To CAP_ANALITOS, 1 To 6)
@@ -381,6 +484,7 @@ Public Sub SincronizarLotesAoAbrir()
         CarregarParametrosView LotePainel()
     End If
     InvalidarLotes
+    mLotesBlocos.SincronizarBlocos          ' ADR-074: lote cadastrado sem bloco ganha o seu
 End Sub
 
 ' ============================ EDICAO DE PARAMETRO ============================
@@ -390,7 +494,7 @@ Public Sub ParametroEditado(ByVal Target As Range)
     Dim wa As Worksheet, zona As Range, c As Range, lote As String
     Dim an As String, nv As Long, campo As String, antes As Object, a As Variant
     Dim ev As Boolean, invalidos As String
-    Set wa = ThisWorkbook.Sheets(AN_ABA)
+    Set wa = ThisWorkbook.Sheets(AbaEspec())
     Set zona = Intersect(Target, wa.Range("E4:J43"))
     If zona Is Nothing Then Exit Sub
     lote = LoteParamTela()
@@ -853,6 +957,7 @@ Public Function RegistrarLotesRecebidos() As String
         End If
     Next i
     If Len(fora) > 0 Then mAuditoria.RegistrarLog "LOTE_NAO_CADASTRADO", "Cadastro cheio (100 lotes): " & fora
+    If nGrav > 0 Then mLotesBlocos.SincronizarBlocos      ' ADR-074: cada lote novo ganha o seu bloco na aba Analitos
     On Error GoTo 0
     InvalidarLotes
     RegistrarLotesRecebidos = "OK|" & nGrav & "|" & gravados & "|" & fora
@@ -1029,9 +1134,19 @@ Private Function EspecDaLinha(ByVal wa As Worksheet, ByVal linha As Long) As Var
     EspecDaLinha = Array(IIf(fonte = "", "-", fonte), ano, etp, cv)
 End Function
 
-' Ano da referencia: a celula a direita de "ESPECIFICACOES DO ANO" (Bioquimica). Sem ela, "-".
+' Ano da referencia. ADR-074: os anos CLIA e VB do lote em analise (nomes anoCLIAemUso/anoVBemUso, que
+' leem o bloco do lote na aba Analitos). Antes da migracao: a celula a direita de "ESPECIFICACOES DO ANO"
+' (Bioquimica). Sem nenhum dos dois, "-".
 Private Function AnoEspecificacao(ByVal wa As Worksheet) As Variant
-    Dim j As Long
+    Dim j As Long, a As Variant, b As Variant
+    a = CVErr(xlErrNA): b = CVErr(xlErrNA)
+    On Error Resume Next
+    a = wa.Evaluate("anoCLIAemUso")
+    b = wa.Evaluate("anoVBemUso")
+    On Error GoTo 0
+    If Not IsError(a) And Not IsError(b) Then
+        If Len(Trim$(CStr(a))) > 0 Then AnoEspecificacao = "CLIA " & CStr(a) & " · VB " & CStr(b): Exit Function
+    End If
     AnoEspecificacao = "-"
     For j = 1 To 40
         If UCase$(Trim$(CStr(wa.Cells(2, j).Value))) Like "ESPECIFICA*DO ANO*" Then
@@ -1087,7 +1202,7 @@ Public Function RegistroLote(ByVal lote As Variant) As String
     l = Trim$(CStr(lote))
     If l = "" Then RegistroLote = "Escolha o lote ao lado.": Exit Function
     GarantirLotes
-    Set wa = ThisWorkbook.Sheets(AN_ABA)
+    Set wa = ThisWorkbook.Sheets(AbaEspec())
     nomes = wa.Range(wa.Cells(AN_R0, 1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, 1)).Value
     Set fontes = CreateObject("Scripting.Dictionary")
     Set origens = CreateObject("Scripting.Dictionary")
@@ -1154,15 +1269,23 @@ Public Sub PreencherVaziosPeloCIQ()
            vbCrLf & "Revise os valores na aba Analitos.", vbInformation
 End Sub
 
-' Nucleo do preenchimento (sem caixas de dialogo: testavel por automacao). "OK|preenchidos|sem dado" ou "ERRO|msg".
+' Nucleo do preenchimento do lote EM TELA (loteParam), sem dialogo: "OK|preenchidos|sem dado" ou "ERRO|msg".
 Public Function PreencherVaziosCIQ() As String
-    Dim lote As String, wa As Worksheet, dados As Variant, i As Long, j As Long, eq As String
-    Dim nomes As Variant, vw As Variant, k As String, acc As Object, nv As Long
-    Dim cont As Long, falta As Long, m As Double, s As Double, ev As Boolean, prot As Boolean
-    lote = LoteParamTela()
-    If lote = "" Then PreencherVaziosCIQ = "ERRO|nenhum lote em edicao": Exit Function
+    If LoteParamTela() = "" Then PreencherVaziosCIQ = "ERRO|nenhum lote em edicao": Exit Function
+    PreencherVaziosCIQ = PreencherVaziosCIQLote(LoteParamTela())
+End Function
+
+' ADR-074: o mesmo preenchimento para QUALQUER lote (botao de cada bloco da aba Analitos). Decide o que
+' esta vazio pela LotesStore (nao pela tela) e grava direto nela, par a par (Media e DP do nivel), com o
+' retrato da especificacao do BLOCO do lote (sem bloco: a da aba do motor).
+Public Function PreencherVaziosCIQLote(ByVal lote As String) As String
+    Dim wa As Worksheet, dados As Variant, i As Long, j As Long, eq As String, an As String
+    Dim nomes As Variant, k As String, acc As Object, nv As Long, esp As Variant, origem As String
+    Dim cont As Long, falta As Long, m As Double, s As Double
+    lote = Trim$(lote)
+    If lote = "" Then PreencherVaziosCIQLote = "ERRO|lote vazio": Exit Function
     On Error GoTo falha
-    Set wa = ThisWorkbook.Sheets(AN_ABA)
+    Set wa = ThisWorkbook.Sheets(AbaEspec())
     eq = UCase$(Trim$(mEstatistica.EquipFiltro()))
     dados = mDados.CarregarDB()
     Set acc = CreateObject("Scripting.Dictionary")           ' "ANALITO|NIVEL" -> Collection de Array(run, ordem, valor)
@@ -1181,17 +1304,25 @@ Public Function PreencherVaziosCIQ() As String
 prox:
         Next i
     End If
+    origem = "CIQ: " & N_CIQ_ALVO & " primeiros resultados" & IIf(Len(eq) > 0, " (" & eq & ")", "")
     nomes = wa.Range(wa.Cells(AN_R0, 1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, 1)).Value
-    vw = wa.Range(wa.Cells(AN_R0, AN_C_MED1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, AN_C_MED1 + 5)).Value
     For i = 1 To CAP_ANALITOS
-        If Trim$(CStr(nomes(i, 1))) <> "" Then
+        an = Trim$(CStr(nomes(i, 1)))
+        If an <> "" Then
+            esp = Empty
             For nv = 1 To 3
                 j = (nv - 1) * 2 + 1
-                If Len(Trim$(CStr(vw(i, j)))) = 0 And Len(Trim$(CStr(vw(i, j + 1)))) = 0 Then
-                    k = UCase$(Trim$(CStr(nomes(i, 1)))) & "|" & nv
+                If Len(Trim$(CStr(ValorNaStore(lote, an, j)))) = 0 And Len(Trim$(CStr(ValorNaStore(lote, an, j + 1)))) = 0 Then
+                    k = UCase$(an) & "|" & nv
                     If acc.Exists(k) Then
                         If PrimeirosN(acc(k), N_CIQ_ALVO, m, s) Then
-                            vw(i, j) = m: vw(i, j + 1) = s: cont = cont + 1
+                            If IsEmpty(esp) Then
+                                esp = mLotesBlocos.EspecDoLote(lote, an)
+                                If IsEmpty(esp) Then esp = EspecDaLinha(wa, AN_R0 + i - 1)
+                            End If
+                            GravarParametroStore lote, an, j, m, esp, origem
+                            GravarParametroStore lote, an, j + 1, s, esp, origem
+                            cont = cont + 1
                         Else
                             falta = falta + 1
                         End If
@@ -1201,29 +1332,20 @@ prox:
         End If
     Next i
     If cont > 0 Then
-        ev = Application.EnableEvents
-        Application.EnableEvents = False
-        prot = LiberarEscrita(wa)
-        wa.Range(wa.Cells(AN_R0, AN_C_MED1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, AN_C_MED1 + 5)).Value = vw
-        RestaurarProtecao wa, prot
-        Application.EnableEvents = ev
-        mOrigemGravacao = "CIQ: " & N_CIQ_ALVO & " primeiros resultados" & IIf(Len(eq) > 0, " (" & eq & ")", "")
-        SalvarParametrosView lote
-        mOrigemGravacao = ""
         mAuditoria.Auditar mAuditoria.CAT_CONFIG, "PARAMETRO_LOTE_CALCULADO", "mLotes", _
             0, Empty, "", lote, 0, "", "", cont & " par(es) analito/nivel", "", "", "Media/DP", _
             "Media/DP VAZIOS do lote " & lote & " preenchidos pelos " & N_CIQ_ALVO & " primeiros resultados do CIQ" & _
             IIf(Len(eq) > 0, " em " & eq, "") & " (" & cont & " par(es); " & falta & " com menos de " & N_CIQ_ALVO & ")."
+        InvalidarLotes
+        If StrComp(lote, LoteParamTela(), vbTextCompare) = 0 Then CarregarParametrosView lote   ' a tela do motor acompanha
         mEstatistica.InvalidarParametros
         mEstatistica.RecalcularAnalitoAtual
     End If
     AtualizarResumoLote
-    PreencherVaziosCIQ = "OK|" & cont & "|" & falta
+    PreencherVaziosCIQLote = "OK|" & cont & "|" & falta
     Exit Function
 falha:
-    PreencherVaziosCIQ = "ERRO|" & Err.Description
-    mOrigemGravacao = ""
-    Application.EnableEvents = True
+    PreencherVaziosCIQLote = "ERRO|" & Err.Description
 End Function
 
 ' Media e DP (amostral) dos n PRIMEIROS da colecao, na ordem (RUN, linha). False com menos de n.

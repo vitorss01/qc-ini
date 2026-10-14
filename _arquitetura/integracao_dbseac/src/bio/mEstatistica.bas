@@ -213,7 +213,7 @@ Private Sub GarantirDB()
     If Not mDBok Then
         mDB = CarregarDB()
         ' snapshots em bloco — uma leitura por aba, nunca celula a celula
-        Set wsG = ThisWorkbook.Sheets("Analitos")
+        Set wsG = ThisWorkbook.Sheets(mLotes.AbaEspec())
         mAnal = wsG.Range(wsG.Cells(AR0, 1), wsG.Cells(ARN, 20)).Value  ' A..T
         Set mIdxAnal = CreateObject("Scripting.Dictionary")
         mIdxAnal.CompareMode = 1
@@ -327,7 +327,7 @@ Private Function ColunaEtpEmUso() As Long
     Static c As Long
     Dim ws As Worksheet, j As Long, s As String
     If c > 0 Then ColunaEtpEmUso = c: Exit Function
-    Set ws = ThisWorkbook.Sheets("Analitos")
+    Set ws = ThisWorkbook.Sheets(mLotes.AbaEspec())
     For j = 1 To 20
         s = UCase$(Replace(Trim$(CStr(ws.Cells(3, j).Value)), "  ", " "))
         If Left$(s, 10) = "ETP EM USO" Then c = j: Exit For
@@ -1744,7 +1744,7 @@ Public Sub AtualizarEstatisticaAba()
     Dim protEstava As Boolean
 
     Set ws = ThisWorkbook.Sheets("Estatística")
-    Set wa = ThisWorkbook.Sheets("Analitos")
+    Set wa = ThisWorkbook.Sheets(mLotes.AbaEspec())
     Set eng = ThisWorkbook.Sheets("Eng_Saida")
 
     Dim visao As String
@@ -2365,7 +2365,7 @@ End Sub
 Public Sub GravarProvedorAnalito(ByVal nomeAnalito As String, ByVal provedor As String)
     Dim wa As Worksheet, i As Long
     If Trim$(nomeAnalito) = "" Then Exit Sub
-    Set wa = ThisWorkbook.Sheets("Analitos")
+    Set wa = ThisWorkbook.Sheets(mLotes.AbaEspec())
     For i = 4 To 43
         If UCase$(Trim$(CStr(wa.Cells(i, 1).Value))) = UCase$(Trim$(nomeAnalito)) Then
             wa.Cells(i, 44).Value = provedor

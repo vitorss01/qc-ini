@@ -124,7 +124,7 @@ def executar(produto, caminho, saida):
         import collections
         cont = collections.Counter(r['ANALITO'] for r in fin0.values() if str(r['LOTE']) == lote_an
                                    and r['PARTICIPA_ESTATISTICA'] == SIM and (eq_pai is None or r['EQUIPAMENTO'] == eq_pai))
-        cadastro = [str(v[0] or '').strip() for v in q.ws('Analitos').Range('A4:A43').Value]
+        cadastro = [str(v[0] or '').strip() for v in q.espec().Range('A4:A43').Value]
         an_top = next((a for a, _ in cont.most_common() if a in cadastro), None)
         dts = [r['DATA'] for r in fin0.values() if str(r['LOTE']) == lote_an and r['PARTICIPA_ESTATISTICA'] == SIM
                and (eq_pai is None or r['EQUIPAMENTO'] == eq_pai) and r['ANALITO'] == an_top]

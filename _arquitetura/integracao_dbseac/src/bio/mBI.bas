@@ -200,7 +200,7 @@ Public Sub AtualizarBIData()
     Dim produto As String, workbookID As String, versaoContrato As String
     Dim atualizadoUTC As Date, fonteArquivo As String, usuarioAtual As String
 
-    Set wsA = ThisWorkbook.Sheets("Analitos")
+    Set wsA = ThisWorkbook.Sheets(mLotes.AbaEspec())
     Set ws = GarantirAba()
     produto = ValorNomeBI("biProduto")
     workbookID = ValorNomeBI("biWorkbookID")

@@ -221,7 +221,7 @@ def sigma_esperado(e, linhas, etp_cad, esp):
 def executar(produto, caminho, saida):
     q = QA(produto, caminho)
     e = q.wb.Worksheets('Estatística')
-    a = q.wb.Worksheets('Analitos')
+    a = q.espec()
     p = q.wb.Worksheets('Painel')
     bio = produto.startswith('Bio')
     try:

@@ -1,19 +1,13 @@
 Option Explicit
-' Aba Analitos -- a central de referencia, especificacoes e LIMITES POR LOTE.
-' E4:J43 (Media/DP do lote em edicao) -> gravados NA HORA na LotesStore, com trilha (ADR-049)
-' e com o retrato da especificacao vigente (ADR-073).
-' loteEdicao (seletor ao lado do titulo) -> escolher aqui = escolher no Painel (H3) (ADR-073).
+' Aba Analitos (ADR-074) -- UM BLOCO POR LOTE: Media/DP de cada nivel (E:J das linhas de analito, gravados
+' na hora na LotesStore, com trilha), limites de controle, anos de referencia CLIA/VB (linha ANO DE
+' REFERENCIA de cada bloco) e as especificacoes, ET e Sigma do lote. Ver mLotesBlocos.
 Private Sub Worksheet_Change(ByVal Target As Range)
-    Dim sel As Range
+    mLotesBlocos.BlocoEditado Target
+End Sub
+
+' Lote cadastrado depois da ultima visita ganha o seu bloco (barato quando nao ha nada a fazer).
+Private Sub Worksheet_Activate()
     On Error Resume Next
-    Set sel = ThisWorkbook.Names("loteEdicao").RefersToRange
-    On Error GoTo 0
-    If Not sel Is Nothing Then
-        If Not Intersect(Target, sel) Is Nothing Then
-            mLotes.LoteEdicaoMudou
-            Exit Sub
-        End If
-    End If
-    If Intersect(Target, Me.Range("E4:J43")) Is Nothing Then Exit Sub
-    mLotes.ParametroEditado Target
+    mLotesBlocos.SincronizarBlocos
 End Sub

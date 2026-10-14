@@ -138,7 +138,7 @@ def plano(wb, nlv):
 
 
 def fumaca(wb, e, ult, produto):
-    a = wb.Worksheets('Analitos')
+    a = wb.Worksheets(ii.aba_espec(wb))
     sem, com, ruins = [], 0, []
     for r in range(LIN_TAB, ult + 1):
         an = e.Range(f'A{r}').Value

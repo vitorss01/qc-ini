@@ -88,6 +88,15 @@ def sheet(wb, n):
     return None
 
 
+ESPEC = 'Especificações'
+
+
+def aba_espec(wb):
+    """ADR-074: nome da aba do MOTOR (catalogo de analitos, especificacoes, lote em analise). Depois da migracao
+    e 'Especificações' (a 'Analitos' passou a ser a dos blocos por lote); antes dela, 'Analitos'."""
+    return ESPEC if sheet(wb, ESPEC) is not None else 'Analitos'
+
+
 def desproteger_tudo(wb):
     try:
         wb.Unprotect(SENHA)

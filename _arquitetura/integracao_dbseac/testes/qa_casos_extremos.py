@@ -112,7 +112,7 @@ def executar(produto, caminho, saida):
         # D17: "fora do Painel" agora e assertado. O Painel escolhe o analito pelo INDICE na lista de
         # Analitos!A4:A43 (Painel!B3) e o motor so tem alvo para quem esta la: fora dessa lista o analito
         # nao pode ser exibido. Confere tambem que o analito em tela (Eng_Saida!C1) nao e ele.
-        cadastro = [str(v[0] or '').strip().upper() for v in q.ws('Analitos').Range('A4:A43').Value]
+        cadastro = [str(v[0] or '').strip().upper() for v in q.espec().Range('A4:A43').Value]
         an_tela = str(q.ws('Eng_Saida').Range('C1').Value or '').strip().upper()
         fora_painel = bool([c for c in cadastro if c]) and 'ANALITO_QUE_NAO_EXISTE' not in cadastro \
             and an_tela != 'ANALITO_QUE_NAO_EXISTE'

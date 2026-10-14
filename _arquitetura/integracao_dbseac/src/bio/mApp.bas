@@ -103,8 +103,8 @@ Public Sub AnalitoEscolhido(ByVal Cel As Range)
     Application.Calculation = xlCalculationManual
     On Error Resume Next
     prot = LiberarEscritaRapida(ws)
-    idx = Application.Match(nome, ThisWorkbook.Sheets("Analitos").Range("A4:A43"), 0)
-    Cel.Formula = "=IFERROR(INDEX(Analitos!$A$4:$A$43,$B$3),"""")"
+    idx = Application.Match(nome, ThisWorkbook.Sheets(mLotes.AbaEspec()).Range("A4:A43"), 0)
+    Cel.Formula = "=IFERROR(INDEX('" & mLotes.AbaEspec() & "'!$A$4:$A$43,$B$3),"""")"   ' ADR-074: o catalogo mora na aba do motor
     If Not IsError(idx) And Len(nome) > 0 Then ws.Range("B3").Value = CLng(idx)
     RestaurarProtecao ws, prot
     Application.Calculation = calc
@@ -157,10 +157,17 @@ Private Function ExisteAba(ByVal aba As String) As Boolean
 End Function
 
 ' Painel -> Analitos na linha do analito em tela: editar media/DP DESTE lote.
+' ADR-074: vai ao BLOCO do lote em analise, na linha do analito.
 Public Sub IrParametrosDoAnalito()
     Dim an As String, idx As Variant
     an = Trim$(CStr(ThisWorkbook.Names("selAnalito").RefersToRange.Value))
-    idx = Application.Match(an, ThisWorkbook.Sheets("Analitos").Range("A4:A43"), 0)
+    If mLotesBlocos.BlocosAtivos() Then
+        mLotesBlocos.IrBlocoDoLote mLotes.LotePainel(), an
+        Application.StatusBar = "Editando media/DP do lote " & mLotes.LotePainel() & _
+                                " -- a gravacao e imediata e fica no historico de auditoria."
+        Exit Sub
+    End If
+    idx = Application.Match(an, ThisWorkbook.Sheets(mLotes.AbaEspec()).Range("A4:A43"), 0)
     If IsError(idx) Then Ir "Analitos", "E4": Exit Sub
     Ir "Analitos", "E" & (3 + CLng(idx))
     Application.StatusBar = "Editando media/DP do lote " & mLotes.LotePainel() & _
@@ -207,7 +214,7 @@ Public Sub NovoLote()
               "Lote novo nasce sem media/DP: o grafico e o Westgard so passam a avaliar " & _
               "depois que eles forem digitados.", vbYesNo + vbQuestion, "Novo lote") = vbYes Then
         AnalisarLote cod
-        Ir "Analitos", "E4"
+        If mLotesBlocos.BlocosAtivos() Then mLotesBlocos.IrBlocoDoLote cod Else Ir "Analitos", "E4"   ' ADR-074
         Application.StatusBar = "Digite Media/DP de cada nivel do lote " & cod & " -- grava na hora."
     End If
 End Sub
@@ -256,6 +263,7 @@ restaura:
         IIf(IsEmpty(dtv), "SEM_VALIDADE", "VALIDADE " & Format$(dtv, "dd/mm/yyyy")), "MANUAL", _
         "Lote " & cod & " cadastrado pelo botao Novo lote" & IIf(IsEmpty(dtv), "; validade pendente", "")
     mLotes.InvalidarLotes
+    mLotesBlocos.SincronizarBlocos              ' ADR-074: o lote novo ganha o seu bloco na aba Analitos
     CadastrarLote = "OK|" & Livre
 End Function
 

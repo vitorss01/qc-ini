@@ -104,7 +104,7 @@ End Function
 Public Function ListaAnalitos() As Collection
     Dim ws As Worksheet, i As Long, nm As String, c As Collection
     Set c = New Collection
-    Set ws = ThisWorkbook.Sheets("Analitos")
+    Set ws = ThisWorkbook.Sheets(mLotes.AbaEspec())
     For i = 4 To 43
         nm = Trim$(CStr(ws.Cells(i, 1).Value))
         If nm <> "" Then c.Add nm

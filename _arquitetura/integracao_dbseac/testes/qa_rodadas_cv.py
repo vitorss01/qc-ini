@@ -432,7 +432,7 @@ def provedores_linha(q, bio):
     if not bio:
         p = q.wb.Names('eqProvedor').RefersToRange.Value
         return lambda an: p
-    a = q.wb.Worksheets('Analitos')
+    a = q.espec()
     mapa = {}
     for nome, pv in zip(a.Range('A4:A43').Value, a.Range('AR4:AR43').Value):
         if nome[0]:
@@ -726,7 +726,7 @@ def r04_painel(q, e, ult, bio):
         p.Unprotect(SENHA)
     except Exception:
         pass
-    cad = [str(v[0]).strip() for v in q.wb.Worksheets('Analitos').Range('A4:A43').Value if v[0]]
+    cad = [str(v[0]).strip() for v in q.espec().Range('A4:A43').Value if v[0]]
     chaves = {str(v[ci('AB')]): (r, v) for r, v in linhas_tabela(e, ult)}
     sem_etp = [a for a in cad if (chaves.get(f'{a}|1') or (0, [None] * 47))[1][ci('K')] == '-']
     try:

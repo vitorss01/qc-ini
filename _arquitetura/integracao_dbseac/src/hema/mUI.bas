@@ -569,7 +569,7 @@ Public Sub SpinnerLimites()
     Dim ws As Worksheet, n As Long, sp As Object, prot As Boolean, ev As Boolean
     On Error Resume Next
     Set ws = ThisWorkbook.Worksheets("Painel")
-    n = Application.WorksheetFunction.CountA(ThisWorkbook.Worksheets("Analitos").Range("A4:A43"))
+    n = Application.WorksheetFunction.CountA(ThisWorkbook.Worksheets(mLotes.AbaEspec()).Range("A4:A43"))
     If n < 1 Then n = 1
     Set sp = ws.Spinners("Spinner 1")
     If sp Is Nothing Then Exit Sub

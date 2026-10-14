@@ -44,7 +44,7 @@ def main(produto, caminho, salvar=True):
         log('2. Spinner 1 limitado aos analitos cadastrados')
         p = wb.Worksheets('Painel')
         sp = p.Spinners('Spinner 1')
-        n = int(ex.xl.WorksheetFunction.CountA(wb.Worksheets('Analitos').Range('A4:A43')))
+        n = int(ex.xl.WorksheetFunction.CountA(wb.Worksheets(ii.aba_espec(wb)).Range('A4:A43')))
         sp.Min = 1
         sp.Max = max(1, n)
         if not (1 <= int(p.Range('B3').Value or 0) <= n):

@@ -109,11 +109,11 @@ def main(produto, caminho, salvar=True):
         codigo_atual.instalar(ex, wb, produto, log)
 
         if produto.startswith('Bio'):
-            a = wb.Worksheets('Analitos')
+            a = wb.Worksheets(ii.aba_espec(wb))
             for nome, col in (('etpOficial', 'T'), ('cvtpOficial', 'U'), ('espFonte', 'S')):
-                ref = str(wb.Names(nome).RefersTo).replace('$', '')
-                if ref != f'=Analitos!{col}{L0}:{col}{L1}':
-                    raise SystemExit(f'nome {nome} aponta para {ref}, esperado Analitos!{col}{L0}:{col}{L1}')
+                ref = str(wb.Names(nome).RefersTo).replace('$', '').replace("'", '')
+                if ref != f'={a.Name}!{col}{L0}:{col}{L1}':
+                    raise SystemExit(f'nome {nome} aponta para {ref}, esperado {a.Name}!{col}{L0}:{col}{L1}')
             log(f'2. Analitos R (ETp VB exige CVi e CVg): {coluna_r(a)}')
             t, u = formulas(L0)
             mudou = str(a.Range(f'T{L0}').Formula) != t or str(a.Range(f'U{L0}').Formula) != u

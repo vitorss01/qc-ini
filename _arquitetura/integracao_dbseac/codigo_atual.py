@@ -20,13 +20,24 @@ MODULOS = ['mLotes', 'mApp', 'mIntegracao', 'mSeguranca', 'mEstatistica', 'mUI',
            'mCEQ', 'mEQA', 'mPlanoQC',          # ADR-064: CEQ da incerteza; texto acentuado corrompido
            'mDados']                            # ADR-064 (auditoria): ultima data so do que participa
 # modulos que podem ainda nao existir no arquivo (criados na primeira instalacao)
-NOVOS = ['mIncerteza']                         # ADR-064
+NOVOS = ['mIncerteza',                        # ADR-064
+         'mLotesBlocos']                       # ADR-074: aba Analitos com um bloco por lote
 # modulos de CLASSE (criados como classe se faltarem). ADR-070: a clsCht (eventos dos graficos do Painel)
 # so existia dentro dos .xlsm; virou fonte versionada
 CLASSES = ['clsCht']
 # modulos de aba: (nome da aba, arquivo-fonte)
-ABAS = [('Painel', 'Painel.cls'), ('Configuração', 'Configuracao.cls'),
-        ('Analitos', 'Analitos.cls')]                  # ADR-073: seletor do lote em edicao
+ABAS = [('Painel', 'Painel.cls'), ('Configuração', 'Configuracao.cls')]
+ESPEC = 'Especificações'
+
+
+def abas(wb):
+    """Modulos de aba. ADR-074: o MOTOR (antiga Analitos) chama Especificações depois da migracao e leva o
+    modulo Especificacoes.cls (seletor do lote em edicao, ADR-073); a Analitos nova (blocos por lote) leva o
+    Analitos.cls. Antes da migracao o motor ainda chama Analitos e e ele que leva o Especificacoes.cls."""
+    nomes = [ws.Name for ws in wb.Worksheets]
+    if ESPEC in nomes:
+        return ABAS + [(ESPEC, 'Especificacoes.cls'), ('Analitos', 'Analitos.cls')]
+    return ABAS + [('Analitos', 'Especificacoes.cls')]
 PASTA = 'EstaPastaDeTrabalho.cls'
 
 
@@ -67,7 +78,7 @@ def instalar(ex, wb, produto, log=print):
             wb.VBProject.VBComponents.Add(2).Name = m            # vbext_ct_ClassModule
         _trocar(wb, m, _fonte(d, m + '.cls'), criar=False)
         feitos.append(m)
-    for aba, arq in ABAS:
+    for aba, arq in abas(wb):
         cn = [ws.CodeName for ws in wb.Worksheets if ws.Name == aba][0]
         _trocar(wb, cn, _fonte(d, arq), criar=False)
         feitos.append(f'{cn} ({aba})')

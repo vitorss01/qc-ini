@@ -115,6 +115,12 @@ class QA:
     def ws(self, nome):
         return self.wb.Worksheets(nome)
 
+    def espec(self):
+        """ADR-074: a aba do MOTOR (catalogo de analitos A4:A43, especificacoes, lote em analise). Depois da
+        migracao chama Especificações -- a Analitos passou a ser a dos blocos por lote; antes, Analitos."""
+        nomes = [w.Name for w in self.wb.Worksheets]
+        return self.wb.Worksheets('Especificações' if 'Especificações' in nomes else 'Analitos')
+
     def cfg(self, chave, valor=None):
         """Le (e, com valor, grava) uma chave de tblConfigIntegracao, como o administrador faria."""
         lo = self.lo('tblConfigIntegracao')
@@ -277,9 +283,19 @@ def ler_origem_seac(caminho, tabela):
     """Le a tabela do setor no DB_SEAC SEM Excel (openpyxl, somente leitura de arquivo): cabecalho e
     a coluna ID_ORIGEM. So e chamada em MODO_FONTE = SEAC (no modo historico a origem e vazia)."""
     import openpyxl
+    import zipfile
     from openpyxl.utils import range_boundaries
     t0 = time.time()
-    wb = openpyxl.load_workbook(caminho, data_only=True, keep_vba=False, keep_links=False)
+    # a tarefa agendada salva o DB_SEAC a cada 2 min (o Excel grava num .tmp e troca de nome): no instante
+    # da troca o arquivo "nao existe" ou esta truncado. Foi o que derrubou o T02 da entrega de 14/10/2026.
+    for tentativa in range(6):
+        try:
+            wb = openpyxl.load_workbook(caminho, data_only=True, keep_vba=False, keep_links=False)
+            break
+        except (FileNotFoundError, PermissionError, zipfile.BadZipFile, EOFError, KeyError):
+            if tentativa == 5:
+                raise
+            time.sleep(10)
     try:
         for ws in wb.worksheets:
             if tabela in ws.tables:
@@ -438,7 +454,7 @@ def executar(produto, caminho, saida):
         import datetime as dtm
         cont = collections.Counter(r['ANALITO'] for r in fin if str(r['LOTE']) == lote_an
                                    and r['PARTICIPA_ESTATISTICA'] == 'SIM' and (eq_pai is None or r['EQUIPAMENTO'] == eq_pai))
-        cadastro = [str(v[0] or '').strip() for v in q.ws('Analitos').Range('A4:A43').Value]
+        cadastro = [str(v[0] or '').strip() for v in q.espec().Range('A4:A43').Value]
         an_top = next((a for a, _ in cont.most_common() if a in cadastro), None)
         dts_lote = [r['DATA'] for r in fin if str(r['LOTE']) == lote_an and r['PARTICIPA_ESTATISTICA'] == 'SIM'
                     and (eq_pai is None or r['EQUIPAMENTO'] == eq_pai) and r['ANALITO'] == an_top]

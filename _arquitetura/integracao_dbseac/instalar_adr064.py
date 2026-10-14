@@ -171,7 +171,7 @@ def corrigir_provedor_hema(e, ult):
 def remover_ucal(wb):
     """ADR-067: o laboratorio nao usa certificado de calibrador. Limpa o campo e o nome de instalacoes antigas
     (a coluna fica vazia, nao e excluida: excluir deslocaria referencias de outras colunas da Analitos)."""
-    a = wb.Worksheets('Analitos')
+    a = wb.Worksheets(ii.aba_espec(wb))
     c = achar_cabecalho(a, 3, 'u(cal) % fabricante (k=1)', 80)
     if c:
         rng = a.Range(a.Cells(2, c), a.Cells(43, c))
@@ -186,16 +186,16 @@ def remover_ucal(wb):
 
 
 def coluna_cvi(wb):
-    a = wb.Worksheets('Analitos')
+    a = wb.Worksheets(ii.aba_espec(wb))
     c = achar_cabecalho(a, 3, 'CVi %', 60)
     if not c:
-        raise SystemExit('Analitos: coluna "CVi %" nao encontrada na linha 3')
-    return f"Analitos!${col(c)}$4:${col(c)}$43"
+        raise SystemExit(f'{a.Name}: coluna "CVi %" nao encontrada na linha 3')
+    return f"'{a.Name}'!${col(c)}$4:${col(c)}$43"
 
 
 def bloco_estatistica(wb, ult, exc, prov, cvi):
     e = wb.Worksheets('Estatística')
-    m = f'MATCH($A{{r}},Analitos!$A$4:$A$43,0)'
+    m = f"MATCH($A{{r}},'{ii.aba_espec(wb)}'!$A$4:$A$43,0)"
     ciq = 'mIncerteza.IncertezaCIQ($A{r},$B{r},"%s",MU_Ini,MU_Fim' + exc + ')'
     val = ciq % 'VALIDADE'
     cvim = 'mIncerteza.CVIMeta(IFERROR(INDEX(' + cvi + ',' + m + '),""),$I{r},$J{r})'
@@ -430,9 +430,9 @@ def main(produto, caminho, salvar=True):
             n = corrigir_provedor_hema(e, ult)
             pv = provedor_padrao_hema(e)
             log(f'2. Hematologia: {n} formulas do CEQ passam a usar eqProvedor (R, S, T, AC, AD); provedor {pv}')
-        a = wb.Worksheets('Analitos')
+        a = wb.Worksheets(ii.aba_espec(wb))
         tem_ar = str(a.Range('AR3').Value or '').strip().lower() == 'provedor eqa'
-        prov = ('IFERROR(INDEX(Analitos!$AR$4:$AR$43,MATCH($A{r},Analitos!$A$4:$A$43,0)),"CAP")'
+        prov = ("IFERROR(INDEX('" + a.Name + "'!$AR$4:$AR$43,MATCH($A{r},'" + a.Name + "'!$A$4:$A$43,0)),\"CAP\")"
                 if tem_ar else 'eqProvedor')
         exc = ',Estat_Exclusoes' if any(n.Name == 'Estat_Exclusoes' for n in wb.Names) else ''
         cvi = coluna_cvi(wb)

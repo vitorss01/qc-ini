@@ -36,7 +36,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     If Not Intersect(Target, Me.Range("M4")) Is Nothing Then
         Application.EnableEvents = False
         mEstatistica.GravarProvedorAnalito Me.Range("C3").Value, CStr(Me.Range("M4").Value)
-        Me.Range("M4").Formula = "=IFERROR(INDEX(Analitos!$AR$4:$AR$43,MATCH($C$3,Analitos!$A$4:$A$43,0)),""CAP"")"
+        Me.Range("M4").Formula = "=IFERROR(INDEX('" & mLotes.AbaEspec() & "'!$AR$4:$AR$43,MATCH($C$3,'" & _
+                                 mLotes.AbaEspec() & "'!$A$4:$A$43,0)),""CAP"")"     ' ADR-074: aba do motor
         Application.EnableEvents = True
     End If
 End Sub

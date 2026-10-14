@@ -351,7 +351,7 @@ class Ctx:
         self.pref = str(q.cfg('PREFIXO_ID') or '').strip().upper()
         self.gap = float(q.cfg('GAP_CORRIDA_MIN'))
         self.tol = float(q.cfg('TOLERANCIA_CONFLITO_MIN'))
-        self.cadastro = [str(v[0] or '').strip() for v in q.ws('Analitos').Range('A4:A43').Value]
+        self.cadastro = [str(v[0] or '').strip() for v in q.espec().Range('A4:A43').Value]
         self.tempos = []
         self.ids = collections.defaultdict(set)      # ID -> cenarios que o envolvem (matriz E16)
         self.usados = set()                          # analitos ja usados por algum cenario (MAIUSCULAS)
