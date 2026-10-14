@@ -59,7 +59,7 @@ def num(v):
 def da_biblioteca(r, desl, ano='$S$2'):
     """Valor do analito da linha r na linha `desl` do bloco do ano (o mesmo modelo da Bioquimica)."""
     blk = f'(MATCH({ano},{CH},0)-1)*9'
-    return (f'=IFERROR(INDEX($B$46:$AO$89,{blk}+{desl},MATCH($A{r},INDEX($B$46:$AO$89,{blk}+2,0),0)),"")')
+    return (f'=IF($A{r}="","",IFERROR(INDEX($B$46:$AO$89,{blk}+{desl},MATCH($A{r},INDEX($B$46:$AO$89,{blk}+2,0),0)),""))')
 
 
 def formulas(r):

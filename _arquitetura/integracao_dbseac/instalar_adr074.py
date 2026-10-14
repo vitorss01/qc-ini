@@ -119,16 +119,21 @@ def motor(wb):
     for c, nm in (('K', 'anoCLIAemUso'), ('M', 'anoCLIAemUso'), ('N', 'anoCLIAemUso'),
                   ('O', 'anoVBemUso'), ('P', 'anoVBemUso')):
         for r in range(4, 44):
-            f = str(e.Range(f'{c}{r}').Formula)
+            f = str(e.Range(f'{c}{r}').Formula2)          # Formula2: sem o "@" da intersecao implicita
             if '$S$2' in f:
-                e.Range(f'{c}{r}').Formula = f.replace('$S$2', nm)
+                f = f.replace('$S$2', nm)
                 n += 1
             elif f and nm not in f:
                 raise SystemExit(f'Especificações!{c}{r}: formula inesperada (sem $S$2 nem {nm}): {f[:120]}')
+            # linha sem analito fica em branco (antes mostrava 0,00 em toda a linha)
+            if f.startswith('=') and not f.startswith(f'=IF($A{r}="",""'):
+                f = f'=IF($A{r}="","",{f[1:]})'
+            if f != str(e.Range(f'{c}{r}').Formula2):
+                e.Range(f'{c}{r}').Formula2 = f
     feitos.append(f'{n} formulas K..P passaram a ler o ano do lote' if n else 'K..P ja leem o ano do lote')
-    if str(e.Range('Q2').Value or '').upper().startswith('ESPECIFICA'):
-        e.Range('Q2').Value = 'ANO PADRÃO (lote novo)'
-    e.Range('A1').Value = 'ESPECIFICAÇÕES · CATÁLOGO E REFERÊNCIAS  (até 40)'
+    if str(e.Range('Q2').Value or '').upper().startswith(('ESPECIFICA', 'ANO PADR')):
+        e.Range('Q2').Value = 'ANO PADRÃO'
+    e.Range('A1').Value = 'ESPECIFICAÇÕES'
     e.Range('A2').Formula = ('="LOTE EM ANÁLISE "&loteParam&"  ·  Média/DP e especificações DESTE lote (CLIA "&anoCLIAemUso&'
                              '" · VB "&anoVBemUso&"). Para ver ou editar QUALQUER lote, use a aba Analitos (um bloco por lote).'
                              '  ·  Lote em uso p/ lançamentos: "&loteAtivo')
@@ -153,6 +158,20 @@ def linha1(wb, ex):
               ('nav_blklote', 'mLotesBlocos.IrLoteEmAnalise', 'Lote em análise ▸', 100),
               ('nav_blkespec', 'mLotesBlocos.IrEspecificacoes', 'Especificações ▸', 100)]
     ux.barra_navegacao(ws, extras)
+
+
+def barra_motor(wb):
+    """A barra de navegacao da Especificações comeca DEPOIS do seletor/resumo/botao do ADR-073 (linha 1): antes
+    ficava por cima do "LOTE EM EDICAO"."""
+    import ux
+    e = wb.Worksheets(ESP)
+    btn = [s for s in e.Shapes if s.Name == 'btnPreencherCIQ']
+    direita = (btn[0].Left + btn[0].Width + 8) if btn else e.Range('S1').Left
+    c = 1
+    while e.Cells(1, c).Left < direita and c < 80:
+        c += 1
+    ux.barra_navegacao(e, ux.EXTRAS.get('Analitos', ()), inicio=str(e.Cells(1, c).Address).replace('$', ''))
+    return c
 
 
 def congelar(wb, ex):
@@ -307,6 +326,7 @@ def main(produto, caminho, salvar=True):
                 raise SystemExit(f'MontarBlocos: {r}')
             log(f'4. Analitos: {str(r).split("|")[1]} bloco(s) montado(s)')
             linha1(wb, ex)
+            barra_motor(wb)
             ex.xl.Calculate()
             ex.esperar()
             # aberto so o bloco do lote em analise

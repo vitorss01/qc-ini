@@ -212,12 +212,12 @@ def executar(produto, caminho, saida):
         st7 = [str(p.Range(x).Value or '') for x in ('J7', 'J8')]
         selecionar_lote(q, lote0, i_an + 1)
         ax0 = [c.Range(x).Value for x in cel_md]
-        reg('BC Gráficos: com o lote X no Painel, média e DP do gráfico (Calc AX1/AY1, AZ1/BA1) e as 7 linhas de cada '
+        reg('BC Gráficos: com o lote X no Painel, média e DP do gráfico (Calc, N1 e N2) e as 7 linhas de cada '
             'nível (-3DP..+3DP) são as do lote X; de volta ao 1º lote, as dele',
             perto(ax[0], mX[0]) and perto(ax[1], sX[0]) and perto(ax[2], mX[1]) and perto(ax[3], sX[1])
             and ok1 and ok2 and not any('SEM M' in s.upper() for s in st7)
             and perto(ax0[0], m0[0]) and perto(ax0[1], s0[0]) and perto(ax0[2], m0[1]) and perto(ax0[3], s0[1]),
-            {'lote': loteX, 'analito': an, 'Calc_AX1_AY1_AZ1_BA1': ax, 'pontos_N1': len(lin1), 'pontos_N2': len(lin2),
+            {'lote': loteX, 'analito': an, 'Calc_media_dp_N1_N2': dict(zip(cel_md, ax)), 'pontos_N1': len(lin1), 'pontos_N2': len(lin2),
              'linhas_N1_ok': ok1, 'linhas_N2_ok': ok2, 'status_painel': st7, 'volta_lote0': ax0})
 
         # ------------------------------------------------------------ BD ausentes

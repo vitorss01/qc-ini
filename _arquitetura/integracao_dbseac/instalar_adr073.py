@@ -80,6 +80,8 @@ def cabecalho_analitos(wb):
     a.Range('I1').Value = 'LOTE EM EDIÇÃO ▸'
     a.Range('I1').Font.Bold = True
     a.Range('I1').HorizontalAlignment = -4152                 # direita
+    a.Range('I1').WrapText = True                             # duas linhas: nao corta sob o titulo mesclado (A1:H1)
+    a.Range('I1').Font.Size = 9
     sel = a.Range('J1')
     sel.NumberFormat = '@'
     sel.Locked = False
