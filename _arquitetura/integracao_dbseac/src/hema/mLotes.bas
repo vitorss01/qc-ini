@@ -311,6 +311,8 @@ restaura:
     RestaurarProtecao ws, prot
     InvalidarLotes
     If nE <> 0 Then Err.Raise nE, "mLotes.SalvarParametrosView", sE
+    On Error Resume Next
+    mLotesBlocos.EscreverValoresDoLote lote        ' ADR-076: o bloco do lote (aba Analitos) mostra o que foi gravado
 End Sub
 
 ' ADR-074: grava UM valor (j = 1..6: Media N1, DP N1, Media N2, DP N2, Media N3, DP N3) do lote x analito
@@ -552,6 +554,33 @@ falha:
     mApp.fim
     Avisar "Falha ao gravar parametro do lote " & lote & ": " & s, vbCritical
 End Sub
+
+' ADR-076: os 40 x 6 valores (Media/DP N1..N3) do lote, na ordem do catalogo (nomes: 40 x 1). O bloco do lote
+' na aba Analitos mostra ESTES valores, como VALOR (sem formula); vazio onde a store nao tem.
+Public Function ValoresDoLote(ByVal lote As String, ByVal nomes As Variant) As Variant
+    Dim outp() As Variant, i As Long, j As Long, k As String, r As Long, nm As String
+    ReDim outp(1 To CAP_ANALITOS, 1 To 6)
+    GarantirLotes
+    lote = Trim$(lote)
+    For i = 1 To CAP_ANALITOS
+        nm = Trim$(CStr(nomes(i, 1)))
+        If nm <> "" And lote <> "" Then
+            k = ChaveLote(lote, nm)
+            If mLSIdx.Exists(k) Then
+                r = mLSIdx(k)
+                For j = 1 To 6
+                    If Not IsError(mLS(r, LS_C_MED1 + j - 1)) Then outp(i, j) = mLS(r, LS_C_MED1 + j - 1)
+                Next j
+            End If
+        End If
+    Next i
+    ValoresDoLote = outp
+End Function
+
+' Valor gravado (j = 1..6) do lote x analito; Empty se nao ha.
+Public Function ValorDoLote(ByVal lote As String, ByVal analito As String, ByVal j As Long) As Variant
+    ValorDoLote = ValorNaStore(lote, analito, j)
+End Function
 
 Private Function ValorNaStore(ByVal lote As String, ByVal analito As String, ByVal j As Long) As Variant
     Dim k As String
@@ -1342,6 +1371,7 @@ prox:
         mEstatistica.RecalcularAnalitoAtual
     End If
     AtualizarResumoLote
+    If cont > 0 Then mLotesBlocos.EscreverValoresDoLote lote          ' ADR-076: valores no bloco do lote
     PreencherVaziosCIQLote = "OK|" & cont & "|" & falta
     Exit Function
 falha:
@@ -1376,6 +1406,222 @@ Private Function PrimeirosN(ByVal col As Collection, ByVal n As Long, ByRef m As
     s = Sqr(q / (n - 1))
     If s <= 0 Then Exit Function
     PrimeirosN = True
+End Function
+
+' ============================ ADR-076: PREENCHIMENTO INICIAL PELO HISTORICO ============================
+' Pedido do usuario (15/10/2026): ao trocar de lote no Painel os limites sumiam porque so o lote em uso tinha
+' Media/DP. Para cada lote do cadastro e cada analito x nivel SEM Media e SEM DP na store:
+'   Media = media de TODOS os resultados Ativos do proprio lote (todos os equipamentos);
+'   DP    = o DP do lote de referencia (o lote em uso) no mesmo analito x nivel; sem ele, o DP amostral do
+'           proprio lote quando ha >= 20 resultados (a regra do CLSI C24, a mesma do botao CIQ); senao vazio
+'           (o par fica sem limites: pendencia para o laboratorio).
+' Nunca sobrescreve. Cada linha gravada leva a origem (n, de onde veio o DP) e o retrato da especificacao do
+' lote. Uma gravacao em bloco na LotesStore. Devolve "OK|lotes|medias|dp_ref|dp_proprio|sem_dp" e, nas
+' linhas seguintes, o detalhe "lote;analito;nivel;n;media;dp;fonte do DP".
+Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv As Long) As String
+    Dim dados As Variant, acc As Object, i As Long, k As String, a As Variant
+    Dim ws As Worksheet, wa As Worksheet, nomes As Variant, cad As Variant, lote As String, an As String
+    Dim nv As Long, j As Long, m As Double, s As Double, mR As Double, sR As Double, n As Long
+    Dim idx As Object, ult As Long, r As Long, arr As Variant, novos As Object, lin As Variant
+    Dim mudou As Object, origens As Object, esp As Variant, fonteDP As String, dp As Variant, temRef As Boolean
+    Dim nLotes As Long, nMed As Long, nRef As Long, nProp As Long, nSem As Long, det As String
+    Dim tocados As Object, vistos As Object, prot As Boolean, nE As Long, sE As String, quando As Date
+    Dim c As Long, kk As Variant, out() As Variant, ri As Long, porLote As Object, usuario As String
+
+    On Error GoTo falha
+    loteRef = Trim$(loteRef)
+    If nlv < 1 Or nlv > 3 Then nlv = 3
+    quando = Now
+    usuario = mAuditoria.UsuarioSistema()
+    ' 1. soma, soma dos quadrados e n por LOTE|ANALITO|NIVEL (resultados Ativos, todos os equipamentos)
+    dados = mDados.CarregarDB()
+    Set acc = CreateObject("Scripting.Dictionary")
+    acc.CompareMode = 1
+    If Not IsEmpty(dados) Then
+        For i = 1 To UBound(dados, 1)
+            If CStr(dados(i, COL_STATUS)) = ST_ATIVO Then
+                If NumeroValido(dados(i, COL_RESULT)) Then
+                    k = UCase$(Trim$(CStr(dados(i, COL_LOTE)))) & "|" & UCase$(Trim$(CStr(dados(i, COL_ANALITO)))) & _
+                        "|" & Trim$(CStr(dados(i, COL_NIVEL)))
+                    If acc.Exists(k) Then a = acc(k) Else a = Array(0#, 0#, 0&)
+                    a(0) = a(0) + CDbl(dados(i, COL_RESULT))
+                    a(1) = a(1) + CDbl(dados(i, COL_RESULT)) ^ 2
+                    a(2) = a(2) + 1
+                    acc(k) = a
+                End If
+            End If
+        Next i
+    End If
+
+    ' 2. a store em memoria
+    Set wa = ThisWorkbook.Sheets(AbaEspec())
+    Set ws = ThisWorkbook.Sheets(LS_ABA)
+    nomes = wa.Range(wa.Cells(AN_R0, 1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, 1)).Value
+    cad = ThisWorkbook.Names("regLoteCol").RefersToRange.Value
+    Set idx = IndiceStore(ws, ult)
+    If ult >= LS_R0 Then arr = ws.Range(ws.Cells(LS_R0, 1), ws.Cells(ult, LS_C_ULT)).Value
+    Set novos = CreateObject("Scripting.Dictionary")          ' chave -> linha nova (1..LS_C_ULT)
+    Set mudou = CreateObject("Scripting.Dictionary")          ' linha existente alterada -> chave
+    Set origens = CreateObject("Scripting.Dictionary")        ' chave -> texto da origem
+    Set tocados = CreateObject("Scripting.Dictionary")
+    Set porLote = CreateObject("Scripting.Dictionary")
+    Set vistos = CreateObject("Scripting.Dictionary")
+    novos.CompareMode = 1: origens.CompareMode = 1: tocados.CompareMode = 1
+    vistos.CompareMode = 1: porLote.CompareMode = 1
+
+    ' 3. cada lote do cadastro x analito x nivel vazio
+    For c = 1 To UBound(cad, 1)
+        lote = Trim$(CStr(cad(c, 1)))
+        If lote <> "" And Not vistos.Exists(lote) Then
+            vistos.Add lote, 1
+            For i = 1 To CAP_ANALITOS
+                an = Trim$(CStr(nomes(i, 1)))
+                If an <> "" Then
+                    esp = Empty
+                    For nv = 1 To nlv
+                        j = (nv - 1) * 2 + 1
+                        If Len(Trim$(CStr(ValorNaStore(lote, an, j)))) = 0 And _
+                           Len(Trim$(CStr(ValorNaStore(lote, an, j + 1)))) = 0 Then
+                            k = UCase$(lote) & "|" & UCase$(an) & "|" & nv
+                            If acc.Exists(k) Then
+                                a = acc(k)
+                                n = a(2)
+                                m = a(0) / n
+                                dp = Empty
+                                temRef = False
+                                If StrComp(lote, loteRef, vbTextCompare) <> 0 Then temRef = ParametrosLote(loteRef, an, nv, mR, sR)
+                                If temRef Then
+                                    dp = sR
+                                    fonteDP = "DP do lote " & loteRef & " (em uso)"
+                                    nRef = nRef + 1
+                                ElseIf n >= N_CIQ_ALVO Then
+                                    s = (a(1) - a(0) ^ 2 / n) / (n - 1)
+                                    If s > 0 Then
+                                        dp = Sqr(s)
+                                        fonteDP = "DP dos " & n & " resultados do proprio lote"
+                                        nProp = nProp + 1
+                                    End If
+                                End If
+                                If IsEmpty(dp) Then
+                                    fonteDP = "SEM DP (pendente: o lote " & loteRef & " nao tem DP e ha menos de " & N_CIQ_ALVO & " resultados)"
+                                    nSem = nSem + 1
+                                End If
+                                If IsEmpty(esp) Then
+                                    esp = mLotesBlocos.EspecDoLote(lote, an)
+                                    If IsEmpty(esp) Then esp = EspecDaLinha(wa, AN_R0 + i - 1)
+                                End If
+                                kk = ChaveLote(lote, an)
+                                If idx.Exists(kk) Then
+                                    r = idx(kk) - LS_R0 + 1
+                                    arr(r, LS_C_MED1 + j - 1) = m
+                                    If Not IsEmpty(dp) Then arr(r, LS_C_MED1 + j) = dp
+                                    arr(r, LS_C_FONTE) = esp(0): arr(r, LS_C_ANO) = esp(1)
+                                    arr(r, LS_C_ETP) = esp(2): arr(r, LS_C_CVTP) = esp(3)
+                                    arr(r, LS_C_QUANDO) = quando: arr(r, LS_C_QUEM) = usuario
+                                    mudou(r) = kk
+                                Else
+                                    If Not novos.Exists(kk) Then
+                                        ReDim lin(1 To LS_C_ULT)
+                                        lin(LS_C_LOTE) = lote: lin(LS_C_IDX) = i: lin(LS_C_NOME) = an: lin(LS_C_CHAVE) = kk
+                                        novos.Add kk, lin
+                                    End If
+                                    lin = novos(kk)
+                                    lin(LS_C_MED1 + j - 1) = m
+                                    If Not IsEmpty(dp) Then lin(LS_C_MED1 + j) = dp
+                                    lin(LS_C_FONTE) = esp(0): lin(LS_C_ANO) = esp(1)
+                                    lin(LS_C_ETP) = esp(2): lin(LS_C_CVTP) = esp(3)
+                                    lin(LS_C_QUANDO) = quando: lin(LS_C_QUEM) = usuario
+                                    novos(kk) = lin
+                                End If
+                                origens(kk) = origens(kk) & IIf(origens(kk) <> "", " | ", "") & "N" & nv & ": media de " & n & _
+                                    " resultado(s) do lote" & IIf(n < N_CIQ_ALVO, " (n<" & N_CIQ_ALVO & ", provisorio)", "") & "; " & fonteDP
+                                nMed = nMed + 1
+                                tocados(lote) = 1
+                                porLote(lote) = porLote(lote) + 1
+                                det = det & vbLf & lote & ";" & an & ";" & nv & ";" & n & ";" & m & ";" & _
+                                      IIf(IsEmpty(dp), "", dp) & ";" & fonteDP
+                            End If
+                        End If
+                    Next nv
+                End If
+            Next i
+        End If
+    Next c
+    If nMed = 0 Then PreencherLotesPeloHistorico = "OK|0|0|0|0|0": Exit Function
+
+    ' 4. uma gravacao: linhas existentes alteradas e linhas novas anexadas
+    For Each kk In mudou.Keys
+        arr(kk, LS_C_ORIGEM) = "preenchimento inicial " & Format$(quando, "dd/mm/yyyy") & " (revisar) -- " & origens(mudou(kk))
+    Next kk
+    prot = LiberarEscrita(ws)
+    If mudou.Count > 0 Then ws.Range(ws.Cells(LS_R0, 1), ws.Cells(ult, LS_C_ULT)).Value = arr
+    If novos.Count > 0 Then
+        If ult + novos.Count > LS_R0 + LS_CAPLINHAS - 1 Then
+            Err.Raise vbObjectError + 491, "mLotes.PreencherLotesPeloHistorico", "LotesStore cheia (" & LS_CAPLINHAS & " linhas)."
+        End If
+        ReDim out(1 To novos.Count, 1 To LS_C_ULT)
+        ri = 0
+        For Each kk In novos.Keys
+            ri = ri + 1
+            lin = novos(kk)
+            lin(LS_C_ORIGEM) = "preenchimento inicial " & Format$(quando, "dd/mm/yyyy") & " (revisar) -- " & origens(kk)
+            For j = 1 To LS_C_ULT
+                out(ri, j) = lin(j)
+            Next j
+        Next kk
+        ws.Range(ws.Cells(ult + 1, LS_C_LOTE), ws.Cells(ult + novos.Count, LS_C_LOTE)).NumberFormat = "@"
+        ws.Range(ws.Cells(ult + 1, 1), ws.Cells(ult + novos.Count, LS_C_ULT)).Value = out
+    End If
+    RestaurarProtecao ws, prot
+    InvalidarLotes
+
+    ' 5. trilha por lote, blocos e motor
+    For Each kk In porLote.Keys
+        nLotes = nLotes + 1
+        mAuditoria.Auditar mAuditoria.CAT_CONFIG, "PARAMETRO_LOTE_PREENCHIDO_HISTORICO", "mLotes", 0, Empty, "", CStr(kk), 0, "", _
+            "", porLote(kk) & " par(es) analito/nivel", "", "", "Media/DP", _
+            "Media/DP VAZIOS do lote " & kk & " preenchidos: media dos resultados do proprio lote; DP do lote " & loteRef & _
+            " (em uso) ou, sem ele, dos >= " & N_CIQ_ALVO & " resultados do lote. Revisar."
+        mLotesBlocos.EscreverValoresDoLote CStr(kk)
+    Next kk
+    If tocados.Exists(LoteParamTela()) Then CarregarParametrosView LoteParamTela()
+    mEstatistica.InvalidarParametros
+    PreencherLotesPeloHistorico = "OK|" & nLotes & "|" & nMed & "|" & nRef & "|" & nProp & "|" & nSem & det
+    Exit Function
+falha:
+    nE = Err.Number: sE = Err.Description
+    On Error Resume Next
+    RestaurarProtecao ws, prot
+    InvalidarLotes
+    PreencherLotesPeloHistorico = "ERRO|" & nE & ": " & sE
+End Function
+
+' Lote de referencia do DP no preenchimento inicial: o lote EM USO (Configuracao C20) se ele tem DP; senao o
+' lote do cadastro com mais pares Media/DP validos.
+Public Function LoteReferenciaDP() As String
+    Dim cad As Variant, i As Long, an As Variant, nv As Long, n As Long, melhor As Long, m As Double, s As Double
+    Dim wa As Worksheet, nomes As Variant, l As String
+    Set wa = ThisWorkbook.Sheets(AbaEspec())
+    nomes = wa.Range(wa.Cells(AN_R0, 1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, 1)).Value
+    l = LoteCanonico(LoteAtivoCore())
+    For Each an In nomes
+        For nv = 1 To 3
+            If Trim$(CStr(an)) <> "" Then If ParametrosLote(l, CStr(an), nv, m, s) Then n = n + 1
+        Next nv
+    Next an
+    If n > 0 Then LoteReferenciaDP = l: Exit Function
+    cad = ThisWorkbook.Names("regLoteCol").RefersToRange.Value
+    For i = 1 To UBound(cad, 1)
+        If Trim$(CStr(cad(i, 1))) <> "" Then
+            n = 0
+            For Each an In nomes
+                For nv = 1 To 3
+                    If Trim$(CStr(an)) <> "" Then If ParametrosLote(Trim$(CStr(cad(i, 1))), CStr(an), nv, m, s) Then n = n + 1
+                Next nv
+            Next an
+            If n > melhor Then melhor = n: LoteReferenciaDP = Trim$(CStr(cad(i, 1)))
+        End If
+    Next i
 End Function
 
 ' Recalcula o resumo do lote na aba Analitos (formula com mLotes.RegistroLote).

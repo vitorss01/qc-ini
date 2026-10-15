@@ -59,6 +59,17 @@ def escolher(q, rows, eq):
     for n, l in cand:
         if n >= N_ALVO and 'SEM media/DP' in str(q.run('mLotes.RegistroLote', l.replace('.0', ''), teto=60)):
             return l.replace('.0', ''), n
+    # ADR-076: depois do preenchimento inicial nenhum lote com resultados fica sem Media/DP. Para provar o botao
+    # do CIQ, ESTA copia de teste esvazia o lote de mais resultados (nada e salvo no arquivo).
+    for n, l in cand:
+        if n >= N_ALVO:
+            l = l.replace('.0', '')
+            nomes = [str(v[0]).strip() for v in q.espec().Range('A4:A43').Value if v[0]]
+            for an in nomes:
+                for j in range(1, 7):
+                    q.run('mLotes.GravarParametroStore', l, an, j, '', '', 'qa: esvaziado para o teste', teto=60)
+            if 'SEM media/DP' in str(q.run('mLotes.RegistroLote', l, teto=60)):
+                return l, n
     return None, 0
 
 

@@ -175,16 +175,23 @@ def barra_motor(wb):
 
 
 def congelar(wb, ex):
+    """Linha 1 e coluna A congeladas. Congelar exige a aba visivel e ativa: no arquivo de producao (blindado, so o
+    Login visivel) ela fica visivel so durante isto e volta como estava."""
     ws = wb.Worksheets(BLOCOS)
-    ws.Activate()
-    janela = wb.Application.ActiveWindow
-    janela.FreezePanes = False
-    janela.ScrollRow = 1
-    janela.ScrollColumn = 1
-    ws.Range('B2').Select()
-    janela.FreezePanes = True
-    janela.Zoom = 90
-    ws.Range('B2').Select()
+    vis = ws.Visible
+    try:
+        ws.Visible = -1
+        ws.Activate()
+        janela = wb.Application.ActiveWindow
+        janela.FreezePanes = False
+        janela.ScrollRow = 1
+        janela.ScrollColumn = 1
+        ws.Range('B2').Select()
+        janela.FreezePanes = True
+        janela.Zoom = 90
+        ws.Range('B2').Select()
+    finally:
+        ws.Visible = vis
 
 
 def blocos(wb):
@@ -277,6 +284,14 @@ def fumaca(wb, ex):
                         ruins.append(('bloco != motor', lote, an, cb, vb, ve))
     if conferidos == 0:
         ruins.append(('nenhum lote com Media/DP para conferir os limites',))
+    # ADR-076: Media/DP (E:J) sao valores digitados, sem formula; coluna X com a largura da W
+    for lote, h in bl:
+        fs = ws.Range(ws.Cells(h + 4, 5), ws.Cells(h + 43, 10)).Formula
+        if any(str(f).startswith('=') for linha in fs for f in linha):
+            ruins.append(('formula em E:J', lote))
+            break
+    if abs(float(ws.Columns('X').ColumnWidth) - float(ws.Columns('W').ColumnWidth)) > 0.01:
+        ruins.append(('largura X != W', ws.Columns('X').ColumnWidth, ws.Columns('W').ColumnWidth))
     for lote, h in bl[:3]:
         if ws.Cells(h + 45, 4).Value in (None, '') or ws.Cells(h + 45, 10).Value in (None, ''):
             ruins.append(('ano de referencia vazio', lote))
@@ -286,6 +301,36 @@ def fumaca(wb, ex):
     if ruins:
         raise SystemExit(f'fumaca ADR-074 falhou: {ruins[:6]}')
     return len(bl), conferidos, anoC, anoV
+
+
+def preencher_historico(wb, ex, produto, nlv, pasta):
+    """ADR-076 (pedido do usuario, 15/10/2026), UMA vez (marca blPreencHist): lote/analito/nivel sem Media e sem
+    DP recebe a media dos resultados do proprio lote e o DP do lote em uso (sem ele, o DP do proprio lote com
+    >= 20 resultados). Nunca sobrescreve. Relatorio CSV ao lado do arquivo (pasta da entrega, nao versionada)."""
+    try:
+        return f'ja feito ({wb.Names("blPreencHist").RefersTo})'
+    except Exception:
+        pass
+    run = lambda m, *a, teto=900: ex.run(f"'{wb.Name}'!" + m, *a, teto=teto)
+    ref = str(run('mLotes.LoteReferenciaDP') or '').strip()
+    if not ref:
+        raise SystemExit('preenchimento inicial: nenhum lote com Media/DP para servir de referencia do DP')
+    r = str(run('mLotes.PreencherLotesPeloHistorico', ref, nlv))
+    if not r.startswith('OK|'):
+        raise SystemExit(f'preenchimento inicial: {r[:300]}')
+    linhas = r.split('\n')
+    _, nl, nm, nref, nprop, nsem = linhas[0].split('|')
+    import datetime
+    hoje = datetime.date.today().strftime('%d/%m/%Y')
+    arq = os.path.join(pasta, f'preenchimento_inicial_{produto}.csv')
+    with open(arq, 'w', encoding='utf-8-sig') as f:
+        f.write('lote;analito;nivel;n_resultados;media;dp;origem_do_dp\n')
+        for l in linhas[1:]:
+            if l.strip():
+                f.write(l + '\n')
+    wb.Names.Add('blPreencHist', f'="{hoje} ref {ref}"')
+    return (f'lote de referencia do DP {ref}: {nl} lote(s), {nm} par(es) com media; DP do lote em uso em {nref}, '
+            f'do proprio lote (n>=20) em {nprop}, sem DP (pendente) em {nsem}; relatorio {os.path.basename(arq)}')
 
 
 def main(produto, caminho, salvar=True):
@@ -324,7 +369,8 @@ def main(produto, caminho, salvar=True):
             r = ex.run(f"'{wb.Name}'!mLotesBlocos.MontarBlocos", nlv, teto=900)
             if not str(r).startswith('OK|'):
                 raise SystemExit(f'MontarBlocos: {r}')
-            log(f'4. Analitos: {str(r).split("|")[1]} bloco(s) montado(s)')
+            log(f'4. Analitos: {str(r).split("|")[1]} bloco(s) montado(s); Media/DP como valores (sem formula)')
+            log(f'4b. preenchimento inicial: {preencher_historico(wb, ex, produto, nlv, os.path.dirname(caminho))}')
             linha1(wb, ex)
             barra_motor(wb)
             ex.xl.Calculate()
@@ -338,11 +384,11 @@ def main(produto, caminho, salvar=True):
             congelar(wb, ex)
             nb, nconf, anoC, anoV = fumaca(wb, ex)
             log(f'5. fumaca OK: {nb} blocos = cadastro; {nconf} analito(s) com Media/DP conferidos (E:J = LotesStore, '
-                f'limites = media +-k DP); lote em analise {lote_p}: bloco = motor (CLIA {anoC}, VB {anoV})')
+                f'sem formula; limites = media +-k DP); X = W; lote em analise {lote_p}: bloco = motor '
+                f'(CLIA {anoC}, VB {anoV})')
             n2 = ex.run(f"'{wb.Name}'!mLotesBlocos.SincronizarBlocos", teto=120)
             if int(n2 or 0) != 0:
                 raise SystemExit(f'SincronizarBlocos criou {n2} bloco(s) logo depois da montagem')
-            wb.Worksheets(BLOCOS).Range('B2').Select()
 
         devolver_protecao(wb, foto)
         if estrutura:

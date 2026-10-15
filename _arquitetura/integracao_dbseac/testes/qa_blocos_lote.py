@@ -95,12 +95,10 @@ def escolher_lotes(q, rows, eq, cad, lote0):
         if eq and str(r.get('EQUIPAMENTO', '')).upper() != eq:
             continue
         cont[txt(r['LOTE'])] = cont.get(txt(r['LOTE']), 0) + 1
-    sem = [(cont.get(l, 0), l) for l in cad if l != lote0
-           and 'SEM media/DP' in str(q.run('mLotes.RegistroLote', l, teto=60))]
-    sem.sort(reverse=True)
-    if len(sem) < 2:
-        raise RuntimeError(f'pre-condicao: precisa de 2 lotes sem Media/DP no cadastro (ha {len(sem)})')
-    return sem[0][1], sem[0][0], sem[1][1]
+    cand = sorted(((cont.get(l, 0), l) for l in cad if l != lote0), reverse=True)
+    if not cand or cand[0][0] == 0:
+        raise RuntimeError('pre-condicao: nenhum outro lote do cadastro com resultados')
+    return cand[0][1], cand[0][0]
 
 
 def selecionar_lote(q, lote, pos_an):
@@ -153,15 +151,66 @@ def executar(produto, caminho, saida):
                     if (num(s) and not perto(v, s)) or (not num(s) and v not in ('', None)):
                         dif.append((lote, an, j, v, s))
         conf = str(q.run('mLotes.ConferirLotesStore', teto=60))
-        reg('BA Persistência: cada lote do cadastro tem UM bloco (na ordem do cadastro) e o Média/DP de TODOS os blocos é '
-            'o da LotesStore (fonte única, chave LOTE|ANALITO, sem duplicata)',
-            [l for l, _ in bl] == cad and len(set(l for l, _ in bl)) == len(bl) and not dif and conf.startswith('ok'),
+        com_formula = [lote for lote, h in bl
+                       if any(str(f).startswith('=') for linha in b.Range(b.Cells(h + O_AN, 5), b.Cells(h + O_AN + NAN - 1, 10)).Formula
+                              for f in linha)]
+        reg('BA Persistência: cada lote do cadastro tem UM bloco (na ordem do cadastro); Média/DP (E:J) de TODOS os blocos '
+            'são VALORES (sem fórmula) iguais aos da LotesStore (chave LOTE|ANALITO, sem duplicata)',
+            [l for l, _ in bl] == cad and len(set(l for l, _ in bl)) == len(bl) and not dif and conf.startswith('ok')
+            and not com_formula,
             {'blocos': len(bl), 'cadastro': len(cad), 'primeiros': [l for l, _ in bl][:5], 'divergencias': dif[:6],
-             'ConferirLotesStore': conf})
+             'ConferirLotesStore': conf, 'blocos_com_formula_em_EJ': com_formula[:6]})
+
+        # ------------------------------------------------------------ BN preenchimento inicial (ADR-076)
+        marca = None
+        try:
+            marca = str(q.wb.Names('blPreencHist').RefersTo)
+        except Exception:
+            pass
+        ref = marca.split('ref ')[-1].strip('"= ') if marca else ''
+        grupos = {}
+        for r_ in rows:
+            if str(r_.get('PARTICIPA_ESTATISTICA', '')).upper() != 'SIM' or not num(r_.get('RESULTADO')):
+                continue
+            k_ = (txt(r_['LOTE']).upper(), txt(r_['ANALITO']).upper(), int(r_['NIVEL']))
+            grupos.setdefault(k_, []).append(float(r_['RESULTADO']))
+        import statistics as stt
+        conf_n, dif_n, lotes_n = 0, [], set()
+        for chave, (i_, linha) in st.items():
+            if not str(linha[22] or '').startswith('preenchimento inicial'):
+                continue
+            lote_, an_ = txt(linha[0]), txt(linha[14])
+            for nv in range(1, q.nlv + 1):
+                m_, s_ = linha[2 + (nv - 1) * 2], linha[3 + (nv - 1) * 2]
+                if not num(m_):
+                    continue
+                xs = grupos.get((lote_.upper(), an_.upper(), nv), [])
+                ok_m = bool(xs) and perto(m_, stt.mean(xs), 1e-9)
+                dref = q.run('mLotes.DPDoLote', ref, an_, nv) if ref and lote_ != ref else ''
+                if f'N{nv}: ' in str(linha[22]) and 'DP do lote' in str(linha[22]).split(f'N{nv}: ')[1].split(' | ')[0]:
+                    ok_s = perto(s_, dref, 1e-9)
+                elif num(s_):
+                    ok_s = len(xs) >= 20 and perto(s_, stt.stdev(xs), 1e-7)
+                else:
+                    ok_s = len(xs) < 20 and not num(dref)
+                conf_n += 1
+                lotes_n.add(lote_)
+                if not (ok_m and ok_s):
+                    dif_n.append((lote_, an_, nv, m_, stt.mean(xs) if xs else None, s_, dref, len(xs)))
+        reg('BN Preenchimento inicial (pedido de 15/10/2026): Média = média de todos os resultados Ativos do próprio lote '
+            '(recalculada aqui de forma independente); DP = o do lote em uso (ou, sem ele, o DP do próprio lote com '
+            'n >= 20); origem registrada; nada sobrescrito',
+            bool(marca) and conf_n > 0 and not dif_n,
+            {'marca': marca, 'lote_referencia_DP': ref, 'pares_conferidos': conf_n, 'lotes': len(lotes_n),
+             'divergencias': dif_n[:6]})
+
+        # ------------------------------------------------------------ BM largura X = W
+        wx, ww = float(b.Columns('X').ColumnWidth), float(b.Columns('W').ColumnWidth)
+        reg('BM Formatação: coluna X com a mesma largura da coluna W', abs(wx - ww) < 0.01, {'X': wx, 'W': ww})
 
         # ------------------------------------------------------------ BB independencia
-        loteX, nX, loteY = escolher_lotes(q, rows, eq, cad, lote0)
-        hX, h0, hY = dict(bl)[loteX], dict(bl)[lote0], dict(bl)[loteY]
+        loteX, nX = escolher_lotes(q, rows, eq, cad, lote0)
+        hX, h0 = dict(bl)[loteX], dict(bl)[lote0]
         an = next(a for a in catalogo if a and num(q.run('mLotes.MediaDoLote', lote0, a, 1))
                   and num(q.run('mLotes.MediaDoLote', lote0, a, 2)))
         i_an = catalogo.index(an)
@@ -178,24 +227,22 @@ def executar(produto, caminho, saida):
         q.ex.xl.Calculate()
         st = store(q)
         linX = st.get(f'{loteX}|{an}'.upper(), (0, [None] * 23))[1]
-        formulas_ok = all(bool(b.Cells(rX, 5 + j).HasFormula) for j in range(4))
+        sem_formula = not any(bool(b.Cells(rX, 5 + j).HasFormula) for j in range(4))
         tela_ok = all(perto(b.Cells(rX, 5 + j).Value, novos[j]) for j in range(4))
         tela0_ok = perto(b.Cells(r0, 5).Value, m0[0]) and perto(b.Cells(r0, 6).Value, s0[0])
-        # invalido: DP negativo noutro analito sem parametro
-        an2 = next(a for a in catalogo if a and a != an and q.run('mLotes.MediaDoLote', loteX, a, 1) in ('', None))
-        r2 = hX + O_AN + catalogo.index(an2)
-        b.Cells(r2, 6).Value = -1
+        # invalido: DP negativo -> nao grava, a celula volta ao valor gravado
+        b.Cells(rX, 6).Value = -1
         q.ex.esperar()
-        inval_ok = q.run('mLotes.DPDoLote', loteX, an2, 1) in ('', None) and bool(b.Cells(r2, 6).HasFormula)
+        inval_ok = perto(q.run('mLotes.DPDoLote', loteX, an, 1), novos[1]) and perto(b.Cells(rX, 6).Value, novos[1])
         reg('BB Independência: Média/DP digitados no bloco do lote X gravam só em X (LotesStore, trilha '
-            'PARAMETRO_LOTE_ALTERADO, retrato "CLIA aaaa · VB aaaa", origem "bloco do lote") e a fórmula volta; o 1º lote '
-            'não muda; DP inválido não grava',
+            'PARAMETRO_LOTE_ALTERADO, retrato "CLIA aaaa · VB aaaa", origem "bloco do lote") e o VALOR digitado fica na '
+            'célula (sem fórmula); o 1º lote não muda; DP inválido não grava e a célula volta ao valor gravado',
             [perto(mX[0], novos[0]), perto(sX[0], novos[1]), perto(mX[1], novos[2]), perto(sX[1], novos[3])] == [True] * 4
-            and m0b == m0 and formulas_ok and tela_ok and tela0_ok and inval_ok
+            and m0b == m0 and sem_formula and tela_ok and tela0_ok and inval_ok
             and 'PARAMETRO_LOTE_ALTERADO' in trilha(q) and str(linX[22] or '').startswith('digitado na aba Analitos (bloco')
             and str(linX[17] or '').startswith('CLIA ') and ' VB ' in str(linX[17] or ''),
             {'loteX': loteX, 'resultados_X': nX, 'analito': an, 'digitado': novos, 'lido_X': mX + sX, 'lote0': lote0,
-             'lote0_antes': m0, 'lote0_depois': m0b, 'formula_volta': formulas_ok, 'origem': linX[22],
+             'lote0_antes': m0, 'lote0_depois': m0b, 'celulas_sem_formula': sem_formula, 'origem': linX[22],
              'retrato': linX[16:20], 'dp_invalido_recusado': inval_ok})
 
         # ------------------------------------------------------------ BC graficos
@@ -220,22 +267,36 @@ def executar(produto, caminho, saida):
             {'lote': loteX, 'analito': an, 'Calc_media_dp_N1_N2': dict(zip(cel_md, ax)), 'pontos_N1': len(lin1), 'pontos_N2': len(lin2),
              'linhas_N1_ok': ok1, 'linhas_N2_ok': ok2, 'status_painel': st7, 'volta_lote0': ax0})
 
-        # ------------------------------------------------------------ BD ausentes
-        selecionar_lote(q, loteY, i_an + 1)
-        axY = [c.Range(x).Value for x in cel_md]
-        v1, _ = linhas_calc(q)
-        sem_linha = all(not num(l[3]) for l in v1)
-        stY = [str(p.Range(x).Value or '') for x in ('J7', 'J8')]
-        rY = hY + O_AN + i_an
-        blocoY = b.Range(b.Cells(rY, 5), b.Cells(rY, 10)).Value[0] + b.Range(b.Cells(rY, 25), b.Cells(rY, 38)).Value[0]
-        reg('BD Parâmetros ausentes: lote sem Média/DP -> Calc sem média/DP, nenhuma linha de limite, Painel "SEM MÉDIA/DP" '
-            'e bloco vazio (nada herdado de outro lote)',
-            all(v in ('', None) for v in axY) and sem_linha and all('SEM M' in s.upper() for s in stY)
-            and all(v in ('', None) for v in blocoY) and q.run('mLotes.MediaDoLote', loteY, an, 1) in ('', None),
-            {'loteY': loteY, 'Calc': axY, 'status_painel': stY, 'bloco': [v for v in blocoY if v not in ('', None)][:4]})
+        # ------------------------------------------------------------ BC2 alternancia entre lotes
+        # o analito com Media/DP (N1) no maior numero de lotes anteriores (pela LotesStore), alem do 1o lote
+        st2 = store(q)
+        def tem_n1(l, a):
+            lin = st2.get(f'{l}|{a}'.upper(), (0, [None] * 23))[1]
+            return num(lin[2]) and num(lin[3]) and lin[3] > 0
+        melhor = max(((sum(1 for l in cad if l not in (lote0, loteX) and tem_n1(l, a)), a)
+                      for a in catalogo if a and tem_n1(lote0, a)), default=(0, None))
+        an_alt = melhor[1]
+        outros = [l for l in cad if l not in (lote0, loteX) and an_alt and tem_n1(l, an_alt)][:2]
+        if len(outros) < 2 and an_alt and tem_n1(loteX, an_alt):
+            outros = (outros + [loteX])[:2]
+        seq = ([lote0] + outros) * 2
+        dif2 = []
+        for l in seq:
+            selecionar_lote(q, l, catalogo.index(an_alt) + 1)
+            got = [c.Range(x).Value for x in cel_md]
+            exp = [q.run('mLotes.MediaDoLote', l, an_alt, 1), q.run('mLotes.DPDoLote', l, an_alt, 1),
+                   q.run('mLotes.MediaDoLote', l, an_alt, 2), q.run('mLotes.DPDoLote', l, an_alt, 2)]
+            stl = [str(p.Range(x).Value or '') for x in ('J7', 'J8')]
+            ok_n1 = perto(got[0], exp[0]) and perto(got[1], exp[1]) and 'SEM M' not in stl[0].upper()
+            ok_n2 = (perto(got[2], exp[2]) and perto(got[3], exp[3])) if num(exp[3]) else (got[2] in ('', None))
+            if not (ok_n1 and ok_n2):
+                dif2.append((l, got, exp, stl))
         selecionar_lote(q, lote0, i_an + 1)
+        reg('BC2 Alternância: lote em uso e dois lotes anteriores, duas voltas -- a média e o DP do gráfico são sempre os '
+            'do lote escolhido (N1; N2 quando o lote o tem); nenhuma vez "SEM MÉDIA/DP" no N1; nada preso ao lote anterior',
+            len(outros) == 2 and not dif2, {'sequencia': seq, 'analito': an_alt, 'divergencias': dif2[:4]})
 
-        # ------------------------------------------------------------ BE inclusao
+        # ------------------------------------------------------------ BE inclusao (lote novo, sem resultados)
         n0 = len(blocos(b))
         novo_lote = 'QA074'
         r = str(q.run('mApp.CadastrarLote', novo_lote, '31/12/2027', teto=300))
@@ -253,6 +314,22 @@ def executar(produto, caminho, saida):
             {'retorno': r, 'blocos_antes': n0, 'blocos_depois': len(bl2), 'linha': hN, 'validade': str(val),
              'anos': (b.Cells(hN + O_ANO, 4).Value, b.Cells(hN + O_ANO, 10).Value) if hN else None,
              'sincronizar_de_novo': n_sinc})
+
+        # ------------------------------------------------------------ BD ausentes (o lote novo, sem Media/DP)
+        loteY, hY = novo_lote, hN
+        selecionar_lote(q, loteY, i_an + 1)
+        axY = [c.Range(x).Value for x in cel_md]
+        v1, _ = linhas_calc(q)
+        sem_linha = all(not num(l[3]) for l in v1)
+        stY = [str(p.Range(x).Value or '') for x in ('J7', 'J8')]
+        rY = hY + O_AN + i_an
+        blocoY = b.Range(b.Cells(rY, 5), b.Cells(rY, 10)).Value[0] + b.Range(b.Cells(rY, 25), b.Cells(rY, 38)).Value[0]
+        reg('BD Parâmetros ausentes: lote sem Média/DP -> Calc sem média/DP, nenhuma linha de limite, Painel "SEM MÉDIA/DP" '
+            'e bloco vazio (nada herdado de outro lote)',
+            all(v in ('', None) for v in axY) and sem_linha and all('SEM M' in s.upper() for s in stY)
+            and all(v in ('', None) for v in blocoY) and q.run('mLotes.MediaDoLote', loteY, an, 1) in ('', None),
+            {'loteY': loteY, 'Calc': axY, 'status_painel': stY, 'bloco': [v for v in blocoY if v not in ('', None)][:4]})
+        selecionar_lote(q, lote0, i_an + 1)
 
         # ------------------------------------------------------------ BF referencias anuais
         yX = hX + O_ANO

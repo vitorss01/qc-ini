@@ -21,9 +21,10 @@ Option Explicit
 '                    de especificacao, linha vazia.
 '
 '  FONTE UNICA: Media/DP continuam na LotesStore (chave LOTE|ANALITO). As celulas
-'  E:J do bloco sao FORMULAS que leem a store; digitar nelas grava na store (com
-'  trilha e retrato da especificacao do bloco) e a formula volta. Nao existe
-'  segunda base de parametros. Os anos de referencia ficam no proprio bloco.
+'  E:J do bloco sao VALORES digitados pelo usuario (ADR-076, sem formula): digitar
+'  grava na store na hora (com trilha e retrato da especificacao do bloco), e toda
+'  gravacao na store por outro caminho (tela do motor, CIQ, preenchimento) reescreve
+'  o bloco do lote. Os anos de referencia ficam no proprio bloco.
 '
 '  Blocos sao ANEXADOS (nunca apagados nem reordenados): lote retirado do cadastro
 '  continua com o bloco -- e historico.
@@ -56,7 +57,7 @@ Private Const C_LIM1 As Long = 25            ' Y  -3DP N1 .. +3DP N1 (7 colunas 
 Private Const C_BIAS As Long = 47            ' AU Bias do CEQ (abs)
 Private Const C_DES1 As Long = 48            ' AV CV / ET / Sigma N1 (3 colunas por nivel)
 Private Const C_ULT As Long = 56             ' BD
-Private Const C_AUX As Long = 58             ' BF linha na LotesStore (analitos) / deslocamento CLIA (linha do ano)
+Private Const C_AUX As Long = 58             ' BF deslocamento CLIA na biblioteca (linha do ano)
 Private Const C_AUX2 As Long = 59            ' BG deslocamento VB na biblioteca
 Private Const C_SOMB1 As Long = 60           ' BH ano CLIA registrado (o "antes" da trilha)
 Private Const C_SOMB2 As Long = 61           ' BI ano VB registrado
@@ -312,7 +313,7 @@ Private Sub LargurasColunas(ByVal ws As Worksheet, ByVal nlv As Long)
     Next c
     ws.Columns(2).ColumnWidth = 11
     ws.Columns(4).ColumnWidth = 7
-    ws.Columns(C_TAB_FIM + 1).ColumnWidth = 2          ' X  respiro
+    ws.Columns(C_TAB_FIM + 1).ColumnWidth = ws.Columns(C_TAB_FIM).ColumnWidth   ' X = W (pedido do usuario)
     ws.Columns(C_BIAS - 1).ColumnWidth = 2             ' AT respiro
     ws.Columns(C_ULT + 1).ColumnWidth = 2              ' BE
     ws.Range(ws.Columns(C_AUX), ws.Columns(C_SOMB2)).Hidden = True
@@ -363,13 +364,34 @@ Private Function Tx(ByVal s As String, ByVal h As Long) As String
     Tx = s
 End Function
 
-' Formula de Media/DP (coluna c = E..J) da linha de analito r do bloco h: le a LotesStore.
-Private Function FormulaParam(ByVal h As Long, ByVal r As Long, ByVal c As Long) As String
-    Dim ls As String
-    ls = Col(3 + c - C_MED1)                                    ' E..J -> LotesStore C..H
-    FormulaParam = Replace(Replace("=IF($BF#="""","""",LET(val,INDEX(LotesStore!$X$1:$X$4001,$BF#),IF(val="""","""",val)))", _
-                                   "#", CStr(r)), "$X$", "$" & ls & "$")
-End Function
+' ADR-076: Media/DP do bloco (E:J) sao VALORES digitados pelo usuario, sem formula. A LotesStore continua sendo
+' onde o sistema guarda e le (motor, Calc, Westgard, BI); o bloco e sempre reescrito a partir dela.
+Public Sub EscreverValoresDoLote(ByVal lote As String)
+    Dim ws As Worksheet, h As Long, prot As Boolean, ev As Boolean, dentro As Boolean
+    If Not BlocosAtivos() Then Exit Sub
+    h = LinhaDoBloco(lote)
+    If h = 0 Then Exit Sub
+    Set ws = ThisWorkbook.Worksheets(BL_ABA)
+    dentro = mDentro
+    mDentro = True
+    ev = Application.EnableEvents
+    Application.EnableEvents = False
+    On Error GoTo fim
+    prot = LiberarEscrita(ws)
+    EscreverValoresBloco ws, h
+fim:
+    RestaurarProtecao ws, prot
+    Application.EnableEvents = ev
+    mDentro = dentro
+End Sub
+
+Private Sub EscreverValoresBloco(ByVal ws As Worksheet, ByVal h As Long)
+    Dim e As Worksheet, nomes As Variant
+    Set e = ThisWorkbook.Worksheets(ESP_ABA)
+    nomes = e.Range("A4:A43").Value
+    ws.Range(ws.Cells(h + O_AN, C_MED1), ws.Cells(h + O_AN + BL_NAN - 1, C_MED1 + 5)).Value = _
+        mLotes.ValoresDoLote(Trim$(CStr(ws.Cells(h, 2).Value)), nomes)
+End Sub
 
 ' Coluna (de ate 40 linhas) do bloco a partir da formula da 1a linha de analito.
 Private Sub ColunaAn(ByVal ws As Worksheet, ByVal h As Long, ByVal c As Long, ByVal f As String)
@@ -392,16 +414,13 @@ Private Sub FormulasBloco(ByVal ws As Worksheet, ByVal h As Long)
         "&~ · referência: CLIA ~&$D${y}&~ · VB ~&$J${y})", h)
     ws.Cells(h + O_TIT, 1).Formula2 = Tx("=~ANALITOS · MÉDIA/DP, LIMITES E ESPECIFICAÇÕES DO LOTE ~&$B${h}", h)
 
-    ' catalogo (Especificacoes, mesma ordem) e a linha na LotesStore
+    ' catalogo (Especificacoes, mesma ordem)
     ColunaAn ws, h, 1, "=IF({E}$A4=~~,~~,{E}$A4)"
     ColunaAn ws, h, 2, "=IF($A{r}=~~,~~,{E}$B4&~~)"
     ColunaAn ws, h, 3, "=IF($A{r}=~~,~~,{E}$C4&~~)"
     ColunaAn ws, h, 4, "=IF($A{r}=~~,~~,{E}$D4)"
-    ColunaAn ws, h, C_AUX, "=IF($A{r}=~~,~~,IFERROR(MATCH(UPPER(TRIM($B${h}))&~|~&UPPER(TRIM($A{r})),LotesStore!$P$1:$P$4001,0),~~))"
-    ' Media/DP: da LotesStore (digitar grava la e a formula volta)
-    For c = C_MED1 To C_MED1 + 5
-        ws.Range(ws.Cells(h + O_AN, c), ws.Cells(h + O_AN + BL_NAN - 1, c)).Formula2 = FormulaParam(h, h + O_AN, c)
-    Next c
+    ' Media/DP (E:J): VALORES (ADR-076), escritos a partir da LotesStore
+    EscreverValoresBloco ws, h
     ' especificacoes deste bloco (linhas de especificacao abaixo, pelo nome do analito)
     ColunaAn ws, h, 11, "=IFERROR(LET(val,INDEX($B${cl}:$AO${cl},MATCH($A{r},$B${sn}:$AO${sn},0)),IF(val=~~,~~,val)),~~)"
     ColunaAn ws, h, 12, "=IFERROR(LET(val,INDEX($B${cl3}:$AO${cl3},MATCH($A{r},$B${sn}:$AO${sn},0)),IF(val=~~,~~,val)),~~)"
@@ -948,7 +967,8 @@ Private Sub GravarEditados(ByVal ws As Worksheet, ByVal cels As Collection)
         j = c.Column - C_MED1 + 1                                   ' 1..6
         nv = (j - 1) \ 2 + 1
         If (j Mod 2) = 1 Then campo = "Media" Else campo = "DP"
-        If c.HasFormula Or lote = "" Or an = "" Then GoTo volta
+        If lote = "" Or an = "" Then c.ClearContents: GoTo proximo       ' linha sem analito: nada a gravar
+        If c.HasFormula Then GoTo volta                                    ' formula colada: volta o valor gravado
         v = c.Value
         If Len(Trim$(CStr(v))) = 0 Then
             v = Empty
@@ -967,8 +987,10 @@ Private Sub GravarEditados(ByVal ws As Worksheet, ByVal cels As Collection)
                 "Parametro " & campo & " N" & nv & " do lote " & lote & " alterado na aba Analitos (bloco do lote)."
             lotes(lote) = 1
         End If
+        GoTo proximo
 volta:
-        c.Formula2 = FormulaParam(h, c.Row, c.Column)
+        c.Value = mLotes.ValorDoLote(lote, an, j)                         ' invalido: volta o que estava gravado
+proximo:
     Next c
     RestaurarProtecao ws, prot
     mLotes.InvalidarLotes
