@@ -39,49 +39,50 @@ agendada atualiza a cada 2 minutos.
    - **CONFLITO_MANUAL** = o mesmo resultado já veio pelo interfaceamento. O manual fica guardado, fora do cálculo.
      Manual **nunca** substitui automático.
 
-## 4. Especificação do ETp (Bioquímica: aba Especificações · Hematologia: aba Analitos)
+## 4. Especificações de qualidade (aba Especificações, nos dois QCs)
 
-- **Bioquímica:** a antiga aba Analitos agora se chama **Especificações** (catálogo, fonte, biblioteca anual CLIA/VB/FAB
-  nas linhas 46–89). A coluna S escolhe a especificação de cada analito:
-  - **CLIA** usa a coluna K;
-  - **VB** (variação biológica: CVI e CVG nas colunas O e P, desempenho na Q) usa a coluna R;
-  - **FAB** usa a coluna M.
-  
-  A coluna T mostra o ETp em uso. "-" = especificação não cadastrada, e nesse caso o Sigma fica "-".
-- **Hematologia:** a fonte segue a prioridade ETp configurado (P) → CLIA → VB, e a coluna Q mostra qual valeu.
+A antiga aba Analitos agora se chama **Especificações**. Ela guarda:
+- o catálogo de analitos;
+- o desempenho (Q) e a fonte do ETp (S);
+- a **biblioteca anual** de especificações, nas linhas 46–89 (2025 a 2029): CLIA ETp, VB-CVi, VB-CVg, FAB ETp e FAB
+  CVTp de cada ano.
 
-## 4b. Média/DP e limites de cada lote
+A coluna **S** escolhe a especificação de cada analito:
+- **CLIA** usa a coluna K;
+- **VB** (variação biológica: CVi e CVg nas colunas O e P, desempenho na Q) usa a coluna R;
+- **FAB** usa a coluna M.
 
-### Bioquímica: aba Analitos, um bloco por lote (ADR-074)
+A coluna T mostra o ETp em uso. "-" = especificação não cadastrada, e nesse caso o Sigma fica "-".
+
+As colunas K..P mostram as especificações dos **anos de referência do lote em análise** (o do Painel). **S2** é o ano
+padrão de lote novo.
+
+**Hematologia:** a biblioteca de 2025 recebeu os valores que estavam digitados na tabela. Os anos 2026–2029 ficam para o
+laboratório preencher (ADR-075).
+
+## 4b. Média/DP e limites de cada lote (aba Analitos, um bloco por lote — ADR-074)
 
 - **Um bloco por lote do cadastro.** Lote e validade vêm da Configuração; lote novo ganha o bloco sozinho.
 - **Abrir e recolher:**
   - ▼/▶ abre ou recolhe um bloco;
   - na linha 1, **Abrir todos** e **Recolher todos**;
-  - **Lote em análise ▸** vai ao bloco do lote do Painel.
+  - **Lote em análise ▸** vai ao bloco do lote do Painel;
+  - **Especificações ▸** abre a biblioteca.
 - **Média/DP:** digite nas células amarelas (E:J) do bloco do lote. Grava na hora, com trilha.
   - Os limites (Média ± 1, 2 e 3 DP), o CV, o ET e o Sigma do lote aparecem ao lado.
   - O gráfico do Painel usa esses valores quando o lote é escolhido em H3.
-  - O botão **Preencher vazios pelo CIQ (20 primeiros)** do bloco calcula só o que está vazio.
+  - **Lote sem Média/DP = gráfico sem limites e Westgard sem avaliar.**
+  - O botão **Preencher vazios pelo CIQ (20 primeiros)** do bloco calcula só o que está vazio. Revise os valores.
 - **Ano de referência:** abaixo da tabela de cada bloco ficam o **CLIA** (D:E) e a **Variação Biológica** (J:K).
   - O ano escolhe as especificações do bloco e, com elas, o ETp, o ET e o Sigma daquele lote.
-  - Lote novo nasce com o **ano padrão** (Especificações S2).
+  - Lote novo nasce com o ano padrão (Especificações S2).
   - A troca de ano fica na trilha de auditoria.
-
-### Hematologia: aba Analitos (até a fase 2)
-
-- **Escolher o lote:** escolha o lote em **J1 (LOTE EM EDIÇÃO)** ou no Painel (H3); os dois são o mesmo. O resumo ao
-  lado diz se o lote tem Média/DP, quando foi registrado, por quem e com qual especificação.
-- **Lote sem Média/DP = gráfico sem limites e Westgard sem avaliar.** Para cadastrar, use uma das duas formas:
-  - digite a Média e o DP de cada nível (E:J); ou
-  - clique em **Preencher Média/DP vazios pelo CIQ (20 primeiros)**. O botão usa os 20 primeiros resultados do lote,
-    só preenche o que está vazio, e você revisa depois.
-- **Registro:** cada gravação fica no `LotesStore` com a especificação vigente naquele momento (fonte, ano da
-  referência, ETp, CVTp), data, usuário e origem. Esse é o histórico de limites de cada lote.
+- **Registro:** cada gravação fica no `LotesStore` com a especificação do lote naquele momento (fonte, "CLIA aaaa · VB
+  aaaa", ETp, CVTp), data, usuário e origem. Esse é o histórico de limites de cada lote.
 
 ## 5. Controle externo (CEQ) e Sigma (aba Estatística)
 
-**Bias do CEQ.** O programa é escolhido em R4 na Hematologia e por analito em Analitos!AR na Bioquímica. CAP e
+**Bias do CEQ.** O programa é escolhido em R4 na Hematologia e por analito em Especificações!AR na Bioquímica. CAP e
 Controllab nunca se misturam. As opções:
 
 | Ano | Rodada | Bias |

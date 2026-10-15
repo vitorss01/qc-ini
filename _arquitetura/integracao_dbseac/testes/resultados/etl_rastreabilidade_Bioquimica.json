@@ -1,6 +1,6 @@
 {
  "produto": "Bioquimica",
- "gerado_em": "2026-10-14T18:49:35",
+ "gerado_em": "2026-10-14T21:57:19",
  "nota": "Só os IDs dos cenários do qa_etl e uma amostra fixa (semente 57) -- nunca a base inteira.",
  "recorte_estatistica": {
   "produto": "Bioquimica",
