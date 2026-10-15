@@ -176,33 +176,41 @@ def executar(produto, caminho, saida):
             grupos.setdefault(k_, []).append(float(r_['RESULTADO']))
         import statistics as stt
         conf_n, dif_n, lotes_n = 0, [], set()
+        sem_limite = []
         for chave, (i_, linha) in st.items():
-            if not str(linha[22] or '').startswith('preenchimento inicial'):
+            org = str(linha[22] or '')
+            if not org.startswith('TESTE'):
                 continue
             lote_, an_ = txt(linha[0]), txt(linha[14])
             for nv in range(1, q.nlv + 1):
-                m_, s_ = linha[2 + (nv - 1) * 2], linha[3 + (nv - 1) * 2]
-                if not num(m_):
+                if f'N{nv}: ' not in org:
                     continue
+                parte = org.split(f'N{nv}: ')[1].split(' | ')[0]
+                m_, s_ = linha[2 + (nv - 1) * 2], linha[3 + (nv - 1) * 2]
                 xs = grupos.get((lote_.upper(), an_.upper(), nv), [])
-                ok_m = bool(xs) and perto(m_, stt.mean(xs), 1e-9)
-                dref = q.run('mLotes.DPDoLote', ref, an_, nv) if ref and lote_ != ref else ''
-                if f'N{nv}: ' in str(linha[22]) and 'DP do lote' in str(linha[22]).split(f'N{nv}: ')[1].split(' | ')[0]:
-                    ok_s = perto(s_, dref, 1e-9)
-                elif num(s_):
-                    ok_s = len(xs) >= 20 and perto(s_, stt.stdev(xs), 1e-7)
+                ok_m = ('media ja gravada' in parte) or (bool(xs) and perto(m_, stt.mean(xs), 1e-9))
+                if 'DP ja gravado' in parte:
+                    ok_s = num(s_)
+                elif '1,5 x DP do lote' in parte:
+                    ok_s = perto(s_, 1.5 * float(q.run('mLotes.DPDoLote', ref, an_, nv) or 0), 1e-9)
+                elif '1,5 x DP dos' in parte:
+                    ok_s = len(xs) >= 2 and perto(s_, 1.5 * stt.stdev(xs), 1e-7)
+                elif '5% da media' in parte:
+                    ok_s = perto(s_, 1.5 * 0.05 * abs(m_), 1e-9)
                 else:
-                    ok_s = len(xs) < 20 and not num(dref)
+                    ok_s = False
+                if not (num(m_) and num(s_) and s_ > 0):
+                    sem_limite.append((lote_, an_, nv))
                 conf_n += 1
                 lotes_n.add(lote_)
                 if not (ok_m and ok_s):
-                    dif_n.append((lote_, an_, nv, m_, stt.mean(xs) if xs else None, s_, dref, len(xs)))
-        reg('BN Preenchimento inicial (pedido de 15/10/2026): Média = média de todos os resultados Ativos do próprio lote '
-            '(recalculada aqui de forma independente); DP = o do lote em uso (ou, sem ele, o DP do próprio lote com '
-            'n >= 20); origem registrada; nada sobrescrito',
-            bool(marca) and conf_n > 0 and not dif_n,
+                    dif_n.append((lote_, an_, nv, m_, stt.mean(xs) if xs else None, s_, parte[:60], len(xs)))
+        reg('BN Valores de TESTE (pedido de 15/10/2026): o que estava vazio recebeu a média de todos os resultados Ativos '
+            'do próprio lote (recalculada aqui de forma independente) e DP = 1,5 x o do lote em uso (sem ele, 1,5 x o DP '
+            'do próprio lote ou 1,5 x 5% da média); todo par preenchido tem média e DP (limites); origem "TESTE"',
+            bool(marca) and conf_n > 0 and not dif_n and not sem_limite,
             {'marca': marca, 'lote_referencia_DP': ref, 'pares_conferidos': conf_n, 'lotes': len(lotes_n),
-             'divergencias': dif_n[:6]})
+             'divergencias': dif_n[:6], 'pares_sem_limite': sem_limite[:6]})
 
         # ------------------------------------------------------------ BM largura X = W
         wx, ww = float(b.Columns('X').ColumnWidth), float(b.Columns('W').ColumnWidth)

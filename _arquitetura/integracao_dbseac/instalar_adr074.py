@@ -304,9 +304,10 @@ def fumaca(wb, ex):
 
 
 def preencher_historico(wb, ex, produto, nlv, pasta):
-    """ADR-076 (pedido do usuario, 15/10/2026), UMA vez (marca blPreencHist): lote/analito/nivel sem Media e sem
-    DP recebe a media dos resultados do proprio lote e o DP do lote em uso (sem ele, o DP do proprio lote com
-    >= 20 resultados). Nunca sobrescreve. Relatorio CSV ao lado do arquivo (pasta da entrega, nao versionada)."""
+    """ADR-076 (pedido do usuario, 15/10/2026), UMA vez (marca blPreencHist): VALORES DE TESTE para ver os limites de
+    todos os lotes -- o que estiver vazio recebe a media dos resultados do proprio lote e DP = 1,5 x o do lote em
+    uso (sem ele, 1,5 x o DP do proprio lote; com um resultado so, 1,5 x 5% da media). Nunca sobrescreve. O usuario
+    substitui depois pelos valores corretos. Relatorio CSV ao lado do arquivo (pasta da entrega, nao versionada)."""
     try:
         return f'ja feito ({wb.Names("blPreencHist").RefersTo})'
     except Exception:
@@ -329,8 +330,9 @@ def preencher_historico(wb, ex, produto, nlv, pasta):
             if l.strip():
                 f.write(l + '\n')
     wb.Names.Add('blPreencHist', f'="{hoje} ref {ref}"')
-    return (f'lote de referencia do DP {ref}: {nl} lote(s), {nm} par(es) com media; DP do lote em uso em {nref}, '
-            f'do proprio lote (n>=20) em {nprop}, sem DP (pendente) em {nsem}; relatorio {os.path.basename(arq)}')
+    return (f'VALORES DE TESTE, lote de referencia {ref}: {nl} lote(s), {nm} par(es) analito/nivel; DP = 1,5 x o do lote '
+            f'em uso em {nref}, 1,5 x o DP do proprio lote em {nprop}, 1,5 x 5% da media em {nsem}; '
+            f'relatorio {os.path.basename(arq)}')
 
 
 def main(produto, caminho, salvar=True):

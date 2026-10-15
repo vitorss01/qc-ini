@@ -63,6 +63,7 @@ Private Const LS_C_QUEM As Long = 22          ' V  usuario
 Private Const LS_C_ORIGEM As Long = 23        ' W  digitado / CIQ (20 primeiros)
 Private Const LS_C_ULT As Long = 23
 Private Const N_CIQ_ALVO As Long = 20         ' CLSI C24: media/DP de um lote novo com >= 20 resultados
+Private Const FATOR_DP_TESTE As Double = 1.5  ' ADR-076: DP de TESTE = 1,5 x o do lote em uso (pedido do usuario)
 Private mOrigemGravacao As String             ' origem da proxima gravacao (CIQ) -- vazio = digitado
 
 ' ---- cadastro de lotes (Configuracao) -- ADR-060 ----
@@ -1408,16 +1409,17 @@ Private Function PrimeirosN(ByVal col As Collection, ByVal n As Long, ByRef m As
     PrimeirosN = True
 End Function
 
-' ============================ ADR-076: PREENCHIMENTO INICIAL PELO HISTORICO ============================
+' ============================ ADR-076: PREENCHIMENTO INICIAL (VALORES DE TESTE) ============================
 ' Pedido do usuario (15/10/2026): ao trocar de lote no Painel os limites sumiam porque so o lote em uso tinha
-' Media/DP. Para cada lote do cadastro e cada analito x nivel SEM Media e SEM DP na store:
+' Media/DP. "Insira a media calculada de cada lote; o DP pode ficar uniforme, so para teste, 1,5x o do lote
+' atual -- depois eu mesmo insiro os valores corretos". Para cada lote do cadastro e cada analito x nivel com
+' resultados, o que estiver VAZIO na store recebe:
 '   Media = media de TODOS os resultados Ativos do proprio lote (todos os equipamentos);
-'   DP    = o DP do lote de referencia (o lote em uso) no mesmo analito x nivel; sem ele, o DP amostral do
-'           proprio lote quando ha >= 20 resultados (a regra do CLSI C24, a mesma do botao CIQ); senao vazio
-'           (o par fica sem limites: pendencia para o laboratorio).
-' Nunca sobrescreve. Cada linha gravada leva a origem (n, de onde veio o DP) e o retrato da especificacao do
-' lote. Uma gravacao em bloco na LotesStore. Devolve "OK|lotes|medias|dp_ref|dp_proprio|sem_dp" e, nas
-' linhas seguintes, o detalhe "lote;analito;nivel;n;media;dp;fonte do DP".
+'   DP    = 1,5 x o DP do lote de referencia (o lote em uso) no mesmo analito x nivel; sem ele, 1,5 x o DP dos
+'           resultados do proprio lote (n >= 2); com um resultado so, 1,5 x 5% da media.
+' Nunca sobrescreve. Cada linha gravada diz que e TESTE e de onde veio cada valor. Uma gravacao em bloco na
+' LotesStore. Devolve "OK|lotes|medias|dp_ref|dp_proprio|dp_5pct" e, nas linhas seguintes, o detalhe
+' "lote;analito;nivel;n;media;dp;fonte do DP".
 Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv As Long) As String
     Dim dados As Variant, acc As Object, i As Long, k As String, a As Variant
     Dim ws As Worksheet, wa As Worksheet, nomes As Variant, cad As Variant, lote As String, an As String
@@ -1427,6 +1429,7 @@ Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv A
     Dim nLotes As Long, nMed As Long, nRef As Long, nProp As Long, nSem As Long, det As String
     Dim tocados As Object, vistos As Object, prot As Boolean, nE As Long, sE As String, quando As Date
     Dim c As Long, kk As Variant, out() As Variant, ri As Long, porLote As Object, usuario As String
+    Dim mAntes As Variant, dAntes As Variant
 
     On Error GoTo falha
     loteRef = Trim$(loteRef)
@@ -1480,31 +1483,36 @@ Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv A
                     esp = Empty
                     For nv = 1 To nlv
                         j = (nv - 1) * 2 + 1
-                        If Len(Trim$(CStr(ValorNaStore(lote, an, j)))) = 0 And _
-                           Len(Trim$(CStr(ValorNaStore(lote, an, j + 1)))) = 0 Then
+                        mAntes = ValorNaStore(lote, an, j)
+                        dAntes = ValorNaStore(lote, an, j + 1)
+                        If Len(Trim$(CStr(mAntes))) = 0 Or Len(Trim$(CStr(dAntes))) = 0 Then
                             k = UCase$(lote) & "|" & UCase$(an) & "|" & nv
                             If acc.Exists(k) Then
                                 a = acc(k)
                                 n = a(2)
                                 m = a(0) / n
+                                If Len(Trim$(CStr(mAntes))) > 0 Then If NumeroValido(mAntes) Then m = CDbl(mAntes)
                                 dp = Empty
                                 temRef = False
                                 If StrComp(lote, loteRef, vbTextCompare) <> 0 Then temRef = ParametrosLote(loteRef, an, nv, mR, sR)
-                                If temRef Then
-                                    dp = sR
-                                    fonteDP = "DP do lote " & loteRef & " (em uso)"
+                                If Len(Trim$(CStr(dAntes))) > 0 Then
+                                    fonteDP = "DP ja gravado (mantido)"
+                                ElseIf temRef Then
+                                    dp = FATOR_DP_TESTE * sR
+                                    fonteDP = "DP = 1,5 x DP do lote " & loteRef & " (em uso)"
                                     nRef = nRef + 1
-                                ElseIf n >= N_CIQ_ALVO Then
-                                    s = (a(1) - a(0) ^ 2 / n) / (n - 1)
+                                Else
+                                    s = 0
+                                    If n >= 2 Then s = (a(1) - a(0) ^ 2 / n) / (n - 1)
                                     If s > 0 Then
-                                        dp = Sqr(s)
-                                        fonteDP = "DP dos " & n & " resultados do proprio lote"
+                                        dp = FATOR_DP_TESTE * Sqr(s)
+                                        fonteDP = "DP = 1,5 x DP dos " & n & " resultados do proprio lote (o lote " & loteRef & " nao tem DP)"
                                         nProp = nProp + 1
+                                    ElseIf m <> 0 Then
+                                        dp = FATOR_DP_TESTE * 0.05 * Abs(m)
+                                        fonteDP = "DP = 1,5 x 5% da media (um resultado so; o lote " & loteRef & " nao tem DP)"
+                                        nSem = nSem + 1
                                     End If
-                                End If
-                                If IsEmpty(dp) Then
-                                    fonteDP = "SEM DP (pendente: o lote " & loteRef & " nao tem DP e ha menos de " & N_CIQ_ALVO & " resultados)"
-                                    nSem = nSem + 1
                                 End If
                                 If IsEmpty(esp) Then
                                     esp = mLotesBlocos.EspecDoLote(lote, an)
@@ -1513,7 +1521,7 @@ Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv A
                                 kk = ChaveLote(lote, an)
                                 If idx.Exists(kk) Then
                                     r = idx(kk) - LS_R0 + 1
-                                    arr(r, LS_C_MED1 + j - 1) = m
+                                    If Len(Trim$(CStr(mAntes))) = 0 Then arr(r, LS_C_MED1 + j - 1) = m
                                     If Not IsEmpty(dp) Then arr(r, LS_C_MED1 + j) = dp
                                     arr(r, LS_C_FONTE) = esp(0): arr(r, LS_C_ANO) = esp(1)
                                     arr(r, LS_C_ETP) = esp(2): arr(r, LS_C_CVTP) = esp(3)
@@ -1526,15 +1534,15 @@ Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv A
                                         novos.Add kk, lin
                                     End If
                                     lin = novos(kk)
-                                    lin(LS_C_MED1 + j - 1) = m
+                                    If Len(Trim$(CStr(mAntes))) = 0 Then lin(LS_C_MED1 + j - 1) = m
                                     If Not IsEmpty(dp) Then lin(LS_C_MED1 + j) = dp
                                     lin(LS_C_FONTE) = esp(0): lin(LS_C_ANO) = esp(1)
                                     lin(LS_C_ETP) = esp(2): lin(LS_C_CVTP) = esp(3)
                                     lin(LS_C_QUANDO) = quando: lin(LS_C_QUEM) = usuario
                                     novos(kk) = lin
                                 End If
-                                origens(kk) = origens(kk) & IIf(origens(kk) <> "", " | ", "") & "N" & nv & ": media de " & n & _
-                                    " resultado(s) do lote" & IIf(n < N_CIQ_ALVO, " (n<" & N_CIQ_ALVO & ", provisorio)", "") & "; " & fonteDP
+                                origens(kk) = origens(kk) & IIf(origens(kk) <> "", " | ", "") & "N" & nv & ": " & _
+                                    IIf(Len(Trim$(CStr(mAntes))) > 0, "media ja gravada (mantida)", "media de " & n & " resultado(s) do lote") & "; " & fonteDP
                                 nMed = nMed + 1
                                 tocados(lote) = 1
                                 porLote(lote) = porLote(lote) + 1
@@ -1551,7 +1559,7 @@ Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv A
 
     ' 4. uma gravacao: linhas existentes alteradas e linhas novas anexadas
     For Each kk In mudou.Keys
-        arr(kk, LS_C_ORIGEM) = "preenchimento inicial " & Format$(quando, "dd/mm/yyyy") & " (revisar) -- " & origens(mudou(kk))
+        arr(kk, LS_C_ORIGEM) = "TESTE " & Format$(quando, "dd/mm/yyyy") & " (substituir pelos valores corretos) -- " & origens(mudou(kk))
     Next kk
     prot = LiberarEscrita(ws)
     If mudou.Count > 0 Then ws.Range(ws.Cells(LS_R0, 1), ws.Cells(ult, LS_C_ULT)).Value = arr
@@ -1564,7 +1572,7 @@ Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv A
         For Each kk In novos.Keys
             ri = ri + 1
             lin = novos(kk)
-            lin(LS_C_ORIGEM) = "preenchimento inicial " & Format$(quando, "dd/mm/yyyy") & " (revisar) -- " & origens(kk)
+            lin(LS_C_ORIGEM) = "TESTE " & Format$(quando, "dd/mm/yyyy") & " (substituir pelos valores corretos) -- " & origens(kk)
             For j = 1 To LS_C_ULT
                 out(ri, j) = lin(j)
             Next j
@@ -1580,8 +1588,8 @@ Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv A
         nLotes = nLotes + 1
         mAuditoria.Auditar mAuditoria.CAT_CONFIG, "PARAMETRO_LOTE_PREENCHIDO_HISTORICO", "mLotes", 0, Empty, "", CStr(kk), 0, "", _
             "", porLote(kk) & " par(es) analito/nivel", "", "", "Media/DP", _
-            "Media/DP VAZIOS do lote " & kk & " preenchidos: media dos resultados do proprio lote; DP do lote " & loteRef & _
-            " (em uso) ou, sem ele, dos >= " & N_CIQ_ALVO & " resultados do lote. Revisar."
+            "VALORES DE TESTE no lote " & kk & ": media dos resultados do proprio lote; DP = 1,5 x o do lote " & loteRef & _
+            " (em uso) ou, sem ele, 1,5 x o DP do proprio lote. Substituir pelos valores corretos."
         mLotesBlocos.EscreverValoresDoLote CStr(kk)
     Next kk
     If tocados.Exists(LoteParamTela()) Then CarregarParametrosView LoteParamTela()

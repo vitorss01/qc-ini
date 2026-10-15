@@ -70,10 +70,9 @@ laboratório preencher (ADR-075).
   - **Especificações ▸** abre a biblioteca.
 - **Média/DP:** digite nas células amarelas (E:J) do bloco do lote. São valores, sem fórmula. Grava na hora, com trilha
   (a LotesStore é onde o sistema guarda e lê).
-- **Preenchimento inicial (15/10/2026):** os lotes que não tinham Média/DP receberam a **média dos próprios
-  resultados** e o **DP do lote em uso**. A origem de cada valor fica na LotesStore (coluna ORIGEM) e no relatório da
-  entrega. Média com menos de 20 resultados está marcada "provisório". **Revise e corrija o que for preciso**:
-  basta digitar por cima.
+- **Valores de TESTE (15/10/2026):** os lotes que não tinham Média/DP receberam a **média dos próprios resultados** e
+  **DP = 1,5 × o do lote em uso**, só para os limites aparecerem. A LotesStore (coluna ORIGEM) marca esses valores
+  como "TESTE". **Substitua pelos valores corretos**: basta digitar por cima.
   - Os limites (Média ± 1, 2 e 3 DP), o CV, o ET e o Sigma do lote aparecem ao lado.
   - O gráfico do Painel usa esses valores quando o lote é escolhido em H3.
   - **Lote sem Média/DP = gráfico sem limites e Westgard sem avaliar.**
