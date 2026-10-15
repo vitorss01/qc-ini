@@ -1,6 +1,6 @@
 {
  "produto": "Hematologia",
- "gerado_em": "2026-10-14T13:58:16",
+ "gerado_em": "2026-10-15T01:42:56",
  "nota": "Só os IDs dos cenários do qa_etl e uma amostra fixa (semente 57) -- nunca a base inteira.",
  "recorte_estatistica": {
   "produto": "Hematologia",
@@ -1201,7 +1201,7 @@
    "CENARIOS": []
   },
   {
-   "ID": "HEM-365827",
+   "ID": "HEM-366798",
    "ORIGEM": "INTERFACEAMENTO",
    "NO_RECEBIMENTO": true,
    "LINHA_MANUAL": null,
@@ -1213,7 +1213,7 @@
    "STATUS": "INATIVADO",
    "PARTICIPA": "NÃO",
    "TIPO_PLOTAGEM": "X_VERMELHO",
-   "RUN": 26101302,
+   "RUN": 26101402,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",

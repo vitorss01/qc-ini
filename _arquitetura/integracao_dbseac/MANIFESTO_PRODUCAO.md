@@ -14,6 +14,7 @@ público — decisão do gestor em `estudos/DECISAO_GESTOR_2026-10-06.md`). A ve
 | 13/10/2026 | QC_Bioquimica.xlsm | 15498129 | `37d7d97c8b9010ede8a6ccf395ee8f4dccc2949090235cc2b1ddb96e11b11853` | e5f2575 | 13 suítes PASS, MODO_FONTE=SEAC — ADR-072 (D-01 em 3 opções) |
 | 14/10/2026 | QC_Hematologia.xlsm | 13332621 | `11a722f77b422a033b70bb7dfb6487b2b97e51d2e04db6d96dac44cbaa253c60` | e299d3e | 14 suítes PASS, MODO_FONTE=SEAC — ADR-073 (limites por lote + rastreabilidade) |
 | 14/10/2026 | QC_Bioquimica.xlsm | 16411797 | `fa313eef9ebc1a89a52082b156851a912290fbd6fa99c81373f0e11e50639bad` | 137864b | 15 suítes PASS, MODO_FONTE=SEAC — ADR-073 e ADR-074 (aba Analitos com um bloco por lote; motor na aba Especificações) |
+| 15/10/2026 | QC_Hematologia.xlsm | 13764507 | `e2d8783ce728044b5f6a7a6825b9568828442397ea5448ca7463cbc3c6d9e8e1` | 031fa04 | 15 suítes PASS, MODO_FONTE=SEAC — ADR-075 (especificações no modelo da Bioquímica) e ADR-074 (blocos por lote, 3 níveis) |
 
 O hash muda a cada gravação no laboratório (uso normal). Para conferir a versão entregue, compare com o arquivo
 `_entrega_<data>/<produto>/<arquivo>.xlsm` da pasta de entrega (não versionada).
