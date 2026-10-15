@@ -446,7 +446,7 @@ End Sub
 ' carrega a do novo e refaz o motor: grafico, Westgard e eventos passam a
 ' falar do lote novo, e so dele.
 Public Sub TrocarLoteAnalise()
-    Dim novo As String, atual As String
+    Dim novo As String, atual As String, eqMudou As Boolean, msgAj As String, dentro As Boolean
     ' ADR-050: uma operacao so -- tela congelada, calculo manual, um recalculo. Chamada de DENTRO
     ' do TrocarLote, entra na operacao dele: o InicioUsuario zerava o contador e o resto do
     ' TrocarLote rodava com tela, eventos e calculo ligados (auditoria 04/10/2026).
@@ -458,6 +458,9 @@ Public Sub TrocarLoteAnalise()
     On Error GoTo falha
     novo = LotePainel()
     If Len(novo) > 0 Then GravarLoteSel novo       ' canoniza o que o usuario escolheu
+    ' ADR-077: lote sem nenhum ponto no filtro atual -> o Painel acompanha (equipamento, analito, periodo)
+    dentro = mDentroTrocaLote
+    If Not dentro Then eqMudou = AjustarPainelAoLote(novo, msgAj)
     atual = LoteParamTela()
     If novo <> atual Then
         If atual <> "" Then SalvarParametrosView atual
@@ -467,6 +470,8 @@ Public Sub TrocarLoteAnalise()
     mEstatistica.InvalidarParametros      ' ADR-050: o banco nao mudou; o indice fica
     mEstatistica.RecalcularAnalitoAtual
     mApp.fim
+    If eqMudou Then mEstatistica.EquipMudou                ' ADR-077: a Estatistica e a incerteza do outro equipamento
+    If Len(msgAj) > 0 Then Application.StatusBar = msgAj
     Exit Sub
 falha:
     Dim s As String
@@ -1630,6 +1635,150 @@ Public Function LoteReferenciaDP() As String
             If n > melhor Then melhor = n: LoteReferenciaDP = Trim$(CStr(cad(i, 1)))
         End If
     Next i
+End Function
+
+' ============================ ADR-077: O PAINEL ACOMPANHA O LOTE ESCOLHIDO ============================
+' Varredura de todos os lotes (15/10/2026): com Media/DP cadastrados, 15 de 21 lotes abriam o grafico VAZIO --
+' sem ponto no filtro atual nao ha linha de media nem de limite. Lote de 2025 com o filtro "Ano 2026"; lote que so
+' rodou no DIMENSION 2 com o filtro DIMENSION 1; analito em tela que o lote nao tem (lote de HbA1c com Albumina).
+' So quando o filtro atual nao mostra NADA do lote escolhido:
+'   equipamento -> o de mais resultados do lote (Bioquimica);
+'   analito     -> o de mais resultados do lote naquele equipamento (ordem do catalogo no empate);
+'   periodo     -> "Tudo" (o motor mostra as 180 corridas mais recentes do lote).
+' O lote que tem dado no filtro atual nao muda nada (o lote em uso continua com o periodo que o usuario escolheu).
+' Devolve True se o equipamento mudou (a Estatistica tem de ser refeita) e, em msg, o que foi ajustado.
+Public Function AjustarPainelAoLote(ByVal lote As String, ByRef msg As String) As Boolean
+    Dim lo As ListObject, vL As Variant, vD As Variant, vA As Variant, vE As Variant, vP As Variant
+    Dim n As Long, i As Long, eq As String, an As String, eqAtual As String, anAtual As String
+    Dim cntEq As Object, cntAn As Object, nomeEq As Object, k As Variant, melhor As Long, eqNovo As String
+    Dim wa As Worksheet, nomes As Variant, p As Worksheet, prot As Boolean, ev As Boolean
+    Dim de As Double, ate As Double, d As Double, temPer As Boolean, posNovo As Long, temFiltroEq As Boolean
+    Dim partes As String
+    On Error GoTo fim
+    msg = ""
+    lote = Trim$(lote)
+    If lote = "" Then Exit Function
+    Set lo = mDados.TabelaCQ()
+    If lo Is Nothing Then Exit Function
+    n = lo.ListRows.Count
+    If n < 2 Then Exit Function
+    vL = lo.ListColumns("LOTE").DataBodyRange.Value
+    vD = lo.ListColumns("DATA_HORA").DataBodyRange.Value
+    vA = lo.ListColumns("ANALITO").DataBodyRange.Value
+    vE = lo.ListColumns("EQUIPAMENTO").DataBodyRange.Value
+    vP = lo.ListColumns("PARTICIPA_ESTATISTICA").DataBodyRange.Value
+
+    ' 1. o que o lote tem: resultados por equipamento e por equipamento|analito
+    Set cntEq = CreateObject("Scripting.Dictionary"): cntEq.CompareMode = 1
+    Set cntAn = CreateObject("Scripting.Dictionary"): cntAn.CompareMode = 1
+    Set nomeEq = CreateObject("Scripting.Dictionary"): nomeEq.CompareMode = 1
+    For i = 1 To n
+        If StrComp(Trim$(CStr(vL(i, 1))), lote, vbTextCompare) = 0 Then
+            If UCase$(Trim$(CStr(vP(i, 1)))) = "SIM" Then
+                eq = UCase$(Trim$(CStr(vE(i, 1))))
+                cntEq(eq) = cntEq(eq) + 1
+                If Not nomeEq.Exists(eq) Then nomeEq.Add eq, Trim$(CStr(vE(i, 1)))
+                k = eq & "|" & UCase$(Trim$(CStr(vA(i, 1))))
+                cntAn(k) = cntAn(k) + 1
+            End If
+        End If
+    Next i
+    If cntEq.Count = 0 Then Exit Function                    ' lote sem resultado: nada a mostrar, nada a ajustar
+
+    Set p = ThisWorkbook.Sheets("Painel")
+    ev = Application.EnableEvents
+    Application.EnableEvents = False
+    prot = LiberarEscritaRapida(p)
+
+    ' 2. equipamento (so onde ha filtro de equipamento: Bioquimica)
+    eqAtual = mEstatistica.EquipFiltro()
+    temFiltroEq = (eqAtual <> "")
+    If temFiltroEq Then
+        If Not cntEq.Exists(eqAtual) Then
+            melhor = 0
+            For Each k In cntEq.Keys
+                If cntEq(k) > melhor Then melhor = cntEq(k): eqNovo = CStr(k)
+            Next k
+            ThisWorkbook.Names("selEquipamento").RefersToRange.Value = nomeEq(eqNovo)
+            eqAtual = eqNovo
+            AjustarPainelAoLote = True
+            partes = partes & "equipamento " & nomeEq(eqNovo) & "; "
+        End If
+    End If
+
+    ' 3. analito: o em tela, se o lote tem resultado dele; senao o de mais resultados (catalogo)
+    anAtual = UCase$(Trim$(CStr(ThisWorkbook.Names("selAnalito").RefersToRange.Value)))
+    If Not TemContagem(cntAn, eqAtual, anAtual, temFiltroEq) Then
+        Set wa = ThisWorkbook.Sheets(AbaEspec())
+        nomes = wa.Range(wa.Cells(AN_R0, 1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, 1)).Value
+        melhor = 0
+        For i = 1 To CAP_ANALITOS
+            an = UCase$(Trim$(CStr(nomes(i, 1))))
+            If an <> "" Then
+                If ContagemAnalito(cntAn, eqAtual, an, temFiltroEq) > melhor Then
+                    melhor = ContagemAnalito(cntAn, eqAtual, an, temFiltroEq): posNovo = i
+                End If
+            End If
+        Next i
+        If posNovo > 0 Then
+            p.Range("B3").Value = posNovo
+            Application.Calculate                              ' C3 (selAnalito) acompanha B3
+            anAtual = UCase$(Trim$(CStr(nomes(posNovo, 1))))
+            partes = partes & "analito " & Trim$(CStr(nomes(posNovo, 1))) & "; "
+        End If
+    End If
+
+    ' 4. periodo: ha resultado do lote (equipamento e analito em tela) dentro de De/Ate?
+    de = 0: ate = 0
+    If IsDate(ThisWorkbook.Names("filtroDe").RefersToRange.Value) Or IsNumeric(ThisWorkbook.Names("filtroDe").RefersToRange.Value) Then
+        de = Int(CDbl(ThisWorkbook.Names("filtroDe").RefersToRange.Value))
+    End If
+    If IsDate(ThisWorkbook.Names("filtroAte").RefersToRange.Value) Or IsNumeric(ThisWorkbook.Names("filtroAte").RefersToRange.Value) Then
+        ate = Int(CDbl(ThisWorkbook.Names("filtroAte").RefersToRange.Value))
+    End If
+    If de > 0 Or ate > 0 Then
+        For i = 1 To n
+            If StrComp(Trim$(CStr(vL(i, 1))), lote, vbTextCompare) = 0 Then
+                If UCase$(Trim$(CStr(vP(i, 1)))) = "SIM" And UCase$(Trim$(CStr(vA(i, 1)))) = anAtual Then
+                    If Not temFiltroEq Or UCase$(Trim$(CStr(vE(i, 1)))) = eqAtual Then
+                        If IsDate(vD(i, 1)) Then
+                            d = Int(CDbl(CDate(vD(i, 1))))
+                            If (de = 0 Or d >= de) And (ate = 0 Or d <= ate) Then temPer = True: Exit For
+                        End If
+                    End If
+                End If
+            End If
+        Next i
+        If Not temPer Then
+            ThisWorkbook.Names("filtroPeriodo").RefersToRange.Value = "Tudo"
+            mApp.AplicarFiltroAnoMes
+            partes = partes & "período Tudo (o lote não tem resultado no período anterior); "
+        End If
+    End If
+    RestaurarProtecao p, prot
+    Application.EnableEvents = ev
+    If Len(partes) > 0 Then msg = "Lote " & lote & ": o filtro anterior não mostrava nenhum resultado dele -- ajustado: " & _
+                                  Left$(partes, Len(partes) - 2) & "."
+    Exit Function
+fim:
+    On Error Resume Next
+    RestaurarProtecao p, prot
+    Application.EnableEvents = True
+End Function
+
+Private Function ContagemAnalito(ByVal cntAn As Object, ByVal eq As String, ByVal an As String, ByVal porEq As Boolean) As Long
+    Dim k As Variant
+    If porEq Then
+        If cntAn.Exists(eq & "|" & an) Then ContagemAnalito = cntAn(eq & "|" & an)
+    Else
+        For Each k In cntAn.Keys
+            If Mid$(CStr(k), InStr(CStr(k), "|") + 1) = an Then ContagemAnalito = ContagemAnalito + cntAn(k)
+        Next k
+    End If
+End Function
+
+Private Function TemContagem(ByVal cntAn As Object, ByVal eq As String, ByVal an As String, ByVal porEq As Boolean) As Boolean
+    TemContagem = (ContagemAnalito(cntAn, eq, an, porEq) > 0)
 End Function
 
 ' Recalcula o resumo do lote na aba Analitos (formula com mLotes.RegistroLote).

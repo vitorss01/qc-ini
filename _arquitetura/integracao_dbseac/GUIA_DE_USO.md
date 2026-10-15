@@ -9,6 +9,9 @@ agendada atualiza a cada 2 minutos.
 2. Clique em **⟳ ATUALIZAR DADOS**. Leva cerca de 2,5 min porque lê o DB_SEAC pela rede.
 3. No **Painel**, escolha o analito pelas setas ou pela lista. Os gráficos de Levey-Jennings mostram os níveis lado a
    lado.
+   - **Trocar de lote (H3):** se o filtro atual não mostra nada do lote escolhido (outro ano, outro equipamento, analito
+     que o lote não tem), o Painel ajusta sozinho o período ("Tudo"), o equipamento e o analito. A barra de status diz
+     o que mudou.
 4. Passe o mouse num ponto do gráfico. Aparecem o **ID**, a corrida (RUN), a data/hora e o valor. Nos pontos já
    inativados (X vermelho) aparece também **INATIVADO**.
 5. Confira o Status da corrida, as regras de Westgard violadas e o histórico do analito.

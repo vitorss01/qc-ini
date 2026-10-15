@@ -48,7 +48,8 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_inativar.py',                              # ADR-070: Inativar por ID + analito, ID na dica do LJ
           'qa_migracao_adr070.py',                       # ADR-070: migracao e inativacoes reais contra a producao
           'qa_lotes_limites.py',                         # ADR-073: limites por lote + rastreabilidade
-          'qa_blocos_lote.py']                           # ADR-074: aba Analitos com um bloco por lote
+          'qa_blocos_lote.py',                           # ADR-074: aba Analitos com um bloco por lote
+          'qa_varredura_lotes.py']                       # ADR-077: todos os lotes no Painel com media e limites
 
 
 def sha(p):
