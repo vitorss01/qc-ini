@@ -15,6 +15,8 @@ público — decisão do gestor em `estudos/DECISAO_GESTOR_2026-10-06.md`). A ve
 | 14/10/2026 | QC_Hematologia.xlsm | 13332621 | `11a722f77b422a033b70bb7dfb6487b2b97e51d2e04db6d96dac44cbaa253c60` | e299d3e | 14 suítes PASS, MODO_FONTE=SEAC — ADR-073 (limites por lote + rastreabilidade) |
 | 14/10/2026 | QC_Bioquimica.xlsm | 16411797 | `fa313eef9ebc1a89a52082b156851a912290fbd6fa99c81373f0e11e50639bad` | 137864b | 15 suítes PASS, MODO_FONTE=SEAC — ADR-073 e ADR-074 (aba Analitos com um bloco por lote; motor na aba Especificações) |
 | 15/10/2026 | QC_Hematologia.xlsm | 13764507 | `e2d8783ce728044b5f6a7a6825b9568828442397ea5448ca7463cbc3c6d9e8e1` | 031fa04 | 15 suítes PASS, MODO_FONTE=SEAC — ADR-075 (especificações no modelo da Bioquímica) e ADR-074 (blocos por lote, 3 níveis) |
+| 16/10/2026 | QC_Bioquimica.xlsm | 16460640 | `afe6c99794d2b0801594c206bc3db68a5b84849224938235c129868f7e9b833c` | de6b36a | 17 suítes PASS, MODO_FONTE=SEAC — ADR-076/077 (valores de TESTE, Painel acompanha o lote) e ADR-078 (linhas do alvo sem corridas; troca de lote não grava) |
+| 16/10/2026 | QC_Hematologia.xlsm | 13940293 | `e219d0ee2e3a1d1de72e1428ca81d287df50a12fcb2c2fe315b3dac2b7597619` | de6b36a | 17 suítes PASS, MODO_FONTE=SEAC — ADR-076/077/078 |
 
 O hash muda a cada gravação no laboratório (uso normal). Para conferir a versão entregue, compare com o arquivo
 `_entrega_<data>/<produto>/<arquivo>.xlsm` da pasta de entrega (não versionada).
