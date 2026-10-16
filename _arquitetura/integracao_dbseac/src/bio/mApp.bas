@@ -52,8 +52,24 @@ End Sub
 ' "dar erro" e mostrar a tela errada. Clique so acontece com o VBA parado: se ha
 ' contador aberto aqui, ele e resto. Zera e comeca limpo (ADR-053).
 Public Sub InicioUsuario(Optional ByVal msg As String = "")
-    If mNivel > 0 Then Reset
+    If mNivel > 0 Then
+        Reset
+    ElseIf Application.Interactive And Not Application.EnableEvents Then
+        Reset                             ' ADR-078: eventos presos de uma macro que morreu -- o fim devolve ligado
+    End If
     Inicio msg
+End Sub
+
+' ADR-078: eventos desligados fora de qualquer operacao (macro interrompida, "Finalizar" numa caixa de erro)
+' fazem a digitacao de Media/DP nao chegar a LotesStore -- o Worksheet_Change nao dispara. Religa e registra.
+' Chamado pela navegacao (OnAction roda com eventos desligados) e pelo vigia dos graficos (OnTime).
+Public Sub GarantirEventos()
+    On Error Resume Next
+    If mNivel > 0 Then Exit Sub
+    If Not Application.Interactive Then Exit Sub
+    If Application.EnableEvents Then Exit Sub
+    Reset
+    mAuditoria.RegistrarLog "EVENTOS_RELIGADOS", "Eventos do Excel estavam desligados fora de uma operacao; religados."
 End Sub
 
 Public Sub fim()
@@ -136,6 +152,7 @@ End Sub
 
 Public Sub Ir(ByVal aba As String, Optional ByVal Cel As String = "A1")
     Dim ws As Worksheet
+    GarantirEventos                       ' ADR-078
     On Error Resume Next
     Set ws = ThisWorkbook.Sheets(aba)
     If ws Is Nothing Then Exit Sub

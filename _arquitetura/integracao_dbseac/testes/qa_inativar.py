@@ -11,7 +11,8 @@ a mesma funcao que a clsCht chama no evento do mouse, com o mesmo (nivel, serie,
   N01 estrutura: a tabela so tem ID | ANALITO | REGISTRAR - LJ | MOTIVO | DATA_INATIVACAO | USUARIO, sem formula;
       ANALITO pela lista do cadastro; data/usuario travados; nas abas Digitar Resultados e COMENTARIOS_TECNICOS
       nenhuma celula de formula mostra o texto "=..." (defeito do formato '@')
-  N02 dica de um ponto normal: ID curto, RUN, data/hora e valor = a linha da tblCQ_Final; linha de limite so RUN;
+  N02 dica de um ponto normal: ID curto, RUN, data/hora e valor = a linha da tblCQ_Final; linha de limite (ADR-078: serie
+      de 2 pontos nas bordas do eixo) = "Alvo do lote ... = valor" nos pontos 1 e 2 e vazio alem deles;
       ponto alem das corridas = ""
   N03 (1) ID (so o numero) + analito certo + motivo: INATIVADO, PARTICIPA = NAO, X vermelho no LJ na corrida certa
   N04 (3) o MOTIVO basta como justificativa (sem comentario tecnico): sem E01; sem motivo e sem comentario: E01
@@ -168,13 +169,14 @@ def executar(produto, caminho, saida):
         # ------------------------------------------------------------ N02 dica de ponto normal
         dN = dica(1, s_res, sN + 1)
         okN, espN = confere_dica(dN, N, False)
-        d_lim = dica(1, 1, sN + 1)
+        d_lim = dica(1, 1, 1)                       # ADR-078: a linha de limite tem 2 pontos (bordas do eixo)
+        d_lim3 = dica(1, 1, 3)
         d_fora = dica(1, s_res, e0['n'] + 1)
         reg('N02 Dica do ponto normal (mUI.DicaPonto): ID curto, RUN real, data/hora e valor = Principal - Resultados; '
-            'linha de limite = só a corrida; além das corridas = vazio',
-            okN and d_lim.startswith(f"RUN {e0['runs'][sN]}") and d_fora == '',
+            'linha de limite = "Alvo do lote ... = valor" (nunca um resultado); além das corridas = vazio',
+            okN and d_lim.startswith('Alvo do lote ') and ' = ' in d_lim and d_lim3 == '' and d_fora == '',
             {'serie_Resultado': s_res, 'ponto': sN + 1, 'dica': dN, 'esperado': SEP.join(espN), 'dica_limite': d_lim,
-             'dica_alem': d_fora, 'ID': N['ID_REGISTRO']})
+             'dica_limite_ponto3': d_lim3, 'dica_alem': d_fora, 'ID': N['ID_REGISTRO']})
 
         # ------------------------------------------------------------ escrever as linhas (evento ligado)
         motA = 'QA ADR-070: repetição (resultado fora do esperado)'

@@ -9,10 +9,12 @@ Pedido do usuario (15/10/2026): "troque de lote para ver todos eles se estao mos
 graficos". A varredura anterior (antes do ADR-077) achou 15 de 21 lotes com o grafico VAZIO: filtro de ano 2026 para
 lote de 2025, DIMENSION 1 para lote que so rodou no DIMENSION 2, analito que o lote nao tem.
 
-  V01 todo lote com resultados: grafico com pontos e linhas de limite (no nivel que tem ponto); nenhum "SEM MEDIA/DP"
-      nesse nivel; media e DP do grafico = os do lote (LotesStore)
+  V01 todo lote com resultados: grafico com pontos e, em todo nivel com Media/DP, as 7 linhas do alvo com 2 pontos
+      cada NA SERIE DO GRAFICO (ADR-078: x = bordas do eixo); nenhum "SEM MEDIA/DP" no nivel que tem ponto; media e
+      DP do grafico = os do lote (LotesStore); N1..N3 na Hematologia
   V02 o lote em uso (o 1o) com dado no filtro atual NAO teve o filtro mexido (periodo e equipamento como estavam)
-  V03 lote sem nenhum resultado na base: o Painel diz "SEM MEDIA/DP" e nao inventa linha
+  V03 lote sem nenhum resultado na base: nivel sem Media/DP -> "SEM MEDIA/DP" e nenhuma linha; nivel com Media/DP ->
+      "AGUARDANDO 1a CORRIDA" e as 7 linhas do alvo (ADR-078)
   V04 seguranca do teste: arquivo de entrada intacto
 """
 import json
@@ -45,12 +47,25 @@ def executar(produto, caminho, saida):
     try:
         q.run('mSeguranca.ReprotectAll')
         bio = produto.startswith('Bio')
-        cel_md = ('AX1', 'AY1', 'AZ1', 'BA1') if bio else ('BT1', 'BU1', 'BV1', 'BW1')
+        nlv = q.nlv
+        cel_md = ('AX1', 'AY1', 'AZ1', 'BA1') if bio else ('BT1', 'BU1', 'BV1', 'BW1', 'BX1', 'BY1')
+        LIM = ['-3s', '-2s', '-1s', 'Média', '+1s', '+2s', '+3s']
         p, c = q.ws('Painel'), q.ws('Calc')
         cab = [str(v or '').strip() for v in c.Range('A2:CZ2').Value[0]]
-        col = {k: cab.index(k) + 1 for k in ('N1 line', 'N1 m3', 'N2 line', 'N2 m3') if k in cab}
+        col = {f'N{i} line': cab.index(f'N{i} line') + 1 for i in range(1, nlv + 1)}
+
+        def pares_linhas(i):
+            ch = p.ChartObjects(i).Chart
+            out = []
+            for s_i in range(1, ch.SeriesCollection().Count + 1):
+                s = ch.SeriesCollection(s_i)
+                if str(s.Name) in LIM:
+                    out.append(sum(1 for x, y in zip(s.XValues, s.Values) if num(x) and num(y)))
+            return out
         rows = q.ler('tblCQ_Final')
-        com_dado = {}
+        com_dado, na_base = {}, {}
+        for r in rows:                                     # V03: a mesma contagem do Painel (engNLoteBase: toda linha)
+            na_base[txt(r['LOTE'])] = na_base.get(txt(r['LOTE']), 0) + 1
         for r in rows:
             if str(r.get('PARTICIPA_ESTATISTICA', '')).upper() == 'SIM':
                 com_dado[txt(r['LOTE'])] = com_dado.get(txt(r['LOTE']), 0) + 1
@@ -72,31 +87,39 @@ def executar(produto, caminho, saida):
             for k, cc in col.items():
                 vals = c.Range(c.Cells(3, cc), c.Cells(182, cc)).Value
                 cont[k] = sum(1 for v in vals if num(v[0]))
-            st = [txt(p.Range(f'J{7 + i}').Value) for i in range(2)]
-            exp = [q.run('mLotes.MediaDoLote', lote, an, 1), q.run('mLotes.DPDoLote', lote, an, 1),
-                   q.run('mLotes.MediaDoLote', lote, an, 2), q.run('mLotes.DPDoLote', lote, an, 2)]
+            st = [txt(p.Range(f'J{7 + i}').Value) for i in range(nlv)]
+            exp = []
+            for i in range(1, nlv + 1):
+                exp += [q.run('mLotes.MediaDoLote', lote, an, i), q.run('mLotes.DPDoLote', lote, an, i)]
+            lin = [pares_linhas(i) for i in range(1, nlv + 1)]
             filtro = (txt(p.Range('G3').Value), txt(p.Range('G4').Value), txt(p.Range('L4').Value) if bio else '')
             linha = {'lote': lote, 'resultados': com_dado.get(lote, 0), 'analito': an, 'filtro_de_ate_equip': filtro,
-                     'pontos_N1': cont.get('N1 line'), 'limites_N1': cont.get('N1 m3'),
-                     'pontos_N2': cont.get('N2 line'), 'limites_N2': cont.get('N2 m3'),
+                     'pontos': [cont.get(f'N{i} line') for i in range(1, nlv + 1)], 'pares_linhas': lin,
                      'media_dp_grafico': md, 'media_dp_lote': exp, 'status': st,
-                     'aviso': str(q.ex.xl.StatusBar or '')[:200]}
+                     'aviso': str(q.run('mLotes.AvisoPainel', teto=60) or '')[:200]}
             linhas_tab.append(linha)
-            print(f"{lote:>8} n={linha['resultados']:5} {an[:20]:20} N1 {linha['pontos_N1']}/{linha['limites_N1']} "
-                  f"N2 {linha['pontos_N2']}/{linha['limites_N2']} filtro={filtro} st={st}", flush=True)
-            if com_dado.get(lote, 0) == 0:
-                if not all('SEM M' in s.upper() for s in st) or any(num(v) for v in md):
-                    sem_dado_ruins.append(linha)
+            print(f"{lote:>8} n={linha['resultados']:5} {an[:20]:20} pontos {linha['pontos']} linhas "
+                  f"{[sum(x) for x in lin]} filtro={filtro} st={st}", flush=True)
+            tem_alvo = [num(md[2 * nv]) and num(md[2 * nv + 1]) for nv in range(nlv)]
+            linhas_ok = [(all(n == 2 for n in lin[nv]) and len(lin[nv]) == 7) if tem_alvo[nv] else sum(lin[nv]) == 0
+                         for nv in range(nlv)]
+            if na_base.get(lote, 0) == 0:
+                for nv in range(nlv):
+                    esperado = 'AGUARDANDO 1ª CORRIDA' if tem_alvo[nv] else 'SEM MÉDIA/DP'
+                    if not st[nv].startswith(esperado) or not linhas_ok[nv]:
+                        sem_dado_ruins.append(linha)
+                        break
                 continue
-            pts = (cont.get('N1 line', 0), cont.get('N2 line', 0))
-            lim = (cont.get('N1 m3', 0), cont.get('N2 m3', 0))
+            if com_dado.get(lote, 0) == 0:                 # so resultados que nao participam: nada a exigir no grafico
+                continue
+            pts = [cont.get(f'N{i} line', 0) for i in range(1, nlv + 1)]
             erro = []
             if sum(pts) == 0:
                 erro.append('grafico sem pontos')
-            for nv in (0, 1):
+            for nv in range(nlv):
+                if not linhas_ok[nv]:
+                    erro.append(f'N{nv + 1} linhas do alvo {lin[nv]} (com Media/DP: {tem_alvo[nv]})')
                 if pts[nv] > 0:
-                    if lim[nv] == 0:
-                        erro.append(f'N{nv + 1} com pontos e sem linhas de limite')
                     if 'SEM M' in st[nv].upper():
                         erro.append(f'N{nv + 1} SEM MEDIA/DP')
                     if not (perto(md[2 * nv], exp[2 * nv]) and perto(md[2 * nv + 1], exp[2 * nv + 1])):
@@ -105,15 +128,16 @@ def executar(produto, caminho, saida):
                 ruins.append((lote, an, erro))
             if lote == lote0 and lote0_ok is None:
                 lote0_ok = (filtro == filtro0)
-        reg('V01 Todos os lotes com resultados, trocados no Painel como o usuário faz: o gráfico abre com pontos, a linha '
-            'da média e as linhas de limite (-3DP..+3DP) no nível que tem ponto, sem "SEM MÉDIA/DP", e a média/DP do '
-            'gráfico são as do lote escolhido',
+        reg('V01 Todos os lotes com resultados, trocados no Painel como o usuário faz: o gráfico abre com pontos e, em todo '
+            'nível com Média/DP, a média e as linhas -3DP..+3DP com 2 pontos cada na série do gráfico; sem "SEM MÉDIA/DP" '
+            'no nível que tem ponto; a média/DP do gráfico são as do lote escolhido',
             not ruins and sum(1 for l in linhas_tab if l['resultados'] > 0) > 0,
             {'lotes_com_resultado': sum(1 for l in cad if com_dado.get(l, 0) > 0), 'lotes_com_problema': ruins[:8]})
         reg('V02 O lote em uso, que tem dado no filtro atual, não teve o filtro mexido (período e equipamento como estavam)',
             lote0_ok is True, {'lote': lote0, 'filtro_antes': filtro0})
-        reg('V03 Lote sem nenhum resultado na base: o Painel diz "SEM MÉDIA/DP" e não desenha linha', not sem_dado_ruins,
-            {'lotes_sem_resultado': [l for l in cad if com_dado.get(l, 0) == 0], 'problemas': sem_dado_ruins[:3]})
+        reg('V03 Lote sem nenhum resultado na base: nível sem Média/DP diz "SEM MÉDIA/DP" e não desenha linha; nível com '
+            'Média/DP diz "AGUARDANDO 1ª CORRIDA" e mostra as 7 linhas do alvo', not sem_dado_ruins,
+            {'lotes_sem_resultado': [l for l in cad if na_base.get(l, 0) == 0], 'problemas': sem_dado_ruins[:3]})
     finally:
         q.fechar(salvar=False)
     hash1 = sha256_arquivo(caminho)

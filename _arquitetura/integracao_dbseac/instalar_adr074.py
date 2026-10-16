@@ -335,6 +335,33 @@ def preencher_historico(wb, ex, produto, nlv, pasta):
             f'relatorio {os.path.basename(arq)}')
 
 
+def resgatar(wb, ex, produto, pasta):
+    """ADR-078: antes de reescrever E:J dos blocos a partir da LotesStore, grava na store a Media/DP DIGITADA no
+    bloco que nao chegou a ela (layout do ADR-074: a celula com constante em vez da formula = digitacao com os eventos
+    desligados). Relatorio CSV ao lado do arquivo (pasta da entrega, nao versionada)."""
+    r = str(ex.run(f"'{wb.Name}'!mLotesBlocos.ResgatarDigitados", teto=900))
+    if not r.startswith('OK|'):
+        raise SystemExit(f'resgate das digitacoes: {r[:300]}')
+    linhas = r.split('\n')
+    _, n, nc, ni = (linhas[0].split('|') + ['0', '0', '0'])[:4]
+    n, nc, ni = int(n), int(nc), int(ni)
+    if n + nc + ni == 0:
+        return 'resgate (ADR-078): nenhuma digitacao fora da LotesStore'
+    arq = os.path.join(pasta, f'resgate_digitados_{produto}.csv')
+    with open(arq, 'w', encoding='utf-8-sig') as f:
+        f.write('lote;analito;campo;na_store;no_bloco;situacao\n')
+        for l in linhas[1:]:
+            if l.strip():
+                f.write(l + '\n')
+    if nc + ni:
+        # aparece no resumo do entregar.py: o valor do bloco em CONFLITO/IGNORADO nao foi gravado e o bloco vai ser
+        # reescrito pela store -- o relatorio guarda o que estava digitado para o laboratorio conferir
+        log(f'INCONCLUSIVO resgate (ADR-078): {nc} conflito(s) e {ni} ignorado(s) entre o bloco e a LotesStore; '
+            f'NAO gravados -- conferir {os.path.basename(arq)}')
+    return (f'resgate (ADR-078): {n} recuperado(s) (store vazia -> valor digitado no bloco), {nc} conflito(s), '
+            f'{ni} ignorado(s); relatorio {os.path.basename(arq)}')
+
+
 def main(produto, caminho, salvar=True):
     caminho = os.path.abspath(caminho)
     ex = xlh.Excel()
@@ -368,6 +395,7 @@ def main(produto, caminho, salvar=True):
             ex.xl.Calculation = -4105
             ex.xl.Calculate()
             ex.esperar()
+            log(f'3b. {resgatar(wb, ex, produto, os.path.dirname(caminho))}')
             r = ex.run(f"'{wb.Name}'!mLotesBlocos.MontarBlocos", nlv, teto=900)
             if not str(r).startswith('OK|'):
                 raise SystemExit(f'MontarBlocos: {r}')

@@ -63,37 +63,50 @@ Public Sub AtualizarEixos()
     Application.ScreenUpdating = False
     For i = 1 To ws.ChartObjects.Count
         On Error Resume Next
+        ' ADR-078: zera a cada grafico -- nome ausente nao herda o eixo do grafico anterior
+        mn = Empty: mx = Empty: Set ax = Nothing
         mn = ThisWorkbook.Names("axmin" & i).RefersToRange.Value
         mx = ThisWorkbook.Names("axmax" & i).RefersToRange.Value
         Set ax = ws.ChartObjects(i).Chart.Axes(xlValue)
-        If IsNumeric(mn) And IsNumeric(mx) Then
-            If mx > mn Then
-                ax.MinimumScale = mn
-                ax.MaximumScale = mx
-            End If
-        Else
-            ax.MinimumScaleIsAuto = True
-            ax.MaximumScaleIsAuto = True
-        End If
-        ' eixo X (RUN) — remove o espaco em branco a esquerda
+        If Not ax Is Nothing Then Escala ax, mn, mx
+        ' eixo X (RUN) — remove o espaco em branco a esquerda. ADR-078: sem corrida, moldura fixa 0..21 (Calc)
         Dim xn As Variant, xx As Variant, axx As Axis
+        xn = Empty: xx = Empty: Set axx = Nothing
         xn = ThisWorkbook.Names("xrunmin").RefersToRange.Value
         xx = ThisWorkbook.Names("xrunmax").RefersToRange.Value
         Set axx = ws.ChartObjects(i).Chart.Axes(xlCategory)
-        If IsNumeric(xn) And IsNumeric(xx) Then
-            If xx > xn Then
-                axx.MinimumScale = xn
-                axx.MaximumScale = xx
+        If Not axx Is Nothing Then
+            Escala axx, xn, xx
+            If EhNumero(xn) And EhNumero(xx) Then
+                If CDbl(xx) - CDbl(xn) <= 12 Then axx.MajorUnit = 1 Else axx.MajorUnitIsAuto = True
             End If
-        Else
-            axx.MinimumScaleIsAuto = True
-            axx.MaximumScaleIsAuto = True
         End If
         On Error GoTo 0
     Next i
     ' Religar a tela aqui fazia o Painel piscar no meio de toda operacao maior
     ' (troca de lote, importacao): quem desliga e quem religa (mApp).
     Application.ScreenUpdating = telaAntes
+End Sub
+
+' ADR-078: grava minimo e maximo na ordem que o Excel aceita. Escrever um minimo acima do maximo ATUAL falhava em
+' silencio (On Error Resume Next) e o eixo ficava com o maximo novo e o minimo velho -- grafico achatado.
+' Sem os dois numeros (ou com mx <= mn), eixo automatico.
+Private Sub Escala(ByVal ax As Axis, ByVal mn As Variant, ByVal mx As Variant)
+    On Error Resume Next
+    If EhNumero(mn) And EhNumero(mx) Then
+        If CDbl(mx) > CDbl(mn) Then
+            If CDbl(mn) >= ax.MaximumScale Then
+                ax.MaximumScale = CDbl(mx)
+                ax.MinimumScale = CDbl(mn)
+            Else
+                ax.MinimumScale = CDbl(mn)
+                ax.MaximumScale = CDbl(mx)
+            End If
+            Exit Sub
+        End If
+    End If
+    ax.MinimumScaleIsAuto = True
+    ax.MaximumScaleIsAuto = True
 End Sub
 
 ' ADR-054 (regra inalterada): largura = largura VISIVEL da janela, em qualquer zoom.
@@ -329,6 +342,7 @@ Public Sub GrafVigiaTique()               ' alvo do OnTime
     Dim w As Window, z As Double, uw As Double, uh As Double
     mVigiaProx = 0                        ' este tique saiu da fila
     If mFechando Then Exit Sub            ' pasta fechando: nao reagenda
+    mApp.GarantirEventos                  ' ADR-078: ANTES do GrafVigiaPode (que exige eventos ligados)
     If Not GrafVigiaPode() Then Exit Sub  ' NAO reagenda: a corrente morre sozinha
     On Error Resume Next
     If (Not mApp.Ocupado()) And (Application.CutCopyMode = 0) Then
@@ -602,6 +616,17 @@ Public Function DicaPonto(ByVal nivel As Long, ByVal serie As Long, ByVal ponto 
     Set ch = ThisWorkbook.Worksheets("Painel").ChartObjects(nivel).Chart
     If serie < 1 Or serie > ch.SeriesCollection.Count Then Exit Function
     nm = CStr(ch.SeriesCollection(serie).Name)
+    ' ADR-078: as 7 linhas de limite sao series de 2 pontos (bordas do eixo): o ponto nao e uma corrida
+    Select Case nm
+        Case "-3s", "-2s", "-1s", "Média", "+1s", "+2s", "+3s"
+            If ponto > 2 Then Exit Function
+            v = ch.SeriesCollection(serie).Values
+            If IsArray(v) Then
+                If EhNumero(v(ponto)) Then DicaPonto = "Alvo do lote " & mLotes.LotePainel() & " " & ChrW$(183) & " " & _
+                                                       nm & " = " & CStr(CDbl(v(ponto)))
+            End If
+            Exit Function
+    End Select
     Set eng = ThisWorkbook.Worksheets("Eng_Saida")
     If ponto > CLng(Val(CStr(eng.Range("I1").Value))) Then Exit Function      ' alem das corridas publicadas
     r = 2 + ponto

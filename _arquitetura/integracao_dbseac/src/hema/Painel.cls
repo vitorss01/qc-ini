@@ -7,6 +7,10 @@ Option Explicit
 
 Private Sub Worksheet_Change(ByVal Target As Range)
     On Error Resume Next
+    ' ADR-078: o usuario mexeu no filtro -- o que ele escolheu vale (o filtro da rotina guardado e o aviso saem)
+    If Not Intersect(Target, Me.Range("B3:C3,G3:G4,K3:K4")) Is Nothing Then
+        mLotes.EsquecerFiltroRotina
+    End If
     If Not Intersect(Target, Me.Range("K3:K4")) Is Nothing Then
         mApp.AplicarFiltroAnoMes
         mEstatistica.FiltroMudou

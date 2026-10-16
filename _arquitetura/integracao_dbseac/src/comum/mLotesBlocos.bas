@@ -407,11 +407,15 @@ Private Sub FormulasBloco(ByVal ws As Worksheet, ByVal h As Long)
     ws.Range(ws.Cells(h, 6), ws.Cells(h, 6)).Formula2 = Tx("=LET(lt,$B${h},lin,IFERROR(MATCH(lt,'Configuração'!$C$26:$C$125,0)," & _
         "IFERROR(MATCH(--lt,'Configuração'!$C$26:$C$125,0),0)),IF(lin=0,~fora do cadastro~,IF(INDEX('Configuração'!$D$26:$D$125,lin)=~~," & _
         "~não informada~,INDEX('Configuração'!$D$26:$D$125,lin))))", h)
-    ws.Cells(h, 15).Formula2 = Tx("=LET(nn,SUMPRODUCT(--((($E{r}:$E{a1})<>~~)+(($G{r}:$G{a1})<>~~)+(($I{r}:$I{a1})<>~~)>0))," & _
+    ' ADR-078: conta so os analitos com algum par VALIDO (Media numerica e DP > 0) e avisa valores de TESTE (ADR-076)
+    ws.Cells(h, 15).Formula2 = Tx("=LET(nn,SUMPRODUCT(--((ISNUMBER($E{r}:$E{a1})*ISNUMBER($F{r}:$F{a1})*($F{r}:$F{a1}>0)+" & _
+        "ISNUMBER($G{r}:$G{a1})*ISNUMBER($H{r}:$H{a1})*($H{r}:$H{a1}>0)+ISNUMBER($I{r}:$I{a1})*ISNUMBER($J{r}:$J{a1})*($J{r}:$J{a1}>0))>0))," & _
+        "ts,SUMPRODUCT((LotesStore!$A$2:$A$4001=~~&$B${h})*(ISNUMBER(LotesStore!$X$2:$X$4001)*(LotesStore!$X$2:$X$4001>0)+" & _
+        "ISNUMBER(LotesStore!$Y$2:$Y$4001)*(LotesStore!$Y$2:$Y$4001>0)+ISNUMBER(LotesStore!$Z$2:$Z$4001)*(LotesStore!$Z$2:$Z$4001>0)))," & _
         "tot,COUNTIF($A{r}:$A{a1},~?*~),ult,IFERROR(MAXIFS(LotesStore!$U:$U,LotesStore!$A:$A,$B${h}),0)," & _
         "IF(nn=0,~SEM MÉDIA/DP: o gráfico deste lote fica sem limites e o Westgard não avalia. Digite a Média e o DP de cada nível (E:J) ou use o botão CIQ.~," & _
         "~Média/DP em ~&nn&~ de ~&tot&~ analitos~&IF(ult>0,~ · último registro ~&TEXT(DAY(ult),~00~)&~/~&TEXT(MONTH(ult),~00~)&~/~&YEAR(ult),~~))" & _
-        "&~ · referência: CLIA ~&$D${y}&~ · VB ~&$J${y})", h)
+        "&~ · referência: CLIA ~&$D${y}&~ · VB ~&$J${y}&IF(ts>0,~ · contém valores de TESTE (ADR-076) em ~&ts&~ par(es) analito/nível: substitua pela Média/DP do lote~,~~))", h)
     ws.Cells(h + O_TIT, 1).Formula2 = Tx("=~ANALITOS · MÉDIA/DP, LIMITES E ESPECIFICAÇÕES DO LOTE ~&$B${h}", h)
 
     ' catalogo (Especificacoes, mesma ordem)
@@ -1077,6 +1081,86 @@ Private Sub RetratoDoLote(ByVal ws As Worksheet, ByVal lote As String)
 End Sub
 
 ' ============================ CIQ POR BLOCO ============================
+' ADR-078: Media/DP DIGITADA no bloco que nao chegou a LotesStore (eventos desligados na hora). Antes de reescrever
+' E:J a partir da store (MontarBlocos), cada CONSTANTE do bloco que difere da store e tratada assim:
+'   store VAZIA no campo ............ grava (com trilha) -- RECUPERADO;
+'   store com OUTRO numero .......... NAO grava (pode ser um valor mais novo, digitado em outro lugar) -- CONFLITO;
+'   texto, DP <= 0 .................. NAO grava -- IGNORADO.
+' Layout do ADR-074 (E:J com formula): a constante e digitacao. Layout do ADR-076 (E:J valores): toda gravacao
+' reescreve o bloco, entao a diferenca tambem so vem de digitacao que nao chegou a store.
+' Devolve "OK|<recuperados>|<conflitos>|<ignorados>" + uma linha "lote;analito;campo;na_store;no_bloco;situacao" por
+' caso, ou "ERRO|<motivo>".
+Public Function ResgatarDigitados() As String
+    Dim ws As Worksheet, d As Object, prox As Long, k As Variant, h As Long, rg As Range, f As Variant, v As Variant
+    Dim i As Long, j As Long, lote As String, an As String, antes As Variant, n As Long, nc As Long, ni As Long
+    Dim det As String, igual As Boolean, campo As String, nv As Long, sit As String, tocados As Object
+    If Not BlocosAtivos() Then ResgatarDigitados = "OK|0|0|0": Exit Function
+    On Error GoTo falha
+    Set ws = ThisWorkbook.Worksheets(BL_ABA)
+    Set d = BlocosExistentes(ws, prox)
+    Set tocados = CreateObject("Scripting.Dictionary")
+    tocados.CompareMode = 1
+    For Each k In d.Keys
+        h = d(k)
+        lote = Trim$(CStr(ws.Cells(h, 2).Value))
+        If lote <> "" Then
+            Set rg = ws.Range(ws.Cells(h + O_AN, C_MED1), ws.Cells(h + O_AN + BL_NAN - 1, C_MED1 + 5))
+            f = rg.Formula
+            v = rg.Value
+            For i = 1 To BL_NAN
+                an = Trim$(CStr(ws.Cells(h + O_AN + i - 1, 1).Value))
+                If an <> "" Then
+                    For j = 1 To 6
+                        If Left$(CStr(f(i, j)), 1) <> "=" And Len(Trim$(CStr(f(i, j)))) > 0 Then
+                            nv = (j - 1) \ 2 + 1
+                            If (j Mod 2) = 1 Then campo = "Media" Else campo = "DP"
+                            antes = mLotes.ValorDoLote(lote, an, j)
+                            sit = ""
+                            If Not NumeroOk(v(i, j)) Then
+                                sit = "IGNORADO: nao numerico"
+                            ElseIf (j Mod 2) = 0 And CDbl(v(i, j)) <= 0 Then
+                                sit = "IGNORADO: DP <= 0"
+                            Else
+                                igual = False
+                                If NumeroOk(antes) Then igual = (Abs(CDbl(antes) - CDbl(v(i, j))) <= 0.000000001 * IIf(Abs(CDbl(antes)) > 1, Abs(CDbl(antes)), 1))
+                                If Not igual Then
+                                    If NumeroOk(antes) Then
+                                        sit = "CONFLITO: a store tem outro valor (nao gravado; conferir)"
+                                    Else
+                                        sit = "RECUPERADO"
+                                        mLotes.GravarParametroStore lote, an, j, CDbl(v(i, j)), EspecDaLinhaBloco(ws, h, h + O_AN + i - 1), _
+                                            "recuperado na instalação (ADR-078): digitado no bloco com os eventos desligados"
+                                        mAuditoria.Auditar mAuditoria.CAT_CONFIG, "PARAMETRO_LOTE_RECUPERADO", "mLotesBlocos", _
+                                            0, Empty, "", lote, nv, an, antes, CDbl(v(i, j)), "", "", campo & " N" & nv, _
+                                            "Valor digitado no bloco do lote " & lote & " que nao tinha chegado a LotesStore (eventos " & _
+                                            "desligados na hora); gravado na instalacao do ADR-078."
+                                        tocados(lote) = 1
+                                    End If
+                                End If
+                            End If
+                            If Len(sit) > 0 Then
+                                Select Case Left$(sit, 3)
+                                    Case "REC": n = n + 1
+                                    Case "CON": nc = nc + 1
+                                    Case Else: ni = ni + 1
+                                End Select
+                                det = det & vbLf & lote & ";" & an & ";" & campo & " N" & nv & ";" & CStr(antes) & ";" & _
+                                      CStr(v(i, j)) & ";" & sit
+                            End If
+                        End If
+                    Next j
+                End If
+            Next i
+        End If
+    Next k
+    mLotes.InvalidarLotes
+    If tocados.Exists(mLotes.LoteEmTela()) Then mLotes.CarregarParametrosView mLotes.LoteEmTela()   ' a tela do motor acompanha
+    ResgatarDigitados = "OK|" & n & "|" & nc & "|" & ni & det
+    Exit Function
+falha:
+    ResgatarDigitados = "ERRO|" & Err.Description & " (bloco do lote " & lote & ")"
+End Function
+
 Public Sub PreencherCIQDoBloco()
     Dim ws As Worksheet, h As Long, lote As String, r As String, p() As String, prot As Boolean
     If Not BlocosAtivos() Then Exit Sub

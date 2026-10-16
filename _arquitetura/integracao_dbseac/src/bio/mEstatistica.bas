@@ -55,6 +55,7 @@ Private mIdxAnal As Object             ' analito -> linha em mAnal
 Private mAgg As Object                 ' (analito|nivel) -> agregados de Westgard
 Private mEvLote As String              ' lote cujos eventos estao em mAgg / Eventos_Westgard
 Private mIdx As Object                 ' "ANALITO|LOTE" -> Collection de linhas ELEGIVEIS de mDB
+Private mNLote As Object               ' ADR-078: lote -> resultados na base (NResultadosLote)
 ' filtro do Painel, lido UMA vez por operacao (CarregarFiltro), nao uma vez por corrida
 Private fDe As Double, fAte As Double
 
@@ -112,6 +113,7 @@ Public Sub InvalidarCache()
     mEvLote = ""
     Set mIdx = Nothing
     mAnal = Empty
+    Set mNLote = Nothing
 End Sub
 
 ' Troca de lote em analise e edicao de media/DP: o BANCO nao mudou, entao o
@@ -128,6 +130,32 @@ Public Sub InvalidarParametros()
         mCache.CompareMode = 1
     End If
 End Sub
+
+' ADR-078: quantos resultados o lote tem na base (qualquer analito, equipamento ou situacao); -1 = base vazia ou
+' nao carregada. 0 = o lote ainda
+' nao rodou: o Painel diz "AGUARDANDO 1a CORRIDA" e as linhas mostram o alvo cadastrado. Uma varredura do
+' snapshot por versao do banco (InvalidarCache zera); nenhuma formula varre a tblCQ_Final (ADR-050).
+Public Function NResultadosLote(ByVal lote As String) As Long
+    Dim i As Long, k As String
+    NResultadosLote = -1                    ' base vazia, nao carregada ou erro: nao e "o lote nunca rodou"
+    On Error GoTo sai
+    GarantirDB
+    If IsEmpty(mDB) Then Exit Function
+    If mNLote Is Nothing Then
+        Set mNLote = CreateObject("Scripting.Dictionary")
+        mNLote.CompareMode = 1
+        If Not IsEmpty(mDB) Then
+            For i = 1 To UBound(mDB, 1)
+                k = Trim$(CStr(mDB(i, COL_LOTE)))
+                If Len(k) > 0 Then mNLote(k) = mNLote(k) + 1
+            Next i
+        End If
+    End If
+    lote = Trim$(lote)
+    NResultadosLote = 0
+    If mNLote.Exists(lote) Then NResultadosLote = mNLote(lote)
+sai:
+End Function
 
 ' ============================ INDICE (ADR-050) ============================
 ' Com cinco anos de banco (~100 mil linhas), varrer o banco inteiro a cada
@@ -1170,6 +1198,9 @@ Public Sub AtualizarCalc()
     ws.Range("S1").Value = equip
     ws.Range("T1").Value = "X além de " & NXN & ":"
     ws.Range("U1").Value = 0
+    ' ADR-078: resultados do lote na base (nome engNLoteBase) -- ANTES de qualquer saida antecipada
+    ws.Range("V1").Value = "lote na base:"
+    ws.Range("W1").Value = NResultadosLote(lote)
     If analito = "" Or IsEmpty(mDB) Then GoTo restaura
     ws.Range("O1").Value = LotesNoPeriodo(analito)
 
@@ -2420,6 +2451,7 @@ Public Sub PainelMudou()
     ' eventos de Westgard do lote se ja estao feitos, e le o banco pelo indice.
     ' ADR-053: a tela do usuario e guardada e devolvida, e a falha vira mensagem.
     Dim volta As Object
+    mLotes.EsquecerFiltroRotina             ' ADR-078: o usuario escolheu o analito (spinner/lista): vale o dele
     Set volta = mApp.TelaAtual()
     mApp.InicioUsuario "Carregando " & Trim$(CStr(ThisWorkbook.Names("selAnalito").RefersToRange.Value)) & "..."
     On Error GoTo falha

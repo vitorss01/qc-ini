@@ -15,12 +15,14 @@ Para cada produto:
      papeis e sessao (059), graficos: zoom (061) e todos a vista (063), troca de analito rapida (062),
      incerteza de medicao e correcoes do CEQ (064/067), ETp ausente = "-" (068), aba Inativar simples e ID na
      dica do LJ (070), selecao de rodadas do CEQ e Sigma com CV pooled de N meses (071), limites por lote com
-     rastreabilidade (073), aba Analitos com um bloco por lote e anos de referencia CLIA/VB (074) e blindagem.
+     rastreabilidade (073), aba Analitos com um bloco por lote e anos de referencia CLIA/VB (074; antes, o resgate
+     das digitacoes que nao chegaram a LotesStore -- 078), linhas do alvo que nao dependem das corridas e troca de
+     lote sem gravar na LotesStore (078) e blindagem.
      Todos idempotentes; cada um instala o VBA inteiro das fontes (codigo_atual.py);
   3. guarda os bytes instalados e roda, cada suite numa copia propria deles:
      qa_seguranca, qa_casos_extremos, qa_troca_lote, qa_lotes_auto, qa_graficos (Excel VISIVEL),
      qa_incerteza (recalculo independente), qa_desempenho, qa_final, qa_etl_recebimento, qa_etl, qa_rodadas_cv,
-     qa_inativar, qa_migracao_adr070, qa_lotes_limites, qa_blocos_lote. A producao ORIGINAL (copiada para <produto>/producao_original/ antes de
+     qa_inativar, qa_migracao_adr070, qa_lotes_limites, qa_blocos_lote, qa_varredura_lotes, qa_linhas_alvo. A producao ORIGINAL (copiada para <produto>/producao_original/ antes de
      instalar, conferida por SHA-256) vai para as suites pela variavel QC_PROD_ORIGINAL: o R00 do qa_rodadas_cv
      compara a copia instalada com ela (regressao do gate) e o qa_migracao_adr070 testa a migracao sobre ela e
      confere que as inativacoes reais sobrevivem (M06) -- nenhum caminho de rede no codigo;
@@ -49,7 +51,8 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_migracao_adr070.py',                       # ADR-070: migracao e inativacoes reais contra a producao
           'qa_lotes_limites.py',                         # ADR-073: limites por lote + rastreabilidade
           'qa_blocos_lote.py',                           # ADR-074: aba Analitos com um bloco por lote
-          'qa_varredura_lotes.py']                       # ADR-077: todos os lotes no Painel com media e limites
+          'qa_varredura_lotes.py',                       # ADR-077/078: todos os lotes no Painel com media e limites
+          'qa_linhas_alvo.py']                           # ADR-078: linhas do alvo antes da 1a corrida, troca sem gravar
 
 
 def sha(p):
@@ -102,6 +105,7 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('limites_lote', ['instalar_adr073.py', produto, alvo]),   # ADR-073: central de limites por lote
               ('espec_hema', ['instalar_adr075.py', produto, alvo]),     # ADR-075: Hematologia no modelo da Bioquimica
               ('blocos_lote', ['instalar_adr074.py', produto, alvo]),    # ADR-074: um bloco por lote na aba Analitos
+              ('linhas_alvo', ['instalar_adr078.py', produto, alvo]),    # ADR-078: linhas do alvo sem depender das corridas
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:
         ok, fim = rodar(os.path.join(trab, f'{nome}.log'), AQUI, *args)

@@ -61,10 +61,13 @@ Private Const LS_C_CVTP As Long = 20          ' T  CVTp % vigente ao gravar
 Private Const LS_C_QUANDO As Long = 21        ' U  registrado em
 Private Const LS_C_QUEM As Long = 22          ' V  usuario
 Private Const LS_C_ORIGEM As Long = 23        ' W  digitado / CIQ (20 primeiros)
-Private Const LS_C_ULT As Long = 23
+Private Const LS_C_TESTE1 As Long = 24       ' X..Z TESTE_N1..N3 (ADR-078): bit 1 = Media de TESTE (ADR-076), bit 2 = DP
+Private Const LS_C_ULT As Long = 26
+Private Const ENG_ABA As String = "Eng_Saida"
+Private Const ENG_AVISO As String = "Y1"        ' ADR-078: aviso do ajuste do filtro (nome engAviso)
+Private Const ENG_FILTRO As String = "AA1"      ' ADR-078: filtro da rotina guardado (nome engFiltroRotina)
 Private Const N_CIQ_ALVO As Long = 20         ' CLSI C24: media/DP de um lote novo com >= 20 resultados
 Private Const FATOR_DP_TESTE As Double = 1.5  ' ADR-076: DP de TESTE = 1,5 x o do lote em uso (pedido do usuario)
-Private mOrigemGravacao As String             ' origem da proxima gravacao (CIQ) -- vazio = digitado
 
 ' ---- cadastro de lotes (Configuracao) -- ADR-060 ----
 ' Linha do lote = POSICAO no cadastro: BlocoDoLote/BlocoDoLoteBI enderecam por ela
@@ -237,85 +240,6 @@ Private Function IndiceStore(ByVal ws As Worksheet, ByRef ult As Long) As Object
     Set IndiceStore = d
 End Function
 
-' Grava a tela Analitos!E:J nas linhas do lote, analito a analito, pela chave.
-' Cria a linha so quando ha algum valor: lote vazio nao ocupa a store.
-Public Sub SalvarParametrosView(ByVal lote As String)
-    Dim wa As Worksheet, ws As Worksheet, nomes As Variant, vw As Variant
-    Dim idx As Object, ult As Long, i As Long, j As Long, r As Long
-    Dim nm As String, k As String, temValor As Boolean, linha(1 To 1, 1 To 6) As Variant
-    Dim prot As Boolean, antes As Variant, mudou As Boolean, esp As Variant, criada As Boolean
-    lote = Trim$(lote)
-    If lote = "" Then Exit Sub
-    Set wa = ThisWorkbook.Sheets(AbaEspec())
-    Set ws = ThisWorkbook.Sheets(LS_ABA)
-    nomes = wa.Range(wa.Cells(AN_R0, 1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, 1)).Value
-    vw = wa.Range(wa.Cells(AN_R0, AN_C_MED1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, AN_C_MED1 + 5)).Value
-    Set idx = IndiceStore(ws, ult)
-
-    On Error GoTo restaura
-    prot = LiberarEscrita(ws)
-    For i = 1 To CAP_ANALITOS
-        nm = Trim$(CStr(nomes(i, 1)))
-        If nm <> "" Then
-            k = ChaveLote(lote, nm)
-            temValor = False
-            For j = 1 To 6
-                If Len(Trim$(CStr(vw(i, j)))) > 0 Then temValor = True
-            Next j
-            r = 0
-            criada = False
-            If idx.Exists(k) Then r = idx(k)
-            If r = 0 And temValor Then
-                criada = True
-                ult = ult + 1
-                If ult > LS_R0 + LS_CAPLINHAS - 1 Then
-                    Err.Raise vbObjectError + 491, "mLotes.SalvarParametrosView", _
-                        "LotesStore cheia (" & LS_CAPLINHAS & " linhas). Ampliar LS_CAPLINHAS e os nomes ls*."
-                End If
-                r = ult
-                idx.Add k, r
-            End If
-            If r > 0 Then
-                For j = 1 To 6
-                    linha(1, j) = vw(i, j)
-                Next j
-                ' ADR-073: so a linha que MUDOU ganha o retrato da especificacao vigente, quem e quando
-                mudou = criada
-                If Not criada Then
-                    antes = ws.Range(ws.Cells(r, LS_C_MED1), ws.Cells(r, LS_C_MED1 + 5)).Value
-                    For j = 1 To 6
-                        If CStr(antes(1, j)) <> CStr(linha(1, j)) Then mudou = True
-                    Next j
-                End If
-                If mudou And temValor Then
-                    esp = EspecDaLinha(wa, AN_R0 + i - 1)
-                    ws.Cells(r, LS_C_FONTE).Value = esp(0)
-                    ws.Cells(r, LS_C_ANO).Value = esp(1)
-                    ws.Cells(r, LS_C_ETP).Value = esp(2)
-                    ws.Cells(r, LS_C_CVTP).Value = esp(3)
-                    ws.Cells(r, LS_C_QUANDO).Value = Now
-                    ws.Cells(r, LS_C_QUEM).Value = mAuditoria.UsuarioSistema()
-                    ws.Cells(r, LS_C_ORIGEM).Value = IIf(mOrigemGravacao <> "", mOrigemGravacao, "digitado na aba Analitos")
-                End If
-                ws.Cells(r, LS_C_LOTE).NumberFormat = "@"   ' "010" fica "010"
-                ws.Cells(r, LS_C_LOTE).Value = lote
-                ws.Cells(r, LS_C_IDX).Value = i
-                ws.Range(ws.Cells(r, LS_C_MED1), ws.Cells(r, LS_C_MED1 + 5)).Value = linha
-                ws.Cells(r, LS_C_NOME).Value = nm
-                ws.Cells(r, LS_C_CHAVE).Value = k
-            End If
-        End If
-    Next i
-restaura:
-    Dim nE As Long, sE As String
-    nE = Err.Number: sE = Err.Description
-    RestaurarProtecao ws, prot
-    InvalidarLotes
-    If nE <> 0 Then Err.Raise nE, "mLotes.SalvarParametrosView", sE
-    On Error Resume Next
-    mLotesBlocos.EscreverValoresDoLote lote        ' ADR-076: o bloco do lote (aba Analitos) mostra o que foi gravado
-End Sub
-
 ' ADR-074: grava UM valor (j = 1..6: Media N1, DP N1, Media N2, DP N2, Media N3, DP N3) do lote x analito
 ' direto na LotesStore, pela chave -- o caminho dos blocos da aba Analitos e do preenchimento pelo CIQ.
 ' Cria a linha so quando ha valor. esp = Array(fonte, anos, ETp, CVTp): o retrato da especificacao do
@@ -323,7 +247,7 @@ End Sub
 Public Function GravarParametroStore(ByVal lote As String, ByVal analito As String, ByVal j As Long, _
                                      ByVal valor As Variant, ByVal esp As Variant, ByVal origem As String) As Variant
     Dim ws As Worksheet, idx As Object, ult As Long, k As String, r As Long, prot As Boolean, antes As Variant
-    Dim nE As Long, sE As String
+    Dim nE As Long, sE As String, bitT As Long
     lote = Trim$(lote): analito = Trim$(analito)
     GravarParametroStore = Empty
     If lote = "" Or analito = "" Or j < 1 Or j > 6 Then Exit Function
@@ -362,6 +286,15 @@ Public Function GravarParametroStore(ByVal lote As String, ByVal analito As Stri
         ws.Cells(r, LS_C_QUANDO).Value = Now
         ws.Cells(r, LS_C_QUEM).Value = mAuditoria.UsuarioSistema()
         ws.Cells(r, LS_C_ORIGEM).Value = origem
+        GarantirCabecalhoTeste ws
+        ' ADR-078: o campo digitado deixa de ser TESTE (bit 1 = Media, bit 2 = DP); o nivel sai da marca quando
+        ' os dois foram trocados
+        bitT = Val(CStr(ws.Cells(r, LS_C_TESTE1 + (j - 1) \ 2).Value)) And Not IIf((j Mod 2) = 1, 1, 2)
+        If bitT > 0 Then
+            ws.Cells(r, LS_C_TESTE1 + (j - 1) \ 2).Value = bitT
+        Else
+            ws.Cells(r, LS_C_TESTE1 + (j - 1) \ 2).ClearContents
+        End If
     End If
 restaura:
     nE = Err.Number: sE = Err.Description
@@ -406,9 +339,10 @@ End Function
 ' nunca a do lote anterior.
 Public Sub CarregarParametrosView(ByVal lote As String)
     Dim wa As Worksheet, nomes As Variant, outp() As Variant
-    Dim i As Long, j As Long, r As Long, nm As String, k As String, prot As Boolean
+    Dim i As Long, j As Long, r As Long, nm As String, k As String, prot As Boolean, ev As Boolean
     lote = Trim$(lote)
     Set wa = ThisWorkbook.Sheets(AbaEspec())
+    ev = Application.EnableEvents
     GarantirLotes
     nomes = wa.Range(wa.Cells(AN_R0, 1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, 1)).Value
     ReDim outp(1 To CAP_ANALITOS, 1 To 6)
@@ -429,24 +363,33 @@ Public Sub CarregarParametrosView(ByVal lote As String)
         End If
     Next i
     On Error GoTo restaura
-    prot = LiberarEscrita(wa)
-    wa.Range(wa.Cells(AN_R0, AN_C_MED1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, AN_C_MED1 + 5)).Value = outp
+    ' ADR-078: o lote da tela PRIMEIRO, conferido. Tela de um lote rotulada com outro nao acontece mais.
     ThisWorkbook.Names("loteParam").RefersToRange.NumberFormat = "@"
     ThisWorkbook.Names("loteParam").RefersToRange.Value = lote
+    If LoteParamTela() <> lote Then Err.Raise vbObjectError + 492, "mLotes.CarregarParametrosView", _
+        "nao foi possivel registrar o lote " & lote & " como lote em tela (Configuracao, loteParam)"
+    prot = LiberarEscrita(wa)
+    ' ADR-078: carregar a tela nao e digitar -- com eventos ligados (abertura da pasta) a escrita disparava o
+    ' ParametroEditado nas 240 celulas
+    Application.EnableEvents = False
+    wa.Range(wa.Cells(AN_R0, AN_C_MED1), wa.Cells(AN_R0 + CAP_ANALITOS - 1, AN_C_MED1 + 5)).Value = outp
     EscreverLoteEdicao lote                         ' ADR-073: seletor da aba Analitos acompanha
 restaura:
     Dim nE As Long, sE As String
     nE = Err.Number: sE = Err.Description
+    Application.EnableEvents = ev
     RestaurarProtecao wa, prot
     If nE <> 0 Then Err.Raise nE, "mLotes.CarregarParametrosView", sE
 End Sub
 
 ' ============================ TROCA DO LOTE EM ANALISE ============================
-' Chamado quando Painel!H3 (loteSel) muda. Persiste a tela do lote anterior,
-' carrega a do novo e refaz o motor: grafico, Westgard e eventos passam a
-' falar do lote novo, e so dele.
+' Chamado quando Painel!H3 (loteSel) muda. Carrega a tela do lote novo A PARTIR DA LotesStore e refaz o
+' motor: grafico, Westgard e eventos passam a falar do lote novo, e so dele.
+' ADR-078: a troca NUNCA grava na LotesStore. Antes ela gravava a tela do motor no lote anterior; com a tela
+' desatualizada (Media/DP digitada no bloco com os eventos desligados, por exemplo), trocar de lote apagava o
+' que o usuario tinha digitado. Quem grava e so a digitacao (bloco, Especificacoes) e o preenchimento pelo CIQ.
 Public Sub TrocarLoteAnalise()
-    Dim novo As String, atual As String, eqMudou As Boolean, msgAj As String, dentro As Boolean
+    Dim novo As String, atual As String, eqMudou As Boolean, msgAj As String, dentro As Boolean, msgRede As String
     ' ADR-050: uma operacao so -- tela congelada, calculo manual, um recalculo. Chamada de DENTRO
     ' do TrocarLote, entra na operacao dele: o InicioUsuario zerava o contador e o resto do
     ' TrocarLote rodava com tela, eventos e calculo ligados (auditoria 04/10/2026).
@@ -458,20 +401,25 @@ Public Sub TrocarLoteAnalise()
     On Error GoTo falha
     novo = LotePainel()
     If Len(novo) > 0 Then GravarLoteSel novo       ' canoniza o que o usuario escolheu
-    ' ADR-077: lote sem nenhum ponto no filtro atual -> o Painel acompanha (equipamento, analito, periodo)
     dentro = mDentroTrocaLote
-    If Not dentro Then eqMudou = AjustarPainelAoLote(novo, msgAj)
-    atual = LoteParamTela()
-    If novo <> atual Then
-        If atual <> "" Then SalvarParametrosView atual
-        CarregarParametrosView novo
+    If dentro Then
+        EsquecerFiltroRotina                         ' troca do lote EM USO (Configuracao): outra rotina
+    ElseIf FiltroRotinaGuardado() And StrComp(novo, LoteCanonico(LoteAtivoCore()), vbTextCompare) = 0 Then
+        eqMudou = RestaurarFiltroRotina(msgAj)       ' ADR-078: de volta ao lote em uso, o filtro de antes
+        If AjustarPainelAoLote(novo, msgRede) Then eqMudou = True      ' e se ele nao mostra nada do lote, ajusta
+        If Len(msgRede) > 0 Then msgAj = msgAj & " " & msgRede
+    Else
+        ' ADR-077: lote sem nenhum ponto no filtro atual -> o Painel acompanha (equipamento, analito, periodo)
+        eqMudou = AjustarPainelAoLote(novo, msgAj)
     End If
+    DefinirAvisoPainel msgAj                         ' ADR-078: aviso no Painel (H4 e A39), nao na barra de status
+    atual = LoteParamTela()
+    CarregarParametrosView novo                      ' store -> tela, sempre (barato); nunca tela -> store
     InvalidarLotes
     mEstatistica.InvalidarParametros      ' ADR-050: o banco nao mudou; o indice fica
     mEstatistica.RecalcularAnalitoAtual
     mApp.fim
     If eqMudou Then mEstatistica.EquipMudou                ' ADR-077: a Estatistica e a incerteza do outro equipamento
-    If Len(msgAj) > 0 Then Application.StatusBar = msgAj
     Exit Sub
 falha:
     Dim s As String
@@ -487,10 +435,7 @@ Public Sub SincronizarLotesAoAbrir()
     If Trim$(CStr(ThisWorkbook.Names("loteSel").RefersToRange.Value)) = "" Then
         GravarLoteSel LoteCanonico(LoteAtivoCore())
     End If
-    If LoteParamTela() <> LotePainel() Then
-        If LoteParamTela() <> "" Then SalvarParametrosView LoteParamTela()
-        CarregarParametrosView LotePainel()
-    End If
+    If LoteParamTela() <> LotePainel() Then CarregarParametrosView LotePainel()    ' ADR-078: so le a store
     InvalidarLotes
     mLotesBlocos.SincronizarBlocos          ' ADR-074: lote cadastrado sem bloco ganha o seu
 End Sub
@@ -521,7 +466,13 @@ Public Sub ParametroEditado(ByVal Target As Range)
         If an <> "" Then antes(c.Address) = ValorNaStore(lote, an, c.Column - AN_C_MED1 + 1)
     Next c
 
-    SalvarParametrosView lote
+    ' ADR-078: celula a celula, pela mesma rotina dos blocos (antes gravava a tela inteira do motor)
+    For Each c In zona.Cells
+        an = Trim$(CStr(wa.Cells(c.Row, 1).Value))
+        If an <> "" Then GravarParametroStore lote, an, c.Column - AN_C_MED1 + 1, c.Value, _
+                                              EspecDaLinha(wa, c.Row), "digitado na aba Especificações"
+    Next c
+    InvalidarLotes
 
     For Each c In zona.Cells
         an = Trim$(CStr(wa.Cells(c.Row, 1).Value))
@@ -548,6 +499,7 @@ Public Sub ParametroEditado(ByVal Target As Range)
     mEstatistica.InvalidarParametros      ' ADR-050: parametro mudou, banco nao
     mEstatistica.RecalcularAnalitoAtual
     AtualizarResumoLote                   ' ADR-073
+    mLotesBlocos.EscreverValoresDoLote lote          ' ADR-076: o bloco do lote mostra o que foi gravado
     mApp.fim
     If Len(invalidos) > 0 Then
         Avisar "Parametro gravado, mas NAO sera usado ate ser corrigido " & _
@@ -824,7 +776,7 @@ Public Sub FlushLoteAtual()
     lote = Trim$(CStr(ThisWorkbook.Names("loteCarregado").RefersToRange.Value))
     i = BlocoDoLote(lote)
     If i > 0 Then SalvarViewNoBloco i
-    If LoteParamTela() <> "" Then SalvarParametrosView LoteParamTela()
+    ' ADR-078: Media/DP ja estao na LotesStore (gravadas na digitacao); a tela do motor nao e gravada de volta
 End Sub
 
 ' ============================================================================
@@ -1434,7 +1386,7 @@ Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv A
     Dim nLotes As Long, nMed As Long, nRef As Long, nProp As Long, nSem As Long, det As String
     Dim tocados As Object, vistos As Object, prot As Boolean, nE As Long, sE As String, quando As Date
     Dim c As Long, kk As Variant, out() As Variant, ri As Long, porLote As Object, usuario As String
-    Dim mAntes As Variant, dAntes As Variant
+    Dim mAntes As Variant, dAntes As Variant, bitsT As Long
 
     On Error GoTo falha
     loteRef = Trim$(loteRef)
@@ -1519,6 +1471,10 @@ Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv A
                                         nSem = nSem + 1
                                     End If
                                 End If
+                                ' ADR-078: o que este preenchimento poe e de TESTE -- bit 1 Media, bit 2 DP
+                                bitsT = 0
+                                If Len(Trim$(CStr(mAntes))) = 0 Then bitsT = 1
+                                If Not IsEmpty(dp) And Len(Trim$(CStr(dAntes))) = 0 Then bitsT = bitsT Or 2
                                 If IsEmpty(esp) Then
                                     esp = mLotesBlocos.EspecDoLote(lote, an)
                                     If IsEmpty(esp) Then esp = EspecDaLinha(wa, AN_R0 + i - 1)
@@ -1531,6 +1487,7 @@ Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv A
                                     arr(r, LS_C_FONTE) = esp(0): arr(r, LS_C_ANO) = esp(1)
                                     arr(r, LS_C_ETP) = esp(2): arr(r, LS_C_CVTP) = esp(3)
                                     arr(r, LS_C_QUANDO) = quando: arr(r, LS_C_QUEM) = usuario
+                                    arr(r, LS_C_TESTE1 + nv - 1) = Val(CStr(arr(r, LS_C_TESTE1 + nv - 1))) Or bitsT   ' ADR-078
                                     mudou(r) = kk
                                 Else
                                     If Not novos.Exists(kk) Then
@@ -1544,6 +1501,7 @@ Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv A
                                     lin(LS_C_FONTE) = esp(0): lin(LS_C_ANO) = esp(1)
                                     lin(LS_C_ETP) = esp(2): lin(LS_C_CVTP) = esp(3)
                                     lin(LS_C_QUANDO) = quando: lin(LS_C_QUEM) = usuario
+                                    lin(LS_C_TESTE1 + nv - 1) = Val(CStr(lin(LS_C_TESTE1 + nv - 1))) Or bitsT
                                     novos(kk) = lin
                                 End If
                                 origens(kk) = origens(kk) & IIf(origens(kk) <> "", " | ", "") & "N" & nv & ": " & _
@@ -1567,6 +1525,7 @@ Public Function PreencherLotesPeloHistorico(ByVal loteRef As String, ByVal nlv A
         arr(kk, LS_C_ORIGEM) = "TESTE " & Format$(quando, "dd/mm/yyyy") & " (substituir pelos valores corretos) -- " & origens(mudou(kk))
     Next kk
     prot = LiberarEscrita(ws)
+    GarantirCabecalhoTeste ws
     If mudou.Count > 0 Then ws.Range(ws.Cells(LS_R0, 1), ws.Cells(ult, LS_C_ULT)).Value = arr
     If novos.Count > 0 Then
         If ult + novos.Count > LS_R0 + LS_CAPLINHAS - 1 Then
@@ -1653,7 +1612,8 @@ Public Function AjustarPainelAoLote(ByVal lote As String, ByRef msg As String) A
     Dim cntEq As Object, cntAn As Object, nomeEq As Object, k As Variant, melhor As Long, eqNovo As String
     Dim wa As Worksheet, nomes As Variant, p As Worksheet, prot As Boolean, ev As Boolean
     Dim de As Double, ate As Double, d As Double, temPer As Boolean, posNovo As Long, temFiltroEq As Boolean
-    Dim partes As String
+    Dim partes As String, temSeletorEq As Boolean, guardou As Boolean
+    ev = Application.EnableEvents
     On Error GoTo fim
     msg = ""
     lote = Trim$(lote)
@@ -1686,15 +1646,21 @@ Public Function AjustarPainelAoLote(ByVal lote As String, ByRef msg As String) A
     If cntEq.Count = 0 Then Exit Function                    ' lote sem resultado: nada a mostrar, nada a ajustar
 
     Set p = ThisWorkbook.Sheets("Painel")
-    ev = Application.EnableEvents
     Application.EnableEvents = False
     prot = LiberarEscritaRapida(p)
 
-    ' 2. equipamento (so onde ha filtro de equipamento: Bioquimica)
+    ' 2. equipamento. So a Bioquimica tem o seletor no Painel (L4); na Hematologia o selEquipamento e o
+    ' EQUIPAMENTO_PADRAO da integracao (Cfg_Integracao) e NUNCA e escrito aqui (ADR-078).
     eqAtual = mEstatistica.EquipFiltro()
     temFiltroEq = (eqAtual <> "")
-    If temFiltroEq Then
+    temSeletorEq = TemSeletorEquipamento()
+    If temFiltroEq And Not cntEq.Exists(eqAtual) And Not temSeletorEq Then
+        msg = "Lote " & lote & ": nenhum resultado no equipamento " & eqAtual & " (o da integracao)."
+        GoTo saida
+    End If
+    If temFiltroEq And temSeletorEq Then
         If Not cntEq.Exists(eqAtual) Then
+            If Not guardou Then GuardarFiltroRotina lote: guardou = True
             melhor = 0
             For Each k In cntEq.Keys
                 If cntEq(k) > melhor Then melhor = cntEq(k): eqNovo = CStr(k)
@@ -1721,6 +1687,7 @@ Public Function AjustarPainelAoLote(ByVal lote As String, ByRef msg As String) A
             End If
         Next i
         If posNovo > 0 Then
+            If Not guardou Then GuardarFiltroRotina lote: guardou = True
             p.Range("B3").Value = posNovo
             Application.Calculate                              ' C3 (selAnalito) acompanha B3
             anAtual = UCase$(Trim$(CStr(nomes(posNovo, 1))))
@@ -1750,20 +1717,26 @@ Public Function AjustarPainelAoLote(ByVal lote As String, ByRef msg As String) A
             End If
         Next i
         If Not temPer Then
-            ThisWorkbook.Names("filtroPeriodo").RefersToRange.Value = "Tudo"
+            If Not guardou Then GuardarFiltroRotina lote: guardou = True
+            ThisWorkbook.Names("filtroPeriodo").RefersToRange.Value = "Tudo (sem filtro)"     ' o rotulo da lista de K4
             mApp.AplicarFiltroAnoMes
             partes = partes & "período Tudo (o lote não tem resultado no período anterior); "
         End If
     End If
+saida:
     RestaurarProtecao p, prot
     Application.EnableEvents = ev
     If Len(partes) > 0 Then msg = "Lote " & lote & ": o filtro anterior não mostrava nenhum resultado dele -- ajustado: " & _
                                   Left$(partes, Len(partes) - 2) & "."
+    If guardou Then
+        mAuditoria.Auditar mAuditoria.CAT_SIS, "PAINEL_FILTRO_AJUSTADO", "mLotes", 0, Empty, "", lote, 0, "", _
+            FiltroRotinaGuardadoTexto(), FiltroAtualTexto(), "", "", "filtro do Painel", msg
+    End If
     Exit Function
 fim:
     On Error Resume Next
     RestaurarProtecao p, prot
-    Application.EnableEvents = True
+    Application.EnableEvents = ev
 End Function
 
 Private Function ContagemAnalito(ByVal cntAn As Object, ByVal eq As String, ByVal an As String, ByVal porEq As Boolean) As Long
@@ -1779,6 +1752,157 @@ End Function
 
 Private Function TemContagem(ByVal cntAn As Object, ByVal eq As String, ByVal an As String, ByVal porEq As Boolean) As Boolean
     TemContagem = (ContagemAnalito(cntAn, eq, an, porEq) > 0)
+End Function
+
+' ============================ ADR-078: AVISO E FILTRO DA ROTINA NO PAINEL ============================
+' Eng_Saida linha 1 (aba tecnica): Y1 = aviso do ultimo ajuste do filtro (nome engAviso; Painel H4 e A39 mostram);
+' AA1 = filtro da ROTINA, guardado antes do 1o ajuste feito por causa de outro lote (nome engFiltroRotina):
+' "B3|De|Ate|Ano|Periodo|Equipamento". Volta sozinho quando o usuario retorna ao lote em uso; e esquecido quando o
+' proprio usuario mexe no filtro (Painel.Worksheet_Change).
+Public Sub DefinirAvisoPainel(ByVal msg As String)
+    Dim ws As Worksheet, prot As Boolean
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets(ENG_ABA)
+    If CStr(ws.Range(ENG_AVISO).Value) = msg And Len(CStr(ws.Range(ENG_AVISO).Offset(0, -1).Value)) > 0 Then Exit Sub
+    prot = LiberarEscritaRapida(ws)
+    ws.Range(ENG_AVISO).Offset(0, -1).Value = "aviso:"
+    ws.Range(ENG_AVISO).NumberFormat = "@"
+    ws.Range(ENG_AVISO).Value = msg
+    RestaurarProtecao ws, prot
+End Sub
+
+Public Function AvisoPainel() As String
+    On Error Resume Next
+    AvisoPainel = CStr(ThisWorkbook.Sheets(ENG_ABA).Range(ENG_AVISO).Value)
+End Function
+
+Public Function FiltroRotinaGuardado() As Boolean
+    FiltroRotinaGuardado = (Len(FiltroRotinaGuardadoTexto()) > 0)
+End Function
+
+Public Function FiltroRotinaGuardadoTexto() As String
+    On Error Resume Next
+    FiltroRotinaGuardadoTexto = Trim$(CStr(ThisWorkbook.Sheets(ENG_ABA).Range(ENG_FILTRO).Value))
+End Function
+
+' Numero com ponto decimal (Str$/Val nao dependem da configuracao regional); "" se vazio.
+Private Function NumTxt(ByVal v As Variant) As String
+    If IsError(v) Or IsEmpty(v) Then Exit Function
+    If VarType(v) = vbString Then
+        If Len(Trim$(CStr(v))) = 0 Or Not IsNumeric(v) Then Exit Function
+    End If
+    If IsDate(v) Or IsNumeric(v) Then NumTxt = Trim$(Str$(CDbl(v)))
+End Function
+
+Private Function TemSeletorEquipamento() As Boolean
+    On Error Resume Next
+    TemSeletorEquipamento = (ThisWorkbook.Names("selEquipamento").RefersToRange.Worksheet.Name = "Painel")
+End Function
+
+Public Function FiltroAtualTexto() As String
+    Dim eq As String
+    On Error Resume Next
+    If TemSeletorEquipamento() Then eq = Trim$(CStr(ThisWorkbook.Names("selEquipamento").RefersToRange.Value))
+    FiltroAtualTexto = Trim$(CStr(ThisWorkbook.Sheets("Painel").Range("B3").Value)) & "|" & _
+        NumTxt(ThisWorkbook.Names("filtroDe").RefersToRange.Value) & "|" & _
+        NumTxt(ThisWorkbook.Names("filtroAte").RefersToRange.Value) & "|" & _
+        Trim$(CStr(ThisWorkbook.Names("filtroAno").RefersToRange.Value)) & "|" & _
+        Trim$(CStr(ThisWorkbook.Names("filtroPeriodo").RefersToRange.Value)) & "|" & eq
+End Function
+
+' Antes do 1o ajuste por causa de OUTRO lote (nunca o lote em uso): guarda o filtro da rotina, uma vez.
+Private Sub GuardarFiltroRotina(ByVal lote As String)
+    Dim ws As Worksheet, prot As Boolean
+    On Error Resume Next
+    If FiltroRotinaGuardado() Then Exit Sub
+    If StrComp(lote, LoteCanonico(LoteAtivoCore()), vbTextCompare) = 0 Then Exit Sub
+    ' o filtro em tela e o da rotina so se o lote que esta saindo (a tela ainda e dele) e o lote em uso
+    If StrComp(LoteParamTela(), LoteCanonico(LoteAtivoCore()), vbTextCompare) <> 0 Then Exit Sub
+    Set ws = ThisWorkbook.Sheets(ENG_ABA)
+    prot = LiberarEscritaRapida(ws)
+    ws.Range(ENG_FILTRO).Offset(0, -1).Value = "filtro da rotina:"
+    ws.Range(ENG_FILTRO).NumberFormat = "@"
+    ws.Range(ENG_FILTRO).Value = FiltroAtualTexto()
+    RestaurarProtecao ws, prot
+End Sub
+
+' Volta ao lote em uso: o filtro da rotina de antes (analito, periodo, equipamento). True se o equipamento mudou.
+Private Function RestaurarFiltroRotina(ByRef msg As String) As Boolean
+    Dim s() As String, p As Worksheet, prot As Boolean, ev As Boolean
+    ev = Application.EnableEvents
+    On Error GoTo fim
+    msg = ""
+    s = Split(FiltroRotinaGuardadoTexto(), "|")
+    If UBound(s) < 5 Then EsquecerFiltroRotina: Exit Function
+    Set p = ThisWorkbook.Sheets("Painel")
+    Application.EnableEvents = False
+    prot = LiberarEscritaRapida(p)
+    If Val(s(0)) >= 1 Then
+        p.Range("B3").Value = CLng(Val(s(0)))
+        Application.Calculate                          ' C3 (selAnalito) acompanha B3
+    End If
+    If IsNumeric(s(3)) And Len(s(3)) > 0 Then
+        ThisWorkbook.Names("filtroAno").RefersToRange.Value = CLng(Val(s(3)))
+    Else
+        ThisWorkbook.Names("filtroAno").RefersToRange.Value = s(3)
+    End If
+    ThisWorkbook.Names("filtroPeriodo").RefersToRange.Value = s(4)
+    If Len(s(1)) = 0 Then
+        ThisWorkbook.Names("filtroDe").RefersToRange.ClearContents
+    Else
+        ThisWorkbook.Names("filtroDe").RefersToRange.Value = Val(s(1))
+    End If
+    If Len(s(2)) = 0 Then
+        ThisWorkbook.Names("filtroAte").RefersToRange.ClearContents
+    Else
+        ThisWorkbook.Names("filtroAte").RefersToRange.Value = Val(s(2))
+    End If
+    If TemSeletorEquipamento() And Len(s(5)) > 0 Then
+        If UCase$(Trim$(CStr(ThisWorkbook.Names("selEquipamento").RefersToRange.Value))) <> UCase$(s(5)) Then
+            ThisWorkbook.Names("selEquipamento").RefersToRange.Value = s(5)
+            RestaurarFiltroRotina = True
+        End If
+    End If
+    RestaurarProtecao p, prot
+    Application.EnableEvents = ev
+    EsquecerFiltroRotina
+    msg = "Filtro da rotina restaurado (de volta ao lote em uso)."
+    Exit Function
+fim:
+    On Error Resume Next
+    RestaurarProtecao p, prot
+    Application.EnableEvents = ev
+    EsquecerFiltroRotina
+End Function
+
+' O usuario mexeu no filtro (Painel): o que ele escolheu vale; o filtro guardado e o aviso saem.
+Public Sub EsquecerFiltroRotina()
+    Dim ws As Worksheet, prot As Boolean
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets(ENG_ABA)
+    If Len(CStr(ws.Range(ENG_FILTRO).Value)) = 0 And Len(CStr(ws.Range(ENG_AVISO).Value)) = 0 Then Exit Sub
+    prot = LiberarEscritaRapida(ws)
+    ws.Range(ENG_FILTRO).ClearContents
+    ws.Range(ENG_AVISO).ClearContents
+    RestaurarProtecao ws, prot
+End Sub
+
+' ADR-078: LotesStore X:Z (TESTE_N1..N3: 1 = Media de teste, 2 = DP de teste, 3 = os dois) -- cabecalho criado se
+' faltar (a ordem de instalacao nao importa).
+Private Sub GarantirCabecalhoTeste(ByVal ws As Worksheet)
+    If Len(CStr(ws.Cells(1, LS_C_TESTE1).Value)) > 0 Then Exit Sub
+    ws.Range(ws.Cells(1, LS_C_TESTE1), ws.Cells(1, LS_C_TESTE1 + 2)).Value = Array("TESTE_N1", "TESTE_N2", "TESTE_N3")
+End Sub
+
+' O nivel do lote x analito esta com valor de TESTE (ADR-076)? Para o QA e para o Painel.
+Public Function AlvoDeTeste(ByVal lote As String, ByVal analito As String, ByVal nivel As Long) As Boolean
+    Dim k As String
+    If nivel < 1 Or nivel > 3 Then Exit Function
+    GarantirLotes
+    k = ChaveLote(lote, analito)
+    If Not mLSIdx.Exists(k) Then Exit Function
+    If UBound(mLS, 2) < LS_C_TESTE1 + nivel - 1 Then Exit Function
+    AlvoDeTeste = (Val(CStr(mLS(mLSIdx(k), LS_C_TESTE1 + nivel - 1))) > 0)
 End Function
 
 ' Recalcula o resumo do lote na aba Analitos (formula com mLotes.RegistroLote).

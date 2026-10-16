@@ -74,12 +74,39 @@ laboratório preencher (ADR-075).
 - **Média/DP:** digite nas células amarelas (E:J) do bloco do lote. São valores, sem fórmula. Grava na hora, com trilha
   (a LotesStore é onde o sistema guarda e lê).
 - **Valores de TESTE (15/10/2026):** os lotes que não tinham Média/DP receberam a **média dos próprios resultados** e
-  **DP = 1,5 × o do lote em uso**, só para os limites aparecerem. A LotesStore (coluna ORIGEM) marca esses valores
-  como "TESTE". **Substitua pelos valores corretos**: basta digitar por cima.
+  **DP = 1,5 × o do lote em uso**, só para os limites aparecerem.
+  - A LotesStore marca esses valores por nível (colunas TESTE_N1..N3).
+  - O resumo do bloco avisa "contém valores de TESTE".
+  - O Painel mostra **"(alvo TESTE)"** no status do nível. O veredito com alvo de teste não serve para liberar
+    resultado.
+  - **Substitua pelos valores corretos**: basta digitar por cima. A marca sai do nível quando a Média e o DP de
+    teste foram trocados (trocar só um deles mantém o aviso).
   - Os limites (Média ± 1, 2 e 3 DP), o CV, o ET e o Sigma do lote aparecem ao lado.
   - O gráfico do Painel usa esses valores quando o lote é escolhido em H3.
   - **Lote sem Média/DP = gráfico sem limites e Westgard sem avaliar.**
   - O botão **Preencher vazios pelo CIQ (20 primeiros)** do bloco calcula só o que está vazio. Revise os valores.
+- **Linhas do alvo antes da 1ª corrida (ADR-078):** com a Média/DP digitada, o gráfico mostra a média e as linhas
+  −3DP..+3DP mesmo sem nenhuma corrida no período ou na base. Sem corrida, o eixo vai de 0 a 21 corridas. Confira o
+  alvo antes da 1ª corrida do lote novo.
+- **Status de cada nível no Painel (J7..):**
+
+  | Status | O que quer dizer |
+  |---|---|
+  | OK / REJEITADO | veredito do Westgard no período |
+  | SEM MÉDIA/DP | o nível não tem Média/DP no bloco do lote: sem linhas e sem Westgard |
+  | AGUARDANDO 1ª CORRIDA | o lote ainda não tem resultado; as linhas mostram o alvo cadastrado |
+  | SEM CORRIDA DESTE ANALITO | o lote tem resultados, mas não deste analito neste equipamento |
+  | SEM CORRIDA NO PERÍODO | há corridas, mas nenhuma no período do filtro |
+  | SEM PONTO NO PERÍODO | este nível não tem ponto no período |
+  | DESATUALIZADO | o motor ainda está no lote, analito ou equipamento anterior (aguarde ou troque de novo) |
+  | BASE SEM DADOS | a base de resultados está vazia ou não carregou: use ATUALIZAR DADOS |
+
+- **Trocar de lote no Painel não grava nada:** só mostra. Quem grava é a digitação no bloco (ou na Especificações).
+- **Filtro ajustado:** se o lote escolhido não tem resultado no filtro atual, o Painel ajusta o período, o analito ou,
+  na Bioquímica, o equipamento. O aviso aparece em H4 e abaixo dos gráficos. Ao voltar ao lote em uso, o filtro de
+  antes volta sozinho. Se você mexer no filtro, vale o que você escolheu.
+- **Limitação:** a Média/DP é por lote × analito. Os dois DIMENSION usam o mesmo alvo do lote.
+- **Média digitada longe dos pontos achata o eixo** de propósito: o eixo sempre mostra o alvo e os pontos.
 - **Ano de referência:** abaixo da tabela de cada bloco ficam o **CLIA** (D:E) e a **Variação Biológica** (J:K).
   - O ano escolhe as especificações do bloco e, com elas, o ETp, o ET e o Sigma daquele lote.
   - Lote novo nasce com o ano padrão (Especificações S2).
