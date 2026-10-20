@@ -13,7 +13,11 @@ Attribute VB_Name = "mEtlReceb"
 '    - a tabela inteira fica ordenada por (DATA_HORA, ID_ORIGEM), nulos primeiro;
 '    - MODO_FONTE = HISTORICO nao le o DB_SEAC; falha de leitura nao toca no recebimento.
 '  Defesa contra a inferencia de tipo do ACE (ele olha as primeiras linhas): os tipos de cada coluna sao conferidos;
-'  tipo inesperado = ERRO (o chamador NAO publica nada e o usuario ve a mensagem).
+'  tipo inesperado = ERRO (o chamador NAO publica nada e o usuario ve a mensagem). Excecao: coluna INTEIRA (ID_ORIGEM,
+'  ITEM_ID, NIVEL) lida como TEXTO (uma linha com ID_ORIGEM "abc" entre as primeiras faz o ACE ler a coluna inteira
+'  como texto) -- cada valor e convertido como o Int64.Type do PQ: inteiro em texto vira numero (exato); o resto fica
+'  como veio e a linha cai no E06 (sem ID valido), sem derrubar a atualizacao. VALOR ou data lidos como texto continuam
+'  ERRO: o texto do ACE poderia vir arredondado ou dependeria do idioma -- nunca perder precisao em silencio.
 ' ============================================================================
 Option Explicit
 Option Compare Binary
@@ -77,12 +81,18 @@ Public Function LerOrigem(ByVal caminho As String, ByVal tabela As String, ByRef
     Set rs = cn.Execute("SELECT * FROM [" & aba & "$]")
     nc = rs.Fields.Count
     ReDim nomes(1 To nc)
+    Dim comoTexto() As Boolean
+    ReDim comoTexto(1 To nc)
     For j = 1 To nc
         Set f = rs.Fields(j - 1)
         nomes(j) = CStr(f.Name)
         If InStr(TipoEsperado(nomes(j)), "," & f.Type & ",") = 0 Then
-            LerOrigem = "coluna " & nomes(j) & " do DB_SEAC lida com tipo inesperado (" & f.Type & "); recebimento NAO feito"
-            GoTo fecha
+            If ColunaInteira(nomes(j)) And InStr(AD_TEXTO, "," & f.Type & ",") > 0 Then
+                comoTexto(j) = True                      ' numerica lida como texto: converte valor a valor
+            Else
+                LerOrigem = "coluna " & nomes(j) & " do DB_SEAC lida com tipo inesperado (" & f.Type & "); recebimento NAO feito"
+                GoTo fecha
+            End If
         End If
     Next j
     If Not rs.EOF Then
@@ -92,7 +102,11 @@ Public Function LerOrigem(ByVal caminho As String, ByVal tabela As String, ByRef
         For i = 1 To n
             For j = 1 To nc
                 dados(i, j) = v(j - 1, i - 1)
-                If IsNull(dados(i, j)) Then dados(i, j) = Empty
+                If IsNull(dados(i, j)) Then
+                    dados(i, j) = Empty
+                ElseIf comoTexto(j) Then
+                    dados(i, j) = NumeroDeTexto(dados(i, j))
+                End If
             Next j
         Next i
         ' a planilha pode ter linhas em branco no fim do intervalo usado: fora
@@ -115,6 +129,26 @@ falha:
     LerOrigem = "nao foi possivel ler o DB_SEAC (" & Err.Number & "): " & Err.Description
     On Error Resume Next
     If Not cn Is Nothing Then cn.Close
+End Function
+
+Private Function ColunaInteira(ByVal coluna As String) As Boolean
+    ColunaInteira = (coluna = "ID_ORIGEM" Or coluna = "ITEM_ID" Or coluna = "NIVEL")
+End Function
+
+' valor de coluna inteira que o ACE entregou como texto: "123" -> 123, "" -> vazio; o resto (ex.: "abc", "12.5") fica
+' como veio -- o ID invalido vira E06, como no PQ
+Private Function NumeroDeTexto(ByVal v As Variant) As Variant
+    Dim s As String, i As Long, ch As String
+    NumeroDeTexto = v
+    If VarType(v) <> vbString Then Exit Function
+    s = Trim$(v)
+    If Len(s) = 0 Then NumeroDeTexto = Empty: Exit Function
+    If Len(s) > 15 Then Exit Function                       ' alem da precisao exata do Double
+    For i = 1 To Len(s)
+        ch = Mid$(s, i, 1)
+        If Not ((ch >= "0" And ch <= "9") Or (ch = "-" And i = 1 And Len(s) > 1)) Then Exit Function
+    Next i
+    NumeroDeTexto = CDbl(s)
 End Function
 
 ' Novos resultados para o recebimento: devolve a matriz (linha, coluna do RECEBIMENTO) so com os IDs ainda nao

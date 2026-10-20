@@ -1458,16 +1458,28 @@ def _e11(ctx, fin0):
     run_m = iint((mA_row or {}).get('RUN'))
     sl = s1['eng']['runs'].index(run_m) if run_m in s1['eng']['runs'] else None
     dia_runs0 = [iint(r['RUN']) for r in linhas_do_dia(s0['fin'], aA, lote, quandoA.date()) if r['RUN'] not in (None, '')]
+    # 20/10/2026: "corrida propria no fim" = um slot do NIVEL 1 depois de todos os N1 do dia e so dele. A corrida
+    # e a ordem de (bloco, posicao NO NIVEL) no dia (pq/DB_CQ_FINAL.m): se o ultimo bloco do dia so tem N2, o N1 das
+    # 23:50 recebe o numero seguinte ao ultimo N1 -- que pode coincidir com o desse bloco de N2 (14/10: N2 09:14 na
+    # corrida 2, manual N1 23:50 tambem 2; PQ e VBA iguais, equivalencia_cq MAN_0009/0010). Antes o teste exigia
+    # max(todos os niveis) + 1 e passava so porque o dia escolhido nao tinha esse padrao.
+    n1_runs0 = [iint(r['RUN']) for r in linhas_do_dia(s0['fin'], aA, lote, quandoA.date())
+                if r['RUN'] not in (None, '') and iint(r['NIVEL']) == 1]
+    n1_mesmo_run = [i for i, r in f1.items() if i != idA and up(r['ANALITO']) == aA.upper()
+                    and cstr(r['LOTE']).strip() == lote and iint(r['NIVEL']) == 1 and iint(r.get('RUN')) == run_m]
     renum = [i for i, v in s0['run'].items() if s1['run'].get(i) != v]
     reg('E11a S1 ≠ S0 (sensibilidade): manual extremo (média+20·DP às 23:50) ATIVO em corrida própria no fim, sem '
         'renumerar; n(N1)+1, média deslocada e 1_3s no seu slot'
         + ('' if pre_a else ' -- pré-condição ausente: janela saturada/cortada ou n<2'),
         pre_a and mA_row is not None and mA_row['STATUS_ANALITICO'] == 'ATIVO' and sl is not None
-        and run_m == (max(dia_runs0) + 1 if dia_runs0 else None) and not renum
+        and run_m is not None and run_m > max(n1_runs0 + [run_m - 1]) and not n1_mesmo_run
+        and run_m <= (max(dia_runs0) + 1 if dia_runs0 else run_m) and not renum
         and painel_n(s1['painel']) == painel_n(s0['painel']) + 1
         and not perto(s1['painel'][0][2], s0['painel'][0][2]) and s1['eng']['flags'][sl][0] == 1,
         {'analito': aA, 'lote': lote, 'periodo': [de_serial(iniA), de_serial(dA)], 'corridas_ate_o_fim': cumA,
          'manual': resumo(mA_row), 'extremo': ext_a, 'alvo_lote': [mA, sA], 'slot': sl,
+         'runs_do_dia_S0': sorted(set(dia_runs0)), 'runs_N1_do_dia_S0': sorted(set(n1_runs0)),
+         'outros_N1_no_mesmo_run': n1_mesmo_run[:5],
          'flags_N1': s1['eng']['flags'][sl][:7] if sl is not None else None, 'renumerados': renum[:5],
          'painel_S0': [l[:5] for l in s0['painel']], 'painel_S1': [l[:5] for l in s1['painel']],
          'corridas_janela_S0': s0['eng']['n'], 'cortadas_S0': s0['cortadas']})

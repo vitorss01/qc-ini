@@ -116,9 +116,29 @@ def fixtures(q):
         dict(base, ID_REGISTRO='MAN_0006', DATA=_dt.datetime(2027, 1, 1), HORA='08:00', RESULTADO=1.0),  # futuro
         dict(base, ID_REGISTRO='MAN_0007', DATA=dia, HORA=hm(80), NIVEL=9, RESULTADO=1.0),   # nivel invalido
         dict(base, ID_REGISTRO='MAN_0008', DATA=dia, HORA=hm(90), RESULTADO='abc'),          # resultado invalido
-    ])
+    ] + fixture_fim_do_dia(cab, d))
     q.ex.xl.EnableEvents = True
     q.run('mIntegracao.Refrescar', 'tblCQ_Final', teto=900)
+
+
+def fixture_fim_do_dia(cab, d):
+    """qa_etl E11a (20/10/2026): manual N1 as 23:50 num dia cujo ultimo bloco so tem N2 -- corrida propria no fim.
+    Usa o ultimo dia com resultado N1 do analito/lote da ultima linha ATIVA do interfaceamento."""
+    import datetime as _dt
+    col = lambda r, n: r[cab.index(n)]
+    intf = [r for r in d if col(r, 'ORIGEM_RESULTADO') == 'INTERFACEAMENTO' and col(r, 'STATUS_ANALITICO') == 'ATIVO'
+            and col(r, 'NIVEL') == 1 and hasattr(col(r, 'DATA_HORA'), 'year')]
+    if not intf:
+        return []
+    # o caso real do E11a (Bioquimica, 14/10/2026: Bilirrubina total 8977 com o bloco das 09:14 so de N2) e o generico
+    alvos = [r for r in intf if col(r, 'ANALITO') == 'Bilirrubina total' and str(col(r, 'LOTE')).strip() == '8977'][-1:]
+    out = []
+    for k, u in enumerate(alvos + [intf[-1]]):
+        dh = col(u, 'DATA_HORA').replace(tzinfo=None)
+        out.append({'ID_REGISTRO': f'MAN_{9 + k:04d}', 'EQUIPAMENTO': col(u, 'EQUIPAMENTO'), 'LOTE': col(u, 'LOTE'),
+                    'NIVEL': 1, 'ANALITO': col(u, 'ANALITO'), 'DATA': _dt.datetime(dh.year, dh.month, dh.day),
+                    'HORA': '23:50', 'RESULTADO': 999.5, 'MOTIVO': 'QA fim do dia', 'USUARIO': 'QA'})
+    return out
 
 
 def norm(c, v):

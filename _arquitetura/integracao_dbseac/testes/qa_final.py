@@ -690,6 +690,15 @@ def executar(produto, caminho, saida):
         cand = [r for r in fin4.values() if r['ORIGEM_RESULTADO'] == 'INTERFACEAMENTO' and r['STATUS_ANALITICO'] == 'ATIVO'
                 and r['ANALITO'] == analito and str(r['LOTE']) == str(lote) and int(r['NIVEL']) == 1][-5]
         d = cand['DATA_HORA'] + dtm.timedelta(minutes=5)
+        # o relacionado e o interfaceamento MAIS PROXIMO dentro da tolerancia (pq/DB_CQ_FINAL.m: Table.Min da distancia),
+        # nao necessariamente o candidato: 20/10/2026, a retransmissao BIO-366010 (mesma amostra, 16 s depois) ficou a
+        # 4,1 min do manual e o candidato a 4,4 min (o manual e gravado sem os segundos)
+        hora_man = dtm.datetime.combine(d.date(), dtm.time(d.hour, d.minute))
+        viz = [r for r in fin4.values() if r['ORIGEM_RESULTADO'] == 'INTERFACEAMENTO'
+               and r['STATUS_ANALITICO'] in ('ATIVO', 'INATIVADO') and r['ANALITO'] == analito
+               and str(r['LOTE']) == str(lote) and int(r['NIVEL']) == 1 and r['EQUIPAMENTO'] == cand['EQUIPAMENTO']
+               and isinstance(r['DATA_HORA'], dtm.datetime)]
+        esperado = min(viz, key=lambda r: abs((r['DATA_HORA'] - hora_man).total_seconds()))['ID_REGISTRO']
         q.escrever_linha('tblResultados_Manuais', {'DATA': dtm.datetime.combine(d.date(), dtm.time()),
                                                    'HORA': (d.hour * 60 + d.minute) / 1440.0, 'LOTE': str(lote), 'NIVEL': 1,
                                                    'ANALITO': analito, 'RESULTADO': cand['RESULTADO'],
@@ -702,7 +711,7 @@ def executar(produto, caminho, saida):
         part5 = collections.Counter((r['EQUIPAMENTO'], r['LOTE'], r['NIVEL'], r['ANALITO'], r['RUN'])
                                     for r in fin5.values() if r['PARTICIPA_ESTATISTICA'] == 'SIM')
         ok = (f2 and f2['STATUS_ANALITICO'] == 'CONFLITO_MANUAL' and f2['PARTICIPA_ESTATISTICA'] == NAO
-              and f2['ID_RELACIONADO'] == cand['ID_REGISTRO'] and fi['STATUS_ANALITICO'] == 'ATIVO' and a01
+              and f2['ID_RELACIONADO'] == esperado and fi['STATUS_ANALITICO'] == 'ATIVO' and a01
               and not any(v > 1 for v in part5.values()))
         reg('T16 Duplicidade manual x interfaceamento: chave (equip, matriz, lote, nível, analito, dia, ±30 min) -> '
             'CONFLITO_MANUAL; interfaceamento prevalece; QA A01; nada duplica em silêncio', ok,
@@ -822,7 +831,9 @@ def executar(produto, caminho, saida):
         cfg.DataBodyRange.Cells(lin_c, 2).Value = cam
         q.cfg('MODO_FONTE', modo0)
         reg('T20 Refresh síncrono: falha de camada PARA o processo, não diz "concluída", não atualiza gráfico/estatística',
-            erro is not None and 'DB_Recebimento' in erro and stamp0 == stamp1 and n_falha == len(fin7),
+            # a etapa citada: 'atualizar tblDB_Recebimento' (MOTOR_DADOS = PQ) ou 'ler o DB_SEAC' (VBA, ADR-079)
+            erro is not None and ('DB_Recebimento' in erro or 'ler o DB_SEAC' in erro) and stamp0 == stamp1
+            and n_falha == len(fin7),
             {'erro': (erro or '')[:300], 'carimbo_motor_inalterado': stamp0 == stamp1, 'linhas_final': n_falha})
 
         # ---------------------------------------------------------------- modo historico (ADR-058)
