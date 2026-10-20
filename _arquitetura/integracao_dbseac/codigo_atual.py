@@ -21,7 +21,8 @@ MODULOS = ['mLotes', 'mApp', 'mIntegracao', 'mSeguranca', 'mEstatistica', 'mUI',
            'mDados']                            # ADR-064 (auditoria): ultima data so do que participa
 # modulos que podem ainda nao existir no arquivo (criados na primeira instalacao)
 NOVOS = ['mIncerteza',                        # ADR-064
-         'mLotesBlocos']                       # ADR-074: aba Analitos com um bloco por lote
+         'mLotesBlocos',                       # ADR-074: aba Analitos com um bloco por lote
+         'mEtlReceb', 'mEtlCQ', 'mEtlQA', 'mEtlSync']   # ADR-079: camada de dados em VBA
 # modulos de CLASSE (criados como classe se faltarem). ADR-070: a clsCht (eventos dos graficos do Painel)
 # so existia dentro dos .xlsm; virou fonte versionada
 CLASSES = ['clsCht']

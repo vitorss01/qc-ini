@@ -6,7 +6,9 @@ agendada atualiza a cada 2 minutos.
 ## 1. Rotina diária
 
 1. Abra o QC e faça o login.
-2. Clique em **⟳ ATUALIZAR DADOS**. Leva cerca de 2,5 min porque lê o DB_SEAC pela rede.
+2. Clique em **⟳ ATUALIZAR DADOS**. Leva de 15 a 25 segundos (ADR-079; antes, 2 a 4 minutos). A mensagem final
+   diz quantos resultados novos entraram e a **data do resultado mais recente recebido** — se ela estiver velha, o
+   problema está no DB_SEAC ou no SIPEC, não no QC.
 3. No **Painel**, escolha o analito pelas setas ou pela lista. Os gráficos de Levey-Jennings mostram os níveis lado a
    lado.
    - **Trocar de lote (H3):** se o filtro atual não mostra nada do lote escolhido (outro ano, outro equipamento, analito
@@ -159,7 +161,25 @@ ficou sem Sigma.
   3. não publique a senha nova no GitHub. Use uma variável de ambiente; o desenvolvimento pode preparar isso se for
      pedido.
 
+## 7b. Registro de cada atualização (aba Sync_Log — ADR-079)
+
+Cada ATUALIZAR DADOS deixa uma linha na aba **Sync_Log**: início e fim, resultado (OK, OK_SEM_MUDANCA ou ERRO),
+quantos resultados foram lidos do DB_SEAC, quantos eram novos, total recebido, datas mínima e máxima do recebido,
+erros/alertas do QA, o tempo de cada etapa (s) e, em falha, a etapa e o erro. Não há senha nem valor de resultado no
+registro. Ficam as 2000 execuções mais recentes. A aba é só leitura.
+
 ## 8. Se algo der errado
+
+- **ATUALIZAR DADOS falhou:** a mensagem diz a etapa. Até a etapa "validar antes de gravar", **nada foi gravado**: os
+  gráficos e a Estatística continuam com a atualização anterior. A linha ERRO do Sync_Log guarda a mensagem.
+- **"a Principal - Resultados cairia de X para Y linhas":** a atualização parou para não apagar resultados (trava do
+  ADR-079: a tabela não pode encolher mais de 10% de uma vez). Confira as abas Digitar Resultados e Inativar. Se a
+  redução for esperada, mude Cfg_Integracao **MOTOR_DADOS = PQ**, atualize uma vez e volte para **VBA**.
+- **Conferir o cálculo (reconciliação) ou contornar uma falha do cálculo em VBA:** Cfg_Integracao
+  **MOTOR_DADOS = PQ** faz o ATUALIZAR usar o Power Query, como antes (2 a 4 min). Os dois dão a mesma tabela. Volte
+  para **VBA** depois.
+- **Aba DB_ORGANIZADO (visão horizontal, só consulta):** deixou de ser refeita a cada ATUALIZAR. Para refazê-la:
+  Alt+F8 → `mEtlSync.AtualizarOrganizado` → Executar (cerca de 1 min).
 
 - **"DB_SEAC não encontrado" / ATUALIZAR DADOS falha:** veja o log diário em `AUTOMACAO_DB_SEAC\logs`. Desde
   13/10/2026, a automação restaura sozinha o último backup se o arquivo sumir; procure "RESTAURADO" no log.

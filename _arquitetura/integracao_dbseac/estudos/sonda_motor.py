@@ -48,6 +48,28 @@ Public Function PerfilEstatistica() As String
     mApp.fim
 End Function
 
+Public Function PerfilFino() As String
+    ' por dentro do AtualizarEstatistica e da incerteza, com o snapshot do ADR-079
+    Dim t As Double, s As String, t0 As Double
+    mApp.InicioUsuario "perfil fino"
+    t0 = Timer
+    mDados.IniciarSnapshot
+    t = Timer: mEstatistica.InvalidarCache: Rodar "InvalidarCacheEstat": s = s & "invalidar=" & Format$(Timer - t, "0.000") & ";"
+    t = Timer: mDados.AtualizarListasAno: s = s & "ListasAno=" & Format$(Timer - t, "0.000") & ";"
+    t = Timer: mLotes.AtualizarListaLiberacao: s = s & "ListaLiberacao=" & Format$(Timer - t, "0.000") & ";"
+    Application.Calculation = xlCalculationManual
+    t = Timer: mEstatistica.AtualizarCalc: s = s & "AtualizarCalc=" & Format$(Timer - t, "0.000") & ";"
+    t = Timer: mEstatistica.RegistrarEventosWestgard: s = s & "Westgard=" & Format$(Timer - t, "0.000") & ";"
+    t = Timer: mEstatistica.AtualizarPainelEng: s = s & "PainelEng=" & Format$(Timer - t, "0.000") & ";"
+    t = Timer: mEstatistica.AtualizarEstatisticaAba: s = s & "EstatisticaAba(+Westgard)=" & Format$(Timer - t, "0.000") & ";"
+    t = Timer: Application.Calculate: s = s & "Calculate1=" & Format$(Timer - t, "0.000") & ";"
+    t = Timer: Rodar "RecalcularEstatPeriodo": s = s & "EstatPeriodo=" & Format$(Timer - t, "0.000") & ";"
+    t = Timer: mIncerteza.RecalcularIncerteza: s = s & "Incerteza(Calculate)=" & Format$(Timer - t, "0.000") & ";"
+    mDados.EncerrarSnapshot
+    t = Timer: mApp.fim: s = s & "fim=" & Format$(Timer - t, "0.000") & ";"
+    PerfilFino = s & "TOTAL=" & Format$(Timer - t0, "0.000")
+End Function
+
 Public Function PerfilCarregarDB() As String
     Dim t As Double, v As Variant
     t = Timer: v = mDados.CarregarDB(): PerfilCarregarDB = "CarregarDB=" & Format$(Timer - t, "0.000")
@@ -67,7 +89,7 @@ def main(produto, arq, saida, n=3):
             r = str(q.run('mSondaMotor.PerfilMotor', teto=900))
             res['perfis'].append(r)
             print('motor', i + 1, r, flush=True)
-        for fn in ('PerfilCarregarDB', 'PerfilEstatistica'):
+        for fn in ('PerfilFino', 'PerfilFino', 'PerfilCarregarDB', 'PerfilEstatistica'):
             r = str(q.run('mSondaMotor.' + fn, teto=900))
             res[fn] = r
             print(fn, r, flush=True)

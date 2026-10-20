@@ -37,6 +37,14 @@ Private mPrefixo As String
 Private mRx As Object
 Private mTempos As String                ' fases do ultimo calculo (diagnostico do desempenho)
 Private mT0 As Double
+Private mTemRec As Boolean               ' recebimento em memoria (staging do mEtlSync), em vez da tabela
+Private mRecDados As Variant, mRecCab As Object, mRecN As Long
+
+' O proximo CalcularCQFinal usa este recebimento (ainda NAO publicado) em vez de ler a tblDB_Recebimento.
+' Datas como Date (o mesmo que a leitura .Value da tabela). Vale para UMA chamada.
+Public Sub UsarRecebimento(ByRef dados As Variant, ByVal cab As Object, ByVal n As Long)
+    mRecDados = dados: Set mRecCab = cab: mRecN = n: mTemRec = True
+End Sub
 
 Public Function TemposUltimo() As String
     TemposUltimo = mTempos
@@ -419,7 +427,12 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
     ' ---- interfaceamento (R1): 1 linha por ID, na ordem da tabela
     Dim cR As Object, dR As Variant, nR As Long, U() As Variant, nU As Long, vistos As Object, idr As Variant, mz As Variant
     Dim nMan As Long, cM As Object, dM As Variant
-    dR = LerTabela("tblDB_Recebimento", cR, nR)
+    If mTemRec Then
+        dR = mRecDados: Set cR = mRecCab: nR = mRecN
+        mTemRec = False: mRecDados = Empty
+    Else
+        dR = LerTabela("tblDB_Recebimento", cR, nR)
+    End If
     dM = LerTabela("tblResultados_Manuais", cM, nMan)
     ReDim U(1 To nR + nMan + 1, 1 To NF)
     Set vistos = CreateObject("Scripting.Dictionary")

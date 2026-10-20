@@ -25,6 +25,11 @@ def nomes_modulo(t):
     n = set()
     for m in re.finditer(r'^(?:Private|Public|Dim) (?:Const )?(\w+)', t, re.M):
         n.add(m.group(1).lower())
+    for m in re.finditer(r"^(?:Private|Public|Dim) (?!Const |Function |Sub |Declare |Type |Enum )([^\n']*)", t, re.M):
+        for parte in m.group(1).split(',')[1:]:                         # Private a As Long, b As Double
+            v = re.match(r'\s*(?:WithEvents\s+)?(\w+)', parte)
+            if v:
+                n.add(v.group(1).lower())
     for m in re.finditer(r'(?:,\s*)(\w+) As Long = ', t):                  # Const A As Long = 1, B As Long = 2
         n.add(m.group(1).lower())
     for m in re.finditer(r'^(?:Private |Public )?(?:Function|Sub) (\w+)', t, re.M):
@@ -52,6 +57,15 @@ def checar(caminho):
             problemas.append(f'{nome}: "{d}" declarado mais de uma vez (o VBA nao diferencia maiusculas)')
         for d in sorted({x for x in baixos if x in mod}):
             problemas.append(f'{nome}: local "{d}" tem o nome de um procedimento/constante do modulo (o VBA nao diferencia maiusculas)')
+        for linha in corpo.split('\n'):
+            limpa = re.sub(r"'.*$", '', re.sub(r'"[^"]*"', '""', linha))
+            if re.search(r'\bThen\b\s*\S', limpa) and re.search(r'\bElseIf\b', limpa):
+                problemas.append(f'{nome}: ElseIf em If de uma linha (o VBA so aceita Else): {linha.strip()[:60]}')
+        # dentro da Function X, 'X(...) = valor' e lido como chamada a propria funcao (tipos incompativeis)
+        for linha in corpo.split('\n'):
+            limpa = re.sub(r"'.*$", '', re.sub(r'"[^"]*"', '""', linha))
+            if re.search(r'(?:^|:|\bThen\b|\bElse\b)\s*' + re.escape(nome) + r'\s*\([^=]*\)\s*=(?!=)', limpa, re.I):
+                problemas.append(f'{nome}: "{nome}(...) = " dentro da propria funcao (use uma variavel local): {linha.strip()[:60]}')
         conhecidos = set(baixos) | mod | {nome.lower()}
         for linha in corpo.split('\n'):
             sem_coment = re.sub(r"'.*$", '', re.sub(r'"[^"]*"', '""', linha))

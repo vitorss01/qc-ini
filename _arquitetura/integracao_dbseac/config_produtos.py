@@ -24,6 +24,10 @@ COMUM = {
     'MODO_FONTE': ('SEAC', 'SEAC = recebe do DB_SEAC (se inacessivel, a atualizacao PARA). '
                            'HISTORICO = nao le o DB_SEAC; reprocessa so o que ja foi recebido '
                            '(inativacoes, manuais, comentarios). Voltar para SEAC na rede do laboratorio.'),
+    # ADR-079: o ATUALIZAR calcula recebimento, Principal e QA em VBA (segundos). PQ = refresh das consultas (o
+    # caminho antigo, minutos) -- reserva e conferencia: os dois dao a mesma tabela.
+    'MOTOR_DADOS': ('VBA', 'VBA = o ATUALIZAR calcula os dados em memoria e grava so o que mudou (rapido). '
+                           'PQ = refresh das consultas do Power Query (lento; usar so para conferir ou se o VBA falhar).'),
 }
 
 PRODUTOS = {

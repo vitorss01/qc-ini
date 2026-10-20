@@ -50,8 +50,9 @@ def importar(wb, caminho_bas):
     tmp = os.path.join(tempfile.gettempdir(), os.path.basename(caminho_bas))
     with open(tmp, 'w', encoding='cp1252', newline='\r\n') as f:
         f.write(texto.replace('\r\n', '\n'))
+    nome = os.path.splitext(os.path.basename(caminho_bas))[0]
     for c in list(wb.VBProject.VBComponents):
-        if c.Name == 'mEtlCQ':
+        if c.Name == nome:
             wb.VBProject.VBComponents.Remove(c)
     wb.VBProject.VBComponents.Import(tmp)
 

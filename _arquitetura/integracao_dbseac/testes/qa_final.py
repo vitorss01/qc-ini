@@ -875,8 +875,10 @@ def executar(produto, caminho, saida):
                 s = l.strip()
                 if s.startswith("'"):
                     continue
+                # ADR-079: o motor de DADOS (mIntegracao + mEtl*: recebimento, Principal, QA, publicacao) le as
+                # entradas por definicao; a regra continua valendo para todo CONSUMIDOR (motor, LJ, Estatistica)
                 for p in proib:
-                    if p in l and comp.Name != 'mIntegracao':
+                    if p in l and comp.Name != 'mIntegracao' and not comp.Name.startswith('mEtl'):
                         achados.append(f'{comp.Name}:{i}: {s[:90]}')
         for nm in ('Calc', 'Painel', 'Estatística', 'Eng_Saida', 'Liberação', 'Eventos_Westgard'):
             ur = q.ws(nm).UsedRange
@@ -886,7 +888,8 @@ def executar(produto, caminho, saida):
                     if isinstance(fcel, str) and fcel.startswith('=') and any(p.strip('"') in fcel for p in proib):
                         achados.append(f'{nm}: {fcel[:90]}')
         reg('T22 Fonte única: nenhum módulo analítico nem fórmula de LJ/Estatística lê DB_SEAC, DB_RECEBIMENTO, manual, '
-            'inativação, Resultados, Importar ou DB_Resultados', not achados, achados[:20])
+            'inativação, Resultados, Importar ou DB_Resultados (o motor de dados mIntegracao/mEtl* é a exceção, ADR-079)',
+            not achados, achados[:20])
 
         # ---------------------------------------------------------------- compilacao e formularios
         modulo = wb.VBProject.VBComponents.Add(1)

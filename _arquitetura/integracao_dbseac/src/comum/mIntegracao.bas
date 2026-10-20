@@ -17,6 +17,10 @@ Option Explicit
 '    3. so entao atualiza os consumidores (motor, Westgard, Estatistica, LJ);
 '    4. registra no Audit_Log o que mudou de estado (inativado, reativado,
 '       plotagem alterada, resultado manual incluido/retirado).
+'  ADR-079: com Cfg_Integracao MOTOR_DADOS = VBA o passo 2 e o mEtlSync (mesmas
+'  tabelas, calculadas em memoria e gravadas so onde mudou; segundos em vez de
+'  minutos). As consultas ficam no arquivo: MOTOR_DADOS = PQ volta ao refresh.
+'  Toda execucao (VBA ou PQ, ok ou falha) deixa uma linha no Sync_Log.
 ' ============================================================================
 Private Const ABA_MANUAL As String = "Digitar Resultados"
 Private Const ABA_INAT As String = "Inativar"
@@ -62,28 +66,36 @@ End Sub
 Public Function AtualizarDadosCore() As String
     Dim camada As Variant, t0 As Double, tempos As String
     Dim antes As Object, depois As Object, nRec0 As Long, nRec1 As Long, etapa As String, hist As Boolean
-    Dim resLotes As String
+    Dim resLotes As String, vba As Boolean, nNovos As Long, mudou As Boolean
     mApp.InicioUsuario "Atualizando dados: preparando as entradas..."
     On Error GoTo falha
     hist = ModoHistorico()
+    vba = mEtlSync.MotorVBA()
+    mEtlSync.IniciarLog IIf(vba, "VBA", "PQ"), IIf(hist, "HISTORICO", "SEAC")
 
     etapa = "preparar as tabelas de entrada"
     PrepararEntradas
     nRec0 = Linhas("tblDB_Recebimento")
     Set antes = EstadoAuditavel()
 
-    For Each camada In Camadas()
-        ' ADR-060: lote novo entra no cadastro ANTES do QA, que confere o cadastro (I03)
-        If CStr(camada) = "tblQA_Integracao" Then
-            etapa = "registrar lotes novos"
-            resLotes = mLotes.RegistrarLotesRecebidos()
-        End If
-        etapa = "atualizar " & camada
-        Application.StatusBar = "Atualizando dados: " & camada & "..."
-        t0 = Timer
-        Refrescar CStr(camada)                       ' sincrono; erro sobe e para tudo
-        tempos = tempos & IIf(Len(tempos) > 0, " · ", "") & camada & " " & Format$(Timer - t0, "0.0") & "s"
-    Next camada
+    If vba Then
+        etapa = "atualizar os dados (VBA)"
+        Application.StatusBar = "Atualizando dados: lendo o DB_SEAC e recalculando..."
+        tempos = mEtlSync.Sincronizar(hist, nNovos, mudou, resLotes)
+    Else
+        For Each camada In Camadas()
+            ' ADR-060: lote novo entra no cadastro ANTES do QA, que confere o cadastro (I03)
+            If CStr(camada) = "tblQA_Integracao" Then
+                etapa = "registrar lotes novos"
+                resLotes = mLotes.RegistrarLotesRecebidos()
+            End If
+            etapa = "atualizar " & camada
+            Application.StatusBar = "Atualizando dados: " & camada & "..."
+            t0 = Timer
+            Refrescar CStr(camada)                       ' sincrono; erro sobe e para tudo
+            tempos = tempos & IIf(Len(tempos) > 0, " · ", "") & camada & " " & Format$(Timer - t0, "0.0") & "s"
+        Next camada
+    End If
     nRec1 = Linhas("tblDB_Recebimento")
 
     etapa = "conferir a DB_CQ_FINAL"
@@ -97,6 +109,7 @@ Public Function AtualizarDadosCore() As String
     etapa = "atualizar o motor (Levey-Jennings, Westgard, Estatistica)"
     Application.StatusBar = "Atualizando Levey-Jennings, Westgard e Estatistica..."
     t0 = Timer
+    mDados.IniciarSnapshot                         ' ADR-079: uma leitura da tblCQ_Final para o motor inteiro
     mEstatistica.InvalidarCache
     RodarSeExistir "InvalidarCacheEstat"           ' Estatistica por periodo (so Bioquimica)
     mDados.AtualizarListasAno
@@ -104,7 +117,18 @@ Public Function AtualizarDadosCore() As String
     mEstatistica.AtualizarEstatistica
     RodarSeExistir "RecalcularEstatPeriodo"
     mIncerteza.RecalcularIncerteza                 ' ADR-064: incerteza de medicao (CIQ + CEQ)
+    mDados.EncerrarSnapshot
     tempos = tempos & " · motor " & Format$(Timer - t0, "0.0") & "s"
+    mEtlSync.AnotarLog "T_MOTOR", Round(Timer - t0, 2)
+    mEtlSync.AnotarLog "QA_ERROS", ContarQA("ERRO")
+    mEtlSync.AnotarLog "QA_ALERTAS", ContarQA("ALERTA")
+    If Not vba Then
+        mEtlSync.AnotarLog "NOVOS", nRec1 - nRec0
+        mEtlSync.AnotarLog "TOTAL_RECEBIDO", nRec1
+        mEtlSync.AnotarLog "LINHAS_CQ", Linhas(FONTE_CQ)
+    End If
+    mEtlSync.AnotarLog "TEMPOS", tempos
+    mEtlSync.FecharLog IIf(vba And Not mudou, "OK_SEM_MUDANCA", "OK"), ""
 
     If hist Then mAuditoria.RegistrarLog "ATUALIZACAO_MODO_HISTORICO", _
         "MODO_FONTE = HISTORICO: DB_SEAC nao lido; reprocessado o historico ja recebido (" & nRec1 & " resultados)"
@@ -113,6 +137,7 @@ Public Function AtualizarDadosCore() As String
     AtualizarDadosCore = IIf(hist, AvisoHistorico() & vbCrLf & vbCrLf, "") & _
            "Atualização concluída." & vbCrLf & vbCrLf & _
            "Resultados recebidos: " & Format$(nRec1, "#,##0") & " (novos nesta atualização: " & (nRec1 - nRec0) & ")" & vbCrLf & _
+           UltimoResultado() & _
            "Principal - Resultados: " & Format$(Linhas(FONTE_CQ), "#,##0") & " resultados" & vbCrLf & _
            ResumoQA() & ResumoLotes(resLotes) & vbCrLf & vbCrLf & "Tempo: " & tempos
     Exit Function
@@ -120,7 +145,10 @@ falha:
     Dim nE As Long, sE As String
     nE = Err.Number: sE = Err.Description
     On Error Resume Next
+    mDados.EncerrarSnapshot
+    If vba And Len(mEtlSync.EtapaAtual()) > 0 Then etapa = etapa & " / " & mEtlSync.EtapaAtual()
     mAuditoria.RegistrarLog "ATUALIZACAO_FALHOU", "Etapa: " & etapa & " | Erro " & nE & ": " & sE
+    mEtlSync.FecharLog "ERRO", "Etapa: " & etapa & " | Erro " & nE & ": " & sE
     mApp.fim
     On Error GoTo 0
     Err.Raise vbObjectError + 579, "mIntegracao.AtualizarDados", "Etapa: " & etapa & vbCrLf & "Erro " & nE & ": " & sE
@@ -215,6 +243,22 @@ Public Function AcharTabela(ByVal nome As String) As ListObject
             If lo.Name = nome Then Set AcharTabela = lo: Exit Function
         Next lo
     Next ws
+End Function
+
+' "Resultado mais recente: dd/mm/aaaa hh:mm" -- o usuario ve na hora se os dados estao em dia
+Private Function UltimoResultado() As String
+    Dim lo As ListObject, v As Variant, i As Long, mx As Double
+    On Error GoTo fim
+    Set lo = AcharTabela("tblDB_Recebimento")
+    If lo Is Nothing Then Exit Function
+    If lo.ListRows.Count = 0 Then Exit Function
+    v = lo.ListColumns("DATA_HORA").DataBodyRange.Value2
+    If Not IsArray(v) Then Exit Function
+    For i = 1 To UBound(v, 1)
+        If VarType(v(i, 1)) = vbDouble Then If v(i, 1) > mx Then mx = v(i, 1)
+    Next i
+    If mx > 0 Then UltimoResultado = "Resultado mais recente recebido: " & Format$(CDate(mx), "dd/mm/yyyy hh:mm") & vbCrLf
+fim:
 End Function
 
 Private Function Linhas(ByVal nome As String) As Long

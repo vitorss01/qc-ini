@@ -1,9 +1,10 @@
 Attribute VB_Name = "mDados"
 Option Explicit
 ' ===== CAMADA DE DADOS (ADR-057) =====
-' A fonte analitica UNICA e a tabela tblCQ_Final (aba Principal - Resultados), gerada so
-' pelo Power Query a partir do DB_SEAC, dos resultados manuais, da inativacao e
-' dos comentarios tecnicos. O VBA NAO grava resultado nenhum: le.
+' A fonte analitica UNICA e a tabela tblCQ_Final (aba Principal - Resultados), gerada a
+' partir do DB_SEAC, dos resultados manuais, da inativacao e dos comentarios tecnicos --
+' pelo motor de dados (ADR-079: mEtlSync em VBA; MOTOR_DADOS = PQ, pelo Power Query).
+' Os CONSUMIDORES (motor, LJ, Estatistica) NAO gravam resultado nenhum: leem.
 '
 ' Antes (ate o ADR-056) a fonte era a aba DB_Resultados, gravada por formulario,
 ' pela aba Importar e pela exclusao logica. Tudo isso saiu: um resultado entra
@@ -42,6 +43,21 @@ Public Const ST_INATIVO As String = "Inativo"
 Public Const PLOT_NORMAL As String = "NORMAL"
 Public Const PLOT_X As String = "X_VERMELHO"
 
+' ADR-079: leitura UNICA da tblCQ_Final durante a sequencia do motor (ATUALIZAR). Cada consumidor (Estatistica,
+' periodo, incerteza, listas, lotes) chamava o CarregarDB por conta propria: ~0,65 s por leitura, 4-5 leituras da
+' MESMA tabela. Entre IniciarSnapshot e EncerrarSnapshot a primeira leitura fica guardada e as outras recebem uma
+' copia dela. Fora desse trecho o CarregarDB le a tabela sempre, como antes.
+Private mSnapAtivo As Boolean
+Private mSnapDB As Variant
+
+Public Sub IniciarSnapshot()
+    mSnapAtivo = True: mSnapDB = Empty
+End Sub
+
+Public Sub EncerrarSnapshot()
+    mSnapAtivo = False: mSnapDB = Empty
+End Sub
+
 Public Function LoteAtivoCore() As String
     On Error Resume Next
     LoteAtivoCore = Trim$(CStr(ThisWorkbook.Names("loteAtivo").RefersToRange.Value))
@@ -60,6 +76,7 @@ End Function
 Public Function CarregarDB() As Variant
     Dim lo As ListObject, n As Long, i As Long, j As Long, out() As Variant
     Dim nomes As Variant, cols(1 To DB_NCOL) As Variant, v As Variant
+    If mSnapAtivo And Not IsEmpty(mSnapDB) Then CarregarDB = mSnapDB: Exit Function
     Set lo = TabelaCQ()
     If lo Is Nothing Then CarregarDB = Empty: Exit Function
     If lo.ListRows.Count = 0 Then CarregarDB = Empty: Exit Function
@@ -84,6 +101,7 @@ Public Function CarregarDB() As Variant
         End If
     Next i
     CarregarDB = out
+    If mSnapAtivo Then mSnapDB = out
 End Function
 
 ' Ultima data com resultado que PARTICIPA da estatistica (0 se nao houver). So o que participa:
