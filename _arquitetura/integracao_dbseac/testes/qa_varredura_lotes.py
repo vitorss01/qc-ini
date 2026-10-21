@@ -77,7 +77,9 @@ def executar(produto, caminho, saida):
         lote0 = txt(q.nome('loteParam').Value)
         filtro0 = (txt(p.Range('G3').Value), txt(p.Range('G4').Value), txt(p.Range('L4').Value) if bio else '')
         ruins, sem_dado_ruins, lote0_ok = [], [], None
-        for lote in cad + [lote0]:                          # o 1o de novo no fim: volta ao lote em uso
+        # 21/10/2026: o lote em uso e conferido PRIMEIRO (V02) -- antes so na 1a vez que aparecia no cadastro; se ele nao
+        # era o 1o do cadastro (producao com loteParam 8977, 17o), os lotes anteriores ja tinham ajustado o filtro (ADR-077)
+        for k_lote, lote in enumerate([lote0] + cad + [lote0]):   # o em uso no inicio e de novo no fim
             p.Range('H3').Value = "'" + lote                # como o usuario: eventos ligados
             q.ex.esperar()
             q.ex.xl.Calculate()
@@ -126,7 +128,7 @@ def executar(produto, caminho, saida):
                         erro.append(f'N{nv + 1} media/DP do grafico != do lote')
             if erro:
                 ruins.append((lote, an, erro))
-            if lote == lote0 and lote0_ok is None:
+            if k_lote == 0:
                 lote0_ok = (filtro == filtro0)
         reg('V01 Todos os lotes com resultados, trocados no Painel como o usuário faz: o gráfico abre com pontos e, em todo '
             'nível com Média/DP, a média e as linhas -3DP..+3DP com 2 pontos cada na série do gráfico; sem "SEM MÉDIA/DP" '
@@ -134,7 +136,8 @@ def executar(produto, caminho, saida):
             not ruins and sum(1 for l in linhas_tab if l['resultados'] > 0) > 0,
             {'lotes_com_resultado': sum(1 for l in cad if com_dado.get(l, 0) > 0), 'lotes_com_problema': ruins[:8]})
         reg('V02 O lote em uso, que tem dado no filtro atual, não teve o filtro mexido (período e equipamento como estavam)',
-            lote0_ok is True, {'lote': lote0, 'filtro_antes': filtro0})
+            lote0_ok is True, {'lote': lote0, 'filtro_antes': filtro0,
+                               'filtro_depois': linhas_tab[0]['filtro_de_ate_equip'] if linhas_tab else None})
         reg('V03 Lote sem nenhum resultado na base: nível sem Média/DP diz "SEM MÉDIA/DP" e não desenha linha; nível com '
             'Média/DP diz "AGUARDANDO 1ª CORRIDA" e mostra as 7 linhas do alvo', not sem_dado_ruins,
             {'lotes_sem_resultado': [l for l in cad if na_base.get(l, 0) == 0], 'problemas': sem_dado_ruins[:3]})

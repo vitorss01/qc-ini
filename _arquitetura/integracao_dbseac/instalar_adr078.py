@@ -357,7 +357,8 @@ def painel(wb, m, nlv):
 
 
 # ---------------------------------------------------------------- graficos
-RX = re.compile(r'^=SERIES\((.*),Calc!\$E\$(\d+):\$E\$(\d+),Calc!\$([A-Z]+)\$(\d+):\$([A-Z]+)\$(\d+),(\d+)\)$')
+# ADR-080: o X pode ja ser a coluna da corrida do lote do nivel (Calc CR..CT) -- preservada; antes era sempre E
+RX = re.compile(r'^=SERIES\((.*),Calc!\$([A-Z]+)\$(\d+):\$[A-Z]+\$(\d+),Calc!\$([A-Z]+)\$(\d+):\$([A-Z]+)\$(\d+),(\d+)\)$')
 
 
 def graficos(wb, m, nlv):
@@ -378,9 +379,10 @@ def graficos(wb, m, nlv):
             if not mt:
                 raise SystemExit(f'grafico {i}, serie {nm}: formula fora do padrao: {f}')
             esperado = col(cols[LIM.index(nm)])
-            if mt.group(4) != esperado:
-                raise SystemExit(f'grafico {i}, serie {nm}: Y em {mt.group(4)}, esperado {esperado}')
-            novo = f'=SERIES({mt.group(1)},Calc!$E${R_X0}:$E${R_X1},Calc!${esperado}${R_X0}:${esperado}${R_X1},{mt.group(8)})'
+            if mt.group(5) != esperado:
+                raise SystemExit(f'grafico {i}, serie {nm}: Y em {mt.group(5)}, esperado {esperado}')
+            xc = mt.group(2) if mt.group(2) in ('E', 'CR', 'CS', 'CT') else 'E'
+            novo = f'=SERIES({mt.group(1)},Calc!${xc}${R_X0}:${xc}${R_X1},Calc!${esperado}${R_X0}:${esperado}${R_X1},{mt.group(9)})'
             if f != novo:
                 s.Formula = novo
                 MUDANCAS.append(f'grafico {i} serie {nm}')
@@ -393,6 +395,17 @@ def graficos(wb, m, nlv):
 # ---------------------------------------------------------------- fumaca
 def num(v):
     return isinstance(v, (int, float)) and not isinstance(v, bool) and not (isinstance(v, int) and v < -2146820000)
+
+
+def bordas_nivel(wb, i, xmin, xmax):
+    """ADR-080: bordas do eixo do nivel i (xrunmin<i>/xrunmax<i>); antes dele, o eixo comum."""
+    try:
+        a, b = wb.Names(f'xrunmin{i}').RefersToRange.Value, wb.Names(f'xrunmax{i}').RefersToRange.Value
+        if num(a) and num(b):
+            return a, b
+    except Exception:
+        pass
+    return xmin, xmax
 
 
 def fumaca(wb, ex, m, nlv, leg0):
@@ -416,8 +429,9 @@ def fumaca(wb, ex, m, nlv, leg0):
             if len(xs) != 2 or len(ys) != 2:
                 ruins.append((i, nm, 'pontos', len(xs), len(ys)))
                 continue
-            if not (abs(xs[0] - xmin) < 1e-9 and abs(xs[1] - xmax) < 1e-9):
-                ruins.append((i, nm, 'x', xs, (xmin, xmax)))
+            bx = bordas_nivel(wb, i, xmin, xmax)          # ADR-080: cada nivel tem as suas bordas
+            if not (abs(xs[0] - bx[0]) < 1e-9 and abs(xs[1] - bx[1]) < 1e-9):
+                ruins.append((i, nm, 'x', xs, bx))
             if num(M) and num(S):
                 if not all(num(y) and abs(y - (M + k * S)) <= 1e-9 * max(1, abs(M)) for y in ys):
                     ruins.append((i, nm, 'y', ys, M + k * S))

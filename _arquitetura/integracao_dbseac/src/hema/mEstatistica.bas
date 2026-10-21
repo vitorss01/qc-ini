@@ -36,7 +36,8 @@ Public Const ENG_COL_ID0 As Long = 39   ' Eng_Saida AM..AO: ID do ponto normal d
 Public Const ENG_COL_IDX0 As Long = 42  ' Eng_Saida AP..AX: ID de cada X vermelho (N1 X1..X3, N2 X1..X3, N3 X1..X3)
 Public Const ENG_COL_DH0 As Long = 51   ' Eng_Saida AY..BA: DATA_HORA do ponto normal de N1..N3
 Public Const ENG_COL_DHX0 As Long = 54  ' Eng_Saida BB..BJ: DATA_HORA de cada X vermelho
-Public Const ENG_COL_ULT As Long = 62   ' Eng_Saida BJ: ultima coluna publicada por corrida
+Public Const ENG_COL_CORL0 As Long = 63 ' Eng_Saida BK..BM: CORRIDA DO LOTE de N1..N3 (eixo X do grafico, ADR-080)
+Public Const ENG_COL_ULT As Long = 65   ' Eng_Saida BM: ultima coluna publicada por corrida
 Public Const ENG_COL_VALOR0 As Long = 25 ' Eng_Saida Y: valor do N1 (mesmo que COL_VALOR0, para o mUI)
 Public Const ENG_COL_X0 As Long = 30    ' Eng_Saida AD: 1o X (mesmo que COL_X0, para o mUI)
 Private Const NIDV As Long = 3          ' colunas de ID/DATA_HORA do ponto normal (3 niveis fixos)
@@ -1255,6 +1256,35 @@ Public Sub AtualizarCalc()
     If nTodas = 0 Then GoTo restaura
     OrdenarCorridas runsT, dtsT, nTodas
 
+    ' ---- ADR-080: CORRIDA DO LOTE, por nivel (o eixo X do grafico de cada nivel) ----
+    ' Cada passagem do controle de um nivel e uma corrida: 1, 2, 3... desde o 1o resultado daquele nivel NO LOTE (todo
+    ' o historico do lote, nao so a janela ou o periodo), em ordem de data/hora. Conta o que o grafico mostra --
+    ' resultado elegivel e X vermelho. Um nivel nao herda o numero de outro: um N1 das 23:50 nao "entra" na corrida de
+    ' um N2 das 09:14. O RUN (yymmddkk) continua sendo a chave da corrida do dia (Westgard entre niveis, dica).
+    Dim temNv As Object, corLote As Object, contNv() As Long, kNv As String
+    Set temNv = CreateObject("Scripting.Dictionary")
+    For passada = 1 To 2
+        If passada = 1 Then Set fonte = linhas Else Set fonte = linhasX
+        For Each x In fonte
+            i = x
+            If IsNumeric(mDB(i, COL_RESULT)) Then
+                t = CLng(Val(mDB(i, COL_NIVEL))) - 1
+                If t >= 0 And t <= NLV - 1 Then temNv(CStr(CLng(Val(mDB(i, COL_RUN)))) & "|" & t) = True
+            End If
+        Next x
+    Next passada
+    Set corLote = CreateObject("Scripting.Dictionary")
+    ReDim contNv(0 To NLV - 1)
+    For i = 1 To nTodas
+        For t = 0 To NLV - 1
+            kNv = CStr(runsT(i)) & "|" & t
+            If temNv.Exists(kNv) Then
+                contNv(t) = contNv(t) + 1
+                corLote(kNv) = contNv(t)
+            End If
+        Next t
+    Next i
+
     ' ---- janela: as NK corridas mais recentes ate o fim do periodo ----
     Dim fimJan As Long, iniJan As Long, nCort As Long, vAte As Variant
     fimJan = nTodas
@@ -1447,6 +1477,19 @@ Public Sub AtualizarCalc()
     ws.Range(ws.Cells(KC0, ENG_COL_IDX0), ws.Cells(KC0 + nRun - 1, ENG_COL_IDX0 + NX - 1)).Value = outIdX
     ws.Range(ws.Cells(KC0, ENG_COL_DH0), ws.Cells(KC0 + nRun - 1, ENG_COL_DH0 + NIDV - 1)).Value = outDhV
     ws.Range(ws.Cells(KC0, ENG_COL_DHX0), ws.Cells(KC0 + nRun - 1, ENG_COL_DHX0 + NX - 1)).Value = outDhX
+    ' ADR-080: corrida do lote de cada nivel nesta corrida (vazio = o nivel nao tem ponto nela)
+    Dim outCor() As Variant
+    ReDim outCor(1 To nRun, 1 To NIDV)
+    For i = 1 To nRun
+        For t = 0 To NLV - 1
+            kNv = CStr(runs(i)) & "|" & t
+            If corLote.Exists(kNv) Then outCor(i, t + 1) = corLote(kNv) Else outCor(i, t + 1) = ""
+        Next t
+        For t = NLV To NIDV - 1
+            outCor(i, t + 1) = ""
+        Next t
+    Next i
+    ws.Range(ws.Cells(KC0, ENG_COL_CORL0), ws.Cells(KC0 + nRun - 1, ENG_COL_CORL0 + NIDV - 1)).Value = outCor
 
     For t = 0 To NLV - 1
         ReDim outLvl(1 To nRun, 1 To NEF)

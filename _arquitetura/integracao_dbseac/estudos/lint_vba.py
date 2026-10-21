@@ -39,6 +39,9 @@ def nomes_modulo(t):
 
 def checar(caminho):
     t = open(caminho, encoding='utf-8').read().replace('\r\n', '\n')
+    # compilacao condicional: '#If VBA7 ... #Else ... #End If' declara o mesmo nome nos dois ramos (valido); so o
+    # 1o ramo entra na conferencia
+    t = re.sub(r'(?ms)^\s*#Else\b.*?^\s*#End If\b', '', t)
     mod = nomes_modulo(t)
     problemas = []
     for nome, params, corpo in procedimentos(t):

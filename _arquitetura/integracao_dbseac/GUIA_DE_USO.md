@@ -14,6 +14,9 @@ agendada atualiza a cada 2 minutos.
    - **Trocar de lote (H3):** se o filtro atual não mostra nada do lote escolhido (outro ano, outro equipamento, analito
      que o lote não tem), o Painel ajusta sozinho o período ("Tudo"), o equipamento e o analito. A barra de status diz
      o que mudou.
+   - **Eixo X = corrida do lote (ADR-080):** cada nível tem a sua sequência 1, 2, 3... desde o primeiro resultado
+     daquele lote (cada passagem do controle é uma corrida, mesmo à noite). Trocou de lote, recomeça do 1. Com filtro
+     de período, aparece o número real da corrida no lote.
 4. Passe o mouse num ponto do gráfico. Aparecem o **ID**, a corrida (RUN), a data/hora e o valor. Nos pontos já
    inativados (X vermelho) aparece também **INATIVADO**.
 5. Confira o Status da corrida, as regras de Westgard violadas e o histórico do analito.

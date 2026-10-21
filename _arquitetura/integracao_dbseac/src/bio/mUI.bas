@@ -69,11 +69,16 @@ Public Sub AtualizarEixos()
         mx = ThisWorkbook.Names("axmax" & i).RefersToRange.Value
         Set ax = ws.ChartObjects(i).Chart.Axes(xlValue)
         If Not ax Is Nothing Then Escala ax, mn, mx
-        ' eixo X (RUN) — remove o espaco em branco a esquerda. ADR-078: sem corrida, moldura fixa 0..21 (Calc)
+        ' eixo X (corrida do lote) — remove o espaco em branco a esquerda. ADR-078: sem corrida, moldura fixa 0..21 (Calc)
         Dim xn As Variant, xx As Variant, axx As Axis
         xn = Empty: xx = Empty: Set axx = Nothing
-        xn = ThisWorkbook.Names("xrunmin").RefersToRange.Value
-        xx = ThisWorkbook.Names("xrunmax").RefersToRange.Value
+        ' ADR-080: cada nivel tem a sua sequencia de corridas do lote (xrunmin1, xrunmax1, ...); sem eles, o eixo comum
+        xn = ThisWorkbook.Names("xrunmin" & i).RefersToRange.Value
+        xx = ThisWorkbook.Names("xrunmax" & i).RefersToRange.Value
+        If Not (EhNumero(xn) And EhNumero(xx)) Then
+            xn = ThisWorkbook.Names("xrunmin").RefersToRange.Value
+            xx = ThisWorkbook.Names("xrunmax").RefersToRange.Value
+        End If
         Set axx = ws.ChartObjects(i).Chart.Axes(xlCategory)
         If Not axx Is Nothing Then
             Escala axx, xn, xx
