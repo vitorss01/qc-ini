@@ -41,7 +41,9 @@ import sys
 import time
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
-RAIZ = os.path.abspath(os.path.join(AQUI, '..', '..'))
+# QC_RAIZ: pasta dos .xlsm de producao quando a entrega roda de uma COPIA LIMPA do codigo commitado (21/10/2026: a
+# entrega pegou do src/ alteracoes em andamento de outro ADR e falhou -- a producao nao foi tocada)
+RAIZ = os.environ.get('QC_RAIZ') or os.path.abspath(os.path.join(AQUI, '..', '..'))
 ARQ = {'Hematologia': 'QC_Hematologia.xlsm', 'Bioquimica': 'QC_Bioquimica.xlsm'}
 SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lotes_auto.py',
           'qa_graficos.py', 'qa_incerteza.py', 'qa_desempenho.py', 'qa_final.py',
