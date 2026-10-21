@@ -302,7 +302,9 @@ def fumaca_dica(ex, wb):
             d = str(ex.run("'" + wb.Name + "'!mUI.DicaPonto", 1, serie, slot, teto=120))
             curto = idv.split('-')[-1]
             run_txt = str(int(run)) if isinstance(run, float) else str(run)
-            if not idv or not d.startswith(f'ID {curto} ') or f'RUN {run_txt}' not in d:
+            # ADR-081: a dica pode comecar pela corrida do lote ("Corrida 78 · ID ..."); o que vale e o ID e o RUN
+            corpo = d.split(' · ', 1)[1] if d.startswith('Corrida ') and ' · ' in d else d
+            if not idv or not corpo.startswith(f'ID {curto} ') or f'RUN {run_txt}' not in d:
                 raise SystemExit(f'DicaPonto(1, {serie}, {slot}) = {d!r}; esperado ID {curto} e RUN {run_txt}')
             return f'DicaPonto(N1, ponto {slot}) = {d}'
     return 'nenhum ponto N1 com valor na janela do motor'
