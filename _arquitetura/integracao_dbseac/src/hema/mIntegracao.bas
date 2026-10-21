@@ -21,6 +21,8 @@ Option Explicit
 '  tabelas, calculadas em memoria e gravadas so onde mudou; segundos em vez de
 '  minutos). As consultas ficam no arquivo: MOTOR_DADOS = PQ volta ao refresh.
 '  Toda execucao (VBA ou PQ, ok ou falha) deixa uma linha no Sync_Log.
+'  ADR-081: inativar/reativar pelo grafico sem dialogo aqui (DadosDoPonto, InativarPorId, ReativarPorId) e o
+'  ATUALIZAR so das entradas (AtualizarSoEntradas); a janela e do mUI.
 ' ============================================================================
 Private Const ABA_MANUAL As String = "Digitar Resultados"
 Private Const ABA_INAT As String = "Inativar"
@@ -30,6 +32,7 @@ Private Const TB_INAT As String = "tblInativacao_NaoConformes"
 Private Const TB_COMENT As String = "tblComentariosTecnicos"
 Private Const COL_LJ As String = "REGISTRAR - LJ"
 Private Const FOLGA As Long = 100              ' linhas acrescentadas quando a tabela de entrada enche
+Private Const TXT_FALHA As String = "Nada foi alterado. Tente de novo ou clique em ATUALIZAR DADOS."   ' ADR-081
 
 ' ordem do refresh = ordem das camadas
 Private Function Camadas() As Variant
@@ -63,15 +66,20 @@ End Sub
 ' Nucleo do botao, sem caixa de dialogo (o QA automatizado chama este). Devolve
 ' o resumo; em falha levanta o erro com a ETAPA que falhou e NAO atualiza os
 ' consumidores -- grafico e Estatistica ficam com a atualizacao anterior.
-Public Function AtualizarDadosCore() As String
+' ADR-081: soEntradas = so aplicar as entradas (inativar pelo grafico), sem ler o DB_SEAC. Vale no motor VBA
+' (Sincronizar sem a origem); no PQ e o ATUALIZAR normal. NAO e o modo historico: a configuracao MODO_FONTE
+' nao muda, o Audit_Log nao recebe ATUALIZACAO_MODO_HISTORICO e o QA nao ganha o A07.
+Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False, _
+                                   Optional ByVal analitoAlvo As String = "") As String
     Dim camada As Variant, t0 As Double, tempos As String
     Dim antes As Object, depois As Object, nRec0 As Long, nRec1 As Long, etapa As String, hist As Boolean
-    Dim resLotes As String, vba As Boolean, nNovos As Long, mudou As Boolean
+    Dim resLotes As String, vba As Boolean, nNovos As Long, mudou As Boolean, semOrigem As Boolean
     mApp.InicioUsuario "Atualizando dados: preparando as entradas..."
     On Error GoTo falha
     hist = ModoHistorico()
     vba = mEtlSync.MotorVBA()
-    mEtlSync.IniciarLog IIf(vba, "VBA", "PQ"), IIf(hist, "HISTORICO", "SEAC")
+    semOrigem = hist Or (soEntradas And vba)
+    mEtlSync.IniciarLog IIf(vba, "VBA", "PQ"), IIf(hist, "HISTORICO", IIf(semOrigem, "SO_ENTRADAS", "SEAC"))
 
     etapa = "preparar as tabelas de entrada"
     PrepararEntradas
@@ -80,8 +88,13 @@ Public Function AtualizarDadosCore() As String
 
     If vba Then
         etapa = "atualizar os dados (VBA)"
-        Application.StatusBar = "Atualizando dados: lendo o DB_SEAC e recalculando..."
-        tempos = mEtlSync.Sincronizar(hist, nNovos, mudou, resLotes)
+        If semOrigem And Not hist Then
+            Application.StatusBar = "Aplicando a inativação: recalculando sem ler o DB_SEAC..."
+        Else
+            Application.StatusBar = "Atualizando dados: lendo o DB_SEAC e recalculando..."
+        End If
+        ' ADR-081: no "so entradas" os achados do QA que dependem da origem ficam como estavam (mEtlSync)
+        tempos = mEtlSync.Sincronizar(semOrigem, nNovos, mudou, resLotes, semOrigem And Not hist)
     Else
         For Each camada In Camadas()
             ' ADR-060: lote novo entra no cadastro ANTES do QA, que confere o cadastro (I03)
@@ -112,11 +125,14 @@ Public Function AtualizarDadosCore() As String
     mDados.IniciarSnapshot                         ' ADR-079: uma leitura da tblCQ_Final para o motor inteiro
     mEstatistica.InvalidarCache
     RodarSeExistir "InvalidarCacheEstat"           ' Estatistica por periodo (so Bioquimica)
-    mDados.AtualizarListasAno
+    ' ADR-081: inativar/reativar nao cria ano novo; a lista de anos e refeita no proximo ATUALIZAR completo
+    If Not soEntradas Then mDados.AtualizarListasAno
     mLotes.AtualizarListaLiberacao
     mEstatistica.AtualizarEstatistica
     RodarSeExistir "RecalcularEstatPeriodo"
-    mIncerteza.RecalcularIncerteza                 ' ADR-064: incerteza de medicao (CIQ + CEQ)
+    ' ADR-064: incerteza de medicao (CIQ + CEQ). ADR-081: depois de inativar/reativar UM resultado so a incerteza do
+    ' analito dele muda (a dos outros depende so dos resultados deles; o CEQ nao muda) -- recalcula so as linhas dele
+    mIncerteza.RecalcularIncerteza IIf(soEntradas, analitoAlvo, "")
     mDados.EncerrarSnapshot
     tempos = tempos & " · motor " & Format$(Timer - t0, "0.0") & "s"
     mEtlSync.AnotarLog "T_MOTOR", Round(Timer - t0, 2)
@@ -135,6 +151,8 @@ Public Function AtualizarDadosCore() As String
 
     mApp.fim
     AtualizarDadosCore = IIf(hist, AvisoHistorico() & vbCrLf & vbCrLf, "") & _
+           IIf(semOrigem And Not hist, "Só as entradas (inativações, manuais e comentários) foram aplicadas; o DB_SEAC " & _
+               "não foi lido -- os resultados novos entram no próximo ATUALIZAR DADOS." & vbCrLf & vbCrLf, "") & _
            "Atualização concluída." & vbCrLf & vbCrLf & _
            "Resultados recebidos: " & Format$(nRec1, "#,##0") & " (novos nesta atualização: " & (nRec1 - nRec0) & ")" & vbCrLf & _
            UltimoResultado() & _
@@ -164,6 +182,17 @@ Public Function AtualizarDadosAutomatico() As String
     Exit Function
 falha:
     AtualizarDadosAutomatico = "ERRO|" & Err.Description
+End Function
+
+' ADR-081: o ATUALIZAR depois de inativar/reativar pelo grafico. O mesmo nucleo, sem ler o DB_SEAC (motor VBA;
+' no PQ e o ATUALIZAR normal), sem caixa de dialogo. Devolve "OK|<resumo>" ou "ERRO|<etapa e erro>".
+' analito = o do resultado inativado/reativado (so a incerteza dele e recalculada); vazio = todos.
+Public Function AtualizarSoEntradas(Optional ByVal analito As String = "") As String
+    On Error GoTo falha
+    AtualizarSoEntradas = "OK|" & AtualizarDadosCore(True, analito)
+    Exit Function
+falha:
+    AtualizarSoEntradas = "ERRO|" & Err.Description
 End Function
 
 ' ADR-058. MODO_FONTE = HISTORICO: a consulta SEAC_ORIGEM nao le o DB_SEAC e as
@@ -593,6 +622,305 @@ Private Function LinhaInatVazia(ByVal lo As ListObject, ByVal r As Long) As Bool
 nao:
 End Function
 
+' ============================================================================
+'  INATIVAR / REATIVAR PELO GRAFICO -- nucleo SEM dialogo (ADR-081)
+' ============================================================================
+' A janela do duplo clique (mUI.InativarPontoUI) so pergunta; quem le o ponto, grava a aba Inativar e registra
+' no Audit_Log sao estas funcoes. Nenhuma abre dialogo nem atualiza o grafico (quem chama decide) -- o QA as
+' chama por automacao com os mesmos argumentos. Devolvem "OK|..." ou "ERRO|...".
+
+' Linha (1..n) do ID normalizado na tblCQ_Final, ou 0. Vale o 1o resultado com o ID: os repetidos da
+' DB_CQ_FINAL levam o sufixo ~L<linha> e nao casam.
+Private Function LinhaCQ(ByVal lo As ListObject, ByVal idN As String) As Long
+    Dim v As Variant, i As Long
+    If lo Is Nothing Then Exit Function
+    If Len(idN) = 0 Or lo.ListRows.Count = 0 Then Exit Function
+    v = lo.ListColumns("ID_REGISTRO").DataBodyRange.Value2
+    If Not IsArray(v) Then
+        Dim u(1 To 1, 1 To 1) As Variant: u(1, 1) = v: v = u
+    End If
+    For i = 1 To UBound(v, 1)
+        If Not IsError(v(i, 1)) Then
+            If UCase$(Trim$(CStr(v(i, 1)))) = idN Then LinhaCQ = i: Exit Function
+        End If
+    Next i
+End Function
+
+' Valor de uma coluna da tblCQ_Final na linha r; Empty se a coluna nao existir ou a celula tiver erro.
+Private Function ValorCQ(ByVal lo As ListObject, ByVal r As Long, ByVal coluna As String) As Variant
+    Dim v As Variant
+    On Error GoTo sai
+    v = lo.ListColumns(coluna).DataBodyRange.Cells(r, 1).Value
+    If Not IsError(v) Then ValorCQ = v
+sai:
+End Function
+
+' Texto de uma celula da aba Inativar ("" com erro ou coluna ausente).
+Private Function TextoCel(ByVal lo As ListObject, ByVal r As Long, ByVal coluna As String) As String
+    Dim v As Variant
+    On Error GoTo sai
+    v = Celula(lo, r, coluna).Value
+    If Not IsError(v) Then TextoCel = Trim$(CStr(v))
+sai:
+End Function
+
+Private Function EhNum(ByVal v As Variant) As Boolean
+    If IsEmpty(v) Or IsError(v) Or IsNull(v) Then Exit Function
+    If VarType(v) = vbString Then Exit Function
+    EhNum = IsNumeric(v)
+End Function
+
+' ANALITO do resultado na tblCQ_Final ("" se o ID nao existir). E o que o Power Query confere (E10/E11).
+Public Function AnalitoDoId(ByVal id As String) As String
+    Dim lo As ListObject, rq As Long
+    On Error GoTo sai
+    Set lo = AcharTabela(FONTE_CQ)
+    rq = LinhaCQ(lo, NormalizarId(id))
+    If rq > 0 Then AnalitoDoId = Trim$(CStr(ValorCQ(lo, rq, "ANALITO")))
+sai:
+End Function
+
+' Texto gravado como TEXTO: um motivo que comeca com = + - @ viraria formula (ou erro) na celula.
+Private Function TextoParaCelula(ByVal s As String) As String
+    If Len(s) > 0 Then
+        If InStr(1, "=+-@", Left$(s, 1), vbBinaryCompare) > 0 Then s = "'" & s
+    End If
+    TextoParaCelula = s
+End Function
+
+' Primeira linha da aba Inativar com o ID (0 = nenhuma) e, em livre, a 1a linha TOTALMENTE vazia (0 = cheia).
+Private Function LinhaInat(ByVal lo As ListObject, ByVal idN As String, ByRef livre As Long) As Long
+    Dim v As Variant, i As Long
+    livre = 0
+    If lo.ListRows.Count = 0 Then Exit Function
+    v = lo.ListColumns("ID_REGISTRO").DataBodyRange.Value
+    If Not IsArray(v) Then
+        Dim u(1 To 1, 1 To 1) As Variant: u(1, 1) = v: v = u
+    End If
+    For i = 1 To UBound(v, 1)
+        If Not IsError(v(i, 1)) Then
+            If LinhaInat = 0 And Len(Trim$(CStr(v(i, 1)))) > 0 Then
+                If NormalizarId(v(i, 1)) = idN Then LinhaInat = i
+            End If
+            If livre = 0 And Len(Trim$(CStr(v(i, 1)))) = 0 Then
+                If LinhaInatVazia(lo, i) Then livre = i
+            End If
+        End If
+        If LinhaInat > 0 And livre > 0 Then Exit Function
+    Next i
+End Function
+
+' Evento da inativacao/reativacao pedida pelo grafico no Audit_Log, com os dados do resultado (a trilha nunca
+' derruba a gravacao -- mesma regra do AuditarMudancas). O RESULTADO_INATIVADO/REATIVADO continua vindo da
+' atualizacao seguinte (AuditarMudancas), quando a mudanca de fato vale.
+Private Sub AuditarPedido(ByVal acao As String, ByVal loQ As ListObject, ByVal rq As Long, ByVal stAnt As String, _
+                          ByVal stNovo As String, ByVal motivo As String, ByVal detalhe As String)
+    On Error Resume Next
+    mAuditoria.Auditar mAuditoria.CAT_DADO, acao, "mIntegracao", CLng(Val(CStr(ValorCQ(loQ, rq, "RUN")))), _
+                       ValorCQ(loQ, rq, "DATA_HORA"), CStr(ValorCQ(loQ, rq, "EQUIPAMENTO")), CStr(ValorCQ(loQ, rq, "LOTE")), _
+                       CLng(Val(CStr(ValorCQ(loQ, rq, "NIVEL")))), CStr(ValorCQ(loQ, rq, "ANALITO")), _
+                       ValorCQ(loQ, rq, "RESULTADO"), ValorCQ(loQ, rq, "RESULTADO"), stAnt, stNovo, motivo, detalhe
+End Sub
+
+' O ponto do grafico do Painel: "OK|id|analito|nivel|corrida|dd/mm/yyyy hh:nn|valor|INATIVADO ou ATIVO|lote".
+'   nivel = indice do grafico; serie/ponto = o que o evento do grafico passa (ponto = slot da corrida: Eng_Saida
+'   linha 2 + ponto). Series "Resultado"/"OK"/"Violacao..." = o ponto do nivel; "Nao conforme (X)" = os X (o
+'   k-esimo X do grafico e o slot k da corrida). corrida = corrida do lote do ponto (Eng_Saida BK..); no X, que
+'   nao tem numero, "entre k e k+1" (k = parte inteira da posicao no eixo, Eng_Saida BN..).
+'   O analito, a data, o valor, o estado e o lote sao os da tblCQ_Final (pelo ID), nao os da tela.
+Public Function DadosDoPonto(ByVal nivel As Long, ByVal serie As Long, ByVal ponto As Long) As String
+    Dim ch As Chart, eng As Worksheet, nm As String, r As Long, k As Long, slot As Long, col As Long
+    Dim idv As Variant, cor As Variant, pos As Variant, ehX As Boolean, lo As ListObject, rq As Long, idN As String
+    Dim dh As Variant, vl As Variant, txtCor As String, txtDh As String, txtVl As String, st As String
+    On Error GoTo falha
+    If nivel < 1 Or nivel > mEstatistica.NLV Or ponto < 1 Or ponto > 180 Then
+        DadosDoPonto = "ERRO|ponto fora do grafico": Exit Function
+    End If
+    Set ch = ThisWorkbook.Worksheets("Painel").ChartObjects(nivel).Chart
+    If serie < 1 Or serie > ch.SeriesCollection.Count Then DadosDoPonto = "ERRO|serie inexistente": Exit Function
+    nm = CStr(ch.SeriesCollection(serie).Name)
+    If InStr(1, nm, "conforme", vbTextCompare) > 0 Then
+        ehX = True
+        For k = 1 To serie
+            If InStr(1, CStr(ch.SeriesCollection(k).Name), "conforme", vbTextCompare) > 0 Then slot = slot + 1
+        Next k
+        If slot < 1 Or slot > 3 Then DadosDoPonto = "ERRO|X fora dos tres da corrida": Exit Function
+    ElseIf Not (nm = "Resultado" Or nm = "OK" Or InStr(1, nm, "Viola", vbTextCompare) = 1) Then
+        DadosDoPonto = "ERRO|nao e um resultado (linha de limite ou calibracao)": Exit Function
+    End If
+    Set eng = ThisWorkbook.Worksheets("Eng_Saida")
+    If ponto > CLng(Val(CStr(eng.Range("I1").Value))) Then DadosDoPonto = "ERRO|alem das corridas publicadas": Exit Function
+    r = 2 + ponto
+    If ehX Then
+        col = (nivel - 1) * 3 + slot - 1
+        idv = eng.Cells(r, mEstatistica.ENG_COL_IDX0 + col).Value
+        pos = eng.Cells(r, mEstatistica.ENG_COL_XPOS0 + col).Value
+        If EhNum(pos) Then
+            k = Int(CDbl(pos))
+            If k < 1 Then txtCor = "antes da 1" Else txtCor = "entre " & k & " e " & (k + 1)
+        End If
+    Else
+        idv = eng.Cells(r, mEstatistica.ENG_COL_ID0 + nivel - 1).Value
+        cor = eng.Cells(r, mEstatistica.ENG_COL_CORL0 + nivel - 1).Value
+        If EhNum(cor) Then txtCor = CStr(CLng(cor))
+    End If
+    If IsError(idv) Then idv = ""
+    idN = NormalizarId(idv)
+    If Len(idN) = 0 Then DadosDoPonto = "ERRO|ponto sem ID": Exit Function
+    Set lo = AcharTabela(FONTE_CQ)
+    rq = LinhaCQ(lo, idN)
+    If rq = 0 Then DadosDoPonto = "ERRO|" & TextoIdNaoEncontrado(idN): Exit Function
+    dh = ValorCQ(lo, rq, "DATA_HORA")
+    If IsDate(dh) Then txtDh = Format$(dh, "dd/mm/yyyy hh:nn")
+    vl = ValorCQ(lo, rq, "RESULTADO")
+    If EhNum(vl) Then txtVl = CStr(CDbl(vl)) Else txtVl = CStr(vl)
+    If UCase$(Trim$(CStr(ValorCQ(lo, rq, "STATUS_ANALITICO")))) = "INATIVADO" Then st = "INATIVADO" Else st = "ATIVO"
+    DadosDoPonto = "OK|" & idN & "|" & Trim$(CStr(ValorCQ(lo, rq, "ANALITO"))) & "|" & nivel & "|" & txtCor & "|" & _
+                   txtDh & "|" & txtVl & "|" & st & "|" & Trim$(CStr(ValorCQ(lo, rq, "LOTE")))
+    Exit Function
+falha:
+    DadosDoPonto = "ERRO|" & TXT_FALHA & " (detalhe: " & Err.Description & ")"
+End Function
+
+' "ID 54565 nao encontrado nos resultados." (ID curto: o numero que aparece na dica e que se digita)
+Private Function TextoIdNaoEncontrado(ByVal idN As String) As String
+    TextoIdNaoEncontrado = "ID " & mUI.IdCurto(idN) & " não encontrado nos resultados."
+End Function
+
+' Grava a inativacao na aba Inativar: ID normalizado, ANALITO DA tblCQ_Final (nunca o da tela -- a conferencia
+' E10 do Power Query nao recusa o que o grafico mandou), REGISTRAR - LJ = plotarX, MOTIVO, data e usuario
+' carimbados como no evento. Motivo obrigatorio. ID ja na aba com o analito certo = recusa ("ja inativado"); com
+' o analito errado ou vazio (inativacao que nao valia: E10/E11) a linha e CORRIGIDA no lugar, com carimbo novo.
+' Registra no Audit_Log (INATIVACAO_PEDIDA ou INATIVACAO_CORRIGIDA) com a corrida do lote de antes no detalhe.
+' NAO atualiza os dados. "OK|<linha>" ou "OK|<linha>|corrigida"; "ERRO|<motivo>".
+Public Function InativarPorId(ByVal id As String, ByVal motivo As String, ByVal plotarX As Boolean, _
+                              Optional ByVal corridaAntes As String = "") As String
+    Dim loQ As ListObject, lo As ListObject, ws As Worksheet, prot As Boolean, ev As Boolean, idN As String
+    Dim rq As Long, an As String, r As Long, livre As Long, anAntigo As String, corrigida As Boolean, sE As String
+    On Error GoTo falha
+    idN = NormalizarId(id)
+    motivo = Trim$(motivo)
+    If Len(idN) = 0 Then InativarPorId = "ERRO|Informe o ID do resultado.": Exit Function
+    If Len(motivo) = 0 Then InativarPorId = "ERRO|Escolha o motivo da inativação.": Exit Function
+    Set loQ = AcharTabela(FONTE_CQ)
+    rq = LinhaCQ(loQ, idN)
+    If rq = 0 Then InativarPorId = "ERRO|" & TextoIdNaoEncontrado(idN): Exit Function
+    an = Trim$(CStr(ValorCQ(loQ, rq, "ANALITO")))
+    If Len(an) = 0 Then InativarPorId = "ERRO|O resultado ID " & mUI.IdCurto(idN) & " está sem analito nos resultados. " & _
+                                        "Nada foi alterado.": Exit Function
+    Set lo = AcharTabela(TB_INAT)
+    If lo Is Nothing Then InativarPorId = "ERRO|A aba Inativar não foi encontrada. Nada foi alterado.": Exit Function
+    Set ws = lo.Parent
+    r = LinhaInat(lo, idN, livre)
+    If r > 0 Then
+        anAntigo = TextoCel(lo, r, "ANALITO")
+        If UCase$(anAntigo) = UCase$(an) Then
+            InativarPorId = "ERRO|Este resultado já está inativado (aba Inativar, linha " & r & ").": Exit Function
+        End If
+        corrigida = True
+    End If
+    ev = Application.EnableEvents
+    Application.EnableEvents = False
+    prot = LiberarEscrita(ws)
+    If Not corrigida Then
+        If livre = 0 Then                      ' tabela cheia: cresce FOLGA linhas (a aba protegida nao deixa)
+            lo.Resize lo.Range.Resize(lo.Range.rows.Count + FOLGA)
+            livre = lo.ListRows.Count - FOLGA + 1
+        End If
+        r = livre
+        Celula(lo, r, "ID_REGISTRO").Value = idN
+    Else
+        ' a linha antiga nao valia (analito errado ou vazio): passa a valer agora -- carimbo de agora
+        Celula(lo, r, "DATA_INATIVACAO").ClearContents
+        Celula(lo, r, "USUARIO").ClearContents
+    End If
+    Celula(lo, r, "ANALITO").Value = an
+    Celula(lo, r, "MOTIVO").Value = TextoParaCelula(motivo)
+    PrepararLinha lo, r                        ' ID normalizado, caixa marcada (linha sem carimbo) e carimbo
+    Celula(lo, r, COL_LJ).Value = plotarX      ' a escolha da janela vale sobre o padrao
+    RestaurarProtecao ws, prot
+    Application.EnableEvents = ev
+    AuditarPedido IIf(corrigida, "INATIVACAO_CORRIGIDA", "INATIVACAO_PEDIDA"), loQ, rq, "ATIVO", _
+                  "INATIVADO (aba Inativar)", motivo, "ID " & idN & " | corrida do lote antes: " & _
+                  IIf(Len(corridaAntes) > 0, corridaAntes, "?") & " | X vermelho no grafico: " & IIf(plotarX, "SIM", "NÃO") & _
+                  " | aba Inativar linha " & r & IIf(corrigida, " | linha corrigida: ANALITO era '" & anAntigo & "'", "")
+    InativarPorId = "OK|" & r & IIf(corrigida, "|corrigida", "")
+    Exit Function
+falha:
+    sE = Err.Description
+    On Error Resume Next
+    If Not ws Is Nothing Then RestaurarProtecao ws, prot
+    If ev Then Application.EnableEvents = True
+    InativarPorId = "ERRO|" & TXT_FALHA & " (detalhe: " & sE & ")"
+End Function
+
+' Reativa: apaga a(s) linha(s) do ID na aba Inativar (ADR-070: apagar a linha = reativar; com o ID repetido, todas
+' -- senao a 2a linha passaria a valer). Motivo obrigatorio, registrado no Audit_Log (REATIVACAO_PEDIDA) com o
+' motivo da inativacao que sai. NAO atualiza os dados. "OK|<linhas apagadas>" ou "ERRO|<motivo>".
+Public Function ReativarPorId(ByVal id As String, ByVal motivo As String) As String
+    Dim lo As ListObject, loQ As ListObject, ws As Worksheet, prot As Boolean, ev As Boolean, idN As String
+    Dim v As Variant, i As Long, quais As String, motAnt As String, c As Variant, rq As Long, sE As String
+    Dim achou As Collection, it As Variant
+    On Error GoTo falha
+    idN = NormalizarId(id)
+    motivo = Trim$(motivo)
+    If Len(idN) = 0 Then ReativarPorId = "ERRO|Informe o ID do resultado.": Exit Function
+    If Len(motivo) = 0 Then ReativarPorId = "ERRO|Escolha o motivo da reativação.": Exit Function
+    Set lo = AcharTabela(TB_INAT)
+    If lo Is Nothing Then ReativarPorId = "ERRO|A aba Inativar não foi encontrada. Nada foi alterado.": Exit Function
+    Set ws = lo.Parent
+    Set achou = New Collection
+    If lo.ListRows.Count > 0 Then
+        v = lo.ListColumns("ID_REGISTRO").DataBodyRange.Value
+        If Not IsArray(v) Then
+            Dim u(1 To 1, 1 To 1) As Variant: u(1, 1) = v: v = u
+        End If
+        For i = 1 To UBound(v, 1)
+            If Not IsError(v(i, 1)) Then
+                If Len(Trim$(CStr(v(i, 1)))) > 0 Then
+                    If NormalizarId(v(i, 1)) = idN Then achou.Add i
+                End If
+            End If
+        Next i
+    End If
+    If achou.Count = 0 Then
+        ReativarPorId = "ERRO|O ID " & mUI.IdCurto(idN) & " não está na aba Inativar (não está inativado)."
+        Exit Function
+    End If
+    motAnt = TextoCel(lo, CLng(achou(1)), "MOTIVO")
+    ev = Application.EnableEvents
+    Application.EnableEvents = False
+    prot = LiberarEscrita(ws)
+    For Each it In achou
+        For Each c In Array("ID_REGISTRO", "ANALITO", COL_LJ, "MOTIVO", "DATA_INATIVACAO", "USUARIO")
+            LimparSeExistir lo, CLng(it), CStr(c)
+        Next c
+        quais = quais & IIf(Len(quais) > 0, ",", "") & it
+    Next it
+    RestaurarProtecao ws, prot
+    Application.EnableEvents = ev
+    Set loQ = AcharTabela(FONTE_CQ)
+    rq = LinhaCQ(loQ, idN)
+    If rq > 0 Then
+        AuditarPedido "REATIVACAO_PEDIDA", loQ, rq, "INATIVADO", "ATIVO (aba Inativar)", motivo, _
+                      "ID " & idN & " | aba Inativar linha(s) " & quais & " apagada(s) | motivo da inativacao: " & _
+                      IIf(Len(motAnt) > 0, motAnt, "(vazio)")
+    Else
+        On Error Resume Next
+        mAuditoria.Auditar mAuditoria.CAT_DADO, "REATIVACAO_PEDIDA", "mIntegracao", 0, Empty, "", "", 0, "", _
+                           Empty, Empty, "INATIVADO", "ATIVO (aba Inativar)", motivo, "ID " & idN & " | aba Inativar linha(s) " & quais
+        On Error GoTo falha
+    End If
+    ReativarPorId = "OK|" & quais
+    Exit Function
+falha:
+    sE = Err.Description
+    On Error Resume Next
+    If Not ws Is Nothing Then RestaurarProtecao ws, prot
+    If ev Then Application.EnableEvents = True
+    ReativarPorId = "ERRO|" & TXT_FALHA & " (detalhe: " & sE & ")"
+End Function
+
 Private Sub Carimbar(ByVal cData As Range, ByVal cUsuario As Range)
     If IsEmpty(cData.Value) Or Len(Trim$(CStr(cData.Value))) = 0 Then cData.Value = Now
     If Len(Trim$(CStr(cUsuario.Value))) = 0 Then cUsuario.Value = mAuditoria.UsuarioSistema()
@@ -669,7 +997,8 @@ End Sub
 
 ' Chamado pelo Worksheet_Change das abas de entrada.
 Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
-    Dim lo As ListObject, cel As Range, ar As Range, r As Long, prot As Boolean
+    Dim lo As ListObject, cel As Range, ar As Range, r As Long, prot As Boolean, an As String
+    Dim idDig As String, celAviso As Range, txtAviso As String
     If mApp.Ocupado() Then Exit Sub
     Set lo = Nothing
     On Error Resume Next
@@ -682,6 +1011,21 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
     If lo Is Nothing Then Exit Sub
     If lo.DataBodyRange Is Nothing Then Exit Sub
     If Intersect(Target, lo.DataBodyRange) Is Nothing Then Exit Sub
+    ' ADR-081: a aba Inativar e um caminho de inativar/reativar, como a janela do grafico -- sem permissao
+    ' (mSeguranca.PodeInativar: login e papel minimo PAPEL_MIN_INATIVAR) a alteracao e desfeita. So com gente
+    ' digitando (Interactive): a automacao (QA, instaladores) escreve na aba sem sessao de login.
+    If ws.Name = ABA_INAT And Application.Interactive Then
+        If Not mSeguranca.PodeInativar() Then
+            Application.EnableEvents = False
+            On Error Resume Next
+            Application.Undo
+            On Error GoTo 0
+            Application.EnableEvents = True
+            MsgBox mSeguranca.TextoSemPermissaoInativar() & vbCrLf & vbCrLf & _
+                   "A alteração na aba Inativar foi desfeita.", vbExclamation, "Inativar"
+            Exit Sub
+        End If
+    End If
     Application.EnableEvents = False
     On Error GoTo fim
     prot = LiberarEscrita(ws)
@@ -702,6 +1046,22 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
                     LimparSeExistir lo, r, "ANALITO"
                     LimparSeExistir lo, r, "MOTIVO"
                 End If
+            ElseIf Not Intersect(Target, Celula(lo, r, "ID_REGISTRO")) Is Nothing Then
+                ' ADR-081: digitou o ID e o ANALITO esta vazio -> o analito DAQUELE resultado, da Principal -
+                ' Resultados (quem digita so precisa do numero). So no evento e so quando a celula do ID mudou:
+                ' a linha que entra sem analito por outro caminho (PrepararEntradas) continua E11, como no ADR-070
+                idDig = NormalizarId(TextoCel(lo, r, "ID_REGISTRO"))
+                If LinhaCQ(AcharTabela(FONTE_CQ), idDig) = 0 Then
+                    ' ID que nao existe: avisa quem digita (depois do laco), sem apagar o que foi digitado. Manual
+                    ' (MAN_) ainda nao atualizado nao esta nos resultados e nao e erro
+                    If Application.Interactive And celAviso Is Nothing And Left$(idDig, 4) <> "MAN_" Then
+                        Set celAviso = Celula(lo, r, "ID_REGISTRO")
+                        txtAviso = TextoIdNaoEncontrado(idDig) & " Confira o número no gráfico (passe o mouse no ponto)."
+                    End If
+                ElseIf Len(TextoCel(lo, r, "ANALITO")) = 0 Then
+                    an = AnalitoDoId(idDig)
+                    If Len(an) > 0 Then Celula(lo, r, "ANALITO").Value = an
+                End If
             End If
         End If
         PrepararLinha lo, r
@@ -715,6 +1075,11 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
 fim:
     RestaurarProtecao ws, prot
     Application.EnableEvents = True
+    If Not celAviso Is Nothing Then
+        On Error Resume Next
+        MsgBox txtAviso, vbExclamation, "Inativar"
+        celAviso.Select                        ' o ID digitado fica selecionado para corrigir
+    End If
 End Sub
 
 ' ============================================================================

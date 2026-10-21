@@ -37,7 +37,8 @@ Public Const ENG_COL_IDX0 As Long = 42  ' Eng_Saida AP..AX: ID de cada X vermelh
 Public Const ENG_COL_DH0 As Long = 51   ' Eng_Saida AY..BA: DATA_HORA do ponto normal de N1..N3
 Public Const ENG_COL_DHX0 As Long = 54  ' Eng_Saida BB..BJ: DATA_HORA de cada X vermelho
 Public Const ENG_COL_CORL0 As Long = 63 ' Eng_Saida BK..BM: CORRIDA DO LOTE de N1..N3 (eixo X do grafico, ADR-080)
-Public Const ENG_COL_ULT As Long = 65   ' Eng_Saida BM: ultima coluna publicada por corrida
+Public Const ENG_COL_XPOS0 As Long = 66 ' Eng_Saida BN..BV: posicao no eixo de cada X vermelho (ADR-081; N1 X1..X3, N2.., N3..)
+Public Const ENG_COL_ULT As Long = 74   ' Eng_Saida BV: ultima coluna publicada por corrida
 Public Const ENG_COL_VALOR0 As Long = 25 ' Eng_Saida Y: valor do N1 (mesmo que COL_VALOR0, para o mUI)
 Public Const ENG_COL_X0 As Long = 30    ' Eng_Saida AD: 1o X (mesmo que COL_X0, para o mUI)
 Private Const NIDV As Long = 3          ' colunas de ID/DATA_HORA do ponto normal (3 niveis fixos)
@@ -1256,28 +1257,53 @@ Public Sub AtualizarCalc()
     If nTodas = 0 Then GoTo restaura
     OrdenarCorridas runsT, dtsT, nTodas
 
-    ' ---- ADR-080: CORRIDA DO LOTE, por nivel (o eixo X do grafico de cada nivel) ----
+    ' ---- ADR-080/081: CORRIDA DO LOTE, por nivel (o eixo X do grafico de cada nivel) ----
     ' Cada passagem do controle de um nivel e uma corrida: 1, 2, 3... desde o 1o resultado daquele nivel NO LOTE (todo
-    ' o historico do lote, nao so a janela ou o periodo), em ordem de data/hora. Conta o que o grafico mostra --
-    ' resultado elegivel e X vermelho. Um nivel nao herda o numero de outro: um N1 das 23:50 nao "entra" na corrida de
-    ' um N2 das 09:14. O RUN (yymmddkk) continua sendo a chave da corrida do dia (Westgard entre niveis, dica).
+    ' o historico do lote, nao so a janela ou o periodo), em ordem de data/hora. Um nivel nao herda o numero de outro.
+    ' ADR-081: conta SO os resultados ATIVOS (os que entram na estatistica). Inativar um resultado (pela ID, que nunca
+    ' muda) renumera os seguintes -- o grafico continua 1, 2, 3... sem lacuna; reativar devolve exatamente o de antes
+    ' (a numeracao e funcao do estado atual, nada e gravado). O X vermelho NAO tem numero: fica ENTRE as corridas
+    ' ativas vizinhas, na posicao k + j/(m+1) (k = ativos antes dele, j = sua ordem entre os m X do intervalo).
+    ' O RUN (yymmddkk) continua sendo a chave da corrida do dia (Westgard entre niveis, dica).
     Dim temNv As Object, corLote As Object, contNv() As Long, kNv As String
+    Dim nXde As Object, xBase As Object, xIni As Object, grpX As Object, kGr As String
     Set temNv = CreateObject("Scripting.Dictionary")
-    For passada = 1 To 2
-        If passada = 1 Then Set fonte = linhas Else Set fonte = linhasX
-        For Each x In fonte
-            i = x
-            If IsNumeric(mDB(i, COL_RESULT)) Then
-                t = CLng(Val(mDB(i, COL_NIVEL))) - 1
-                If t >= 0 And t <= NLV - 1 Then temNv(CStr(CLng(Val(mDB(i, COL_RUN)))) & "|" & t) = True
+    Set nXde = CreateObject("Scripting.Dictionary")
+    For Each x In linhas
+        i = x
+        If IsNumeric(mDB(i, COL_RESULT)) Then
+            t = CLng(Val(mDB(i, COL_NIVEL))) - 1
+            If t >= 0 And t <= NLV - 1 Then temNv(CStr(CLng(Val(mDB(i, COL_RUN)))) & "|" & t) = True
+        End If
+    Next x
+    For Each x In linhasX                         ' na mesma ordem em que os X ganham os slots 1..NXN (abaixo)
+        i = x
+        If IsNumeric(mDB(i, COL_RESULT)) Then
+            t = CLng(Val(mDB(i, COL_NIVEL))) - 1
+            If t >= 0 And t <= NLV - 1 Then
+                kNv = CStr(CLng(Val(mDB(i, COL_RUN)))) & "|" & t
+                If nXde.Exists(kNv) Then
+                    If nXde(kNv) < NXN Then nXde(kNv) = nXde(kNv) + 1
+                Else
+                    nXde.Add kNv, 1
+                End If
             End If
-        Next x
-    Next passada
+        End If
+    Next x
     Set corLote = CreateObject("Scripting.Dictionary")
+    Set xBase = CreateObject("Scripting.Dictionary")
+    Set xIni = CreateObject("Scripting.Dictionary")
+    Set grpX = CreateObject("Scripting.Dictionary")
     ReDim contNv(0 To NLV - 1)
     For i = 1 To nTodas
         For t = 0 To NLV - 1
             kNv = CStr(runsT(i)) & "|" & t
+            If nXde.Exists(kNv) Then
+                kGr = t & "|" & contNv(t)
+                xBase(kNv) = contNv(t)
+                If grpX.Exists(kGr) Then xIni(kNv) = grpX(kGr) + 1 Else xIni(kNv) = 1
+                grpX(kGr) = xIni(kNv) + nXde(kNv) - 1
+            End If
             If temNv.Exists(kNv) Then
                 contNv(t) = contNv(t) + 1
                 corLote(kNv) = contNv(t)
@@ -1490,6 +1516,26 @@ Public Sub AtualizarCalc()
         Next t
     Next i
     ws.Range(ws.Cells(KC0, ENG_COL_CORL0), ws.Cells(KC0 + nRun - 1, ENG_COL_CORL0 + NIDV - 1)).Value = outCor
+    ' ADR-081: posicao de cada X vermelho no eixo do seu nivel (entre as corridas ativas vizinhas)
+    Dim outXPos() As Variant, k0 As Long
+    ReDim outXPos(1 To nRun, 1 To NX)
+    For i = 1 To nRun
+        For t = 0 To NLV - 1
+            kNv = CStr(runs(i)) & "|" & t
+            For s = 1 To NXN
+                If Not IsEmpty(outX(i, t * NXN + s)) And xBase.Exists(kNv) Then
+                    k0 = xBase(kNv)
+                    outXPos(i, t * NXN + s) = k0 + (xIni(kNv) + s - 1) / (grpX(t & "|" & k0) + 1)
+                Else
+                    outXPos(i, t * NXN + s) = ""
+                End If
+            Next s
+        Next t
+        For s = NLV * NXN + 1 To NX
+            outXPos(i, s) = ""
+        Next s
+    Next i
+    ws.Range(ws.Cells(KC0, ENG_COL_XPOS0), ws.Cells(KC0 + nRun - 1, ENG_COL_XPOS0 + NX - 1)).Value = outXPos
 
     For t = 0 To NLV - 1
         ReDim outLvl(1 To nRun, 1 To NEF)

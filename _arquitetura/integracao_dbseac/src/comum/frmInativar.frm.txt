@@ -1,0 +1,133 @@
+Option Explicit
+' ============================================================================
+'  frmInativar -- janela "Inativar / Reativar resultado" do grafico (ADR-081)
+'
+'  Aberta pelo duplo clique (ou clique direito) num ponto do Levey-Jennings:
+'  mUI.InativarPontoUI chama Preparar e Show. A janela NAO grava nada: devolve
+'  a escolha em Confirmado, Motivo e PlotarX, e quem chamou grava, atualiza e
+'  confirma na caixa do grafico. Criada pelo instalador (instalar_frm_inativar.py:
+'  controles e propriedades; sem .frx versionado) com este codigo.
+'  O TextBox do MSForms e Unicode: o motivo com >=, sigma, delta chega inteiro
+'  (o InputBox do ADR-070 trocava esses simbolos por "?").
+' ============================================================================
+Public Confirmado As Boolean
+Public Motivo As String
+Public PlotarX As Boolean
+Private mReativar As Boolean
+Private Const ITEM_OUTRO As String = "Outro"
+
+' Monta a janela para um ponto: reativar = o ponto e um X vermelho (ja inativado).
+Public Sub Preparar(ByVal reativar As Boolean, ByVal titulo As String, ByVal detalhe As String)
+    Dim m As Variant
+    mReativar = reativar
+    Confirmado = False
+    Motivo = ""
+    PlotarX = True
+    lblTitulo.Caption = titulo
+    lblDetalhe.Caption = detalhe
+    cboMotivo.Clear
+    If reativar Then
+        For Each m In MotivosReativar()
+            cboMotivo.AddItem CStr(m)
+        Next m
+        Me.Caption = "Reativar resultado"
+        btnOK.Caption = "Reativar"
+        lblEfeito.Caption = "O resultado volta à média, ao DP e às regras de Westgard; a numeração das corridas " & _
+                            "volta a ser como era."
+    Else
+        For Each m In MotivosInativar()
+            cboMotivo.AddItem CStr(m)
+        Next m
+        Me.Caption = "Inativar resultado"
+        btnOK.Caption = "Inativar"
+        lblEfeito.Caption = "O resultado sai da média, do DP e das regras de Westgard, mas não é apagado. " & _
+                            "As corridas seguintes deste nível são renumeradas."
+    End If
+    txtComplemento.Value = ""
+    chkX.Value = True
+    chkX.Visible = Not reativar
+    lblAvisoX.Caption = "Sem o X, o ponto some do gráfico e só poderá ser reativado pela aba Inativar."
+    lblAvisoX.Visible = False
+    AtualizarBotao
+End Sub
+
+' Motivos padrao (linguagem de laboratorio). "Outro" exige o complemento. ADR-081 (UX): troca de lote/frasco saiu --
+' sozinha nao e nao conformidade.
+Private Function MotivosInativar() As Variant
+    MotivosInativar = Array("Repetição por erro analítico", _
+                            "Controle mal reconstituído, contaminado ou vencido", _
+                            "Falha de equipamento ou de calibração", _
+                            "Erro de identificação (nível ou amostra trocada)", _
+                            ITEM_OUTRO)
+End Function
+
+Private Function MotivosReativar() As Variant
+    MotivosReativar = Array("Inativado por engano", _
+                            "Investigação concluída: o resultado é válido", _
+                            ITEM_OUTRO)
+End Function
+
+' O motivo como vai para a aba Inativar: o item da lista e, se houver, o complemento ("Outro" = so o complemento).
+Private Function MotivoEscolhido() As String
+    Dim item As String, compl As String
+    If cboMotivo.ListIndex < 0 Then Exit Function
+    item = CStr(cboMotivo.List(cboMotivo.ListIndex))
+    compl = Trim$(Replace(Replace(CStr(txtComplemento.Value), vbCr, " "), vbLf, " "))
+    If item = ITEM_OUTRO Then
+        MotivoEscolhido = compl
+    ElseIf Len(compl) > 0 Then
+        MotivoEscolhido = item & " - " & compl
+    Else
+        MotivoEscolhido = item
+    End If
+End Function
+
+' Botao Inativar/Reativar so habilita com motivo (e com o complemento, quando o motivo e "Outro").
+Private Sub AtualizarBotao()
+    btnOK.Enabled = (Len(MotivoEscolhido()) > 0)
+    If cboMotivo.ListIndex >= 0 Then
+        If CStr(cboMotivo.List(cboMotivo.ListIndex)) = ITEM_OUTRO Then
+            lblComplemento.Caption = "Descreva o motivo (obrigatório para ""Outro"")"
+        Else
+            lblComplemento.Caption = "Complemento (opcional)"
+        End If
+    End If
+End Sub
+
+Private Sub cboMotivo_Change()
+    AtualizarBotao
+End Sub
+
+Private Sub txtComplemento_Change()
+    AtualizarBotao
+End Sub
+
+' Desmarcar o X: avisa que o ponto some do grafico e so volta pela aba Inativar (o duplo clique precisa do ponto).
+Private Sub chkX_Change()
+    lblAvisoX.Visible = (chkX.Visible And chkX.Value = False)
+End Sub
+
+Private Sub btnOK_Click()
+    Dim m As String
+    m = MotivoEscolhido()
+    If Len(m) = 0 Then Exit Sub
+    Motivo = m
+    If chkX.Value = True Then PlotarX = True Else PlotarX = False
+    If mReativar Then PlotarX = True
+    Confirmado = True
+    Me.Hide
+End Sub
+
+Private Sub btnCancelar_Click()
+    Confirmado = False
+    Me.Hide
+End Sub
+
+' O X da janela = Cancelar. Hide (nao Unload): quem chamou ainda le Confirmado e descarrega.
+Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
+    If CloseMode = vbFormControlMenu Then
+        Cancel = True
+        Confirmado = False
+        Me.Hide
+    End If
+End Sub

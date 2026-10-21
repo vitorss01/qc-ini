@@ -93,15 +93,34 @@ End Sub
 ' criado pelo instalador do ADR-064) como suja e recalcula. ADR-071: tambem o Sigma
 ' (Sigma_Faixa = Estatistica!L, CV pooled de N meses) -- senao L ficaria com o valor velho
 ' (o Painel I7:I9 le L e acompanha).
-Public Sub RecalcularIncerteza()
+' ADR-081: analito <> "" = so as linhas daquele analito (inativar/reativar um resultado dele pelo grafico): ~3 s -> ~0,2 s.
+Public Sub RecalcularIncerteza(Optional ByVal analito As String = "")
     On Error Resume Next
     InvalidarIncerteza
     mEQA.InvalidarNLabs                  ' n de laboratorios digitado depois da consolidacao
-    ThisWorkbook.Names("MU_Faixa").RefersToRange.Dirty
-    ThisWorkbook.Names("Sigma_Faixa").RefersToRange.Dirty
+    If Len(Trim$(analito)) > 0 Then
+        SujarLinhasDoAnalito "MU_Faixa", analito
+        SujarLinhasDoAnalito "Sigma_Faixa", analito
+    Else
+        ThisWorkbook.Names("MU_Faixa").RefersToRange.Dirty
+        ThisWorkbook.Names("Sigma_Faixa").RefersToRange.Dirty
+    End If
     ' revisao 07/10/2026: o CVp do bloco DESEMPENHO SIX SIGMA do Painel (o divisor do Sigma, ao lado dele)
     ThisWorkbook.Names("Sigma_CVp").RefersToRange.Dirty
     Application.Calculate
+End Sub
+
+' Marca como sujas so as linhas da faixa (Estatistica, uma linha por analito|nivel) cujo analito (coluna A) e o dado.
+Private Sub SujarLinhasDoAnalito(ByVal nome As String, ByVal analito As String)
+    Dim rg As Range, colA As Variant, r As Long, alvo As String
+    On Error GoTo fim
+    Set rg = ThisWorkbook.Names(nome).RefersToRange
+    colA = rg.Worksheet.Cells(rg.Row, 1).Resize(rg.Rows.Count, 1).Value
+    alvo = UCase$(Trim$(analito))
+    For r = 1 To rg.Rows.Count
+        If UCase$(Trim$(CStr(colA(r, 1)))) = alvo Then rg.Rows(r).Dirty
+    Next r
+fim:
 End Sub
 
 Private Function ComoDataMU(ByVal v As Variant) As Double

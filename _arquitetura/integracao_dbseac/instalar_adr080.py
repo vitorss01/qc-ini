@@ -19,6 +19,12 @@ Idempotente (a 2a execucao registra 0 mudancas). So:
      so a referencia de X (tipo, cor, legenda e Y ficam como estao);
   5. FUMACA no analito em tela: em cada nivel os X plotados sao inteiros, crescentes e sem buraco; devolve a protecao.
 O RUN (yymmddkk, a corrida do DIA) nao muda: continua a chave do Westgard entre niveis e da dica do grafico.
+
+ADR-081 (21/10/2026, no mesmo instalador -- e o mesmo eixo): a corrida do lote conta SO os resultados ATIVOS (inativar
+pela ID renumera os seguintes, sem lacuna); o X vermelho nao tem numero e fica ENTRE as corridas vizinhas (2,5...).
+  6. nomes engXPosN1..3 (Eng_Saida BN..BV, 3 por nivel); Calc CU..DC = posicao de cada X (N1 X1..X3, N2.., N3..);
+     as series "Nao conforme (X)" do grafico de cada nivel leem essas colunas; as bordas (184/185) incluem os X;
+  7. fumaca: corridas ativas 1, 2, 3... sem buraco e cada X estritamente entre as ativas vizinhas.
 """
 import math
 import os
@@ -34,6 +40,8 @@ from instalar_seguranca_usuarios import foto_protecao, devolver_protecao  # noqa
 
 COL_ENG = {1: 'BK', 2: 'BL', 3: 'BM'}          # Eng_Saida (mEstatistica.ENG_COL_CORL0 = 63 = BK)
 COL_CALC = {1: 'CR', 2: 'CS', 3: 'CT'}         # Calc
+ENG_XPOS0 = 66                                  # Eng_Saida BN (mEstatistica.ENG_COL_XPOS0): posicao de cada X, 3 por nivel
+CALC_XPOS0 = 99                                 # Calc CU: posicao de cada X (N1 X1..X3 = CU..CW, N2 = CX..CZ, N3 = DA..DC)
 R0, R1, RX0, RX1 = 3, 182, 184, 185
 MUDANCAS = []
 
@@ -65,6 +73,18 @@ def nome(wb, n, ref, oque):
         MUDANCAS.append(oque)
 
 
+def col(n):
+    s = ''
+    while n:
+        n, r = divmod(n - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+
+def col_xpos(i, k):
+    return col(CALC_XPOS0 + (i - 1) * 3 + (k - 1))
+
+
 def conferir_livres(wb, nlv):
     """As colunas novas tem de estar vazias ou ja serem do ADR-080 (nada sobrescrito em silencio)."""
     e, c = wb.Worksheets('Eng_Saida'), wb.Worksheets('Calc')
@@ -74,6 +94,17 @@ def conferir_livres(wb, nlv):
             v = row[0]
             if v not in (None, '') and not (isinstance(v, float) and v == int(v) and v >= 1):
                 raise SystemExit(f'Eng_Saida {k}: conteudo que nao e corrida do lote ({v!r}) -- nada foi alterado')
+        for kx in range(1, 4):                           # ADR-081: Eng BN..BV (posicao dos X) e Calc CU..DC
+            ke = col(ENG_XPOS0 + (i - 1) * 3 + kx - 1)
+            for row in e.Range(f'{ke}{R0}:{ke}{R1}').Value:
+                v = row[0]
+                if v not in (None, '') and not isinstance(v, float):
+                    raise SystemExit(f'Eng_Saida {ke}: conteudo que nao e posicao de X ({v!r}) -- nada foi alterado')
+            kc = col_xpos(i, kx)
+            for r in [2, R0, 100, R1, 183]:
+                f = str(c.Range(f'{kc}{r}').Formula or '')
+                if f and 'ENGXPOSN' not in norm(f) and not f.startswith('N'):
+                    raise SystemExit(f'Calc!{kc}{r} ocupada ({f[:60]}) -- nada foi alterado')
         k = COL_CALC[i]
         for r in [1, 2] + list(range(R0, R1 + 1, 30)) + [R1, 183, RX0, RX1]:
             f = str(c.Range(f'{k}{r}').Formula or '')
@@ -100,9 +131,28 @@ def calc(wb, nlv):
         if str(c.Range(f'{k}183').Value or '') != f'CORRIDA DO LOTE N{i} (ADR-080): bordas do eixo':
             c.Range(f'{k}183').Value = f'CORRIDA DO LOTE N{i} (ADR-080): bordas do eixo'
             MUDANCAS.append(f'Calc {k}183')
+        # ADR-081: posicao de cada X vermelho do nivel (3 colunas: X1..X3)
+        e0 = col(ENG_XPOS0 + (i - 1) * 3)
+        e1 = col(ENG_XPOS0 + (i - 1) * 3 + 2)
+        nome(wb, f'engXPosN{i}', f'=Eng_Saida!${e0}${R0}:${e1}${R1}', f'nome engXPosN{i}')
+        for kx in range(1, 4):
+            kc = col_xpos(i, kx)
+            if str(c.Range(f'{kc}2').Value or '') != f'N{i} x{kx} pos':
+                c.Range(f'{kc}2').Value = f'N{i} x{kx} pos'
+                MUDANCAS.append(f'Calc {kc}2')
+            nv = [f'=IF(OR($B{r}="",$D{r}<>1),NA(),IF(ISNUMBER(INDEX(engXPosN{i},$A{r},{kx})),'
+                  f'INDEX(engXPosN{i},$A{r},{kx}),NA()))' for r in range(R0, R1 + 1)]
+            rgx = c.Range(f'{kc}{R0}:{kc}{R1}')
+            if [norm(x[0]) for x in rgx.Formula] != [norm(x) for x in nv]:
+                rgx.Formula = tuple((x,) for x in nv)
+                MUDANCAS.append(f'Calc {kc}{R0}:{kc}{R1}')
         faixa = f'${k}${R0}:${k}${R1}'
-        setf(c.Range(f'{k}{RX0}'), f'=IF(COUNT({faixa})=0,0,AGGREGATE(5,6,{faixa})-0.6)', f'Calc {k}{RX0}')
-        setf(c.Range(f'{k}{RX1}'), f'=IF(COUNT({faixa})=0,21,AGGREGATE(4,6,{faixa})+2.2)', f'Calc {k}{RX1}')
+        fx = f'${col_xpos(i, 1)}${R0}:${col_xpos(i, 3)}${R1}'
+        # AGGREGATE de uma faixa so com NA() devolve 0 (nao erro): cada parte so entra se tiver numero (COUNT)
+        setf(c.Range(f'{k}{RX0}'), f'=IF(COUNT({faixa},{fx})=0,0,MIN(IF(COUNT({faixa})=0,1E+300,AGGREGATE(5,6,{faixa})),'
+                                   f'IF(COUNT({fx})=0,1E+300,AGGREGATE(5,6,{fx})))-0.6)', f'Calc {k}{RX0}')
+        setf(c.Range(f'{k}{RX1}'), f'=IF(COUNT({faixa},{fx})=0,21,MAX(IF(COUNT({faixa})=0,-1E+300,AGGREGATE(4,6,{faixa})),'
+                                   f'IF(COUNT({fx})=0,-1E+300,AGGREGATE(4,6,{fx})))+2.2)', f'Calc {k}{RX1}')
         nome(wb, f'xrunmin{i}', f'=Calc!${k}${RX0}', f'nome xrunmin{i}')
         nome(wb, f'xrunmax{i}', f'=Calc!${k}${RX1}', f'nome xrunmax{i}')
 
@@ -127,7 +177,13 @@ def graficos(wb, nlv):
             if not hy.startswith(f'N{i} '):
                 raise SystemExit(f'grafico {i}, serie {s.Name}: Y em {ycol} ("{hy}"), nao e do nivel {i}')
             x = mt.group(2)
-            if x in (f'Calc!$E${R0}:$E${R1}', f'Calc!${k}${R0}:${k}${R1}'):
+            mx_ = re.match(r'^N(\d) x(\d)$', hy)
+            if mx_:                                      # ADR-081: X vermelho -> a coluna da posicao dele
+                kc = col_xpos(i, int(mx_.group(2)))
+                if x not in (f'Calc!$E${R0}:$E${R1}', f'Calc!${k}${R0}:${k}${R1}', f'Calc!${kc}${R0}:${kc}${R1}'):
+                    raise SystemExit(f'grafico {i}, serie {s.Name}: X em {x} (esperado Calc!E, {k} ou {kc})')
+                nx = f'Calc!${kc}${R0}:${kc}${R1}'
+            elif x in (f'Calc!$E${R0}:$E${R1}', f'Calc!${k}${R0}:${k}${R1}'):
                 nx = f'Calc!${k}${R0}:${k}${R1}'
             elif x in (f'Calc!$E${RX0}:$E${RX1}', f'Calc!${k}${RX0}:${k}${RX1}'):
                 nx = f'Calc!${k}${RX0}:${k}${RX1}'
@@ -160,12 +216,23 @@ def fumaca(wb, nlv):
         yl = [r[0] for r in c.Range(c.Cells(R0, cab.index(f'N{i} line') + 1), c.Cells(R1, cab.index(f'N{i} line') + 1)).Value]
         xx = [[r[j] for r in c.Range(c.Cells(R0, cab.index(f'N{i} x1') + 1),
                                      c.Cells(R1, cab.index(f'N{i} x3') + 1)).Value] for j in range(3)]
-        pts = [xs[r] for r in range(len(xs)) if num(yl[r]) or any(num(xx[j][r]) for j in range(3))]
+        pts = [xs[r] for r in range(len(xs)) if num(yl[r])]            # ADR-081: so os ATIVOS tem numero
         if any(not num(x) or x != math.floor(x) for x in pts):
-            raise SystemExit(f'fumaca N{i}: ponto plotado sem corrida do lote: {pts[:10]}')
+            raise SystemExit(f'fumaca N{i}: ponto ativo sem corrida do lote: {pts[:10]}')
         if any(b - a != 1 for a, b in zip(pts, pts[1:])):
             raise SystemExit(f'fumaca N{i}: corridas fora de sequencia: {pts[:20]}')
-        out.append((i, len(pts), pts[0] if pts else None, pts[-1] if pts else None,
+        xp = [[r[0] for r in c.Range(f'{col_xpos(i, kx)}{R0}:{col_xpos(i, kx)}{R1}').Value] for kx in range(1, 4)]
+        nX, ruinsX = 0, []
+        for r in range(len(xs)):
+            for j in range(3):
+                if num(xx[j][r]):
+                    nX += 1
+                    p_ = xp[j][r]
+                    if not num(p_) or p_ == math.floor(p_):
+                        ruinsX.append((r + R0, p_))
+        if ruinsX:
+            raise SystemExit(f'fumaca N{i}: X vermelho sem posicao entre corridas: {ruinsX[:6]}')
+        out.append((i, len(pts), pts[0] if pts else None, pts[-1] if pts else None, nX,
                     c.Range(f'{COL_CALC[i]}{RX0}').Value, c.Range(f'{COL_CALC[i]}{RX1}').Value))
     return out
 
@@ -206,7 +273,7 @@ def main(produto, caminho, salvar=True):
         ex.esperar()
         ex.xl.EnableEvents = False
         res = fumaca(wb, nlv)
-        log('5. fumaca OK (nivel, pontos, 1a, ultima, borda esq., borda dir.): ' + str(res))
+        log('5. fumaca OK (nivel, ativos, 1a, ultima, X vermelhos, borda esq., borda dir.): ' + str(res))
         log(f'MUDANCAS {len(MUDANCAS)}' + (': ' + '; '.join(MUDANCAS[:12]) + (' ...' if len(MUDANCAS) > 12 else '') if MUDANCAS else ''))
         devolver_protecao(wb, foto)
         if estrutura:

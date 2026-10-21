@@ -540,6 +540,36 @@ Public Function SessaoAtiva() As Boolean
     SessaoAtiva = (Len(PapelDoUsuario(UsuarioSistema())) > 0)
 End Function
 
+' ADR-081: quem pode inativar/reativar resultados (janela do grafico e aba Inativar). Exige a sessao do DoLogin
+' (SessaoAtiva) e papel >= Cfg_Integracao PAPEL_MIN_INATIVAR (TÉCNICO, ANALISTA ou ADM). Chave ausente ou vazia =
+' qualquer usuario logado (o que valia antes). Valor que nao e papel = so ADM: um erro de digitacao na
+' configuracao nao abre a porta para todos.
+Public Function PodeInativar() As Boolean
+    Dim minimo As String, txt As String
+    On Error GoTo nao
+    If Not SessaoAtiva() Then Exit Function
+    txt = Trim$(mIntegracao.Cfg("PAPEL_MIN_INATIVAR"))
+    If Len(txt) = 0 Then PodeInativar = True: Exit Function
+    minimo = NormalizarPapel(txt)
+    If Len(minimo) = 0 Then minimo = PAPEL_ADM
+    PodeInativar = (NivelPapel(PapelDoUsuario(UsuarioSistema())) >= NivelPapel(minimo))
+nao:
+End Function
+
+' A frase curta para quem nao pode (PodeInativar = False): sem login ou papel abaixo do minimo.
+Public Function TextoSemPermissaoInativar() As String
+    Dim minimo As String
+    On Error Resume Next
+    If Not SessaoAtiva() Then
+        TextoSemPermissaoInativar = "Faça login para inativar ou reativar resultados."
+        Exit Function
+    End If
+    minimo = NormalizarPapel(mIntegracao.Cfg("PAPEL_MIN_INATIVAR"))
+    If Len(minimo) = 0 Then minimo = PAPEL_ADM
+    TextoSemPermissaoInativar = "Seu perfil (" & PapelDoUsuario(UsuarioSistema()) & ") não pode inativar nem reativar " & _
+                                "resultados. Peça a um usuário " & minimo & IIf(minimo = PAPEL_ADM, "", " ou superior") & "."
+End Function
+
 ' ===================== ESTADO GRAVADO NO DISCO (auditoria 04/10/2026) =====================
 ' Com macros desabilitadas (arquivo baixado, recebido por e-mail) o Workbook_Open nao roda: o que
 ' protege o arquivo e o estado em que ele foi GRAVADO. A entrega sai blindada (blindar_entrega.py),

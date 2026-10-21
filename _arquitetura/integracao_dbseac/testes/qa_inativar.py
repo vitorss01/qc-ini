@@ -44,6 +44,7 @@ SIM = 'SIM'
 TB = 'tblInativacao_NaoConformes'
 CAB = ['ID_REGISTRO', 'ANALITO', 'REGISTRAR - LJ', 'MOTIVO', 'DATA_INATIVACAO', 'USUARIO']
 SEP = ' · '
+DICA_USO = 'Duplo clique num ponto para inativar ou reativar'   # ADR-081: caixa sem ponto (mUI.DicaDeUso)
 
 
 def curto(i):
@@ -69,6 +70,8 @@ def confere_dica(dica, r, inativado):
     esp = ['ID ' + curto(r['ID_REGISTRO'])] + (['INATIVADO'] if inativado else []) + \
           [f"RUN {int(r['RUN'])}", dh.strftime('%d/%m/%Y %H:%M'), str(r['RESULTADO'])]
     p = partes(dica)
+    if p and (p[0].startswith('Corrida ') or p[0].startswith('Entre as corridas') or p[0].startswith('Antes da corrida')):
+        p = p[1:]                       # ADR-081: "Corrida n" / "Entre as corridas k e k+1" (eixo X; qa_corrida_lote)
     if len(p) != len(esp):
         return False, esp
     ok = p[:-1] == esp[:-1]
@@ -183,6 +186,8 @@ def executar(produto, caminho, saida):
         rA = q.escrever_linha(TB, {'ID_REGISTRO': curto(A['ID_REGISTRO']), 'ANALITO': analito, 'MOTIVO': motA})
         rB = q.escrever_linha(TB, {'ID_REGISTRO': B['ID_REGISTRO'], 'ANALITO': outro, 'MOTIVO': 'QA ADR-070: analito errado'})
         rC = q.escrever_linha(TB, {'ID_REGISTRO': curto(C['ID_REGISTRO']), 'MOTIVO': 'QA ADR-070: sem analito'})
+        # ADR-081: digitar o ID preenche o ANALITO sozinho; a linha SEM analito (E11) e a que o usuario esvaziou
+        lo.ListColumns('ANALITO').DataBodyRange.Cells(rC, 1).ClearContents()
         rD = q.escrever_linha(TB, {'ID_REGISTRO': D['ID_REGISTRO'], 'ANALITO': f'  {str(analito).lower()} '})
         # N10: um resultado de analito SEM cadastro (ANALITO = nome de origem na tblCQ_Final), ATIVO
         sem_cad = next((r for r in fin0.values() if r['ANALITO'] and str(r['ANALITO']).strip() not in cadastro
@@ -347,7 +352,7 @@ def executar(produto, caminho, saida):
         reg('N12 Dica do LJ: a republicação do motor (AtualizarCalc, como na troca de período/lote/analito) apaga o texto '
             'da caixa "tip" e muda a geração das dicas; InputBox ANSI: TextoAnsi troca ≥ σ Δ por texto visível, mantém '
             'acentos e o travessão do cp1252 e marca o resto como [?]',
-            txt_tip == '' and isinstance(g1, (int, float)) and isinstance(g0, (int, float)) and g1 > g0 and ansi == ansi_esp,
+            txt_tip in ('', DICA_USO) and isinstance(g1, (int, float)) and isinstance(g0, (int, float)) and g1 > g0 and ansi == ansi_esp,
             {'texto_tip_depois': txt_tip, 'geracao': [g0, g1], 'TextoAnsi': ansi, 'esperado': ansi_esp})
     except Exception as ex_geral:
         reg('N00 Execução interrompida: os testes seguintes a este ponto não rodaram', False,

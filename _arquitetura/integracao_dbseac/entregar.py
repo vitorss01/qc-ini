@@ -56,7 +56,8 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_varredura_lotes.py',                       # ADR-077/078: todos os lotes no Painel com media e limites
           'qa_linhas_alvo.py',                           # ADR-078: linhas do alvo antes da 1a corrida, troca sem gravar
           'qa_sync.py',                                  # ADR-079: incremental, idempotente, falhas, reserva PQ
-          'qa_corrida_lote.py']                          # ADR-080: corrida do lote por nivel, recomeca do 1
+          'qa_corrida_lote.py',                          # ADR-080/081: corrida do lote (so ativos), X entre corridas
+          'qa_inativar_ux.py']                           # ADR-081: inativar/reativar pelo grafico, simples
 
 
 def sha(p):
@@ -111,7 +112,8 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('blocos_lote', ['instalar_adr074.py', produto, alvo]),    # ADR-074: um bloco por lote na aba Analitos
               ('linhas_alvo', ['instalar_adr078.py', produto, alvo]),    # ADR-078: linhas do alvo sem depender das corridas
               ('motor_dados', ['instalar_adr079.py', produto, alvo]),    # ADR-079: camada de dados em VBA + Sync_Log
-              ('corrida_lote', ['instalar_adr080.py', produto, alvo]),   # ADR-080: eixo X = corrida do lote por nivel
+              ('corrida_lote', ['instalar_adr080.py', produto, alvo]),   # ADR-080/081: eixo X = corrida do lote (ativos)
+              ('inativar_ux', ['instalar_frm_inativar.py', produto, alvo]),  # ADR-081: inativar/reativar pelo grafico
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:
         ok, fim = rodar(os.path.join(trab, f'{nome}.log'), AQUI, *args)

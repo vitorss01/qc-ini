@@ -25,18 +25,34 @@ agendada atualiza a cada 2 minutos.
    - **ALERTA**: o sistema protegeu o dado, mas alguém deve olhar;
    - **INFO**: só registro.
 
-## 2. Inativar um resultado (não conforme / repetição)
+## 2. Inativar um resultado (não conforme / repetição) — ADR-081
 
-1. No gráfico, passe o mouse no ponto e anote o **ID**. Basta o número, ex. 314216.
-2. Na aba **Inativar**, na próxima linha livre, preencha:
-   - **ID**;
-   - **Analito** (lista);
-   - **Registrar-LJ**: marcado = o ponto aparece como X vermelho; desmarcado = não aparece no gráfico;
-   - **Motivo**, que é obrigatório e vale como justificativa.
-3. Clique em ⟳ **ATUALIZAR DADOS**.
-- O resultado não é apagado: continua na base, com PARTICIPA = NÃO, e a trilha de auditoria registra data e usuário.
-- Se o ID não for do analito informado, o QA acusa e a inativação não é aplicada.
-- **Para reativar**, apague a linha e atualize.
+**Pelo gráfico (o jeito simples):**
+
+1. No Painel, dê **duplo clique** (ou clique com o botão direito) no ponto.
+2. Abre a janela **Inativar o resultado ID …** com o analito, o nível, a corrida, a data/hora, o valor e o lote —
+   confira que é o ponto certo.
+3. Escolha o **motivo** na lista (em "Outro", escreva o complemento). A caixa **Mostrar como X vermelho no gráfico**
+   já vem marcada; desmarque se o resultado não deve aparecer no gráfico.
+4. Clique em **Inativar**. O gráfico se atualiza sozinho em alguns segundos e mostra "✓ ID … inativado". Não precisa
+   clicar em ATUALIZAR.
+
+**Reativar:** duplo clique no **X vermelho** → janela **Reativar** → motivo → **Reativar**. Resultado inativado sem X
+(caixa desmarcada) não aparece no gráfico: reative pela aba Inativar (apague a linha e clique em ATUALIZAR).
+
+**Como as corridas ficam:** a corrida do lote conta só os resultados **válidos**. Se a ID 54565 era a corrida 3 e foi
+inativada, o resultado seguinte passa a ser a corrida 3 — o gráfico continua 1, 2, 3… sem lacuna. O X vermelho fica
+**entre** as corridas vizinhas (ex.: entre a 2 e a 3), sem número. O resultado é sempre identificado pela **ID**, que
+nunca muda; a dica do ponto mostra a corrida, a ID e o RUN do dia. Reativar devolve a numeração exatamente como era.
+
+**Pela aba Inativar (quem preferir digitar):** na próxima linha livre, digite a **ID** (o analito se preenche
+sozinho), marque ou não **Registrar-LJ** (X vermelho), escreva o **motivo** e clique em ⟳ **ATUALIZAR DADOS**.
+
+- O resultado não é apagado: continua na base, com PARTICIPA = NÃO, e a trilha de auditoria registra data, usuário,
+  motivo e a corrida que ele tinha.
+- Se o ID não for do analito informado, o QA acusa (E10) e a inativação não é aplicada.
+- Quem pode inativar: qualquer usuário com login (a chave PAPEL_MIN_INATIVAR da aba Cfg_Integracao restringe a um
+  papel mínimo, se o laboratório quiser).
 
 ## 3. Digitar um resultado (falha do interfaceamento)
 

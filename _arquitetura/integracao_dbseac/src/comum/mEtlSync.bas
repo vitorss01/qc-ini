@@ -52,8 +52,11 @@ End Sub
 ' ---------------------------------------------------------------- a atualizacao
 ' Devolve os tempos por etapa; nNovos = resultados recebidos agora; mudou = alguma tabela foi regravada;
 ' resLotes = retorno do mLotes.RegistrarLotesRecebidos. Em falha levanta o erro (EtapaAtual diz onde).
+' ADR-081: soEntradas (com historico = True) = o ATUALIZAR so das entradas (inativar pelo grafico): nao le o
+' DB_SEAC, mas nao e o modo historico -- o QA nao ganha o A07 e os achados que so a leitura da origem produz
+' continuam os da ultima leitura (JuntarAchadosDaOrigem).
 Public Function Sincronizar(ByVal historico As Boolean, ByRef nNovos As Long, ByRef mudou As Boolean, _
-                            ByRef resLotes As String) As String
+                            ByRef resLotes As String, Optional ByVal soEntradas As Boolean = False) As String
     Dim nomes As Variant, orig As Variant, nOrig As Long, msg As String, lo As ListObject
     Dim rec As Variant, nRec As Long, cabRec As Object, i As Long, ids As Object
     Dim novos As Variant, nSemId As Long, rec2 As Variant, nRec2 As Long, F As Variant, nF As Long, nCQ0 As Long
@@ -137,9 +140,11 @@ Public Function Sincronizar(ByVal historico As Boolean, ByRef nNovos As Long, By
     mEtapa = "registrar lotes novos"
     ' SEMPRE, como no caminho PQ (ADR-060): sem dado novo um lote apagado do cadastro tambem tem de voltar
     ' (qa_lotes_auto A01, 21/10/2026 -- com "so se a Principal mudou" ele nao voltava)
-    resLotes = mLotes.RegistrarLotesRecebidos()
+    ' ADR-081: no ATUALIZAR so das entradas (inativar/reativar pelo grafico) nao ha resultado novo -- nenhum lote novo
+    If Not soEntradas Then resLotes = mLotes.RegistrarLotesRecebidos()
     mEtapa = "conferencia (QA_INTEGRACAO)"
-    q = mEtlQA.CalcularQA(F, rec2, nRec2, cabRec, orig, nomes, nOrig, historico)
+    q = mEtlQA.CalcularQA(F, rec2, nRec2, cabRec, orig, nomes, nOrig, historico And Not soEntradas)
+    If soEntradas Then q = JuntarAchadosDaOrigem(q)
     Set lo = mIntegracao.AcharTabela(TB_QA)
     If Not lo Is Nothing Then
         If IsEmpty(q) Then
@@ -152,6 +157,58 @@ Public Function Sincronizar(ByVal historico As Boolean, ByRef nNovos As Long, By
     mudou = mRec Or mCQ Or mQA
     mEtapa = ""
     Sincronizar = mTempos
+End Function
+
+' ADR-081: no ATUALIZAR so das entradas o DB_SEAC nao e lido. Os achados que so a leitura da origem produz -- A03
+' (valor mudou na origem), E06 (linha da origem sem ID) e o E07 "na origem" -- continuam valendo ate o proximo
+' ATUALIZAR completo: sao copiados da tabela atual (antes de publicar) em vez de sumirem do QA_INTEGRACAO.
+Private Function JuntarAchadosDaOrigem(ByVal q As Variant) As Variant
+    Dim lo As ListObject, h As Variant, v As Variant, i As Long, j As Long, nq As Long, nc As Long, nomes As Variant
+    Dim mapa() As Long, guardar As Collection, out() As Variant, k As Long, jCod As Long, jDet As Long
+    Dim cod As String, det As String, it As Variant
+    JuntarAchadosDaOrigem = q
+    Set lo = mIntegracao.AcharTabela(TB_QA)
+    If lo Is Nothing Then Exit Function
+    If lo.ListRows.Count = 0 Then Exit Function
+    nomes = mEtlQA.NomesColunasQA()
+    nc = UBound(nomes) - LBound(nomes) + 1
+    h = lo.HeaderRowRange.Value
+    ReDim mapa(1 To nc)
+    For j = 1 To nc
+        For i = 1 To UBound(h, 2)
+            If CStr(h(1, i)) = CStr(nomes(LBound(nomes) + j - 1)) Then mapa(j) = i
+        Next i
+        If mapa(j) = 0 Then Exit Function          ' layout diferente: o ConferirEsquema/Publicar decide
+        If CStr(nomes(LBound(nomes) + j - 1)) = "CODIGO" Then jCod = j
+        If CStr(nomes(LBound(nomes) + j - 1)) = "DETALHE" Then jDet = j
+    Next j
+    If jCod = 0 Or jDet = 0 Then Exit Function
+    v = lo.DataBodyRange.Value2
+    If Not IsArray(v) Then Exit Function
+    Set guardar = New Collection
+    For i = 1 To UBound(v, 1)
+        If Not IsError(v(i, mapa(jCod))) And Not IsError(v(i, mapa(jDet))) Then
+            cod = CStr(v(i, mapa(jCod)))
+            det = CStr(v(i, mapa(jDet)))
+            If cod = "A03" Or cod = "E06" Or (cod = "E07" And InStr(1, det, "na origem", vbBinaryCompare) > 0) Then guardar.Add i
+        End If
+    Next i
+    If guardar.Count = 0 Then Exit Function
+    If IsEmpty(q) Then nq = 0 Else nq = UBound(q, 1)
+    ReDim out(1 To nq + guardar.Count, 1 To nc)
+    For i = 1 To nq
+        For j = 1 To nc
+            out(i, j) = q(i, j)
+        Next j
+    Next i
+    k = nq
+    For Each it In guardar
+        k = k + 1
+        For j = 1 To nc
+            out(k, j) = v(CLng(it), mapa(j))
+        Next j
+    Next it
+    JuntarAchadosDaOrigem = out
 End Function
 
 ' Para o instalador: as tabelas publicadas tem as colunas do calculo? Refaz pelo Power Query a que nao tiver.
