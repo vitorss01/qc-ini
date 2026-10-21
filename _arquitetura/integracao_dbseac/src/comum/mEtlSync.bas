@@ -135,7 +135,9 @@ Public Function Sincronizar(ByVal historico As Boolean, ByRef nNovos As Long, By
 
     ' ---- 6. lotes novos e conferencia
     mEtapa = "registrar lotes novos"
-    If mCQ Then resLotes = mLotes.RegistrarLotesRecebidos()
+    ' SEMPRE, como no caminho PQ (ADR-060): sem dado novo um lote apagado do cadastro tambem tem de voltar
+    ' (qa_lotes_auto A01, 21/10/2026 -- com "so se a Principal mudou" ele nao voltava)
+    resLotes = mLotes.RegistrarLotesRecebidos()
     mEtapa = "conferencia (QA_INTEGRACAO)"
     q = mEtlQA.CalcularQA(F, rec2, nRec2, cabRec, orig, nomes, nOrig, historico)
     Set lo = mIntegracao.AcharTabela(TB_QA)
