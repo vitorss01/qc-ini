@@ -18,6 +18,8 @@ público — decisão do gestor em `estudos/DECISAO_GESTOR_2026-10-06.md`). A ve
 | 16/10/2026 | QC_Bioquimica.xlsm | 16460640 | `afe6c99794d2b0801594c206bc3db68a5b84849224938235c129868f7e9b833c` | de6b36a | 17 suítes PASS, MODO_FONTE=SEAC — ADR-076/077 (valores de TESTE, Painel acompanha o lote) e ADR-078 (linhas do alvo sem corridas; troca de lote não grava) |
 | 16/10/2026 | QC_Hematologia.xlsm | 13940293 | `e219d0ee2e3a1d1de72e1428ca81d287df50a12fcb2c2fe315b3dac2b7597619` | de6b36a | 17 suítes PASS, MODO_FONTE=SEAC — ADR-076/077/078 |
 | 21/10/2026 | QC_Hematologia.xlsm | 14445422 | `64086540377c4a673e7ca95f686f91085b28b2754241d3c876b9090a1762f55a` | 078b1c3 | 19 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-079 (camada de dados em VBA, Sync_Log; tblCQ_Final refeita com MOTIVO_INATIVACAO) e ADR-080 (eixo X = corrida do lote por nível) |
+| 21/10/2026 | QC_Hematologia.xlsm | 14575814 | `3dbf411f9bc385ac0c4e66e74cfcd0d70554184bd606368bae3f81eda7487645` | ed2aaf4 | 20 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-081 (inativar pela ID no gráfico, corridas só com ativos) e registro de lotes sempre |
+| 21/10/2026 | QC_Bioquimica.xlsm | 17101301 | `77d63b3dae36163a151e3ef0482412f72fc5f1ad9ebb7022801e1e430a388ed3` | ed2aaf4 | 20 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-079 (camada de dados em VBA, Sync_Log), ADR-080 (eixo = corrida do lote por nível) e ADR-081 (inativar pela ID no gráfico) |
 
 O hash muda a cada gravação no laboratório (uso normal). Para conferir a versão entregue, compare com o arquivo
 `_entrega_<data>/<produto>/<arquivo>.xlsm` da pasta de entrega (não versionada).
