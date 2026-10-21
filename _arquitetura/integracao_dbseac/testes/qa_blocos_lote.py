@@ -23,6 +23,7 @@ Bioquimica e Hematologia (esta depois do ADR-075).
 import datetime as dt
 import json
 import os
+import re
 import sys
 import tempfile
 import traceback
@@ -30,6 +31,8 @@ import traceback
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 from qa_final import QA, reg, RES, sha256_arquivo  # noqa: E402
+
+RX_FOTO = re.compile(r'media de (\d+) resultado')   # BN: N da foto dos valores de TESTE
 
 R0, PASSO, NAN = 2, 54, 40
 O_AN, O_ANO, O_NOMES, O_CLIA = 4, 45, 46, 47
@@ -173,7 +176,9 @@ def executar(produto, caminho, saida):
             if str(r_.get('PARTICIPA_ESTATISTICA', '')).upper() != 'SIM' or not num(r_.get('RESULTADO')):
                 continue
             k_ = (txt(r_['LOTE']).upper(), txt(r_['ANALITO']).upper(), int(r_['NIVEL']))
-            grupos.setdefault(k_, []).append(float(r_['RESULTADO']))
+            rec_ = r_.get('RECEBIDO_EM')
+            grupos.setdefault(k_, []).append((rec_.timestamp() if hasattr(rec_, 'timestamp') else 0.0,
+                                              float(r_['RESULTADO'])))
         import statistics as stt
         conf_n, dif_n, lotes_n = 0, [], set()
         sem_limite = []
@@ -187,7 +192,13 @@ def executar(produto, caminho, saida):
                     continue
                 parte = org.split(f'N{nv}: ')[1].split(' | ')[0]
                 m_, s_ = linha[2 + (nv - 1) * 2], linha[3 + (nv - 1) * 2]
-                xs = grupos.get((lote_.upper(), an_.upper(), nv), [])
+                # 21/10/2026: o valor de TESTE e uma FOTO -- a media dos N resultados que havia quando foi gravado (o N
+                # esta no texto da origem). Depois chegam resultados novos (Bioquimica: ATUALIZAR de 16/10 09:25, depois
+                # da entrega): a media e recalculada sobre os N primeiros RECEBIDOS, nao sobre todos os de hoje
+                todos = sorted(grupos.get((lote_.upper(), an_.upper(), nv), []), key=lambda p_: p_[0])
+                mn_ = RX_FOTO.search(parte)
+                n_foto = int(mn_.group(1)) if mn_ else len(todos)
+                xs = [v_ for _, v_ in todos[:n_foto]] if n_foto <= len(todos) else [v_ for _, v_ in todos]
                 ok_m = ('media ja gravada' in parte) or (bool(xs) and perto(m_, stt.mean(xs), 1e-9))
                 if 'DP ja gravado' in parte:
                     ok_s = num(s_)
