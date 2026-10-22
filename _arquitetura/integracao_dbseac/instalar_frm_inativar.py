@@ -110,6 +110,12 @@ def _normalizar(t):
 def _diferencas(comp, texto):
     """O que o form no arquivo tem de diferente do daqui (lista vazia = igual)."""
     dif = []
+    # 22/10/2026: num arquivo REABERTO, Properties do UserForm so responde depois que o designer e tocado -- sem isto
+    # Caption/Width/Height/StartUpPosition davam erro ('?') e o form era refeito a cada execucao (nunca 0 mudancas)
+    try:
+        comp.Designer
+    except Exception:                                  # noqa: BLE001
+        pass
     for k, v in FORM.items():
         try:
             if not _igual(k, comp.Properties(k).Value, v):
@@ -148,7 +154,7 @@ def criar_form(wb, log=print):
         if not dif:
             log(f'   {NOME}: igual ao instalador (0 mudancas)')
             return 0
-        log(f'   {NOME}: refeito ({", ".join(dif[:8])}{" ..." if len(dif) > 8 else ""})')
+        log(f'   {NOME}: refeito ({", ".join(dif)})')
     else:
         comp = vbp.VBComponents.Add(VBEXT_CT_MSFORM)
         comp.Name = NOME
