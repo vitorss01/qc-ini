@@ -54,7 +54,8 @@ TB_COM = 'tblComentariosTecnicos'
 TB_QA = 'tblQA_Integracao'
 COL_LJ = 'REGISTRAR - LJ'
 
-STATUS = ('MANUAL_INCOMPLETO', 'DUPLICIDADE_ORIGEM', 'CONFLITO_MANUAL', 'SEM_DATA_HORA', 'SEM_VALOR', 'INATIVADO', 'ATIVO')   # SEM_DATA_HORA: D16
+STATUS = ('MANUAL_INCOMPLETO', 'DUPLICIDADE_ORIGEM', 'CONFLITO_MANUAL', 'SUBSTITUIDO_MANUAL', 'SEM_DATA_HORA', 'SEM_VALOR',
+          'INATIVADO', 'ATIVO')   # SEM_DATA_HORA: D16; SUBSTITUIDO_MANUAL: ADR-082 (manual com SUBSTITUI_ID valido)
 CORRIDA_REAL = ('ATIVO', 'INATIVADO', 'SEM_VALOR')
 # colunas da tblCQ_Final que uma inativacao (e o seu comentario) pode mudar -- e nenhuma outra
 COLS_INATIVACAO = {'STATUS_ANALITICO', 'PARTICIPA_ESTATISTICA', 'REGISTRAR_RESULTADO_NO_LJ', 'TIPO_PLOTAGEM_LJ',
@@ -276,16 +277,23 @@ def _gk(r):
     return '|'.join(cstr(p) for p in partes if p is not None and p != '')
 
 
+def alvo_de_manual(r):
+    """ADR-082: resultado do interfaceamento que um manual valido substitui (ID_RELACIONADO = MAN_...). Nunca forma
+    corrida; o que continua INATIVADO (ou SEM_VALOR inativado) fica com a CORRIDA_NO_DIA/RUN do manual."""
+    return r.get('ORIGEM_RESULTADO') == 'INTERFACEAMENTO' and cstr(r.get('ID_RELACIONADO')).startswith('MAN_')
+
+
 def oraculo_run(linhas_finais, gap_min):
     """{ID: (CORRIDA_NO_DIA, RUN)} pela regra escrita no ADR-057 e no PQ:
-      Reais = ATIVO/INATIVADO/SEM_VALOR (fora incompleto, retransmissao e conflito);
+      Reais = ATIVO/INATIVADO/SEM_VALOR (fora incompleto, retransmissao, conflito e o resultado que um manual
+      substitui -- ADR-082: o que continua INATIVADO/SEM_VALOR recebe o (CORRIDA_NO_DIA, RUN) do manual);
       (1) ordena por _GK=(equip, matriz, lote, analito, dia), DATA_HORA, NIVEL, ITEM_ID, ID; bloco novo quando
           muda o _GK ou o intervalo para a linha anterior passa de GAP minutos;
       (2) dentro de (bloco, nivel), ordem por DATA_HORA, ITEM_ID, ID: o 2o resultado do mesmo nivel abre a
           posicao seguinte (_POS);
       (3) CORRIDA_NO_DIA = ordem de (bloco, _POS) no _GK; RUN = yymmdd*100 + corrida (nulo acima de 99).
     Contrato D16: linha sem DATA_HORA fica FORA do calculo da corrida (sem RUN)."""
-    reais = [r for r in linhas_finais if r.get('STATUS_ANALITICO') in CORRIDA_REAL
+    reais = [r for r in linhas_finais if r.get('STATUS_ANALITICO') in CORRIDA_REAL and not alvo_de_manual(r)
              and isinstance(r.get('DATA_HORA'), dt.datetime) and isinstance(r.get('DATA'), dt.datetime)]
     for r in reais:
         r['_GK_ORC'] = _gk(r)
@@ -325,6 +333,9 @@ def oraculo_run(linhas_finais, gap_min):
         out[r['ID_REGISTRO']] = (c, run)
     for r in reais:
         r.pop('_GK_ORC', None)
+    for r in linhas_finais:                       # ADR-082: o alvo inativado herda a corrida do manual
+        if r.get('STATUS_ANALITICO') in CORRIDA_REAL and alvo_de_manual(r) and r['ID_RELACIONADO'] in out:
+            out[r['ID_REGISTRO']] = out[r['ID_RELACIONADO']]
     return out
 
 
@@ -1605,7 +1616,7 @@ def planejar_e12(ctx, fin, pred_est):
     com_bloco = gap > tol + 2
     grupos = collections.defaultdict(list)
     for r in fin:
-        if r['STATUS_ANALITICO'] in CORRIDA_REAL and isinstance(r['DATA_HORA'], dt.datetime) \
+        if r['STATUS_ANALITICO'] in CORRIDA_REAL and not alvo_de_manual(r) and isinstance(r['DATA_HORA'], dt.datetime) \
                 and isinstance(r['DATA'], dt.datetime):
             grupos[(cstr(r['EQUIPAMENTO']), cstr(r['MATRIZ']), cstr(r['LOTE']), cstr(r['ANALITO']), r['DATA'].date())].append(r)
     t = ctx.tela
@@ -1753,8 +1764,8 @@ def e12_e14(ctx, fin0):
             and iint(rb['CORRIDA_NO_DIA']) == 3 and bool(achados(qa, 'A06', ids_m['M_bloco'])),
             {'M_bloco': resumo(rb), 'RUN_corrida1': run_b1, 'A06': len(achados(qa, 'A06', ids_m['M_bloco']))})
         ri = mm['M_inst']
-        reg('E12c M_inst (mesmo DATA_HORA de um N1 do interfaceamento): CONFLITO_MANUAL, ID_RELACIONADO = interface, '
-            'A01, fora do RUN',
+        reg('E12c M_inst (mesmo DATA_HORA de um N1 do interfaceamento, sem SUBSTITUI_ID): CONFLITO_MANUAL, '
+            'ID_RELACIONADO = interface, A01, fora do RUN',
             ri is not None and ri['STATUS_ANALITICO'] == 'CONFLITO_MANUAL' and ri['ID_RELACIONADO'] == plano['n1_b2']['ID_REGISTRO']
             and bool(achados(qa, 'A01', ids_m['M_inst'])) and iint(ri['RUN']) is None,
             {'M_inst': resumo(ri), 'interface': plano['n1_b2']['ID_REGISTRO']})
@@ -1966,8 +1977,8 @@ def e13(ctx, fin0):
     if xb:
         rb = f1.get(id_b)
         a09 = achados(qa, 'A09', id_b)
-        reg('E13b Manual corrigindo interface INATIVADO (±5 min): CONFLITO_MANUAL com ID_RELACIONADO = interface, '
-            'fora da estatística, e ALERTA A09 (decisão conservadora; hoje falha: prova D09b)',
+        reg('E13b Manual corrigindo interface INATIVADO (±5 min) SEM SUBSTITUI_ID: CONFLITO_MANUAL com ID_RELACIONADO = '
+            'interface, fora da estatística, e ALERTA A09 (com SUBSTITUI_ID o manual valeria: ADR-082, qa_manual_substitui)',
             rb is not None and rb['STATUS_ANALITICO'] == 'CONFLITO_MANUAL' and rb['ID_RELACIONADO'] == xb['ID_REGISTRO']
             and rb['PARTICIPA_ESTATISTICA'] == NAO and bool(a09),
             {'manual': resumo(rb), 'interface': resumo(f1.get(xb['ID_REGISTRO'])), 'A09': [x['DETALHE'] for x in a09],

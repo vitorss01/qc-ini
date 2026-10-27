@@ -706,16 +706,54 @@ End Function
 
 ' "Corrida 3 · ID 314216 · RUN 25103103 · 25/10/2025 14:32 · 1,234"
 ' (X: "Entre as corridas 2 e 3 · ID 314216 · INATIVADO · RUN ...").
+' ADR-082: manual que substitui um resultado do interfaceamento: "ID MAN_0007 (substitui 54565)" -- DENTRO da parte do
+' ID (nenhuma parte nova separada por " · ").
 Private Function TextoDica(ByVal idv As Variant, ByVal inativado As Boolean, ByVal runv As Variant, _
                            ByVal dh As Variant, ByVal v As Variant, Optional ByVal corrida As String = "") As String
     Dim s As String, sep As String
     sep = " " & ChrW$(183) & " "
     If Len(corrida) > 0 Then s = corrida & sep
-    s = s & "ID " & IdCurto(CStr(idv))
+    s = s & "ID " & IdCurto(CStr(idv)) & TextoSubstitui(idv)
     If inativado Then s = s & sep & "INATIVADO"
     s = s & sep & "RUN " & CStr(runv)
     If IsDate(dh) Then s = s & sep & Format$(dh, "dd/mm/yyyy hh:mm")
     TextoDica = s & sep & CStr(CDbl(v))
+End Function
+
+' ADR-082: " (substitui 54565)" quando o ponto e um manual que substitui um resultado do interfaceamento; senao "".
+' So consulta a Principal - Resultados para ID de manual (a dica roda a cada movimento do mouse). Nunca levanta erro.
+Private Function TextoSubstitui(ByVal idv As Variant) As String
+    Dim t As String
+    On Error GoTo sai
+    If UCase$(Left$(Trim$(CStr(idv)), 4)) <> "MAN_" Then Exit Function
+    t = mIntegracao.SubstituidoPeloManual(CStr(idv))
+    If Len(t) > 0 Then TextoSubstitui = " (substitui " & IdCurto(t) & ")"
+sai:
+End Function
+
+' ADR-082: o texto de efeito da janela de inativar quando o ponto e um manual que substitui um resultado do
+' interfaceamento: o efeito de sempre (sai da media, do DP e do Westgard; nao e apagado) + inativar o manual NAO traz o
+' automatico de volta; "" nos outros pontos (fica o texto padrao). Curto: o lblEfeito tem 342 x 27 pt, fonte 8 (duas
+' linhas; o padrao tem 127 caracteres) -- o QA confere que cabe (<= 150). Publica: o QA confere o texto.
+Public Function EfeitoInativar(ByVal id As String) As String
+    Dim t As String
+    On Error GoTo sai
+    t = mIntegracao.SubstituidoPeloManual(id)
+    If Len(t) > 0 Then EfeitoInativar = "O manual sai da média, do DP e do Westgard (não é apagado), mas NÃO traz o " & _
+        "automático " & IdCurto(t) & " de volta: para isso, apague o SUBSTITUI_ID."
+sai:
+End Function
+
+' ADR-082: o texto de efeito da janela de REATIVAR quando o ponto (X vermelho) e um resultado do interfaceamento que um
+' manual substitui: reativado, ele vira SUBSTITUIDO_MANUAL e continua fora (o texto padrao diria "volta a media");
+' "" nos outros pontos. Mesmo limite de tamanho do EfeitoInativar. Publica: o QA confere o texto.
+Public Function EfeitoReativar(ByVal id As String) As String
+    Dim t As String
+    On Error GoTo sai
+    t = mIntegracao.ManualQueSubstitui(id)
+    If Len(t) > 0 Then EfeitoReativar = "Substituído pelo manual " & t & ": reativado, continua fora da média, do DP e " & _
+        "do gráfico. Para voltar a valer, apague o SUBSTITUI_ID do manual."
+sai:
 End Function
 
 ' O numero que o usuario digita na aba Inativar: "BIO-314216" -> "314216". Manual (MAN_0001) fica inteiro.
@@ -781,7 +819,7 @@ Private Function InativarPontoNucleo(ByVal nivel As Long, ByVal serie As Long, B
                                      ByVal resp As String) As String
     Dim d As String, p As Variant, reativar As Boolean, conf As Boolean, motivo As String
     Dim plotarX As Boolean, r As String, t0 As Double, msg As String, idc As String, f As Object
-    Dim titulo As String, detalhe As String, sep As String, k1 As Long, k2 As Long, teste As Boolean
+    Dim titulo As String, detalhe As String, sep As String, k1 As Long, k2 As Long, teste As Boolean, efeito As String
     On Error GoTo falha
     teste = (Len(resp) > 0)
     If Not mSeguranca.PodeInativar() Then
@@ -800,6 +838,9 @@ Private Function InativarPontoNucleo(ByVal nivel As Long, ByVal serie As Long, B
     sep = " " & ChrW$(183) & " "
     If reativar Then titulo = "Reativar o resultado ID " & idc Else titulo = "Inativar o resultado ID " & idc
     detalhe = p(2) & sep & "N" & p(3) & sep & TextoCorrida(CStr(p(4))) & sep & p(5) & sep & p(6) & sep & "lote " & p(8)
+    ' ADR-082: manual que substitui um automatico -- o texto de efeito da janela avisa que inativar nao o traz de volta;
+    ' X de um automatico substituido -- reativado, continua fora (vira SUBSTITUIDO_MANUAL)
+    If reativar Then efeito = EfeitoReativar(CStr(p(1))) Else efeito = EfeitoInativar(CStr(p(1)))
     If teste Then                                 ' "CONFIRMAR|motivo|1" (1 = X vermelho) ou "CANCELAR"
         k1 = InStr(resp, "|")
         If k1 = 0 Then k1 = Len(resp) + 1
@@ -818,6 +859,7 @@ Private Function InativarPontoNucleo(ByVal nivel As Long, ByVal serie As Long, B
     Else
         Set f = VBA.UserForms.Add("frmInativar")
         f.Preparar reativar, titulo, detalhe
+        If Len(efeito) > 0 Then TrocarEfeito f, efeito
         f.Show
         conf = f.Confirmado
         motivo = f.Motivo
@@ -865,6 +907,12 @@ falha:
     If Application.Interactive And Not teste Then MsgBox msg, vbExclamation, "Inativar resultado"
     InativarPontoNucleo = "ERRO|" & msg
 End Function
+
+' ADR-082: troca o texto de efeito da janela (lblEfeito). Janela de outra versao, sem o rotulo: fica o texto padrao.
+Private Sub TrocarEfeito(ByVal f As Object, ByVal efeito As String)
+    On Error Resume Next
+    f.Controls("lblEfeito").Caption = efeito
+End Sub
 
 ' A corrida do campo do DadosDoPonto no texto da dica: "3" -> "Corrida 3"; "entre 2 e 3" -> "Entre as corridas 2 e 3".
 Private Function TextoCorrida(ByVal c As String) As String

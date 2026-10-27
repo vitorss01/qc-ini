@@ -31,8 +31,17 @@
 //                          menor (ID_RELACIONADO)                   -> nao participa, nao plota
 //    CONFLITO_MANUAL ..... resultado manual que coincide com um do
 //                          interfaceamento (mesma chave logica, ate
-//                          TOLERANCIA_CONFLITO_MIN) ou repete outro
-//                          manual -- nunca duplica em silencio      -> nao participa, nao plota
+//                          TOLERANCIA_CONFLITO_MIN) sem SUBSTITUI_ID
+//                          valido, repete outro manual, ou indica no
+//                          SUBSTITUI_ID um resultado que outro manual
+//                          ja substitui -- nunca duplica em silencio -> nao participa, nao plota
+//    SUBSTITUIDO_MANUAL .. (ADR-082) resultado do interfaceamento que
+//                          um manual valido indica no SUBSTITUI_ID:
+//                          vale o manual; este fica guardado, com
+//                          ID_RELACIONADO = o manual. Inativado pelo
+//                          usuario CONTINUA INATIVADO (a inativacao
+//                          prevalece), sem corrida propria: fica com
+//                          a CORRIDA_NO_DIA e o RUN do manual       -> nao participa, nao plota, sem RUN
 //    SEM_DATA_HORA ....... interfaceamento sem DATA_HORA (QA E09)  -> nao participa, nao plota, sem RUN
 //    SEM_VALOR ........... sem numero (flag '----' do XN-1000)      -> nao participa, nao plota
 //    INATIVADO ........... ID na tblInativacao_NaoConformes COM o   -> nao participa;
@@ -45,6 +54,19 @@
 //
 //  JUSTIFICATIVA (ADR-070): o MOTIVO escrito na propria linha da aba Inativar OU um
 //  comentario na aba COMENTARIOS_TECNICOS. Inativado sem nenhum dos dois = GOVERNANCA ERRO (QA E01).
+//
+//  SUBSTITUICAO POR ESCOLHA DO USUARIO (ADR-082, 22/10/2026; revoga a D09b "manual nunca substitui")
+//    Coluna opcional SUBSTITUI_ID da tblResultados_Manuais. Preenchida, exige MOTIVO (senao
+//    MANUAL_INCOMPLETO). Vale para manual completo que nao repete outro manual, quando o ID
+//    (NormId) e de um resultado do INTERFACEAMENTO, nao e retransmissao e tem a mesma chave do
+//    manual (EQUIPAMENTO, MATRIZ, LOTE, NIVEL, ANALITO). Sem limite de horario: a escolha e
+//    explicita e o manual entra na corrida pela PROPRIA DATA/HORA; fica isento do conflito por
+//    horario com o interfaceamento e aponta para o substituido (ID_RELACIONADO, nos dois sentidos).
+//    Dois manuais validos para o mesmo ID: vale o de menor _LINHA_MANUAL; o outro e CONFLITO_MANUAL.
+//    ID invalido: nada e substituido, o manual segue as regras acima (inclusive o conflito por
+//    horario) e o motivo exato vai para MOTIVO_EXCLUSAO_AUTOMATICA ("SUBSTITUI_ID invalido: ...";
+//    QA E12). No manual ATIVO/INATIVADO, MOTIVO_EXCLUSAO_AUTOMATICA guarda essa nota (ou
+//    "substitui o resultado do interfaceamento <ID>"); a coluna DETALHE da aba a mostra.
 //
 //  CORRIDA e RUN
 //    O instante de cada nivel e diferente (o XN-1000 mede os tres niveis com
@@ -60,8 +82,13 @@
 //      3. CORRIDA_NO_DIA = ordem de (bloco, posicao) no dia;
 //         RUN = yymmdd*100 + CORRIDA_NO_DIA  (ex. 26093001).
 //    O RUN depende so dos resultados do dia -- inativar ou reativar NAO muda
-//    numeracao (inativados contam na formacao da corrida; so retransmissoes e
-//    conflitos, que nao sao eventos reais, ficam fora).
+//    numeracao (inativados contam na formacao da corrida; so retransmissoes,
+//    conflitos e substituidos por manual -- ADR-082 --, que nao sao eventos
+//    reais, ficam fora). ADR-082: o resultado que um manual valido substitui
+//    NUNCA forma corrida, inativado ou nao (o manual entra no lugar dele); o
+//    inativado fica com a CORRIDA_NO_DIA e o RUN do manual (o X vermelho
+//    aparece na corrida do manual) -- inativa-lo ou reativa-lo depois tambem
+//    nao muda nenhum outro RUN.
 //
 //    Implementacao SEM ESTADO ENCADEADO: cada passo marca onde comeca um
 //    segmento (comparando a linha com a anterior, acesso O(1) em lista
@@ -77,6 +104,7 @@ let
     TOL = Number.From(C[TOLERANCIA_CONFLITO_MIN]),
     PREFIXO = Text.Upper(Text.Trim(Text.From(C[PREFIXO_ID]))),          // D15: "hem" no CFG nao vira outro setor
     SIM = "SIM", NAO = "NÃO",
+    SufSub = " (este manual nao substitui nada)",                      // ADR-082: fim da nota de SUBSTITUI_ID invalido
 
     Txt = (x as any) as nullable text => if x = null then null else
             let t = Text.Trim(Text.From(x)) in if t = "" then null else t,
@@ -175,8 +203,9 @@ let
     // ------------------------------------------------------------ manuais (staging -> append)
     // Mesmo schema logico do interfaceamento: DATA + HORA formam DATA_HORA; o RUN
     // nao e digitado -- e calculado abaixo pela MESMA regra dos automaticos.
+    // SUBSTITUI_ID (ADR-082): opcional; tabela ainda sem a coluna = vazia (MissingField.UseNull do Ler)
     M0 = Ler("tblResultados_Manuais", {"ID_REGISTRO", "DATA", "HORA", "EQUIPAMENTO", "MATRIZ", "LOTE", "NIVEL",
-                                       "ANALITO", "RESULTADO", "UNIDADE", "MOTIVO", "USUARIO", "REGISTRADO_EM"}),
+                                       "ANALITO", "RESULTADO", "UNIDADE", "MOTIVO", "USUARIO", "REGISTRADO_EM", "SUBSTITUI_ID"}),
     M1 = Table.SelectRows(Table.AddIndexColumn(M0, "_LINHA_MANUAL", 1, 1, Int64.Type), each
             List.NonNullCount(List.Transform({[ID_REGISTRO], [DATA], [HORA], [LOTE], [NIVEL], [ANALITO], [RESULTADO]}, Txt)) > 0),
     NivelDesc = Table.Buffer(Table.Distinct(Table.SelectColumns(R1, {"NIVEL", "NIVEL_DESC"}), {"NIVEL"})),
@@ -202,13 +231,17 @@ let
             // lancamento. Compara com REGISTRADO_EM (carimbo do evento de digitacao),
             // nao com "agora": a classificacao nao muda sozinha com o passar do tempo
             reg = (try DateTime.From([REGISTRADO_EM]) otherwise null) ?? DateTime.LocalNow(),
+            // ADR-082: SUBSTITUI_ID preenchido exige MOTIVO (sem ele nada e substituido)
+            sid = NormId([SUBSTITUI_ID]),
+            mot = Txt([MOTIVO]),
             faltando = List.Select({
                 {"ID_REGISTRO (padrao MAN_0001)", id = null or not (Text.StartsWith(id, "MAN_") and SoDigitos(Text.Middle(id, 4)))},
                 {"DATA", dt = null}, {"HORA", hr = null}, {"LOTE", lt = null},
                 {"DATA/HORA posterior ao lancamento", dh <> null and dh > reg},
                 {"NIVEL", nv = null or nv < 1 or nv > Number.From(C[NIVEIS])},
                 {"ANALITO", an = null}, {"RESULTADO ambiguo (use virgula decimal: 1,5)", amb},
-                {"RESULTADO", vl = null and not amb}}, each _{1})
+                {"RESULTADO", vl = null and not amb},
+                {"MOTIVO (obrigatorio para substituir um resultado)", sid <> null and mot = null}}, each _{1})
         in [
             ID_REGISTRO = if id <> null and Text.StartsWith(id, "MAN_") and SoDigitos(Text.Middle(id, 4)) then id
                           else "MAN_INVALIDO_L" & Text.From([_LINHA_MANUAL]), ID_ORIGEM = null,
@@ -222,13 +255,13 @@ let
             ANALITO_QCINI = if List.Contains(Cadastrados, an) then an else null, ANALITO = an,
             ORIGEM_RESULTADO = "MANUAL", _LINHA_MANUAL = [_LINHA_MANUAL],
             _MANUAL_FALTA = Text.Combine(List.Transform(faltando, each _{0}), ", "),
-            MOTIVO_MANUAL = Txt([MOTIVO]), USUARIO_MANUAL = Txt([USUARIO])
+            MOTIVO_MANUAL = mot, USUARIO_MANUAL = Txt([USUARIO]), _SUBST_DIG = sid
         ]),
     // lista de colunas explicita: sem linha manual, a tabela vazia ainda tem as colunas
     ColsManual = {"ID_REGISTRO", "ID_ORIGEM", "EQUIPAMENTO", "MATRIZ", "BLOCO", "LOTE", "NIVEL", "NIVEL_DESC",
                   "DATA", "DATA_HORA", "ANALITO_ORIGEM", "PRIMEIRO_DO_DIA", "VALOR", "FLAG", "UNIDADE", "ID_AMOSTRA", "ITEM_ID",
                   "RECEBIDO_EM", "ANALITO_QCINI", "ANALITO", "ORIGEM_RESULTADO", "_LINHA_MANUAL", "_MANUAL_FALTA",
-                  "MOTIVO_MANUAL", "USUARIO_MANUAL", "ID_DIGITADO"},
+                  "MOTIVO_MANUAL", "USUARIO_MANUAL", "ID_DIGITADO", "_SUBST_DIG"},
     Manuais0 = Table.FromRecords(M2[_r], ColsManual, MissingField.UseNull),
     // ID repetido entre manuais: vale a 1a linha; as seguintes ganham sufixo ~L<n>
     // (o ID_REGISTRO da DB_CQ_FINAL e UNICO sempre) e viram CONFLITO_MANUAL
@@ -250,19 +283,77 @@ let
                                             {"_ID_PRIM_K", each Table.Sort(_, {"_LINHA_MANUAL"}){0}[ID_REGISTRO], type text}}),
     MM = Table.ExpandTableColumn(Table.NestedJoin(MK, {"_KMAN"}, PrimeiroK, {"_KMAN"}, "_b", JoinKind.LeftOuter), "_b", {"_PRIM_K", "_ID_PRIM_K"}),
 
+    // ------------------------------------------------------------ substituicao escolhida pelo usuario (ADR-082)
+    // Candidato: manual completo, com SUBSTITUI_ID, que nao repete outro manual (mesmo ID ou mesma chave e instante).
+    // Valido: o ID e de um resultado do INTERFACEAMENTO (qualquer status: SEM_VALOR/SEM_DATA_HORA tambem), nao e
+    // retransmissao e tem a mesma chave (ChaveMI, com a mesma normalizacao do conflito). Sem limite de horario.
+    // _SUBR = por que NAO vale (nulo = valido); entre os validos com o mesmo ID vale o de menor _LINHA_MANUAL.
+    MS0 = Table.SelectRows(MM, each [_SUBST_DIG] <> null and [_PRIM_ID] = [_LINHA_MANUAL] and [_PRIM_K] = [_LINHA_MANUAL]),
+    SubIds = List.Buffer(List.Distinct(MS0[_SUBST_DIG])),
+    ColsAlvo = {"ID_REGISTRO", "EQUIPAMENTO", "MATRIZ", "LOTE", "NIVEL", "ANALITO", "_DUP", "_ID_DUP_DE"},
+    ColsAlvoR = List.Transform(ColsAlvo, each "_A_" & _),
+    // Projecao ESTREITA do interfaceamento, bufferizada UMA vez: dela saem os alvos do SUBSTITUI_ID (IntAlvo) e os
+    // candidatos do conflito por horario (InterfaceValida). Sem ela, com SUBSTITUI_ID preenchido o InterfaceD (juncao
+    // com o Mapa + agrupamento da retransmissao sobre ~44 mil linhas) era enumerado uma vez a mais (ADR-082, revisao)
+    InterfaceN = Table.Buffer(Table.SelectColumns(InterfaceD, {"ID_REGISTRO", "EQUIPAMENTO", "MATRIZ", "LOTE", "NIVEL",
+                    "ANALITO", "DATA", "DATA_HORA", "VALOR", "_DUP", "_ID_DUP_DE"})),
+    // so os IDs indicados (sem nenhum SUBSTITUI_ID o interfaceamento nem e relido aqui)
+    IntAlvo = if List.IsEmpty(SubIds) then #table(ColsAlvoR, {})
+              else Table.Buffer(Table.RenameColumns(Table.SelectColumns(
+                       Table.SelectRows(InterfaceN, each List.Contains(SubIds, [ID_REGISTRO])), ColsAlvo), List.Zip({ColsAlvo, ColsAlvoR}))),
+    ChaveTxt = (eq as any, mz as any, lt as any, nv as any, an as any) as text =>
+        Text.Combine(List.Transform({eq, mz, lt, nv, an}, each if _ = null then "?" else Text.From(_)), " | "),
+    MS1 = Table.Join(MS0, {"_SUBST_DIG"}, IntAlvo, {"_A_ID_REGISTRO"}, JoinKind.LeftOuter),
+    MS2 = Table.Buffer(Table.AddColumn(MS1, "_SUBR", each
+            if [_A_ID_REGISTRO] = null then
+                (if Text.StartsWith([_SUBST_DIG], "MAN_") then [_SUBST_DIG] & " e resultado manual (SUBSTITUI_ID aceita so resultado do interfaceamento)"
+                 else "o ID " & [_SUBST_DIG] & " nao existe nos resultados do interfaceamento")
+            else if [_A__DUP] then [_SUBST_DIG] & " e retransmissao de " & [_A__ID_DUP_DE] & " (informe o ID original)"
+            else if not ([_A_EQUIPAMENTO] = [EQUIPAMENTO] and [_A_MATRIZ] = [MATRIZ] and [_A_LOTE] = [LOTE] and
+                         [_A_NIVEL] = [NIVEL] and [_A_ANALITO] = [ANALITO]) then
+                [_SUBST_DIG] & " tem outra chave: " & ChaveTxt([_A_EQUIPAMENTO], [_A_MATRIZ], [_A_LOTE], [_A_NIVEL], [_A_ANALITO]) &
+                " (este manual: " & ChaveTxt([EQUIPAMENTO], [MATRIZ], [LOTE], [NIVEL], [ANALITO]) & ")"
+            else null, type nullable text)),
+    Venc = Table.Group(Table.SelectRows(MS2, each [_SUBR] = null), {"_SUBST_DIG"}, {
+                {"_V_LM", each List.Min([_LINHA_MANUAL]), Int64.Type},
+                {"_V", each Table.First(Table.Sort(_, {{"_LINHA_MANUAL", Order.Ascending}})), type record}}),
+    VencR = Table.Buffer(Table.SelectColumns(Table.AddColumn(Table.AddColumn(Table.AddColumn(
+                Table.RenameColumns(Venc, {{"_SUBST_DIG", "_V_SUB"}}),
+                "_V_ID", each [_V][ID_REGISTRO], type text),
+                "_V_MOT", each [_V][MOTIVO_MANUAL], type nullable text),
+                "_V_AN", each [_V][_A_ANALITO], type nullable text), {"_V_SUB", "_V_LM", "_V_ID", "_V_MOT", "_V_AN"})),
+    MS3 = Table.AddColumn(Table.AddColumn(Table.Join(MS2, {"_SUBST_DIG"}, VencR, {"_V_SUB"}, JoinKind.LeftOuter),
+            "_SUBOK", each [_SUBR] = null and [_V_LM] = [_LINHA_MANUAL], type logical),
+            "_SUBREP", each if [_SUBR] = null and [_V_LM] <> [_LINHA_MANUAL] then [_V_ID] else null, type nullable text),
+    SubPorLinha = Table.Buffer(Table.RenameColumns(Table.SelectColumns(MS3, {"_LINHA_MANUAL", "_SUBR", "_SUBOK", "_SUBREP"}),
+                    {{"_LINHA_MANUAL", "_SL"}})),
+    MM2 = Table.RemoveColumns(Table.Join(MM, {"_LINHA_MANUAL"}, SubPorLinha, {"_SL"}, JoinKind.LeftOuter), {"_SL"}),
+    // interfaceamento -> manual que o substitui. _S_FORA = a substituicao vale: o resultado NAO esta inativado pelo
+    // usuario (mesma regra do _INAT_OK abaixo). Inativado continua INATIVADO: preserva E01/GOVERNANCA, o X vermelho e
+    // os contadores de nao conformes. Inativado ou nao, o resultado indicado NAO forma corrida (Reais: [_S_MAN] = null);
+    // o que continua com status de corrida real fica com o RUN do manual (Junto)
+    SubstR = Table.Buffer(Table.SelectColumns(Table.AddColumn(Table.Join(VencR, {"_V_SUB"},
+                Table.RenameColumns(Inat, {{"_IDN", "_SI_ID"}}), {"_SI_ID"}, JoinKind.LeftOuter),
+                "_S_FORA", each not ([_SI_ID] <> null and (InatLegado or ([_ANI] <> null and [_ANI] = AnKey([_V_AN])))), type logical),
+                {"_V_SUB", "_V_ID", "_V_MOT", "_S_FORA"})),
+    InterfaceS = Table.RemoveColumns(Table.Join(InterfaceD, {"ID_REGISTRO"},
+                    Table.RenameColumns(SubstR, {{"_V_SUB", "_S_INT"}, {"_V_ID", "_S_MAN"}, {"_V_MOT", "_S_MOT"}}),
+                    {"_S_INT"}, JoinKind.LeftOuter), {"_S_INT"}),
+
     // manual x interfaceamento: mesma chave logica no mesmo dia, ate TOL minutos -> CONFLITO
-    // (o interfaceamento prevalece; o manual fica guardado, fora do calculo, e vai ao QA)
+    // (sem SUBSTITUI_ID valido o interfaceamento prevalece; o manual fica guardado, fora do calculo, e vai ao QA.
+    // ADR-082: com SUBSTITUI_ID valido o manual fica isento -- o QA A06 ainda mostra os outros resultados do dia)
     // Buffer: sem ele cada linha manual reavaliava a juncao sobre ~44 mil linhas (medido: 130 manuais = 6 min)
     InterfaceValida = Table.Buffer(Table.SelectColumns(
-            Table.SelectRows(InterfaceD, each not [_DUP] and [VALOR] <> null and [DATA_HORA] <> null),
+            Table.SelectRows(InterfaceN, each not [_DUP] and [VALOR] <> null and [DATA_HORA] <> null),
             {"ID_REGISTRO", "EQUIPAMENTO", "MATRIZ", "LOTE", "NIVEL", "ANALITO", "DATA", "DATA_HORA"})),
     ChaveMI = {"EQUIPAMENTO", "MATRIZ", "LOTE", "NIVEL", "ANALITO"},
     // D09c (QA-ETL-001): a tolerancia e medida no DATA_HORA e atravessa a meia-noite -- um manual as 00:02 e o
     // interfaceamento as 23:58 da vespera sao o mesmo resultado (antes os dois participavam). Candidatos: o proprio
     // dia, a vespera e o dia seguinte (TOL < 24 h), cada um por juncao de chave + DATA (hash, pequena).
-    MMd = Table.AddColumn(Table.AddColumn(MM, "_DANT", each try Date.AddDays([DATA], -1) otherwise null, type nullable date),
+    MMd = Table.AddColumn(Table.AddColumn(MM2, "_DANT", each try Date.AddDays([DATA], -1) otherwise null, type nullable date),
                           "_DSEG", each try Date.AddDays([DATA], 1) otherwise null, type nullable date),
-    MI = if Table.IsEmpty(MM) then Table.AddColumn(MM, "_i", each #table({"ID_REGISTRO", "DATA_HORA"}, {}))
+    MI = if Table.IsEmpty(MM2) then Table.AddColumn(MM2, "_i", each #table({"ID_REGISTRO", "DATA_HORA"}, {}))
          else Table.Buffer(Table.RemoveColumns(Table.AddColumn(
                 Table.NestedJoin(Table.NestedJoin(Table.NestedJoin(MMd,
                     ChaveMI & {"DATA"}, InterfaceValida, ChaveMI & {"DATA"}, "_i0", JoinKind.LeftOuter),
@@ -277,21 +368,32 @@ let
         in
             if [_PRIM_ID] <> [_LINHA_MANUAL] then [m = "ID_REGISTRO manual repetido (vale a 1a linha)", id = null]
             else if [_PRIM_K] <> [_LINHA_MANUAL] then [m = "resultado manual repetido (mesma chave e instante)", id = [_ID_PRIM_K]]
+            // ADR-082: dois manuais validos para o mesmo resultado -- vale o 1o; este nao duplica em silencio
+            else if [_SUBREP] <> null then [m = "SUBSTITUI_ID invalido: outro manual (" & [_SUBREP] & ") ja substitui " &
+                                               [_SUBST_DIG] & SufSub, id = [_SUBREP]]
+            else if [_SUBOK] = true then null
             else if perto <> null and perto[_d] <= TOL then
-                [m = "coincide com resultado do interfaceamento (" & Number.ToText(perto[_d], "0") & " min)", id = perto[ID_REGISTRO]]
+                [m = "coincide com resultado do interfaceamento (" & Number.ToText(perto[_d], "0") & " min)" &
+                     (if [_SUBR] <> null then "; SUBSTITUI_ID invalido: " & [_SUBR] & SufSub else ""), id = perto[ID_REGISTRO]]
             else null),
-    ManuaisC = Table.RemoveColumns(MI2, {"_i", "_KMAN", "_PRIM_ID", "_PRIM_K", "_ID_PRIM_K"}, MissingField.Ignore),
+    // Buffer: ManuaisC e lido pela uniao e o _conf (uma ordenacao por manual) nao pode ser avaliado duas vezes
+    ManuaisC = Table.Buffer(Table.AddColumn(Table.RemoveColumns(MI2, {"_i", "_KMAN", "_PRIM_ID", "_PRIM_K", "_ID_PRIM_K", "_SUBREP"},
+                                                                MissingField.Ignore),
+                "_NOTA", each if [_SUBOK] = true then "substitui o resultado do interfaceamento " & [_SUBST_DIG]
+                              else if [_SUBR] <> null and [_conf] = null then "SUBSTITUI_ID invalido: " & [_SUBR] & SufSub
+                              else null, type nullable text)),
     ManuaisFalha = Table.SelectRows(Manuais, each [_MANUAL_FALTA] <> ""),
 
     // ------------------------------------------------------------ uniao (UNION ALL)
     Comuns = {"ID_REGISTRO", "ID_ORIGEM", "EQUIPAMENTO", "MATRIZ", "BLOCO", "LOTE", "NIVEL", "NIVEL_DESC",
               "DATA", "DATA_HORA", "ANALITO", "ANALITO_ORIGEM", "ANALITO_QCINI", "PRIMEIRO_DO_DIA", "VALOR", "FLAG", "UNIDADE",
               "ID_AMOSTRA", "ITEM_ID", "RECEBIDO_EM", "ORIGEM_RESULTADO", "_LINHA_MANUAL",
-              "_DUP", "_ID_DUP_DE", "_MANUAL_FALTA", "_conf", "MOTIVO_MANUAL", "USUARIO_MANUAL"},
+              "_DUP", "_ID_DUP_DE", "_MANUAL_FALTA", "_conf", "MOTIVO_MANUAL", "USUARIO_MANUAL",
+              "_SUBST_DIG", "_SUBOK", "_NOTA", "_S_MAN", "_S_MOT", "_S_FORA"},                  // ADR-082
     // Buffer: o UNICO buffer largo. U alimenta a corrida (tabela estreita) e a
     // saida; sem ele a uniao (leitura + duplicidade) seria avaliada duas vezes.
     U = Table.Buffer(Table.Combine({
-        Table.SelectColumns(Table.AddColumn(InterfaceD, "_MANUAL_FALTA", each ""), Comuns, MissingField.UseNull),
+        Table.SelectColumns(Table.AddColumn(InterfaceS, "_MANUAL_FALTA", each ""), Comuns, MissingField.UseNull),
         Table.SelectColumns(Table.AddColumn(ManuaisC, "_DUP", each false), Comuns, MissingField.UseNull),
         Table.SelectColumns(Table.AddColumn(ManuaisFalha, "_DUP", each false), Comuns, MissingField.UseNull)})),
 
@@ -337,27 +439,35 @@ let
     Classif = Table.AddColumn(UK, "_cls", each
         let
             inat = [_INAT_OK],
+            // ADR-082: resultado do interfaceamento indicado no SUBSTITUI_ID de um manual valido
+            subst = [_S_MAN] <> null,
             st = if [_MANUAL_FALTA] <> "" then "MANUAL_INCOMPLETO"
                  else if [_DUP] then "DUPLICIDADE_ORIGEM"
                  else if [_conf] <> null then "CONFLITO_MANUAL"
+                 else if [_S_FORA] = true then "SUBSTITUIDO_MANUAL"      // ADR-082 (inativado pelo usuario: nao)
                  else if [DATA_HORA] = null then "SEM_DATA_HORA"            // D16: fora da corrida e do calculo; QA E09
                  else if [VALOR] = null then "SEM_VALOR"
                  else if inat then "INATIVADO"
                  else "ATIVO",
             lj = st = "ATIVO" or (st = "INATIVADO" and [_LJ]),
+            txtSubst = "substituido pelo manual " & ([_S_MAN] ?? "?") & " (motivo: " & ([_S_MOT] ?? "?") & ")",
             motivo = if st = "MANUAL_INCOMPLETO" then "campos obrigatorios ausentes/invalidos: " & [_MANUAL_FALTA]
                      else if st = "DUPLICIDADE_ORIGEM" then "retransmissao do interfaceamento"
                      else if st = "CONFLITO_MANUAL" then [_conf][m]
+                     else if st = "SUBSTITUIDO_MANUAL" then txtSubst
                      else if st = "SEM_DATA_HORA" then "resultado do interfaceamento sem DATA_HORA (fora da corrida)"
                      else if st = "SEM_VALOR" then "resultado sem valor numerico (flag " & ([FLAG] ?? "vazia") & ")"
-                     else null
+                     else if subst then txtSubst              // inativado pelo usuario: continua INATIVADO, com o vinculo
+                     else [_NOTA]                            // manual ATIVO/INATIVADO: nota do SUBSTITUI_ID (ou nada)
         in [
             STATUS_ANALITICO = st,
             PARTICIPA_ESTATISTICA = if st = "ATIVO" then SIM else NAO,
             REGISTRAR_RESULTADO_NO_LJ = if lj then SIM else NAO,
             TIPO_PLOTAGEM_LJ = if st = "ATIVO" then "NORMAL" else if lj then "X_VERMELHO" else "NAO_PLOTAR",
             MOTIVO_EXCLUSAO_AUTOMATICA = motivo,
-            ID_RELACIONADO = if st = "DUPLICIDADE_ORIGEM" then [_ID_DUP_DE] else if st = "CONFLITO_MANUAL" then [_conf][id] else null,
+            // ADR-082: vinculo nos dois sentidos -- o substituido aponta o manual; o manual valido, o substituido
+            ID_RELACIONADO = if st = "DUPLICIDADE_ORIGEM" then [_ID_DUP_DE] else if st = "CONFLITO_MANUAL" then [_conf][id]
+                             else if subst then [_S_MAN] else if [_SUBOK] = true then [_SUBST_DIG] else null,
             INATIVACAO_REGISTRADA = if inat then SIM else NAO,
             CORRIDA_REAL = List.Contains({"ATIVO", "INATIVADO", "SEM_VALOR"}, st)
         ]),
@@ -378,9 +488,13 @@ let
     // Calculada numa tabela ESTREITA (so as chaves) e devolvida pelo ID_REGISTRO:
     // ordenar e bufferizar 45 colunas x 44 mil linhas tres vezes estourava a
     // memoria do conteiner do Power Query e o tempo crescia mais que a base.
-    // Mesma condicao de CORRIDA_REAL: fora so incompleto, retransmissao e conflito.
+    // Mesma condicao de CORRIDA_REAL: fora so incompleto, retransmissao, conflito e o resultado que um manual valido
+    // substitui (ADR-082: o manual entra na corrida pela propria DATA_HORA; o indicado nunca forma corrida -- nem o
+    // que continua INATIVADO, que recebe o RUN do manual no Junto: sem isso ele abria uma posicao a mais no bloco e
+    // todas as corridas seguintes do dia andavam +1).
     // D16: resultado sem DATA_HORA nao entra na corrida (quebraria o corte por GAP); o QA reporta (E09)
-    Reais = Table.SelectColumns(Table.SelectRows(U, each [_MANUAL_FALTA] = "" and not [_DUP] and [_conf] = null and [DATA_HORA] <> null),
+    Reais = Table.SelectColumns(Table.SelectRows(U, each [_MANUAL_FALTA] = "" and not [_DUP] and [_conf] = null and
+                                                        [_S_MAN] = null and [DATA_HORA] <> null),
                 {"ID_REGISTRO", "EQUIPAMENTO", "MATRIZ", "LOTE", "ANALITO", "DATA", "DATA_HORA", "NIVEL", "ITEM_ID"}),
 
     // Cada passo: ordena, poe ao lado de cada linha os valores da linha ANTERIOR
@@ -427,8 +541,22 @@ let
         if [CORRIDA_NO_DIA] > 99 then null else Number.From(Date.ToText([DATA], "yyMMdd")) * 100 + [CORRIDA_NO_DIA], Int64.Type),
         {"ID_REGISTRO", "CORRIDA_NO_DIA", "RUN"})),
     RunPorIdU = Table.Distinct(RunPorId, {"ID_REGISTRO"}),                    // D01: o join abaixo nunca multiplica
-    Junto = Table.RemoveColumns(Table.Join(ComJust, {"ID_REGISTRO"}, Table.RenameColumns(RunPorIdU, {{"ID_REGISTRO", "_RID"}}),
-                                           {"_RID"}, JoinKind.LeftOuter), {"_RID"}),
+    Junto0 = Table.RemoveColumns(Table.Join(ComJust, {"ID_REGISTRO"}, Table.RenameColumns(RunPorIdU, {{"ID_REGISTRO", "_RID"}}),
+                                            {"_RID"}, JoinKind.LeftOuter), {"_RID"}),
+    // ADR-082: o resultado indicado que continua com status de corrida real (INATIVADO, ou SEM_VALOR inativado -- a
+    // inativacao prevalece) fica com a CORRIDA_NO_DIA e o RUN do manual que o substitui: o X vermelho aparece na
+    // corrida do manual e nenhuma outra corrida do dia muda. SUBSTITUIDO_MANUAL e SEM_DATA_HORA continuam sem RUN.
+    RunHerda = Table.Buffer(Table.Join(Table.SelectColumns(SubstR, {"_V_ID"}), {"_V_ID"},
+                    Table.RenameColumns(RunPorIdU, {{"ID_REGISTRO", "_HM_ID"}, {"CORRIDA_NO_DIA", "_HM_COR"}, {"RUN", "_HM_RUN"}}),
+                    {"_HM_ID"}, JoinKind.Inner)),
+    JuntoH = Table.RenameColumns(Table.Join(Junto0, {"_S_MAN"}, RunHerda, {"_V_ID"}, JoinKind.LeftOuter),
+                    {{"CORRIDA_NO_DIA", "_COR0"}, {"RUN", "_RUN0"}}),
+    // sem nenhuma substituicao valida (o normal), a tabela larga nao passa por mais uma juncao
+    Junto = if Table.IsEmpty(RunHerda) then Junto0
+            else Table.RemoveColumns(Table.AddColumn(Table.AddColumn(JuntoH,
+                "CORRIDA_NO_DIA", each if [_V_ID] <> null and [CORRIDA_REAL] then [_HM_COR] else [_COR0], Int64.Type),
+                "RUN", each if [_V_ID] <> null and [CORRIDA_REAL] then [_HM_RUN] else [_RUN0], Int64.Type),
+                {"_COR0", "_RUN0", "_V_ID", "_HM_ID", "_HM_COR", "_HM_RUN"}),
 
     // ------------------------------------------------------------ saida
     Final = Table.AddColumn(Table.AddColumn(Table.AddColumn(Table.AddColumn(Junto,

@@ -93,17 +93,22 @@ End Function
 Public Function RegraCriterio(ByVal regra As String) As String
     Dim t As String
     t = UCase$(Replace$(Replace$(Trim$(regra), "_", ""), " ", ""))
-    If t = "31S" Then RegraCriterio = "3 controles consecutivos excedem 1DP do mesmo lado": Exit Function
-    If t = "2OF32S" Then RegraCriterio = "2 de 3 controles (3 níveis da mesma RUN ou 3 RUNs do mesmo nível) excedem 2DP do mesmo lado": Exit Function
+    ' ADR-083: no mesmo nivel, "consecutivos" = observacoes ATIVAS seguidas do nivel (corrida so de outro nivel no meio
+    ' nao interrompe) -- vale para o 2_2s oficial entre corridas e para os COMPLEMENTARES. As regras oficiais 3_1s,
+    ' 4_1s, 8x e 6x sao ENTRE niveis, por corrida (RUN): o texto diz isso para o leitor nao supor a sequencia de ativos.
+    If t = "31S" Then RegraCriterio = "Oficial: os 3 níveis da MESMA corrida excedem 1DP do mesmo lado (complementar: 3 resultados ativos seguidos do mesmo nível)": Exit Function
+    If t = "2OF32S" Then RegraCriterio = "Oficial: 2 dos 3 níveis da MESMA corrida excedem 2DP do mesmo lado (complementar: 2 de 3 resultados ativos seguidos do mesmo nível, o último entre os que excedem)": Exit Function
+    If t = "8X" Then RegraCriterio = "Oficial: 2 níveis em 4 corridas seguidas (8 resultados) do mesmo lado da média (complementar: 8 resultados ativos seguidos do mesmo nível)": Exit Function
+    If t = "6X" Then RegraCriterio = "Oficial: 3 níveis em 2 corridas seguidas (6 resultados) do mesmo lado da média (complementar: 6 resultados ativos seguidos do mesmo nível)": Exit Function
     If Familia(regra) = "10X" And t <> "10X" Then
         RegraCriterio = Left$(t, Len(t) - 1) & " controles consecutivos do mesmo lado da média": Exit Function
     End If
     Select Case Familia(regra)
         Case "12S": RegraCriterio = "1 controle excede média ± 2DP"
         Case "13S": RegraCriterio = "1 controle excede média ± 3DP"
-        Case "22S": RegraCriterio = "2 controles consecutivos (ou 2 níveis da mesma RUN) excedem 2DP do mesmo lado"
+        Case "22S": RegraCriterio = "2 níveis da mesma corrida, ou 2 resultados ativos seguidos do mesmo nível (corrida só de outro nível no meio não interrompe), excedem 2DP do mesmo lado"
         Case "R4S": RegraCriterio = "Amplitude entre 2 controles da mesma RUN excede 4DP"
-        Case "41S": RegraCriterio = "4 controles consecutivos excedem 1DP do mesmo lado"
+        Case "41S": RegraCriterio = "Oficial: 2 níveis em 2 corridas seguidas (4 resultados) excedem 1DP do mesmo lado (complementar: 4 resultados ativos seguidos do mesmo nível)"
         Case "10X": RegraCriterio = "10 controles consecutivos do mesmo lado da média"
         Case Else: RegraCriterio = ""
     End Select
@@ -118,8 +123,9 @@ Public Function RegraInterpretacao(ByVal regra As String) As String
             RegraInterpretacao = "Um controle ultrapassou 3 DP. Indica erro aleatório de magnitude " & _
                 "incompatível com a variação esperada do processo. A corrida deve ser rejeitada."
         Case "22S"
-            RegraInterpretacao = "Dois controles consecutivos, ou dois níveis da mesma corrida, " & _
-                "ultrapassaram 2 DP para o MESMO lado. Padrão típico de erro sistemático (deslocamento)."
+            RegraInterpretacao = "Dois resultados consecutivos do mesmo nível (mesmo com corrida só de outro nível entre eles), " & _
+                "ou dois níveis da mesma corrida, ultrapassaram 2 DP para o MESMO lado. " & _
+                "Padrão típico de erro sistemático (deslocamento)."
         Case "R4S"
             RegraInterpretacao = "Dois controles da mesma corrida apresentaram diferença superior a 4 DP " & _
                 "(um acima e outro abaixo). Indica aumento da imprecisão — erro aleatório."

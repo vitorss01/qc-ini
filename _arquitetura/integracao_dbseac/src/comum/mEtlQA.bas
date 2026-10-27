@@ -2,7 +2,9 @@ Attribute VB_Name = "mEtlQA"
 ' ============================================================================
 '  mEtlQA -- conferencia da integracao (tblQA_Integracao) em VBA (ADR-079)
 '
-'  Porte de pq/QA_INTEGRACAO.m (24 codigos: E01-E11, A01-A10, I01-I03), com as mesmas regras e os mesmos textos.
+'  Porte de pq/QA_INTEGRACAO.m (26 codigos: E01-E12, A01-A10, I01-I04), com as mesmas regras e os mesmos textos.
+'  ADR-082: E12 (SUBSTITUI_ID invalido) e I04 (resultado do interfaceamento substituido por manual); textos do A01, A06,
+'  A09, E09 e I04 que nao mandam desfazer uma substituicao valida nem acusam o que ela ja resolveu.
 '  Le a tblCQ_Final JA CALCULADA em memoria (o PQ gastava 17-52 s so copiando 1,33 milhao de celulas da planilha
 '  para o motor de consulta) e a MESMA leitura do DB_SEAC feita pelo recebimento (o PQ relia o arquivo inteiro).
 '  Diferencas deliberadas, documentadas no ADR-079:
@@ -21,6 +23,8 @@ Private Const Q_ID As Long = 1, Q_OR As Long = 2, Q_EQ As Long = 4, Q_MZ As Long
 Private Const Q_COR As Long = 10, Q_RUN As Long = 11, Q_NV As Long = 12, Q_LT As Long = 14, Q_AN As Long = 15
 Private Const Q_CAD As Long = 17, Q_ST As Long = 21, Q_PART As Long = 22, Q_INATR As Long = 25, Q_JUST As Long = 27
 Private Const Q_MOTEX As Long = 32, Q_REL As Long = 33
+Private Const Q_RES As Long = 18, Q_MOTM As Long = 38                     ' ADR-082: RESULTADO, MOTIVO_MANUAL
+Private Const TXT_SUBINV As String = "SUBSTITUI_ID invalido: "            ' ADR-082: inicio do motivo do E12
 
 Private mOut As Collection      ' cada item: Array(sev, cod, teste, id, analito, nivel, data_hora, detalhe)
 Private mPrefixo As String
@@ -260,11 +264,22 @@ Public Function CalcularQA(ByRef F As Variant, ByRef rec As Variant, ByVal nRec 
     End If
 
     MarcaQ "inativ"
-    ' ---- E04, E05, A01, A02, A04, E09, A09 (linhas da propria tabela)
-    Dim idsInat As Object
+    ' ---- E04, E05, A01, E12, A02, A04, E09, A09, I04 (linhas da propria tabela)
+    ' idsInat (A09): so o automatico INATIVADO que nenhum manual substitui (ADR-082). idsManInat (E12): manuais INATIVADOS.
+    ' substPor (A01): resultado do interfaceamento -> o manual que o substitui (tambem o que continua INATIVADO).
+    Dim idsInat As Object, idsManInat As Object, substPor As Object
     Set idsInat = CreateObject("Scripting.Dictionary")
+    Set idsManInat = CreateObject("Scripting.Dictionary")
+    Set substPor = CreateObject("Scripting.Dictionary")
     For i = 1 To nF
-        If F(i, Q_ST) = "INATIVADO" Then idsInat(F(i, Q_ID)) = 1
+        If F(i, Q_OR) = "INTERFACEAMENTO" Then
+            If F(i, Q_ST) = "INATIVADO" And Vazio(F(i, Q_REL)) Then idsInat(F(i, Q_ID)) = 1
+            If Not Vazio(F(i, Q_REL)) And F(i, Q_ST) <> "DUPLICIDADE_ORIGEM" Then
+                If Not substPor.Exists(F(i, Q_ID)) Then substPor.Add F(i, Q_ID), CStr(F(i, Q_REL))
+            End If
+        ElseIf F(i, Q_OR) = "MANUAL" Then
+            If F(i, Q_ST) = "INATIVADO" Then idsManInat(F(i, Q_ID)) = 1
+        End If
     Next i
     For i = 1 To nF
         If F(i, Q_ST) = "MANUAL_INCOMPLETO" Then Achado "ERRO", "E04", "Resultado manual com campo obrigatorio ausente", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), F(i, Q_MOTEX)
@@ -272,11 +287,36 @@ Public Function CalcularQA(ByRef F As Variant, ByRef rec As Variant, ByVal nRec 
     For i = 1 To nF
         If Not Vazio(F(i, Q_COR)) Then If F(i, Q_COR) > 99 Then Achado "ERRO", "E05", "Mais de 99 corridas no mesmo dia", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), "RUN nao atribuido; revisar o dado do dia"
     Next i
+    Dim spMan As String
     For i = 1 To nF
         If F(i, Q_ST) = "CONFLITO_MANUAL" Then
+            spMan = ""
+            If Not Vazio(F(i, Q_REL)) Then
+                If substPor.Exists(F(i, Q_REL)) Then spMan = substPor(F(i, Q_REL))
+            End If
             If Vazio(F(i, Q_MOTEX)) Then s = Empty Else s = F(i, Q_MOTEX) & IIf(Vazio(F(i, Q_REL)), "", " -> " & F(i, Q_REL)) & _
-                ". O manual ficou FORA da estatistica; confirme e inative um deles ou corrija o manual."
+                ". O manual ficou FORA da estatistica" & TextoA01(F(i, Q_MOTEX), F(i, Q_REL), spMan)
             Achado "ALERTA", "A01", "Possivel duplicidade de resultado manual", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), IIf(Vazio(F(i, Q_MOTEX)), Empty, s)
+        End If
+    Next i
+    ' ---- E12 (ADR-082): SUBSTITUI_ID invalido -- nada foi substituido; o motivo exato vem da MOTIVO_EXCLUSAO_AUTOMATICA.
+    '      "outro manual (MAN_x) ja substitui" com o MAN_x INATIVADO: ele continua substituindo -- apagar o SUBSTITUI_ID dele
+    Dim pSub As Long, fimE12 As String
+    For i = 1 To nF
+        If F(i, Q_OR) = "MANUAL" And F(i, Q_ST) <> "MANUAL_INCOMPLETO" And Not Vazio(F(i, Q_MOTEX)) Then
+            pSub = InStr(1, CStr(F(i, Q_MOTEX)), TXT_SUBINV, vbBinaryCompare)
+            If pSub > 0 Then
+                fimE12 = ". Corrija o SUBSTITUI_ID (o ID de um resultado do interfaceamento com o mesmo " & _
+                         "equipamento, matriz, lote, nivel e analito) ou apague-o."
+                If F(i, Q_ST) = "CONFLITO_MANUAL" And Not Vazio(F(i, Q_REL)) Then
+                    If idsManInat.Exists(F(i, Q_REL)) Then
+                        fimE12 = ". O manual " & F(i, Q_REL) & " esta INATIVADO, mas continua substituindo o resultado: para este " & _
+                                 "manual valer, apague o SUBSTITUI_ID do " & F(i, Q_REL) & " (ou a linha dele)."
+                    End If
+                End If
+                Achado "ERRO", "E12", "SUBSTITUI_ID invalido (nada foi substituido)", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), _
+                    Mid$(CStr(F(i, Q_MOTEX)), pSub) & fimE12
+            End If
         End If
     Next i
     For i = 1 To nF
@@ -459,17 +499,34 @@ proxR:
             If intDia.Exists(k6) Then intDia(k6) = intDia(k6) & Chr$(0) & F(i, Q_ID) Else intDia.Add k6, CStr(F(i, Q_ID))
         End If
     Next i
+    Dim nLis As Long, relM As String
     For i = 1 To nA6
         If F(i, Q_OR) = "MANUAL" And F(i, Q_ST) = "ATIVO" Then
             k6 = Chave6(F, i)
             If intDia.Exists(k6) Then
+                ' ADR-082: o resultado que este manual substitui (ID_RELACIONADO) nao entra na lista
+                If Vazio(F(i, Q_REL)) Then relM = "" Else relM = CStr(F(i, Q_REL))
                 partes = Split(intDia(k6), Chr$(0))
-                lista = ""
-                For nPar = 0 To IIf(UBound(partes) > 4, 4, UBound(partes))
-                    lista = lista & IIf(nPar > 0, ", ", "") & partes(nPar)
+                lista = "": nLis = 0
+                For nPar = 0 To UBound(partes)
+                    If partes(nPar) <> relM And nLis < 5 Then
+                        lista = lista & IIf(nLis > 0, ", ", "") & partes(nPar)
+                        nLis = nLis + 1
+                    End If
                 Next nPar
-                Achado "ALERTA", "A06", "Resultado manual e do interfaceamento no mesmo dia (fora da tolerancia)", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), _
-                    "mesmo equipamento/lote/nivel/analito no dia: " & lista & ". Os dois participam (corridas diferentes). Se forem o MESMO resultado, inative o manual."
+                ' ADR-082: o manual que substitui (isento do conflito) tem titulo e texto proprios -- nunca "informe o ID em
+                ' SUBSTITUI_ID", que desfaria a substituicao
+                If nLis > 0 Then
+                    If Len(relM) = 0 Then
+                        Achado "ALERTA", "A06", "Resultado manual e do interfaceamento no mesmo dia (fora da tolerancia)", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), _
+                            "mesmo equipamento/lote/nivel/analito no dia: " & lista & ". Os listados participam (corridas diferentes). Se um deles " & _
+                            "for o MESMO resultado, informe o ID dele em SUBSTITUI_ID (com MOTIVO) para o manual valer no lugar do automatico."
+                    Else
+                        Achado "ALERTA", "A06", "Resultado manual que substitui e outros do interfaceamento no mesmo dia", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), _
+                            "este manual substitui " & relM & "; no dia ha outros resultados com o mesmo equipamento/lote/nivel/analito: " & _
+                            lista & ". Os listados continuam valendo. Se um deles tambem for o mesmo resultado, inative-o na aba Inativar."
+                    End If
+                End If
             End If
         End If
     Next i
@@ -529,10 +586,12 @@ proxR:
             "nenhum resultado novo foi recebido; vale o historico ate " & DH(ult) & ". Na rede do laboratorio, voltar Cfg_Integracao MODO_FONTE = SEAC."
     End If
 
-    ' ---- E09
+    ' ---- E09 (ADR-082: fora o que um manual substitui -- ID_RELACIONADO = MAN_...; o I04 registra)
     For i = 1 To nF
-        If F(i, Q_OR) = "INTERFACEAMENTO" And Vazio(F(i, Q_DH)) Then Achado "ERRO", "E09", "Resultado do interfaceamento sem DATA_HORA", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), _
-            "sem DATA_HORA na origem: fora da corrida (RUN vazio), do grafico e da estatistica. Corrigir na origem."
+        If F(i, Q_OR) = "INTERFACEAMENTO" And Vazio(F(i, Q_DH)) Then
+            If Not EhIdManual(F(i, Q_REL)) Then Achado "ERRO", "E09", "Resultado do interfaceamento sem DATA_HORA", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), _
+                "sem DATA_HORA na origem: fora da corrida (RUN vazio), do grafico e da estatistica. Corrigir na origem."
+        End If
     Next i
 
     ' ---- A08: REGISTRAR - LJ com valor nao reconhecido
@@ -552,12 +611,34 @@ proxR:
         End If
     Next i
 
-    ' ---- A09: manual em conflito com um interfaceamento INATIVADO
+    ' ---- A09: manual em conflito com um interfaceamento INATIVADO que nenhum manual substitui (ADR-082; idsInat acima)
     For i = 1 To nF
         If F(i, Q_OR) = "MANUAL" And F(i, Q_ST) = "CONFLITO_MANUAL" And Not Vazio(F(i, Q_REL)) Then
             If idsInat.Exists(F(i, Q_REL)) Then Achado "ALERTA", "A09", "Manual coincide com resultado do interfaceamento inativado", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), _
-                "o automatico " & F(i, Q_REL) & " esta INATIVADO e este manual tem a mesma chave e instante: o manual NAO participa: " & _
-                "resultado manual nunca substitui um automatico (decisao do laboratorio, 06/10/2026)."
+                "o automatico " & F(i, Q_REL) & " esta INATIVADO e este manual tem a mesma chave e instante: o manual NAO participa " & _
+                "(nenhum dos dois entra na estatistica). Para o manual valer no lugar do automatico, informe o ID " & F(i, Q_REL) & _
+                " em SUBSTITUI_ID (com MOTIVO)."
+        End If
+    Next i
+
+    ' ---- I04 (ADR-082): resultado do interfaceamento substituido por manual (SUBSTITUI_ID) -- tambem o que continua
+    '      INATIVADO (a inativacao prevalece); um achado por resultado substituido
+    Dim manIdx As Object
+    Set manIdx = CreateObject("Scripting.Dictionary")
+    For i = 1 To nF
+        If F(i, Q_OR) = "MANUAL" Then
+            If Not manIdx.Exists(F(i, Q_ID)) Then manIdx.Add F(i, Q_ID), i
+        End If
+    Next i
+    For i = 1 To nF
+        If F(i, Q_OR) = "INTERFACEAMENTO" And Not Vazio(F(i, Q_REL)) And F(i, Q_ST) <> "DUPLICIDADE_ORIGEM" Then
+            If manIdx.Exists(F(i, Q_REL)) Then
+                Achado "INFO", "I04", "Resultado do interfaceamento substituido por manual", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), _
+                    TextoI04(F, i, CLng(manIdx(F(i, Q_REL))))
+            Else
+                Achado "INFO", "I04", "Resultado do interfaceamento substituido por manual", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), _
+                    TextoI04(F, i, 0)
+            End If
         End If
     Next i
 
@@ -590,6 +671,67 @@ proxR:
 End Function
 
 ' ---------------------------------------------------------------- apoio
+' ADR-082: fim do texto do A01. Conflito com o interfaceamento: como fazer o manual valer no lugar do automatico; se o
+' automatico (rel) ja esta substituido pelo manual spMan, quem vale e aquele manual.
+Private Function TextoA01(ByVal motivo As Variant, ByVal rel As Variant, ByVal spMan As String) As String
+    If Left$(CStr(motivo), 8) = "coincide" Then
+        If Len(spMan) > 0 Then
+            TextoA01 = " (vale o manual " & spMan & ", que ja substitui o automatico " & CStr(rel) & _
+                       "). Se este for o mesmo resultado repetido, apague-o."
+        Else
+            TextoA01 = " (vale o automatico). Para o manual valer no lugar do automatico, informe o ID dele em " & _
+                       "SUBSTITUI_ID (com MOTIVO); se for o mesmo resultado repetido, apague o manual."
+        End If
+    Else
+        TextoA01 = "; confirme e inative um deles ou corrija o manual."
+    End If
+End Function
+
+' ADR-082: o ID e de um resultado manual (MAN_...)? Vazio = nao.
+Private Function EhIdManual(ByVal v As Variant) As Boolean
+    If Vazio(v) Then Exit Function
+    EhIdManual = (Left$(CStr(v), 4) = "MAN_")
+End Function
+
+' ADR-082: detalhe do I04 -- os dois IDs, os dois valores, a diferenca e o motivo (mesmo texto do PQ).
+' i = linha do resultado do interfaceamento; m = linha do manual (0 = nao achado).
+Private Function TextoI04(ByRef F As Variant, ByVal i As Long, ByVal m As Long) As String
+    Dim s As String, vm As Variant, mt As Variant, stm As Variant, dif As Double
+    If m > 0 Then
+        vm = F(m, Q_RES): mt = F(m, Q_MOTM): stm = F(m, Q_ST)
+    End If
+    s = "substituido pelo manual " & CStr(F(i, Q_REL)) & " (motivo: " & TxtOu(mt, "?") & "): vale o manual (" & NumTxt(vm) & _
+        "); este resultado (" & NumTxt(F(i, Q_RES)) & ") "
+    If F(i, Q_ST) = "SUBSTITUIDO_MANUAL" Then
+        s = s & "fica guardado, fora do calculo e do grafico"
+    Else
+        s = s & "continua " & CStr(F(i, Q_ST)) & " (a inativacao prevalece sobre a substituicao)"
+    End If
+    s = s & ". Diferenca manual - automatico: "
+    If Vazio(Num(vm)) Or Vazio(Num(F(i, Q_RES))) Then
+        s = s & "-"
+    Else
+        dif = Round(CDbl(vm) - CDbl(F(i, Q_RES)), 6)
+        If dif = 0 Then dif = 0#                       ' -0 vira 0 (o Text.From do PQ escreve "0")
+        s = s & CStr(TF(dif))
+    End If
+    s = s & "."
+    If m > 0 Then
+        If CStr(stm) = "INATIVADO" Then s = s & " O manual esta INATIVADO: nenhum dos dois entra na estatistica."
+    End If
+    ' o automatico que continua INATIVADO so volta a valer reativado (apagar o SUBSTITUI_ID nao basta)
+    If F(i, Q_ST) = "SUBSTITUIDO_MANUAL" Then
+        TextoI04 = s & " Para voltar ao automatico, apague o SUBSTITUI_ID (ou a linha) do manual."
+    Else
+        TextoI04 = s & " Para o automatico voltar a valer, reative-o (aba Inativar) e apague o SUBSTITUI_ID (ou a linha) do manual."
+    End If
+End Function
+
+' numero do texto do I04 (Text.From do PQ); vazio = "sem valor"
+Private Function NumTxt(ByVal v As Variant) As String
+    If Vazio(v) Then NumTxt = "sem valor" Else NumTxt = CStr(TF(v))
+End Function
+
 Private Function TabelaQ(ByVal nome As String) As ListObject
     Dim ws As Worksheet
     For Each ws In ThisWorkbook.Worksheets

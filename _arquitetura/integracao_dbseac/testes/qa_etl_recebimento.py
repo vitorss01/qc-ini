@@ -86,9 +86,9 @@ TITULOS = collections.OrderedDict([
              'ERRO no QA; nunca erro de célula silencioso nem perda muda'),
     ('E04c', 'Interface com DATA preenchida e DATA_HORA nula: a atualização conclui, a linha fica fora do RUN com ERRO '
              'E09 e o vizinho do grupo mantém o RUN correto (hoje falha: prova D16)'),
-    ('E13c', 'Conflito manual × interface ATRAVESSA a meia-noite: interface S16 às 23:58 e manual com a mesma chave às '
-             '00:02 do dia seguinte -> o manual vira CONFLITO_MANUAL com ID_RELACIONADO = S16 e fica fora da estatística '
-             '(hoje falha: prova D09c)'),
+    ('E13c', 'Conflito manual × interface ATRAVESSA a meia-noite: interface S16 às 23:58 e manual (sem SUBSTITUI_ID) com '
+             'a mesma chave às 00:02 do dia seguinte -> o manual vira CONFLITO_MANUAL com ID_RELACIONADO = S16 e fica fora '
+             'da estatística (hoje falha: prova D09c)'),
     ('E05a', 'Retransmissão S13 (cópia de S2 com ID 9000013): DUPLICIDADE_ORIGEM, ID_RELACIONADO = PREFIXO-9000002, '
              'A02; S2 continua ATIVO'),
     ('E05b', 'Idempotência: 3 atualizações com o mesmo arquivo -> |Recebimento|, RECEBIDO_EM de cada ID e final '
@@ -516,8 +516,11 @@ class Contexto:
         return path, esc
 
     def linhas_grupo(self, fin, dia):
+        # ADR-082: o resultado do interfaceamento que um manual substitui (ID_RELACIONADO = MAN_...) nunca forma corrida
         return [r for r in fin if (r['EQUIPAMENTO'], r['MATRIZ'], str(r['LOTE']), r['ANALITO']) == self.chave
-                and dia_de(r['DATA']) == dia and r['STATUS_ANALITICO'] in CORRIDA_REAL]
+                and dia_de(r['DATA']) == dia and r['STATUS_ANALITICO'] in CORRIDA_REAL
+                and not (r.get('ORIGEM_RESULTADO') == 'INTERFACEAMENTO'
+                         and str(r.get('ID_RELACIONADO') or '').startswith('MAN_'))]
 
 
 def carregar(q, caminho_xlsx, rotulo):

@@ -14,6 +14,20 @@ Option Explicit
 Public Const NLV As Long = 2          ' niveis deste setor
 
 Public Const EV_NCOL As Long = 14     ' colunas de Eventos_Westgard (ADR-045)
+Private Const WG_ESCOPO As String = "#ESCOPO"   ' ADR-083: chave do lote|equipamento na foto dos eventos oficiais
+Private Const WG_AUDIT_MAX As Long = 200        ' ADR-083: linhas de Audit_Log por atualizacao (o resto vai num resumo)
+Private Const WG_RUNS As String = "#RUNS"       ' ADR-083: chave, na foto, das corridas ja avaliadas (mRunsWg)
+Private Const WG_RETRO As String = "RETROATIVO"         ' ADR-083: evento numa corrida que ja tinha sido avaliada
+Private Const WG_ROTINA As String = "CORRIDA_NOVA"      ' ADR-083: evento numa corrida que ainda nao tinha sido avaliada
+Private Const WG_SEMREF As String = "NAO_CLASSIFICADO"  ' ADR-083: foto sem a referencia das corridas avaliadas
+Private Const WGF_ABA As String = "Westgard_Fotos"   ' ADR-083 (opcao completa): aba tecnica da foto por lote x equipamento
+Private Const WGF_R0 As Long = 4                     ' ADR-083: 1a linha de dados da foto (1 titulo, 2 contadores, 3 cabecalho)
+Private Const WGF_NCOL As Long = 6                   ' ADR-083: TIPO | LOTE | EQUIPAMENTO | CHAVE | DESCRICAO | DATA_FOTO
+Private Const WGF_CTRL As String = "CONTROLE"        ' ADR-083: linha da impressao digital de um lote x equipamento
+Private Const WGF_EVENTO As String = "EVENTO"        ' ADR-083: linha de um evento OFICIAL da foto
+Private Const WGF_CORRIDAS As String = "CORRIDAS"    ' ADR-083: corridas avaliadas de um analito (separa RETROATIVO de rotina)
+Private Const WGF_P As Double = 1000000007#          ' ADR-083: modulo das somas da impressao digital (inteiros exatos)
+Private Const WGF_MAXTXT As Long = 8000              ' ADR-083: tamanho maximo da lista de corridas numa celula
 Private Const KC0 As Long = 3          ' Calc: 1a linha
 Private Const NK  As Long = 180        ' Calc: nº de corridas exibiveis
 Private Const CF0 As Long = 6          ' Calc: 1a coluna de nivel (F)
@@ -56,6 +70,8 @@ Private mAnal As Variant               ' snapshot de Analitos (alvos)
 Private mIdxAnal As Object             ' analito -> linha em mAnal
 Private mAgg As Object                 ' (analito|nivel) -> agregados de Westgard
 Private mEvLote As String              ' lote cujos eventos estao em mAgg / Eventos_Westgard
+Private mRunsWg As Object              ' ADR-083: "ANALITO|RUN" do eixo de cada analito na ultima Eventos_Westgard
+Private mRunsWgEsc As String           ' ADR-083: "lote|EQUIPAMENTO" de mRunsWg (o mesmo L2|N2 da aba)
 Private mIdx As Object                 ' "ANALITO|LOTE" -> Collection de linhas ELEGIVEIS de mDB
 Private mNLote As Object               ' ADR-078: lote -> resultados na base (NResultadosLote)
 ' filtro do Painel, lido UMA vez por operacao (CarregarFiltro), nao uma vez por corrida
@@ -65,6 +81,9 @@ Private fDe As Double, fAte As Double
 ' Declaracao de MODULO: em VBA tudo isto tem de vir antes da primeira
 ' procedure. Ficaram no meio do arquivo quando o motor foi substituido, e
 ' o resultado foi 'variavel nao definida' em gNaoAval.
+' ADR-083: nos detectores do MESMO nivel (2_2s ACROSS_RUN_SAME_LEVEL e os SAME_LEVEL_Rn) o R conta OBSERVACOES
+' seguidas do material -- a sequencia de ativos do nivel --, nao RUNs do eixo comum. Nos detectores ENTRE niveis
+' (WITHIN_RUN, N2_R2, N2_R4, N3_R1, N3_R2) o R continua contando RUNs (corridas do dia) completos.
 Private Const DETECTORES As String = _
     "BIOQUIMICA|2|1_3s|INDIVIDUAL|1|1|1|WITHIN_RUN|3;" & _
     "BIOQUIMICA|2|2_2s|WITHIN_RUN|1|2|1|WITHIN_RUN_ACROSS_MATERIALS|2;" & _
@@ -710,9 +729,41 @@ Private Function CorridaCompleta(ByRef td() As Boolean, ByVal i As Long) As Bool
 End Function
 
 
+' ADR-083: posicoes (no eixo recebido) das observacoes AVALIAVEIS do nivel t (td = True), em ordem -- a SEQUENCIA
+' DE ATIVOS do nivel (a corrida do lote do ADR-080/081, dentro deste eixo). As regras do MESMO nivel andam por ela:
+' uma corrida so de outro nivel, um resultado inativado ou um nivel sem parametro NAO interrompem a sequencia do
+' nivel. As regras ENTRE niveis continuam pareando pela posicao (RUN). Devolve m; p(1..m) = posicoes.
+Private Function SeqDoNivel(ByRef td() As Boolean, ByVal t As Long, ByVal nRun As Long, ByRef p() As Long) As Long
+    Dim i As Long, m As Long
+    If nRun > 0 Then ReDim p(1 To nRun) Else ReDim p(1 To 1)
+    For i = 1 To nRun
+        If td(t, i) Then
+            m = m + 1
+            p(m) = i
+        End If
+    Next i
+    SeqDoNivel = m
+End Function
+
+
+' ADR-083: texto da evidencia de uma janela do mesmo nivel -- "N1 runs a..b" como antes (a e b = posicoes no eixo)
+' e, SO quando as posicoes nao sao contiguas (corrida sem este nivel no meio), " (n obs)": o intervalo a..b passa a
+' ter mais posicoes que observacoes. Janela contigua = texto identico ao de antes (os eventos antigos nao mudam).
+Private Function DetalheJanelaNivel(ByVal t As Long, ByVal a As Long, ByVal b As Long, ByVal nObs As Long) As String
+    Dim s As String
+    s = "N" & CStr(t + 1) & " runs " & CStr(a) & ".." & CStr(b)
+    If b - a + 1 <> nObs Then s = s & " (" & CStr(nObs) & " obs)"
+    DetalheJanelaNivel = s
+End Function
+
+
 Public Sub AvaliarWestgard(ByRef z() As Double, ByRef temDado() As Boolean, ByVal nRun As Long, _
                            ByRef r13 As Variant, ByRef r2sMulti As Variant, ByRef rR4 As Variant, _
                            ByRef r1sMulti As Variant, ByRef rSeq As Variant, ByRef a12 As Variant)
+    ' ADR-083: as regras do MESMO nivel (Det_2_2s_AcrossRun, Det_MesmoNivel_*) andam pela sequencia de ativos de
+    ' cada nivel dentro deste eixo (SeqDoNivel); as regras ENTRE niveis continuam pareando pela posicao (RUN). As
+    ' marcas voltam sempre na posicao original do eixo -- quem chama (AtualizarCalc, RegistrarEventosWestgard,
+    ' mBI.FlagsDoMotor, AnalisarViolacoes) nao muda.
     Set gTrace = New Collection
     Set gNaoAval = CreateObject("Scripting.Dictionary")
     gNaoAval.CompareMode = 1
@@ -725,15 +776,16 @@ Public Sub AvaliarWestgard(ByRef z() As Double, ByRef temDado() As Boolean, ByVa
         Det_3_1s_N3R1 z, temDado, nRun, r1sMulti
         Det_6x_N3R2 z, temDado, nRun, rSeq
         ' Complementares: calculados e registrados, NAO consolidados.
-        Det_MesmoNivel_Sequencia z, temDado, nRun, "2of3_2s", "SAME_LEVEL_R3", 3, 2#, r2sMulti
-        Det_MesmoNivel_Sequencia z, temDado, nRun, "3_1s", "SAME_LEVEL_R3", 3, 1#, r1sMulti
+        ' ADR-083: 2of3_2s SAME_LEVEL_R3 = 2 ou mais de 3 observacoes (antes exigia 3 de 3 e subnotificava).
+        Det_MesmoNivel_Sequencia z, temDado, nRun, "2of3_2s", "SAME_LEVEL_R3", 3, 2, 2#, r2sMulti
+        Det_MesmoNivel_Sequencia z, temDado, nRun, "3_1s", "SAME_LEVEL_R3", 3, 3, 1#, r1sMulti
         Det_MesmoNivel_Lado z, temDado, nRun, "6x", "SAME_LEVEL_R6", 6, rSeq
     Else
         Det_2_2s_WithinRun z, temDado, nRun, r2sMulti
         Det_2_2s_AcrossRun z, temDado, nRun, r2sMulti
         Det_4_1s_N2R2 z, temDado, nRun, r1sMulti
         Det_8x_N2R4 z, temDado, nRun, rSeq
-        Det_MesmoNivel_Sequencia z, temDado, nRun, "4_1s", "SAME_LEVEL_R4", 4, 1#, r1sMulti
+        Det_MesmoNivel_Sequencia z, temDado, nRun, "4_1s", "SAME_LEVEL_R4", 4, 4, 1#, r1sMulti
         Det_MesmoNivel_Lado z, temDado, nRun, "8x", "SAME_LEVEL_R8", 8, rSeq
     End If
 End Sub
@@ -809,23 +861,26 @@ Private Sub Det_2_2s_WithinRun(ByRef z() As Double, ByRef td() As Boolean, ByVal
 End Sub
 
 
-' --- 2_2s ACROSS_RUN, MESMO nivel: duas corridas seguidas alem do mesmo 2s.
+' --- 2_2s ACROSS_RUN, MESMO nivel: duas observacoes SEGUIDAS do nivel alem do mesmo 2s.
+' ADR-083: seguidas na sequencia de ativos do nivel (SeqDoNivel) -- uma corrida so de outro nivel (ou com este
+' resultado inativado) entre as duas NAO interrompe a regra. A marca vai na 2a, na posicao real do eixo; RUN_Inicial
+' e a corrida da 1a. Antes a lacuna deixava a janela "nao avaliavel" e o 2_2s nao era visto.
 Private Sub Det_2_2s_AcrossRun(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
                                ByRef r2sMulti As Variant)
-    Dim t As Long, i As Long
+    Dim t As Long, j As Long, m As Long, a As Long, b As Long, p() As Long
     For t = 0 To NLV - 1
-        For i = 2 To nRun
-            If Not (td(t, i) And td(t, i - 1)) Then
-                NaoAvaliavel "2_2s", "ACROSS_RUN_SAME_LEVEL"
-            ElseIf (z(t, i) > 2 And z(t, i - 1) > 2) Or _
-                   (z(t, i) < -2 And z(t, i - 1) < -2) Then
-                r2sMulti(t, i) = 1
-                Evid "2_2s", "ACROSS_RUN_SAME_LEVEL", "WITHIN_MATERIAL_ACROSS_RUN", i, _
-                     CStr(t + 1), i - 1, _
-                     "N" & CStr(t + 1) & " " & Format$(z(t, i - 1), "0.00") & _
-                     "->" & Format$(z(t, i), "0.00")
+        m = SeqDoNivel(td, t, nRun, p)
+        For j = 2 To m
+            a = p(j - 1): b = p(j)
+            If (z(t, b) > 2 And z(t, a) > 2) Or _
+               (z(t, b) < -2 And z(t, a) < -2) Then
+                r2sMulti(t, b) = 1
+                Evid "2_2s", "ACROSS_RUN_SAME_LEVEL", "WITHIN_MATERIAL_ACROSS_RUN", b, _
+                     CStr(t + 1), a, _
+                     "N" & CStr(t + 1) & " " & Format$(z(t, a), "0.00") & _
+                     "->" & Format$(z(t, b), "0.00")
             End If
-        Next i
+        Next j
     Next t
 End Sub
 
@@ -977,73 +1032,68 @@ prox:
 End Sub
 
 
-' --- COMPLEMENTAR: n corridas seguidas do mesmo lado, no MESMO nivel.
-' Registrado e nao consolidado, salvo se DetectorAtivo disser o contrario.
+' --- COMPLEMENTAR: n observacoes SEGUIDAS do MESMO nivel do mesmo lado da media.
+' ADR-083: seguidas na sequencia de ativos do nivel (SeqDoNivel), nao no eixo comum -- corrida sem este nivel no
+' meio nao interrompe; a evidencia ganha " (n obs)" quando as posicoes nao sao contiguas. A marca vai na posicao
+' real da ultima observacao. Registrado e nao consolidado, salvo se DetectorAtivo disser o contrario.
 Private Sub Det_MesmoNivel_Lado(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
                                 ByVal regra As String, ByVal detector As String, _
                                 ByVal n As Long, ByRef saida As Variant)
-    Dim t As Long, i As Long, k As Long, acima As Long, abaixo As Long
+    Dim t As Long, j As Long, k As Long, m As Long, acima As Long, abaixo As Long, p() As Long
     Dim ativo As Boolean
     ativo = DetectorAtivo(regra, detector)
     For t = 0 To NLV - 1
-        For i = n To nRun
-            Dim ok As Boolean
-            ok = True
-            For k = i - n + 1 To i
-                If Not td(t, k) Then ok = False
-            Next k
-            If Not ok Then
-                NaoAvaliavel regra, detector
-                GoTo prox
-            End If
-            acima = 0: abaixo = 0
-            For k = i - n + 1 To i
-                If z(t, k) > 0 Then acima = acima + 1
-                If z(t, k) < 0 Then abaixo = abaixo + 1
+        m = SeqDoNivel(td, t, nRun, p)
+        For j = n To m
+            acima = 0: abaixo = 0                       ' zerados a CADA janela (Dim em laco nao reinicia)
+            For k = j - n + 1 To j
+                If z(t, p(k)) > 0 Then acima = acima + 1
+                If z(t, p(k)) < 0 Then abaixo = abaixo + 1
             Next k
             If acima = n Or abaixo = n Then
-                If ativo Then saida(t, i) = 1
-                Evid regra, detector, "WITHIN_MATERIAL_ACROSS_RUN", i, _
-                     CStr(t + 1), i - n + 1, _
-                     "N" & CStr(t + 1) & " runs " & CStr(i - n + 1) & ".." & CStr(i)
+                If ativo Then saida(t, p(j)) = 1
+                Evid regra, detector, "WITHIN_MATERIAL_ACROSS_RUN", p(j), _
+                     CStr(t + 1), p(j - n + 1), DetalheJanelaNivel(t, p(j - n + 1), p(j), n)
             End If
-prox:
-        Next i
+        Next j
     Next t
 End Sub
 
 
-' --- COMPLEMENTAR: n corridas seguidas alem do mesmo limite, no MESMO nivel.
+' --- COMPLEMENTAR: n observacoes SEGUIDAS do MESMO nivel, ao menos 'minimo' delas alem do mesmo limite, do mesmo
+' lado. ADR-083: seguidas na sequencia de ativos do nivel (SeqDoNivel), nao no eixo comum; minimo = n nas regras
+' "n de n" (3_1s, 4_1s) e 2 no 2of3_2s ("2 ou mais de 3" -- antes exigia 3 de 3 e subnotificava). A observacao que
+' FECHA a janela tem de ser uma das que passam do limite, do lado que disparou (como no Det_2of3_2s_WithinRun, que
+' so marca os niveis que passam): sem isso a janela seguinte repetia o mesmo par num evento que fecha dentro do
+' controle, ou do lado oposto. Com minimo = n a condicao ja vale sozinha.
 Private Sub Det_MesmoNivel_Sequencia(ByRef z() As Double, ByRef td() As Boolean, ByVal nRun As Long, _
                                      ByVal regra As String, ByVal detector As String, _
-                                     ByVal n As Long, ByVal limite As Double, ByRef saida As Variant)
-    Dim t As Long, i As Long, k As Long, acima As Long, abaixo As Long
-    Dim ativo As Boolean
+                                     ByVal n As Long, ByVal minimo As Long, ByVal limite As Double, _
+                                     ByRef saida As Variant)
+    Dim t As Long, j As Long, k As Long, m As Long, acima As Long, abaixo As Long, p() As Long
+    Dim ativo As Boolean, dispara As Boolean
     ativo = DetectorAtivo(regra, detector)
     For t = 0 To NLV - 1
-        For i = n To nRun
-            Dim ok As Boolean
-            ok = True
-            For k = i - n + 1 To i
-                If Not td(t, k) Then ok = False
+        m = SeqDoNivel(td, t, nRun, p)
+        For j = n To m
+            acima = 0: abaixo = 0                       ' zerados a CADA janela (Dim em laco nao reinicia)
+            For k = j - n + 1 To j
+                If z(t, p(k)) > limite Then acima = acima + 1
+                If z(t, p(k)) < -limite Then abaixo = abaixo + 1
             Next k
-            If Not ok Then
-                NaoAvaliavel regra, detector
-                GoTo prox
+            dispara = False
+            If acima >= minimo Then
+                If z(t, p(j)) > limite Then dispara = True
             End If
-            acima = 0: abaixo = 0
-            For k = i - n + 1 To i
-                If z(t, k) > limite Then acima = acima + 1
-                If z(t, k) < -limite Then abaixo = abaixo + 1
-            Next k
-            If acima = n Or abaixo = n Then
-                If ativo Then saida(t, i) = 1
-                Evid regra, detector, "WITHIN_MATERIAL_ACROSS_RUN", i, _
-                     CStr(t + 1), i - n + 1, _
-                     "N" & CStr(t + 1) & " runs " & CStr(i - n + 1) & ".." & CStr(i)
+            If abaixo >= minimo Then
+                If z(t, p(j)) < -limite Then dispara = True
             End If
-prox:
-        Next i
+            If dispara Then
+                If ativo Then saida(t, p(j)) = 1
+                Evid regra, detector, "WITHIN_MATERIAL_ACROSS_RUN", p(j), _
+                     CStr(t + 1), p(j - n + 1), DetalheJanelaNivel(t, p(j - n + 1), p(j), n)
+            End If
+        Next j
     Next t
 End Sub
 
@@ -1257,7 +1307,8 @@ Public Sub AtualizarCalc()
     ' muda) renumera os seguintes -- o grafico continua 1, 2, 3... sem lacuna; reativar devolve exatamente o de antes
     ' (a numeracao e funcao do estado atual, nada e gravado). O X vermelho NAO tem numero: fica ENTRE as corridas
     ' ativas vizinhas, na posicao k + j/(m+1) (k = ativos antes dele, j = sua ordem entre os m X do intervalo).
-    ' O RUN (yymmddkk) continua sendo a chave da corrida do dia (Westgard entre niveis, dica).
+    ' O RUN (yymmddkk) continua sendo a chave da corrida do dia (Westgard entre niveis, dica). ADR-083: as regras de
+    ' Westgard do MESMO nivel seguem a sequencia de ativos do nivel -- a mesma ordem desta numeracao.
     Dim temNv As Object, corLote As Object, contNv() As Long, kNv As String
     Dim nXde As Object, xBase As Object, xIni As Object, grpX As Object, kGr As String
     Set temNv = CreateObject("Scripting.Dictionary")
@@ -1409,6 +1460,8 @@ Public Sub AtualizarCalc()
     ' ---- eixo do Westgard: so as corridas com resultado elegivel ----
     ' A sequencia avaliada e identica a de antes da inativacao existir: as
     ' corridas so-X ficam de fora, e o resultado inativado nao entra em z.
+    ' ADR-083: neste eixo as regras ENTRE niveis pareiam pela posicao (RUN) e as do MESMO nivel andam pela sequencia
+    ' de ativos de cada nivel (AvaliarWestgard) -- corrida so de outro nivel nao interrompe a 2_2s do nivel.
     Dim pDeE() As Long, nE As Long
     ReDim pDeE(1 To nRun)
     For i = 1 To nRun
@@ -1976,7 +2029,7 @@ Public Sub RegistrarEventosWestgard()
     Dim ws As Worksheet, i As Long, t As Long, j As Long, k As Long
     Dim lote As String, chave As String, nEv As Long, nDescartados As Long
     Dim porAnalito As Object, nomeDe As Object
-    Dim ev() As Variant, agg As Object
+    Dim ev() As Variant, agg As Object, runsAval As Object
     Dim prot As Boolean
 
     GarantirIndice
@@ -2002,6 +2055,9 @@ Public Sub RegistrarEventosWestgard()
     ultimaLinhaEv = ws.Cells(ws.rows.Count, 1).End(xlUp).Row
     If ultimaLinhaEv < 5003 Then ultimaLinhaEv = 5003
     ws.Range(ws.Cells(4, 1), ws.Cells(ultimaLinhaEv, EV_NCOL)).ClearContents
+    ' ADR-083: J2 VAZIO = aba em reconstrucao. So volta a ter numero quando a aba fica completa; se esta rotina parar
+    ' no meio, EventosWestgardOficiais ve J2 vazio e nao usa a foto (uma aba pela metade viraria evento "removido")
+    ws.Range("J2").ClearContents
     ' recomputando: o agregado antigo (de outro lote) nao vale mais
     Set mAgg = CreateObject("Scripting.Dictionary")
     mEvLote = ""
@@ -2022,28 +2078,26 @@ Public Sub RegistrarEventosWestgard()
     For Each chIdx In mIdx.Keys
         If LoteDaChave(CStr(chIdx)) = lote Then
             For Each xLin In mIdx(chIdx)
-                i = xLin
-                If IsNumeric(mDB(i, COL_RESULT)) Then
-                    Dim nv As Long
-                    nv = CLng(Val(mDB(i, COL_NIVEL)))
-                    If nv >= 1 And nv <= NLV Then
-                        chave = UCase$(Trim$(CStr(mDB(i, COL_ANALITO))))
-                        If Not porAnalito.Exists(chave) Then
-                            porAnalito.Add chave, New Collection
-                            nomeDe.Add chave, Trim$(CStr(mDB(i, COL_ANALITO)))
-                        End If
-                        ' nivel | RUN | valor | data
-                        porAnalito(chave).Add Array(nv, CLng(Val(mDB(i, COL_RUN))), _
-                                                    CDbl(mDB(i, COL_RESULT)), _
-                                                    IIf(IsDate(mDB(i, COL_DATA)), CDbl(CDate(mDB(i, COL_DATA))), 0))
-                    End If
-                End If
+                ' ADR-083 (opcao completa): o mesmo filtro e o mesmo formato da foto por lote x equipamento
+                AcrescentarSerieWg CLng(xLin), porAnalito, nomeDe
             Next xLin
         End If
     Next chIdx
-    If porAnalito.Count = 0 Then Set mAgg = CreateObject("Scripting.Dictionary"): mEvLote = lote & "|" & mEquipIdx: GoTo restaura
+    If porAnalito.Count = 0 Then
+        Set mAgg = CreateObject("Scripting.Dictionary")
+        mEvLote = lote & "|" & mEquipIdx
+        ws.Range("J2").Value = 0                    ' ADR-083: aba completa, sem evento (nao "em reconstrucao")
+        Set mRunsWg = CreateObject("Scripting.Dictionary")
+        mRunsWgEsc = Trim$(lote) & "|" & UCase$(Trim$(mEquipIdx))
+        GoTo restaura
+    End If
 
     Set agg = CreateObject("Scripting.Dictionary")
+    ' ADR-083: as corridas avaliadas nesta reconstrucao ("ANALITO|RUN"). A proxima foto (EventosWestgardOficiais) leva
+    ' esta referencia; AuditarMudancasWestgard separa por ela o evento numa corrida JA avaliada (mudanca retroativa)
+    ' do evento numa corrida nova (deteccao de rotina)
+    Set runsAval = CreateObject("Scripting.Dictionary")
+    runsAval.CompareMode = 0
     Set mAgg = agg          ' definido JA: AgregadoWestgard nunca re-dispara esta rotina
     ' BUFFER SEM TETO, e a orientacao (coluna, evento) e o motivo de ser
     ' possivel: VBA so aceita ReDim Preserve na ULTIMA dimensao. Com a matriz
@@ -2059,7 +2113,73 @@ Public Sub RegistrarEventosWestgard()
     ReDim ev(1 To EV_NCOL, 1 To capEv)
     nEv = 0: nDescartados = 0
 
+    ' ADR-083 (opcao completa): o calculo por analito saiu para EventosEscopoWg -- o MESMO nucleo, em memoria, que a
+    ' foto por lote x equipamento (SincronizarFotosWg) usa nos lotes que nao estao no Painel. Aqui so muda o destino:
+    ' a aba Eventos_Westgard e os agregados do Painel (mAgg).
+    nEv = EventosEscopoWg(lote, porAnalito, nomeDe, ev, capEv, nDescartados, agg, runsAval)
+
+    If nEv > 0 Then
+        Dim outp() As Variant
+        ReDim outp(1 To nEv, 1 To EV_NCOL)
+        For i = 1 To nEv
+            For j = 1 To EV_NCOL
+                outp(i, j) = ev(j, i)
+            Next j
+        Next i
+        ' A coluna Niveis e TEXTO, sempre. Sem isto o Excel converte "3" em
+        ' numero e deixa "1,2" como texto -- coluna de tipo misto, que o Power
+        ' Query resolve escolhendo um dos dois e descartando o resto em erro.
+        ws.Range(ws.Cells(4, 4), ws.Cells(3 + nEv, 4)).NumberFormat = "@"
+        ws.Range(ws.Cells(4, 1), ws.Cells(3 + nEv, EV_NCOL)).Value = outp
+    End If
+    ws.Range("J2").Value = nEv
+
+    ' Teto de eventos: descartar em silencio esconderia violacao de Westgard do
+    ' analista e do auditor. Eventos_Westgard e DERIVADA -- pode ser
+    ' reconstruida --, entao interromper aqui e seguro e forca a decisao.
+    If nDescartados > 0 Then
+        ws.Range("J2").ClearContents                ' ADR-083: aba INCOMPLETA -- a foto da trilha nao a usa
+        Auditar CAT_SIS, "EVENTOS_WESTGARD_ESTOUROU", "mEstatistica", _
+                0, "", "", "", 0, "", nEv, nDescartados, "", "", _
+                "Buffer dinamico de " & capEv & " eventos cheio (INVARIANTE VIOLADA); " & nDescartados & _
+                " evento(s) NAO registrado(s)", _
+                "Arquivar Eventos_Westgard e reexecutar para restaurar o historico completo"
+        Err.Raise vbObjectError + 513, "RegistrarEventosWestgard", _
+                  "Historico de Westgard incompleto: " & nDescartados & _
+                  " evento(s) descartado(s) por buffer cheio (" & capEv & _
+                  "). O evento foi registrado no Audit_Log."
+    End If
+
+    Set mAgg = agg
+    mEvLote = lote & "|" & mEquipIdx   ' ADR-050/057: vale para este lote e equipamento ate InvalidarCache
+    ' ADR-083: objeto NOVO a cada reconstrucao (a foto anterior guarda a referencia antiga); InvalidarCache nao o
+    ' apaga -- ele descreve o que esta na aba, e a aba so muda aqui
+    Set mRunsWg = runsAval
+    mRunsWgEsc = Trim$(lote) & "|" & UCase$(Trim$(mEquipIdx))
+
+restaura:
+    ' Reprotege SEMPRE -- inclusive nos caminhos de saida antecipada e no erro.
+    ' Deixar a aba destrancada por causa de uma excecao seria trocar um defeito
+    ' visivel por um buraco de seguranca silencioso.
+    Dim nErr As Long, sErr As String
+    nErr = Err.Number: sErr = Err.Description
+    RestaurarProtecao ws, prot
+    On Error GoTo 0
+    If nErr <> 0 Then Err.Raise nErr, "mEstatistica.RegistrarEventosWestgard", sErr
+End Sub
+
+
+' ADR-083 (opcao completa): os eventos de UM lote x equipamento, em memoria -- o NUCLEO de RegistrarEventosWestgard,
+' sem planilha (nao le nem grava Eventos_Westgard nem o Painel). porAnalito: ANALITO (maiusculas) -> Collection de
+' Array(nivel, RUN, valor, data) na ordem do banco (AcrescentarSerieWg); nomeDe: ANALITO -> nome como esta no banco.
+' Preenche ev (coluna, evento; dobra quando enche, sem teto), agg (agregados por analito|nivel, os de
+' MetricasWestgard) e runsAval ("ANALITO|RUN" de cada eixo). Devolve o numero de eventos em ev.
+Private Function EventosEscopoWg(ByVal lote As String, ByVal porAnalito As Object, ByVal nomeDe As Object, _
+                                 ByRef ev() As Variant, ByRef capEv As Long, ByRef nDescartados As Long, _
+                                 ByVal agg As Object, ByVal runsAval As Object) As Long
+    Dim i As Long, t As Long, j As Long, k As Long, nEv As Long
     Dim ch As Variant
+    nEv = 0
     For Each ch In porAnalito.Keys
         Dim col As Collection
         Set col = porAnalito(ch)
@@ -2069,6 +2189,8 @@ Public Sub RegistrarEventosWestgard()
         ' corrida i do N1 poderia ser outra corrida no N3, e R_4s compararia
         ' materiais de dias diferentes -- violacao silenciosa do escopo
         ' WITHIN_RUN do ADR-042.
+        ' ADR-083: o eixo continua um so (as regras ENTRE niveis pareiam por ele); as regras do MESMO nivel andam,
+        ' dentro dele, pela sequencia de ativos de cada nivel (AvaliarWestgard/SeqDoNivel).
         Dim runs() As Long, nRun As Long, vistos As Object, item As Variant
         Dim dtRun() As Double
         Set vistos = CreateObject("Scripting.Dictionary")
@@ -2089,6 +2211,7 @@ Public Sub RegistrarEventosWestgard()
             Set posDe = CreateObject("Scripting.Dictionary")
             For j = 1 To nRun
                 posDe(CStr(runs(j))) = j
+                runsAval(CStr(ch) & "|" & CStr(runs(j))) = 1     ' ADR-083 (ch = analito em maiusculas)
             Next j
 
             ' --- matriz (nivel, corrida) ------------------------------------
@@ -2196,6 +2319,12 @@ Public Sub RegistrarEventosWestgard()
                             ' N3/R2 fechado na corrida 9 olhou tambem a 8. Contar
                             ' apenas o fechamento subestimaria o que esta sob
                             ' suspeita, que e a pergunta que o analista faz.
+                            ' ADR-083: sao TODAS as corridas do eixo de RUN_Inicial a RUN.
+                            ' Numa regra do mesmo nivel isso inclui a corrida do MEIO da
+                            ' sequencia sem resultado deste nivel (so do outro nivel, ou com
+                            ' este inativado): pacientes dela foram liberados durante o
+                            ' provavel desvio, entao ela tambem esta sob suspeita (decisao
+                            ' do usuario, 22/10/2026; o filtro por td foi recusado).
                             Dim wIni As Long, wFim As Long, wq As Long
                             wIni = CLng(posDe(CStr(ev(11, k))))
                             wFim = CLng(posDe(CStr(ev(2, k))))
@@ -2223,50 +2352,26 @@ Public Sub RegistrarEventosWestgard()
             Next t
         End If
     Next ch
+    EventosEscopoWg = nEv
+End Function
 
-    If nEv > 0 Then
-        Dim outp() As Variant
-        ReDim outp(1 To nEv, 1 To EV_NCOL)
-        For i = 1 To nEv
-            For j = 1 To EV_NCOL
-                outp(i, j) = ev(j, i)
-            Next j
-        Next i
-        ' A coluna Niveis e TEXTO, sempre. Sem isto o Excel converte "3" em
-        ' numero e deixa "1,2" como texto -- coluna de tipo misto, que o Power
-        ' Query resolve escolhendo um dos dois e descartando o resto em erro.
-        ws.Range(ws.Cells(4, 4), ws.Cells(3 + nEv, 4)).NumberFormat = "@"
-        ws.Range(ws.Cells(4, 1), ws.Cells(3 + nEv, EV_NCOL)).Value = outp
+
+' ADR-083 (opcao completa): acrescenta a linha i do snapshot a serie do analito, com o filtro e o formato que
+' RegistrarEventosWestgard sempre usou -- resultado numerico, nivel 1..NLV; item = nivel | RUN | valor | data. A
+' foto por lote x equipamento monta a serie pelo mesmo caminho: as duas nunca divergem.
+Private Sub AcrescentarSerieWg(ByVal i As Long, ByVal porAnalito As Object, ByVal nomeDe As Object)
+    Dim nv As Long, chave As String
+    If Not IsNumeric(mDB(i, COL_RESULT)) Then Exit Sub
+    nv = CLng(Val(mDB(i, COL_NIVEL)))
+    If nv < 1 Or nv > NLV Then Exit Sub
+    chave = UCase$(Trim$(CStr(mDB(i, COL_ANALITO))))
+    If Not porAnalito.Exists(chave) Then
+        porAnalito.Add chave, New Collection
+        nomeDe.Add chave, Trim$(CStr(mDB(i, COL_ANALITO)))
     End If
-    ws.Range("J2").Value = nEv
-
-    ' Teto de eventos: descartar em silencio esconderia violacao de Westgard do
-    ' analista e do auditor. Eventos_Westgard e DERIVADA -- pode ser
-    ' reconstruida --, entao interromper aqui e seguro e forca a decisao.
-    If nDescartados > 0 Then
-        Auditar CAT_SIS, "EVENTOS_WESTGARD_ESTOUROU", "mEstatistica", _
-                0, "", "", "", 0, "", nEv, nDescartados, "", "", _
-                "Buffer dinamico de " & capEv & " eventos cheio (INVARIANTE VIOLADA); " & nDescartados & _
-                " evento(s) NAO registrado(s)", _
-                "Arquivar Eventos_Westgard e reexecutar para restaurar o historico completo"
-        Err.Raise vbObjectError + 513, "RegistrarEventosWestgard", _
-                  "Historico de Westgard incompleto: " & nDescartados & _
-                  " evento(s) descartado(s) por buffer cheio (" & capEv & _
-                  "). O evento foi registrado no Audit_Log."
-    End If
-
-    Set mAgg = agg
-    mEvLote = lote & "|" & mEquipIdx   ' ADR-050/057: vale para este lote e equipamento ate InvalidarCache
-
-restaura:
-    ' Reprotege SEMPRE -- inclusive nos caminhos de saida antecipada e no erro.
-    ' Deixar a aba destrancada por causa de uma excecao seria trocar um defeito
-    ' visivel por um buraco de seguranca silencioso.
-    Dim nErr As Long, sErr As String
-    nErr = Err.Number: sErr = Err.Description
-    RestaurarProtecao ws, prot
-    On Error GoTo 0
-    If nErr <> 0 Then Err.Raise nErr, "mEstatistica.RegistrarEventosWestgard", sErr
+    porAnalito(chave).Add Array(nv, CLng(Val(mDB(i, COL_RUN))), _
+                                CDbl(mDB(i, COL_RESULT)), _
+                                IIf(IsDate(mDB(i, COL_DATA)), CDbl(CDate(mDB(i, COL_DATA))), 0))
 End Sub
 
 
@@ -2373,8 +2478,10 @@ End Sub
 '                            oficiais do motor que envolvem este nivel)
 '   N_Resultados_Marcados .. quantos RESULTADOS deste nivel ficaram marcados
 '                            por alguma regra -- um evento 6x N3/R2 marca seis
-'   N_Corridas_Envolvidas .. quantas CORRIDAS deste nivel tem ao menos um
-'                            resultado marcado
+'   N_Corridas_Envolvidas .. quantas CORRIDAS (RUNs do eixo do analito no
+'                            lote) caem na janela RUN_Inicial..RUN de algum
+'                            evento oficial deste nivel -- inclusive a corrida
+'                            do meio sem resultado deste nivel (ADR-083)
 '
 ' Devolve "eventos|marcados|corridas".
 Public Function MetricasWestgard(ByVal analito As String, ByVal nivel As Long) As String
@@ -2394,6 +2501,942 @@ Public Function AgregadoWestgard(ByVal analito As String, ByVal nivel As Long) A
         AgregadoWestgard = Array(0, "", 0, "", 0, 0, 0, 0)
     End If
 End Function
+
+
+' ============================================================================
+'  TRILHA DA MUDANCA DE VEREDICTO DE WESTGARD (ADR-083)
+'
+'  Eventos_Westgard e DERIVADA: e refeita a cada atualizacao. Com o ADR-083, inativar, reativar ou lancar um
+'  manual num resultado muda a sequencia de ativos do nivel e pode CRIAR ou APAGAR uma regra do mesmo nivel numa
+'  corrida POSTERIOR, ja liberada. Sem trilha isso aconteceria em silencio. EventosWestgardOficiais le os eventos
+'  OFICIAIS da aba e AuditarMudancasWestgard grava no Audit_Log cada evento que entrou (WESTGARD_EVENTO_NOVO) ou saiu
+'  (WESTGARD_EVENTO_REMOVIDO) entre duas leituras da aba. O ATUALIZAR (mIntegracao.AtualizarDadosCore) usa, desde a
+'  "opcao completa" (27/10/2026), a FOTO POR LOTE x EQUIPAMENTO da aba Westgard_Fotos (AuditarFotosWestgard, mais
+'  abaixo), que cobre TODOS os lotes; as duas usam a mesma comparacao (CompararEventosWg) e o mesmo Audit_Log.
+'
+'  ESCOPO REAL DA ABA (conferido em RegistrarEventosWestgard): UM lote -- o do Painel (mLotes.LotePainel: loteSel,
+'  ou o lote em uso) -- e UM equipamento na serie (EquipFiltro: o seletor da Bioquimica; na Hematologia o
+'  EQUIPAMENTO_PADRAO). Entram TODOS os analitos com resultado elegivel nesse lote/equipamento e TODO o historico
+'  do lote (sem a janela de 180 corridas e sem o periodo do Painel). Cada chamada refaz a aba inteira (memoizada
+'  por lote|equipamento ate o proximo InvalidarCache); L2 = lote e N2 = equipamento. Por isso a comparacao so vale
+'  entre fotos do MESMO lote|equipamento: com escopo diferente nada e auditado -- o evento de outro lote nao
+'  "sumiu". Na ABA, outros lotes so aparecem quando viram o lote do Painel; a foto por lote x equipamento
+'  (Westgard_Fotos, mais abaixo) e quem audita todos eles.
+'
+'  O LIMITE da trilha pela aba (so o lote|equipamento do Painel no momento do ATUALIZAR) acabou com a opcao completa:
+'  a foto por lote x equipamento (Westgard_Fotos) audita a mudanca em QUALQUER lote, inclusive o resultado de outro
+'  lote inativado pela aba Inativar e, na Bioquimica, o do outro equipamento.
+'
+'  CLASSE DA MUDANCA: evento que SAIU e sempre de corrida ja avaliada (RETROATIVO). Evento que ENTROU e RETROATIVO
+'  quando a corrida de fechamento ja estava no eixo da reconstrucao anterior (mRunsWg, levado na foto), e
+'  CORRIDA_NOVA quando nao estava (deteccao de rotina de resultado novo; acao WESTGARD_EVENTO_CORRIDA_NOVA). Sem a
+'  referencia (o motor ainda nao rodou nesta sessao do Excel, ou a foto e de outro escopo) sai NAO_CLASSIFICADO.
+' ============================================================================
+
+' Eventos OFICIAIS que estao HOJE na aba Eventos_Westgard (a foto que AuditarMudancasWestgard compara).
+' Chave estavel "ANALITO|lote|niveis|regra|RUN" (analito em maiusculas; niveis como na coluna D: "1" ou "1,2") ->
+' descricao "regra detector | Analito | niveis n | RUN r (inicio ri) | aaaa-mm-dd hh:nn | evidencia".
+' A chave "#ESCOPO" guarda "lote|EQUIPAMENTO" da aba (L2/N2); a chave "#RUNS" (quando a aba foi refeita nesta sessao
+' do Excel) leva o objeto das corridas avaliadas nela (mRunsWg). Nunca levanta erro: sem a aba, com J2 vazio (aba em
+' reconstrucao) ou com erro no meio da leitura, devolve o vazio -- uma foto INCOMPLETA nao pode virar evento
+' "removido" (sem "#ESCOPO" nada e auditado).
+Public Function EventosWestgardOficiais() As Object
+    Dim d As Object, ws As Worksheet, n As Long, v As Variant, i As Long
+    Dim k As String, lote As String, dataTxt As String, sJ2 As String
+    Set d = CreateObject("Scripting.Dictionary")
+    d.CompareMode = 0                               ' binario: a chave ja vem normalizada
+    Set EventosWestgardOficiais = d
+    On Error GoTo incompleta
+    Set ws = ThisWorkbook.Sheets("Eventos_Westgard")
+    lote = TxtCelWg(ws.Range("L2").Value)
+    ' J2 = eventos gravados na ultima reconstrucao; VAZIO = RegistrarEventosWestgard parou no meio (aba incompleta)
+    sJ2 = TxtCelWg(ws.Range("J2").Value)
+    If Len(sJ2) = 0 Then GoTo incompleta
+    d(WG_ESCOPO) = lote & "|" & UCase$(TxtCelWg(ws.Range("N2").Value))
+    If Not mRunsWg Is Nothing Then
+        If mRunsWgEsc = CStr(d(WG_ESCOPO)) Then d.Add WG_RUNS, mRunsWg
+    End If
+    n = CLng(Val(sJ2))
+    If n <= 0 Then Exit Function
+    v = ws.Range(ws.Cells(4, 1), ws.Cells(3 + n, EV_NCOL)).Value
+    For i = 1 To n
+        If TxtCelWg(v(i, 8)) = "OFICIAL" Then
+            If Len(TxtCelWg(v(i, 5))) > 0 Then
+                k = ChaveEventoWestgard(TxtCelWg(v(i, 3)), lote, TxtCelWg(v(i, 4)), TxtCelWg(v(i, 5)), _
+                                        RunTxtWg(v(i, 2)))
+                If Not d.Exists(k) Then
+                    dataTxt = ""
+                    If Not IsError(v(i, 1)) Then
+                        If IsDate(v(i, 1)) Then dataTxt = Format$(CDate(v(i, 1)), "yyyy-mm-dd hh:nn")
+                    End If
+                    d.Add k, DescEventoWg(TxtCelWg(v(i, 5)), TxtCelWg(v(i, 6)), TxtCelWg(v(i, 3)), _
+                                          TxtCelWg(v(i, 4)), RunTxtWg(v(i, 2)), RunTxtWg(v(i, 11)), dataTxt, _
+                                          TxtCelWg(v(i, 12)))
+                End If
+            End If
+        End If
+    Next i
+    Exit Function
+incompleta:
+    d.RemoveAll
+End Function
+
+
+' Compara a foto 'antes' (EventosWestgardOficiais, tirada antes do motor) com a aba de AGORA e grava no Audit_Log
+' cada evento OFICIAL que saiu (WESTGARD_EVENTO_REMOVIDO, sempre RETROATIVO) ou entrou: WESTGARD_EVENTO_NOVO quando a
+' corrida de fechamento ja tinha sido avaliada (RETROATIVO) ou sem referencia (NAO_CLASSIFICADO), e
+' WESTGARD_EVENTO_CORRIDA_NOVA quando nao tinha (rotina). Escopos diferentes (outro lote/equipamento na aba) nao se
+' comparam. Ordem: primeiro o que muda veredicto de corrida ja avaliada, depois a rotina -- o teto de WG_AUDIT_MAX
+' linhas nunca empurra uma mudanca retroativa para o resumo (WESTGARD_EVENTOS_NAO_DETALHADOS) por causa da rotina.
+' Nunca derruba a atualizacao (a trilha nao pode impedir o motor).
+Public Sub AuditarMudancasWestgard(ByVal antes As Object)
+    Dim depois As Object, esc As String, runsAntes As Object, passo As Long
+    Dim nGrav As Long, nNovo As Long, nRem As Long, nRot As Long, nResto As Long
+    On Error GoTo saida
+    If antes Is Nothing Then Exit Sub
+    If Not antes.Exists(WG_ESCOPO) Then Exit Sub
+    Set depois = EventosWestgardOficiais()
+    If Not depois.Exists(WG_ESCOPO) Then Exit Sub
+    esc = CStr(depois(WG_ESCOPO))
+    If CStr(antes(WG_ESCOPO)) <> esc Then Exit Sub
+    Set runsAntes = Nothing
+    If antes.Exists(WG_RUNS) Then Set runsAntes = antes(WG_RUNS)
+    For passo = 1 To 2
+        CompararEventosWg passo, antes, depois, runsAntes, esc, nGrav, nResto, nNovo, nRem, nRot
+    Next passo
+    If nResto > 0 Then ResumoNaoDetalhadosWg esc, nResto, nNovo, nRem, nRot, "na aba Eventos_Westgard"
+saida:
+End Sub
+
+
+' ADR-083: UM passo da comparacao foto x agora de um lote x equipamento (esc = "lote|EQUIPAMENTO"). Passo 1: os
+' eventos que sairam (REMOVIDO, sempre RETROATIVO) e os que entraram numa corrida ja avaliada ou sem referencia;
+' passo 2: os que entraram numa corrida nova (rotina). Quem chama faz o passo 1 de TODOS os escopos antes do passo 2:
+' o teto de WG_AUDIT_MAX linhas nunca empurra uma mudanca retroativa para o resumo. runsAntes Nothing = sem referencia.
+Private Sub CompararEventosWg(ByVal passo As Long, ByVal antes As Object, ByVal depois As Object, _
+                              ByVal runsAntes As Object, ByVal esc As String, ByRef nGrav As Long, _
+                              ByRef nResto As Long, ByRef nNovo As Long, ByRef nRem As Long, ByRef nRot As Long)
+    Dim k As Variant, cls As String
+    If passo = 1 Then
+        For Each k In antes.Keys
+            If Not ChaveMetaWg(CStr(k)) Then
+                If Not depois.Exists(k) Then
+                    nRem = nRem + 1
+                    GravarMudancaWg "WESTGARD_EVENTO_REMOVIDO", WG_RETRO, CStr(k), CStr(antes(k)), esc, _
+                                    nGrav, nResto
+                End If
+            End If
+        Next k
+    End If
+    For Each k In depois.Keys
+        If Not ChaveMetaWg(CStr(k)) Then
+            If Not antes.Exists(k) Then
+                cls = ClasseEventoNovoWg(CStr(k), runsAntes)
+                If (cls = WG_ROTINA) = (passo = 2) Then
+                    If cls = WG_ROTINA Then
+                        nRot = nRot + 1
+                        GravarMudancaWg "WESTGARD_EVENTO_CORRIDA_NOVA", cls, CStr(k), CStr(depois(k)), esc, _
+                                        nGrav, nResto
+                    Else
+                        nNovo = nNovo + 1
+                        GravarMudancaWg "WESTGARD_EVENTO_NOVO", cls, CStr(k), CStr(depois(k)), esc, _
+                                        nGrav, nResto
+                    End If
+                End If
+            End If
+        End If
+    Next k
+End Sub
+
+
+' ADR-083: a linha-resumo do que passou do teto de WG_AUDIT_MAX linhas numa atualizacao. esc vazio = varios lotes.
+Private Sub ResumoNaoDetalhadosWg(ByVal esc As String, ByVal nResto As Long, ByVal nNovo As Long, _
+                                  ByVal nRem As Long, ByVal nRot As Long, ByVal onde As String)
+    mAuditoria.Auditar mAuditoria.CAT_DADO, "WESTGARD_EVENTOS_NAO_DETALHADOS", "mEstatistica", 0, Empty, _
+                       ParteEscopoWg(esc, 1), ParteEscopoWg(esc, 0), 0, "", Empty, Empty, "", "", "", _
+                       "ADR-083: " & nResto & " de " & (nNovo + nRem + nRot) & " mudanca(s) de evento OFICIAL (" & _
+                       nRem & " removida(s), " & nNovo & " nova(s) em corrida ja avaliada ou sem referencia, " & _
+                       nRot & " em corrida nova) acima do teto de " & WG_AUDIT_MAX & _
+                       " linhas por atualizacao; a lista completa esta " & onde, True
+End Sub
+
+
+' As chaves da foto que nao sao evento ("#ESCOPO", "#RUNS").
+Private Function ChaveMetaWg(ByVal k As String) As Boolean
+    If k = WG_ESCOPO Then
+        ChaveMetaWg = True
+    ElseIf k = WG_RUNS Then
+        ChaveMetaWg = True
+    End If
+End Function
+
+
+' Classe de um evento que ENTROU: RETROATIVO se a corrida de fechamento (o RUN da chave) ja estava no eixo do analito
+' na reconstrucao da foto, CORRIDA_NOVA se nao estava, NAO_CLASSIFICADO sem a referencia.
+Private Function ClasseEventoNovoWg(ByVal chave As String, ByVal runsAntes As Object) As String
+    Dim c As Variant, u As Long, i As Long, an As String
+    ClasseEventoNovoWg = WG_SEMREF
+    If runsAntes Is Nothing Then Exit Function
+    c = Split(chave, "|")
+    u = UBound(c)
+    If u < 4 Then Exit Function
+    an = CStr(c(0))
+    For i = 1 To u - 4                              ' analito com "|" no nome: a chave termina em lote|niveis|regra|RUN
+        an = an & "|" & CStr(c(i))
+    Next i
+    If runsAntes.Exists(an & "|" & CStr(c(u))) Then
+        ClasseEventoNovoWg = WG_RETRO
+    Else
+        ClasseEventoNovoWg = WG_ROTINA
+    End If
+End Function
+
+
+' Grava a linha enquanto couber no teto; depois so conta (vai no resumo).
+Private Sub GravarMudancaWg(ByVal acao As String, ByVal classe As String, ByVal chave As String, _
+                            ByVal desc As String, ByVal esc As String, ByRef nGrav As Long, ByRef nResto As Long)
+    If nGrav < WG_AUDIT_MAX Then
+        RegistrarMudancaWestgard acao, classe, chave, desc, esc
+        nGrav = nGrav + 1
+    Else
+        nResto = nResto + 1
+    End If
+End Sub
+
+
+' Uma linha do Audit_Log para um evento que entrou ou saiu (ADR-083). Sem valor de resultado: so RUN, data da
+' corrida, equipamento, lote, nivel (0 quando o evento envolve mais de um nivel), analito, regra, a evidencia e a
+' classe (RETROATIVO / CORRIDA_NOVA / NAO_CLASSIFICADO, no inicio do parecer). Sem chave de resultado (semChave):
+' o evento e da REGRA, nao altera o resultado da corrida de fechamento -- nao entra no AU_SEQ nem no
+' HistoricoDoRegistro daquele resultado; RUN, nivel e analito ficam nas colunas proprias para filtrar.
+Private Sub RegistrarMudancaWestgard(ByVal acao As String, ByVal classe As String, ByVal chave As String, _
+                                     ByVal desc As String, ByVal esc As String)
+    Dim c As Variant, partes As Variant, u As Long, nivs As String, nv As Long
+    Dim analitoN As String, regraDet As String, stAnt As String, stNovo As String, dtc As Variant, evidTxt As String
+    Dim jan As String, txtCls As String
+    On Error Resume Next                            ' um evento que nao grava nao impede os outros
+    c = Split(chave, "|")
+    u = UBound(c)
+    If u < 4 Then Exit Sub
+    nivs = CStr(c(u - 2))
+    If InStr(1, nivs, ",") = 0 Then nv = CLng(Val(nivs)) Else nv = 0
+    analitoN = CStr(c(0))
+    regraDet = CStr(c(u - 1))
+    dtc = Empty
+    partes = Split(desc, " | ")
+    If UBound(partes) >= 1 Then
+        regraDet = CStr(partes(0))
+        analitoN = CStr(partes(1))                  ' o nome como esta na aba (na chave vai em maiusculas)
+    End If
+    If UBound(partes) >= 3 Then jan = " [" & CStr(partes(3)) & "]"
+    If UBound(partes) >= 4 Then dtc = DataIsoWg(CStr(partes(4)))
+    If UBound(partes) >= 5 Then evidTxt = CStr(partes(5))
+    If acao = "WESTGARD_EVENTO_REMOVIDO" Then
+        stAnt = "OFICIAL": stNovo = ""
+    Else
+        stAnt = "": stNovo = "OFICIAL"
+    End If
+    Select Case classe
+        Case WG_RETRO
+            txtCls = "corrida JA avaliada (mudanca retroativa de veredicto): mudou um resultado do nivel nessa " & _
+                     "corrida ou antes dela -- inativacao, reativacao, manual ou resultado substituido -- ou a " & _
+                     "media/DP do lote"
+        Case WG_ROTINA
+            txtCls = "corrida que ainda nao tinha sido avaliada (deteccao de rotina de resultado novo)"
+        Case Else
+            txtCls = "sem a referencia das corridas ja avaliadas (o motor ainda nao tinha rodado nesta sessao do " & _
+                     "Excel): corrida nova ou mudanca retroativa"
+    End Select
+    mAuditoria.Auditar mAuditoria.CAT_DADO, acao, "mEstatistica", CLng(Val(CStr(c(u)))), dtc, _
+                       ParteEscopoWg(esc, 1), CStr(c(u - 3)), nv, analitoN, Empty, Empty, stAnt, stNovo, regraDet, _
+                       "ADR-083 [" & classe & "]: evento OFICIAL " & IIf(stNovo = "OFICIAL", "entrou", "saiu") & _
+                       " -- niveis " & nivs & ", RUN " & CStr(c(u)) & jan & _
+                       IIf(Len(evidTxt) > 0, ", evidencia " & evidTxt, "") & "; " & txtCls, True
+End Sub
+
+
+' Lote (parte 0) ou equipamento (parte 1) de "lote|EQUIPAMENTO".
+Private Function ParteEscopoWg(ByVal esc As String, ByVal parte As Long) As String
+    Dim p As Long
+    p = InStr(1, esc, "|")
+    If p = 0 Then
+        If parte = 0 Then ParteEscopoWg = esc
+    ElseIf parte = 0 Then
+        ParteEscopoWg = Left$(esc, p - 1)
+    Else
+        ParteEscopoWg = Mid$(esc, p + 1)
+    End If
+End Function
+
+
+' Chave estavel de um evento (ADR-083): "ANALITO|lote|niveis|regra|RUN".
+Private Function ChaveEventoWestgard(ByVal analito As String, ByVal lote As String, ByVal niveis As String, _
+                                     ByVal regra As String, ByVal runTxt As String) As String
+    ChaveEventoWestgard = UCase$(Trim$(analito)) & "|" & Trim$(lote) & "|" & Replace(Trim$(niveis), " ", "") & _
+                          "|" & Trim$(regra) & "|" & Trim$(runTxt)
+End Function
+
+
+' Texto de uma celula lida em bloco: erro de celula, Null e Empty viram "".
+Private Function TxtCelWg(ByVal x As Variant) As String
+    If IsError(x) Then Exit Function
+    If IsNull(x) Then Exit Function
+    If IsEmpty(x) Then Exit Function
+    TxtCelWg = Trim$(CStr(x))
+End Function
+
+
+' RUN como texto inteiro ("26101502"), qualquer que seja o tipo da celula.
+Private Function RunTxtWg(ByVal x As Variant) As String
+    Dim s As String
+    s = TxtCelWg(x)
+    If Len(s) = 0 Then Exit Function
+    If IsNumeric(s) Then RunTxtWg = CStr(CLng(CDbl(s))) Else RunTxtWg = s
+End Function
+
+
+' "aaaa-mm-dd hh:nn" -> Date (sem depender do formato regional); texto invalido -> Empty.
+Private Function DataIsoWg(ByVal s As String) As Variant
+    Dim dd As Date
+    DataIsoWg = Empty
+    s = Trim$(s)
+    If Len(s) < 10 Then Exit Function
+    If Mid$(s, 5, 1) <> "-" Then Exit Function
+    If Mid$(s, 8, 1) <> "-" Then Exit Function
+    dd = DateSerial(CLng(Val(Left$(s, 4))), CLng(Val(Mid$(s, 6, 2))), CLng(Val(Mid$(s, 9, 2))))
+    If Len(s) >= 16 Then dd = dd + TimeSerial(CLng(Val(Mid$(s, 12, 2))), CLng(Val(Mid$(s, 15, 2))), 0)
+    DataIsoWg = dd
+End Function
+
+' Descricao de um evento na foto (a mesma nas duas trilhas): "regra detector | Analito | niveis n | RUN r (inicio ri) |
+' aaaa-mm-dd hh:nn | evidencia".
+Private Function DescEventoWg(ByVal regra As String, ByVal detector As String, ByVal analito As String, _
+                              ByVal niveis As String, ByVal runTxt As String, ByVal runIniTxt As String, _
+                              ByVal dataTxt As String, ByVal evidencia As String) As String
+    DescEventoWg = regra & " " & detector & " | " & analito & " | niveis " & niveis & " | RUN " & runTxt & _
+                   " (inicio " & runIniTxt & ") | " & dataTxt & " | " & evidencia
+End Function
+
+
+' ============================================================================
+'  FOTO DOS EVENTOS OFICIAIS POR LOTE x EQUIPAMENTO -- a "opcao completa" do ADR-083 (pedido de 27/10/2026)
+'
+'  A trilha de cima so enxerga a aba Eventos_Westgard: UM lote x UM equipamento, o do Painel. Esta guarda na aba
+'  tecnica Westgard_Fotos (oculta e protegida; criada pelo instalar_adr083.py, que tambem grava a foto inicial) os
+'  eventos OFICIAIS de TODOS os lotes x equipamento, e o ATUALIZAR (mIntegracao.AtualizarDadosCore, logo depois de
+'  AtualizarEstatistica; tambem no caminho rapido da inativacao pelo grafico, AtualizarSoEntradas) audita a mudanca
+'  em QUALQUER lote:
+'    1. UMA passada no snapshot do banco (mDB, o CarregarDB do motor) da a IMPRESSAO DIGITAL de cada lote x
+'       equipamento: contagem e somas modulares (inteiros exatos, independentes da ordem das linhas) de analito,
+'       nivel, RUN, data e resultado de cada resultado da serie de Westgard, mais a media/DP do lote de cada
+'       analito x nivel (mLotes.ParametrosLote, o que AlvoAnalito usa) -- tudo de que os eventos dependem;
+'    2. so os escopos cuja impressao digital mudou desde a foto sao recalculados, em memoria (EventosEscopoWg, o
+'       mesmo nucleo de RegistrarEventosWestgard): a aba Eventos_Westgard e o Painel nao sao tocados. O escopo do
+'       Painel, que AtualizarEstatistica acabou de refazer com o mesmo snapshot, e lido da propria aba;
+'    3. os eventos que entraram/sairam vao para o Audit_Log como na trilha de cima (CompararEventosWg: REMOVIDO,
+'       NOVO RETROATIVO e CORRIDA_NOVA pela lista de corridas avaliadas guardada na foto -- linhas CORRIDAS --, teto
+'       de WG_AUDIT_MAX linhas por atualizacao, as retroativas de todos os lotes primeiro);
+'    4. a foto desses escopos e regravada (os outros ficam como estavam).
+'  Nada mudou = nada recalculado e nada gravado. Sem foto (aba vazia, ou gravacao interrompida: contador J2 vazio)
+'  grava a foto inteira sem auditar e deixa UMA linha WESTGARD_FOTO_INICIAL. Sem a aba (o instalador nao rodou):
+'  nada. Lote x equipamento que fica sem resultado na serie: os eventos dele saem (REMOVIDO) e ele sai da foto.
+'  Nunca levanta erro: falha devolve "ERRO|..." e a foto antiga continua valendo para o proximo ATUALIZAR.
+'
+'  Layout (linha 3 = cabecalho; H2 = linhas CONTROLE, J2 = linhas da foto -- vazio = foto incompleta):
+'    CONTROLE  lote | EQUIPAMENTO | impressao digital | "n resultado(s); k evento(s) OFICIAL(is)" | data da foto
+'    EVENTO    lote | EQUIPAMENTO | chave estavel "ANALITO|lote|niveis|regra|RUN" | descricao (DescEventoWg)
+'    CORRIDAS  lote | EQUIPAMENTO | ANALITO | "RUN,RUN,..." (corridas do eixo na reconstrucao da foto)
+'  As linhas CONTROLE ficam primeiro: o caminho de "nada mudou" so le esse bloco.
+' ============================================================================
+
+' ATUALIZAR: compara, audita e regrava a foto dos lotes x equipamento que mudaram. Devolve
+' "RECALC=k/N MUDANCAS=m" (k escopos refeitos de N com resultado; + " FOTO_INICIAL" sem foto; + " FALHAS=f"), ou
+' "SEM_ABA ...", "BASE_VAZIA", "ERRO|...". mIntegracao anota no TEMPOS do Sync_Log com o tempo gasto.
+Public Function AuditarFotosWestgard() As String
+    AuditarFotosWestgard = SincronizarFotosWg(True, False)
+End Function
+
+
+' Instalador (instalar_adr083.py): grava a foto SEM auditar nada -- dos escopos que mudaram, ou de todos com forcar
+' (aba recem-criada ou motor de Westgard trocado). Mesmo retorno de AuditarFotosWestgard.
+Public Function GravarFotosWestgard(ByVal forcar As Boolean) As String
+    GravarFotosWestgard = SincronizarFotosWg(False, forcar)
+End Function
+
+
+Private Function SincronizarFotosWg(ByVal auditar As Boolean, ByVal forcar As Boolean) As String
+    Dim ws As Worksheet, prot As Boolean, liberou As Boolean, porEquip As Boolean, eqFixo As String
+    Dim digAtual As Object, digFoto As Object, mudados As Object, falhou As Object, k As Variant
+    Dim antesEv As Object, antesRuns As Object, depoisEv As Object, depoisRuns As Object
+    Dim temFoto As Boolean, refeita As Boolean, vA As Variant, nA As Long, passo As Long, nRecalc As Long
+    Dim nGrav As Long, nResto As Long, nNovo As Long, nRem As Long, nRot As Long, nEvTot As Long
+    Dim nE As Long, sE As String, sufixo As String, escUnico As String
+
+    On Error GoTo falha
+    Set ws = AbaFotosWg()
+    If ws Is Nothing Then
+        SincronizarFotosWg = "SEM_ABA " & WGF_ABA
+        Exit Function
+    End If
+    GarantirDB
+    If IsEmpty(mDB) Then
+        SincronizarFotosWg = "BASE_VAZIA"           ' tabela vazia: a foto nao muda (nao vira "tudo removido")
+        Exit Function
+    End If
+    ' Bioquimica: cada equipamento e uma serie (como no seletor do Painel); Hematologia: a serie do EquipFiltro
+    porEquip = (AreaDoProduto() = "BIOQUIMICA")
+    If Not porEquip Then eqFixo = EquipFiltro()
+    Set digAtual = ImpressoesDigitaisWg(porEquip, eqFixo)
+
+    ' ---- a foto guardada: so o bloco CONTROLE ----
+    Set digFoto = CreateObject("Scripting.Dictionary")
+    digFoto.CompareMode = 0
+    temFoto = LerControleWg(ws, digFoto, nA, refeita)
+    If forcar Then temFoto = False
+    Set mudados = CreateObject("Scripting.Dictionary")
+    mudados.CompareMode = 0
+    For Each k In digAtual.Keys
+        If Not temFoto Then
+            mudados(k) = 1
+        ElseIf Not digFoto.Exists(k) Then
+            mudados(k) = 1
+        ElseIf CStr(digFoto(k)) <> CStr(digAtual(k)) Then
+            mudados(k) = 1
+        End If
+    Next k
+    If temFoto Then
+        For Each k In digFoto.Keys
+            If Not digAtual.Exists(k) Then mudados(k) = 1
+        Next k
+        If mudados.Count = 0 Then
+            SincronizarFotosWg = "RECALC=0/" & digAtual.Count & " MUDANCAS=0"
+            Exit Function
+        End If
+    End If
+
+    ' ---- antes: os eventos e as corridas guardados dos escopos que mudaram ----
+    Set antesEv = CreateObject("Scripting.Dictionary")
+    antesEv.CompareMode = 0
+    Set antesRuns = CreateObject("Scripting.Dictionary")
+    antesRuns.CompareMode = 0
+    vA = Empty
+    If temFoto And nA > 0 Then
+        vA = ws.Range(ws.Cells(WGF_R0, 1), ws.Cells(WGF_R0 + nA - 1, WGF_NCOL)).Value
+        LerAntesWg vA, nA, mudados, antesEv, antesRuns
+    End If
+
+    ' ---- agora: os eventos dos escopos que mudaram (em memoria; o do Painel, da aba recem-refeita) ----
+    Set depoisEv = CreateObject("Scripting.Dictionary")
+    depoisEv.CompareMode = 0
+    Set depoisRuns = CreateObject("Scripting.Dictionary")
+    depoisRuns.CompareMode = 0
+    Set falhou = CreateObject("Scripting.Dictionary")
+    falhou.CompareMode = 0
+    nRecalc = EventosAtuaisWg(mudados, digAtual, porEquip, eqFixo, depoisEv, depoisRuns, falhou)
+
+    ' ---- auditoria: o passo 1 de TODOS os escopos antes do passo 2 (retroativas primeiro) ----
+    If auditar And temFoto Then
+        For passo = 1 To 2
+            For Each k In mudados.Keys
+                If Not falhou.Exists(k) Then
+                    CompararEventosWg passo, GarantirDicWg(antesEv, CStr(k)), GarantirDicWg(depoisEv, CStr(k)), _
+                                      GarantirDicWg(antesRuns, CStr(k)), CStr(k), nGrav, nResto, nNovo, nRem, nRot
+                End If
+            Next k
+        Next passo
+        If nResto > 0 Then
+            escUnico = ""
+            If mudados.Count = 1 Then
+                For Each k In mudados.Keys
+                    escUnico = CStr(k)
+                Next k
+            End If
+            ResumoNaoDetalhadosWg escUnico, nResto, nNovo, nRem, nRot, "nas linhas EVENTO da aba " & WGF_ABA
+        End If
+    End If
+
+    ' ---- grava a foto (contador J2 apagado durante a gravacao) ----
+    prot = LiberarEscritaRapida(ws)
+    liberou = True
+    GravarFotoWg ws, vA, nA, temFoto, digAtual, mudados, falhou, depoisEv, depoisRuns
+    liberou = False
+    RestaurarProtecao ws, prot
+
+    If auditar And Not temFoto Then
+        For Each k In depoisEv.Keys
+            nEvTot = nEvTot + depoisEv(k).Count
+        Next k
+        mAuditoria.Auditar mAuditoria.CAT_DADO, "WESTGARD_FOTO_INICIAL", "mEstatistica", 0, Empty, "", "", 0, "", _
+                           Empty, Empty, "", "", "", _
+                           "ADR-083: foto inicial dos eventos OFICIAIS de " & digAtual.Count & _
+                           " lote(s) x equipamento (" & nEvTot & " evento(s)) na aba " & WGF_ABA & _
+                           IIf(refeita, " -- a foto anterior estava incompleta (gravacao interrompida) e foi refeita", "") & _
+                           "; nada auditado nesta atualizacao: as mudancas de veredicto passam a ser auditadas a " & _
+                           "partir desta foto", True
+    End If
+    If Not temFoto Then sufixo = " FOTO_INICIAL"
+    If falhou.Count > 0 Then sufixo = sufixo & " FALHAS=" & falhou.Count
+    SincronizarFotosWg = "RECALC=" & nRecalc & "/" & digAtual.Count & " MUDANCAS=" & (nNovo + nRem + nRot) & sufixo
+    Exit Function
+falha:
+    nE = Err.Number: sE = Err.Description
+    On Error Resume Next
+    If liberou Then RestaurarProtecao ws, prot
+    Err.Clear
+    SincronizarFotosWg = "ERRO|" & nE & " " & sE
+End Function
+
+
+' A aba da foto, ou Nothing (o instalador ainda nao rodou neste arquivo).
+Private Function AbaFotosWg() As Worksheet
+    On Error Resume Next
+    Set AbaFotosWg = ThisWorkbook.Worksheets(WGF_ABA)
+    Err.Clear
+End Function
+
+
+' O dicionario guardado em d(k), criado vazio quando nao existe.
+Private Function GarantirDicWg(ByVal d As Object, ByVal k As String) As Object
+    Dim nd As Object
+    If Not d.Exists(k) Then
+        Set nd = CreateObject("Scripting.Dictionary")
+        nd.CompareMode = 0
+        d.Add k, nd
+    End If
+    Set GarantirDicWg = d(k)
+End Function
+
+
+' "lote|EQUIPAMENTO" da linha i do snapshot, ou "" quando ela nao entra em nenhuma serie de Westgard. O filtro e o
+' de GarantirIndice + AcrescentarSerieWg: analito, ATIVO, resultado numerico, nivel 1..NLV, lote; Bioquimica (porEquip):
+' cada equipamento e uma serie e linha sem equipamento fica fora; Hematologia: so o eqFixo (EquipFiltro; vazio = todos).
+Private Function EscopoDaLinhaWg(ByVal i As Long, ByVal porEquip As Boolean, ByVal eqFixo As String) As String
+    Dim eq As String, nv As Long, lt As String
+    If Len(Trim$(CStr(mDB(i, COL_ANALITO)))) = 0 Then Exit Function
+    If mDB(i, COL_STATUS) <> ST_ATIVO Then Exit Function
+    If Not IsNumeric(mDB(i, COL_RESULT)) Then Exit Function
+    nv = CLng(Val(mDB(i, COL_NIVEL)))
+    If nv < 1 Or nv > NLV Then Exit Function
+    lt = Trim$(CStr(mDB(i, COL_LOTE)))
+    If Len(lt) = 0 Then Exit Function
+    eq = UCase$(Trim$(CStr(mDB(i, COL_EQUIP))))
+    If porEquip Then
+        If Len(eq) = 0 Then Exit Function
+    Else
+        If Len(eqFixo) > 0 Then
+            If eq <> eqFixo Then Exit Function
+        End If
+        eq = eqFixo
+    End If
+    EscopoDaLinhaWg = lt & "|" & eq
+End Function
+
+
+' Peso estavel (1..9973) do nome de um analito, para a impressao digital distinguir analitos.
+Private Function PesoAnalitoWg(ByVal an As String) As Long
+    Dim p As Long, h As Long
+    h = 7
+    For p = 1 To Len(an)
+        h = (h * 31 + (AscW(Mid$(an, p, 1)) And &HFFFF&)) Mod 9973
+    Next p
+    PesoAnalitoWg = h + 1
+End Function
+
+
+' "lote|EQUIPAMENTO" -> impressao digital "n|h1|h2|h3|h4|hp" de cada escopo com resultado na serie. As somas sao
+' modulo WGF_P de termos inteiros (resultado com 4 casas, data em segundos): exatas em Double e independentes da ordem
+' das linhas. h1 resultado; h2 resultado x RUN; h3 resultado x nivel; h4 RUN x nivel + data; hp media/DP do lote por
+' nivel -- cada uma pesada pelo analito (PesoAnalitoWg).
+Private Function ImpressoesDigitaisWg(ByVal porEquip As Boolean, ByVal eqFixo As String) As Object
+    Dim d As Object, gIdx As Object, sIdx As Object, i As Long, g As Long, nG As Long, capG As Long, s As Long
+    Dim nS As Long, esc As String, an As String, kg As String, lt As String, t As Long, nv As Long, rn As Long
+    Dim gEsc() As String, gNome() As String, gN() As Long, gW() As Long, gH() As Double
+    Dim sEsc() As String, sN() As Long, sH() As Double
+    Dim x As Double, y As Double, sg As Double, md As Double, dpp As Double, hp As Double
+    Set d = CreateObject("Scripting.Dictionary")
+    d.CompareMode = 0
+    Set ImpressoesDigitaisWg = d
+    If IsEmpty(mDB) Then Exit Function
+    Set gIdx = CreateObject("Scripting.Dictionary")
+    gIdx.CompareMode = 0
+    capG = 256
+    ReDim gEsc(1 To capG): ReDim gNome(1 To capG): ReDim gN(1 To capG): ReDim gW(1 To capG)
+    ReDim gH(1 To 4, 1 To capG)
+    nG = 0
+    For i = 1 To UBound(mDB, 1)
+        esc = EscopoDaLinhaWg(i, porEquip, eqFixo)
+        If Len(esc) > 0 Then
+            an = Trim$(CStr(mDB(i, COL_ANALITO)))
+            kg = esc & "|" & UCase$(an)
+            If gIdx.Exists(kg) Then
+                g = gIdx(kg)
+            Else
+                nG = nG + 1
+                If nG > capG Then
+                    capG = capG * 2
+                    ReDim Preserve gEsc(1 To capG)
+                    ReDim Preserve gNome(1 To capG)
+                    ReDim Preserve gN(1 To capG)
+                    ReDim Preserve gW(1 To capG)
+                    ReDim Preserve gH(1 To 4, 1 To capG)
+                End If
+                gIdx.Add kg, nG
+                g = nG
+                gEsc(g) = esc
+                gNome(g) = an
+                gW(g) = PesoAnalitoWg(UCase$(an))
+            End If
+            nv = CLng(Val(mDB(i, COL_NIVEL)))
+            rn = CLng(Val(mDB(i, COL_RUN)))
+            x = Round(CDbl(mDB(i, COL_RESULT)) * 10000#)
+            x = x - Int(x / WGF_P) * WGF_P
+            sg = 0
+            If IsDate(mDB(i, COL_DATA)) Then sg = Round(CDbl(CDate(mDB(i, COL_DATA))) * 86400#)
+            sg = sg - Int(sg / WGF_P) * WGF_P
+            gN(g) = gN(g) + 1
+            y = gH(1, g) + x
+            gH(1, g) = y - Int(y / WGF_P) * WGF_P
+            y = x * CDbl((rn Mod 9973) + 1)
+            y = gH(2, g) + (y - Int(y / WGF_P) * WGF_P)
+            gH(2, g) = y - Int(y / WGF_P) * WGF_P
+            y = x * CDbl(7 * nv + 1)
+            y = gH(3, g) + (y - Int(y / WGF_P) * WGF_P)
+            gH(3, g) = y - Int(y / WGF_P) * WGF_P
+            y = CDbl(rn Mod 1000003) * CDbl(3 * nv + 1) + sg
+            y = gH(4, g) + (y - Int(y / WGF_P) * WGF_P)
+            gH(4, g) = y - Int(y / WGF_P) * WGF_P
+        End If
+    Next i
+    If nG = 0 Then Exit Function
+
+    ' ---- por escopo: soma dos analitos (pesados) e a media/DP do lote de cada analito x nivel ----
+    Set sIdx = CreateObject("Scripting.Dictionary")
+    sIdx.CompareMode = 0
+    ReDim sEsc(1 To nG): ReDim sN(1 To nG): ReDim sH(1 To 5, 1 To nG)
+    nS = 0
+    For g = 1 To nG
+        If sIdx.Exists(gEsc(g)) Then
+            s = sIdx(gEsc(g))
+        Else
+            nS = nS + 1
+            s = nS
+            sIdx.Add gEsc(g), s
+            sEsc(s) = gEsc(g)
+        End If
+        lt = ParteEscopoWg(gEsc(g), 0)
+        hp = 0
+        For t = 1 To NLV
+            If mLotes.ParametrosLote(lt, gNome(g), t, md, dpp) Then
+                y = Round(md * 10000#)
+                y = y - Int(y / WGF_P) * WGF_P
+                y = y * CDbl(2 * t + 1)
+                hp = hp + (y - Int(y / WGF_P) * WGF_P)
+                y = Round(dpp * 10000#)
+                y = y - Int(y / WGF_P) * WGF_P
+                y = y * CDbl(2 * t + 2)
+                hp = hp + (y - Int(y / WGF_P) * WGF_P)
+            Else
+                hp = hp + CDbl(104729 * t)          ' nivel sem media/DP valida (o nucleo nao avalia o nivel)
+            End If
+            hp = hp - Int(hp / WGF_P) * WGF_P
+        Next t
+        sN(s) = sN(s) + gN(g)
+        For t = 1 To 4
+            y = gH(t, g) * CDbl(gW(g))
+            y = sH(t, s) + (y - Int(y / WGF_P) * WGF_P)
+            sH(t, s) = y - Int(y / WGF_P) * WGF_P
+        Next t
+        y = hp * CDbl(gW(g))
+        y = sH(5, s) + (y - Int(y / WGF_P) * WGF_P)
+        sH(5, s) = y - Int(y / WGF_P) * WGF_P
+    Next g
+    For s = 1 To nS
+        d(sEsc(s)) = CStr(sN(s)) & "|" & Format$(sH(1, s), "0") & "|" & Format$(sH(2, s), "0") & "|" & _
+                     Format$(sH(3, s), "0") & "|" & Format$(sH(4, s), "0") & "|" & Format$(sH(5, s), "0")
+    Next s
+End Function
+
+
+' Le o bloco CONTROLE da foto para digFoto ("lote|EQUIPAMENTO" -> impressao digital). nA = linhas da foto (J2).
+' False = sem foto utilizavel: J2 vazio (nunca gravada, ou gravacao interrompida -- refeita = True quando ha linhas)
+' ou contadores incoerentes.
+Private Function LerControleWg(ByVal ws As Worksheet, ByVal digFoto As Object, ByRef nA As Long, _
+                               ByRef refeita As Boolean) As Boolean
+    Dim sJ As String, nC As Long, v As Variant, i As Long
+    nA = 0
+    refeita = False
+    sJ = TxtCelWg(ws.Range("J2").Value)
+    If Len(sJ) = 0 Then
+        refeita = (ws.Cells(ws.rows.Count, 1).End(xlUp).Row >= WGF_R0)
+        Exit Function
+    End If
+    nA = CLng(Val(sJ))
+    nC = CLng(Val(TxtCelWg(ws.Range("H2").Value)))
+    If nA < 0 Or nC < 0 Or nC > nA Then
+        nA = 0
+        refeita = True
+        Exit Function
+    End If
+    If nC > 0 Then
+        v = ws.Range(ws.Cells(WGF_R0, 1), ws.Cells(WGF_R0 + nC - 1, WGF_NCOL)).Value
+        For i = 1 To nC
+            If TxtCelWg(v(i, 1)) <> WGF_CTRL Then
+                digFoto.RemoveAll
+                nA = 0
+                refeita = True
+                Exit Function
+            End If
+            digFoto(TxtCelWg(v(i, 2)) & "|" & UCase$(TxtCelWg(v(i, 3)))) = TxtCelWg(v(i, 4))
+        Next i
+    End If
+    LerControleWg = True
+End Function
+
+
+' Das linhas da foto (vA, nA linhas), os eventos (chave -> descricao) e as corridas avaliadas ("ANALITO|RUN") de cada
+' escopo que mudou.
+Private Sub LerAntesWg(ByRef vA As Variant, ByVal nA As Long, ByVal mudados As Object, ByVal antesEv As Object, _
+                       ByVal antesRuns As Object)
+    Dim i As Long, esc As String, tipoLn As String, kk As String, an As String, r As Variant, dd As Object
+    For i = 1 To nA
+        esc = TxtCelWg(vA(i, 2)) & "|" & UCase$(TxtCelWg(vA(i, 3)))
+        If mudados.Exists(esc) Then
+            tipoLn = TxtCelWg(vA(i, 1))
+            If tipoLn = WGF_EVENTO Then
+                Set dd = GarantirDicWg(antesEv, esc)
+                kk = TxtCelWg(vA(i, 4))
+                If Len(kk) > 0 Then
+                    If Not dd.Exists(kk) Then dd.Add kk, TxtCelWg(vA(i, 5))
+                End If
+            ElseIf tipoLn = WGF_CORRIDAS Then
+                Set dd = GarantirDicWg(antesRuns, esc)
+                an = TxtCelWg(vA(i, 4))
+                For Each r In Split(TxtCelWg(vA(i, 5)), ",")
+                    If Len(Trim$(CStr(r))) > 0 Then dd(an & "|" & Trim$(CStr(r))) = 1
+                Next r
+            End If
+        End If
+    Next i
+End Sub
+
+
+' Os eventos OFICIAIS de agora (depoisEv: escopo -> chave -> descricao) e as corridas avaliadas (depoisRuns: escopo ->
+' "ANALITO|RUN") de cada escopo que mudou e tem resultado. O escopo da aba Eventos_Westgard vem da propria aba quando
+' ela foi refeita depois do ultimo InvalidarCache (mEvLote preenchido = mesmo snapshot); os outros, de UMA passada no
+' snapshot + EventosEscopoWg. Escopo que falha vai para 'falhou' (fica com a foto antiga). Devolve os escopos refeitos.
+Private Function EventosAtuaisWg(ByVal mudados As Object, ByVal digAtual As Object, ByVal porEquip As Boolean, _
+                                 ByVal eqFixo As String, ByVal depoisEv As Object, ByVal depoisRuns As Object, _
+                                 ByVal falhou As Object) As Long
+    Dim dPor As Object, dNome As Object, dF As Object, dd As Object, k As Variant, kk As Variant
+    Dim i As Long, n As Long, esc As String, escP As String
+    escP = ""
+    If Len(mEvLote) > 0 Then
+        If Not mRunsWg Is Nothing Then escP = mRunsWgEsc
+    End If
+    If Len(escP) > 0 Then
+        If mudados.Exists(escP) And digAtual.Exists(escP) Then
+            Set dF = EventosWestgardOficiais()
+            If dF.Exists(WG_ESCOPO) And dF.Exists(WG_RUNS) Then
+                If CStr(dF(WG_ESCOPO)) = escP Then
+                    Set dd = GarantirDicWg(depoisEv, escP)
+                    For Each kk In dF.Keys
+                        If Not ChaveMetaWg(CStr(kk)) Then dd(kk) = dF(kk)
+                    Next kk
+                    depoisRuns.Add escP, dF(WG_RUNS)
+                    n = n + 1
+                End If
+            End If
+        End If
+    End If
+
+    Set dPor = CreateObject("Scripting.Dictionary")
+    dPor.CompareMode = 0
+    Set dNome = CreateObject("Scripting.Dictionary")
+    dNome.CompareMode = 0
+    For Each k In mudados.Keys
+        If digAtual.Exists(k) Then
+            If Not depoisRuns.Exists(k) Then
+                dPor.Add CStr(k), CreateObject("Scripting.Dictionary")
+                dNome.Add CStr(k), CreateObject("Scripting.Dictionary")
+            End If
+        End If
+    Next k
+    If dPor.Count = 0 Then
+        EventosAtuaisWg = n
+        Exit Function
+    End If
+    For i = 1 To UBound(mDB, 1)
+        esc = EscopoDaLinhaWg(i, porEquip, eqFixo)
+        If Len(esc) > 0 Then
+            If dPor.Exists(esc) Then AcrescentarSerieWg i, dPor(esc), dNome(esc)
+        End If
+    Next i
+    For Each k In dPor.Keys
+        If CalcularEscopoWg(CStr(k), dPor(k), dNome(k), depoisEv, depoisRuns) Then
+            n = n + 1
+        Else
+            falhou(CStr(k)) = 1
+        End If
+    Next k
+    EventosAtuaisWg = n
+End Function
+
+
+' Os eventos OFICIAIS de UM escopo pelo nucleo (EventosEscopoWg), com a chave e a descricao da trilha. False = falhou
+' (erro ou buffer estourado): o escopo fica com a foto antiga e e tentado de novo no proximo ATUALIZAR.
+Private Function CalcularEscopoWg(ByVal esc As String, ByVal porAnalito As Object, ByVal nomeDe As Object, _
+                                  ByVal depoisEv As Object, ByVal depoisRuns As Object) As Boolean
+    Dim ev() As Variant, capEv As Long, nDesc As Long, nEv As Long, k As Long, lt As String
+    Dim agg As Object, runsAval As Object, dd As Object, kk As String, dataTxt As String
+    On Error GoTo erro
+    lt = ParteEscopoWg(esc, 0)
+    Set agg = CreateObject("Scripting.Dictionary")
+    Set runsAval = CreateObject("Scripting.Dictionary")
+    runsAval.CompareMode = 0
+    capEv = 1024
+    ReDim ev(1 To EV_NCOL, 1 To capEv)
+    nDesc = 0
+    nEv = EventosEscopoWg(lt, porAnalito, nomeDe, ev, capEv, nDesc, agg, runsAval)
+    If nDesc > 0 Then Exit Function
+    Set dd = CreateObject("Scripting.Dictionary")
+    dd.CompareMode = 0
+    For k = 1 To nEv
+        If TxtCelWg(ev(8, k)) = "OFICIAL" Then
+            If Len(TxtCelWg(ev(5, k))) > 0 Then
+                kk = ChaveEventoWestgard(TxtCelWg(ev(3, k)), lt, TxtCelWg(ev(4, k)), TxtCelWg(ev(5, k)), _
+                                         RunTxtWg(ev(2, k)))
+                If Not dd.Exists(kk) Then
+                    dataTxt = ""
+                    If IsDate(ev(1, k)) Then dataTxt = Format$(CDate(ev(1, k)), "yyyy-mm-dd hh:nn")
+                    dd.Add kk, DescEventoWg(TxtCelWg(ev(5, k)), TxtCelWg(ev(6, k)), TxtCelWg(ev(3, k)), _
+                                            TxtCelWg(ev(4, k)), RunTxtWg(ev(2, k)), RunTxtWg(ev(11, k)), dataTxt, _
+                                            TxtCelWg(ev(12, k)))
+                End If
+            End If
+        End If
+    Next k
+    If depoisEv.Exists(esc) Then depoisEv.Remove esc
+    depoisEv.Add esc, dd
+    If depoisRuns.Exists(esc) Then depoisRuns.Remove esc
+    depoisRuns.Add esc, runsAval
+    CalcularEscopoWg = True
+    Exit Function
+erro:
+    Err.Clear
+End Function
+
+
+' Regrava a aba da foto: as linhas dos escopos sem mudanca (e dos que falharam) como estavam, e a foto nova dos que
+' mudaram e tem resultado. CONTROLE primeiro, depois EVENTO e CORRIDAS. J2 fica vazio durante a gravacao.
+Private Sub GravarFotoWg(ByVal ws As Worksheet, ByRef vA As Variant, ByVal nA As Long, ByVal temFoto As Boolean, _
+                         ByVal digAtual As Object, ByVal mudados As Object, ByVal falhou As Object, _
+                         ByVal depoisEv As Object, ByVal depoisRuns As Object)
+    Dim ctrl As Collection, linhasFoto As Collection, porAn As Object, dd As Object, k As Variant, kk As Variant
+    Dim i As Long, j As Long, n As Long, p As Long, ult As Long, esc As String, lt As String, eqp As String
+    Dim an As String, agora As Date, mant As Boolean, lin As Variant, blocoFoto() As Variant
+    Set ctrl = New Collection
+    Set linhasFoto = New Collection
+    agora = Now
+    If temFoto Then
+        For i = 1 To nA
+            esc = TxtCelWg(vA(i, 2)) & "|" & UCase$(TxtCelWg(vA(i, 3)))
+            mant = Not mudados.Exists(esc)
+            If Not mant Then mant = falhou.Exists(esc)
+            If mant Then
+                lin = Array(vA(i, 1), vA(i, 2), vA(i, 3), vA(i, 4), vA(i, 5), vA(i, 6))
+                If TxtCelWg(vA(i, 1)) = WGF_CTRL Then ctrl.Add lin Else linhasFoto.Add lin
+            End If
+        Next i
+    End If
+    For Each k In mudados.Keys
+        esc = CStr(k)
+        If digAtual.Exists(esc) Then
+            If Not falhou.Exists(esc) Then
+                If depoisEv.Exists(esc) Then
+                    lt = ParteEscopoWg(esc, 0)
+                    eqp = ParteEscopoWg(esc, 1)
+                    Set dd = depoisEv(esc)
+                    ctrl.Add Array(WGF_CTRL, lt, eqp, CStr(digAtual(esc)), _
+                                   Split(CStr(digAtual(esc)), "|")(0) & " resultado(s) na serie; " & dd.Count & _
+                                   " evento(s) OFICIAL(is)", agora)
+                    For Each kk In dd.Keys
+                        linhasFoto.Add Array(WGF_EVENTO, lt, eqp, CStr(kk), CStr(dd(kk)), agora)
+                    Next kk
+                    Set porAn = CreateObject("Scripting.Dictionary")
+                    porAn.CompareMode = 0
+                    If depoisRuns.Exists(esc) Then
+                        For Each kk In depoisRuns(esc).Keys
+                            p = InStrRev(CStr(kk), "|")
+                            If p > 1 Then
+                                an = Left$(CStr(kk), p - 1)
+                                If Not porAn.Exists(an) Then porAn.Add an, New Collection
+                                porAn(an).Add Mid$(CStr(kk), p + 1)
+                            End If
+                        Next kk
+                    End If
+                    For Each kk In porAn.Keys
+                        AcrescentarCorridasWg linhasFoto, lt, eqp, CStr(kk), porAn(kk), agora
+                    Next kk
+                End If
+            End If
+        End If
+    Next k
+
+    n = ctrl.Count + linhasFoto.Count
+    ws.Range("J2").ClearContents
+    ws.Range("H2").ClearContents
+    ult = ws.Cells(ws.rows.Count, 1).End(xlUp).Row
+    If ult >= WGF_R0 Then ws.Range(ws.Cells(WGF_R0, 1), ws.Cells(ult, WGF_NCOL)).ClearContents
+    If n > 0 Then
+        ReDim blocoFoto(1 To n, 1 To WGF_NCOL)
+        i = 0
+        For Each lin In ctrl
+            i = i + 1
+            For j = 1 To WGF_NCOL
+                blocoFoto(i, j) = lin(j - 1)
+            Next j
+        Next lin
+        For Each lin In linhasFoto
+            i = i + 1
+            For j = 1 To WGF_NCOL
+                blocoFoto(i, j) = lin(j - 1)
+            Next j
+        Next lin
+        ' texto: o lote "010" nao vira 10 e a lista de corridas nao vira numero
+        ws.Range(ws.Cells(WGF_R0, 1), ws.Cells(WGF_R0 + n - 1, WGF_NCOL - 1)).NumberFormat = "@"
+        ws.Range(ws.Cells(WGF_R0, WGF_NCOL), ws.Cells(WGF_R0 + n - 1, WGF_NCOL)).NumberFormat = "dd/mm/yyyy hh:mm"
+        ws.Range(ws.Cells(WGF_R0, 1), ws.Cells(WGF_R0 + n - 1, WGF_NCOL)).Value = blocoFoto
+    End If
+    ws.Range("H2").Value = ctrl.Count
+    ws.Range("J2").Value = n                        ' foto completa
+End Sub
+
+
+' As corridas avaliadas de um analito em linhas CORRIDAS ("RUN,RUN,..." de ate WGF_MAXTXT caracteres cada).
+Private Sub AcrescentarCorridasWg(ByVal linhasFoto As Collection, ByVal lt As String, ByVal eqp As String, _
+                                  ByVal an As String, ByVal corridas As Collection, ByVal agora As Date)
+    Dim pedaco() As String, n As Long, tam As Long, x As Variant
+    If corridas.Count = 0 Then Exit Sub
+    ReDim pedaco(1 To corridas.Count)
+    n = 0
+    tam = 0
+    For Each x In corridas
+        If n > 0 Then
+            If tam + Len(CStr(x)) + 1 > WGF_MAXTXT Then
+                ReDim Preserve pedaco(1 To n)
+                linhasFoto.Add Array(WGF_CORRIDAS, lt, eqp, an, Join(pedaco, ","), agora)
+                ReDim pedaco(1 To corridas.Count)
+                n = 0
+                tam = 0
+            End If
+        End If
+        n = n + 1
+        pedaco(n) = CStr(x)
+        tam = tam + Len(CStr(x)) + 1
+    Next x
+    ReDim Preserve pedaco(1 To n)
+    linhasFoto.Add Array(WGF_CORRIDAS, lt, eqp, an, Join(pedaco, ","), agora)
+End Sub
 
 ' Avaliacao de Westgard restrita a UM nivel (series independentes por analito/nivel).
 ' 22s intra-corrida entre niveis e R4s sao avaliados no motor do Calc, que tem a

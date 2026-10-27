@@ -25,7 +25,7 @@ teste no lugar da janela (mUI.DefinirRespostaTeste). Nada e salvo no arquivo.
       CANCELAR nao grava; sem gancho e com Interactive = False: "ERRO|sem interface" (sem travar)
   U11 digitar o ID na aba Inativar preenche o ANALITO sozinho
   U12 abas protegidas antes = depois; mIntegracao.AtualizarDadosAutomatico continua "OK|"
-  U13 tempo da InativarPontoUI (confirmar -> grafico atualizado) <= 15 s Bio / 25 s Hema
+  U13 tempo da InativarPontoUI (confirmar -> grafico atualizado) <= 18 s Bio / 25 s Hema
   U14 progresso visivel (mUI.UltimoAvisoProgresso: "aguarde" antes da atualizacao) e confirmacao com o lugar do
       ponto ("X vermelho entre as corridas k e k+1"; ao reativar "voltou a ser a corrida n")
   U15 clique repetido ate 2 s depois de terminar: "IGNORADO|...", nada gravado, gancho nao fica armado
@@ -51,7 +51,8 @@ TB = 'tblInativacao_NaoConformes'
 CAB = ['ID_REGISTRO', 'ANALITO', 'REGISTRAR - LJ', 'MOTIVO', 'DATA_INATIVACAO', 'USUARIO']
 # colunas do Eng_Saida (mEstatistica, iguais na Bio e na Hema; constantes VBA nao saem pelo Application.Run)
 C_VALOR0, C_X0, C_ID0, C_IDX0, C_CORL0, C_XPOS0 = 25, 30, 39, 42, 63, 66
-TETO_S = {'bio': 15.0, 'hema': 25.0}
+TETO_S = {'bio': 18.0, 'hema': 25.0}      # Bio 15 -> 18 s em 27/10/2026: ADR-083 (foto do Westgard, ~0,8 s com 1 lote
+                                          # mudado) + folga para a maquina do laboratorio com o Excel agendado aberto
 BLOQUEIO_S = 2.0                              # mUI.BLOQUEIO_SEG: cliques ignorados depois de terminar
 USUARIO_QA = 'QA_INATIVAR_UX'
 SENHA_QA = 'QaInativarUx#2026'                # valor de teste: o usuario so existe nesta copia, nunca salva

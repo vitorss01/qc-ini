@@ -1,11 +1,11 @@
 {
  "produto": "Bioquimica",
- "gerado_em": "2026-10-20T16:25:26",
+ "gerado_em": "2026-10-27T14:11:34",
  "nota": "Só os IDs dos cenários do qa_etl e uma amostra fixa (semente 57) -- nunca a base inteira.",
  "recorte_estatistica": {
   "produto": "Bioquimica",
   "ini": 46210,
-  "fim": 46309,
+  "fim": 46322,
   "exclusoes": [],
   "lote": "8977",
   "equip": "DIMENSION 1"
@@ -15,7 +15,7 @@
   "lote": "8977",
   "equip": "DIMENSION 1",
   "de": "2026-07-07 08:04:20",
-  "ate": "2026-10-14 08:54:28"
+  "ate": "2026-10-27 12:59:13"
  },
  "linhas": [
   {
@@ -218,28 +218,6 @@
    "CENARIOS": []
   },
   {
-   "ID": "BIO-207283",
-   "ORIGEM": "INTERFACEAMENTO",
-   "NO_RECEBIMENTO": true,
-   "LINHA_MANUAL": null,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 25101402,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": []
-  },
-  {
    "ID": "BIO-212181",
    "ORIGEM": "INTERFACEAMENTO",
    "NO_RECEBIMENTO": true,
@@ -251,28 +229,6 @@
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
    "RUN": 25102901,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": []
-  },
-  {
-   "ID": "BIO-214124",
-   "ORIGEM": "INTERFACEAMENTO",
-   "NO_RECEBIMENTO": true,
-   "LINHA_MANUAL": null,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 25110302,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
@@ -614,28 +570,6 @@
    "CENARIOS": []
   },
   {
-   "ID": "BIO-308231",
-   "ORIGEM": "INTERFACEAMENTO",
-   "NO_RECEBIMENTO": true,
-   "LINHA_MANUAL": null,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26062402,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": []
-  },
-  {
    "ID": "BIO-318226",
    "ORIGEM": "INTERFACEAMENTO",
    "NO_RECEBIMENTO": true,
@@ -757,28 +691,6 @@
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
    "RUN": 26072401,
-   "NA_ESTATISTICA": "SIM",
-   "NO_RECORTE_ESTATISTICA": true,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": []
-  },
-  {
-   "ID": "BIO-325205",
-   "ORIGEM": "INTERFACEAMENTO",
-   "NO_RECEBIMENTO": true,
-   "LINHA_MANUAL": null,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26073101,
    "NA_ESTATISTICA": "SIM",
    "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
@@ -913,28 +825,6 @@
    "RUN": 26090301,
    "NA_ESTATISTICA": "SIM",
    "NO_RECORTE_ESTATISTICA": true,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": []
-  },
-  {
-   "ID": "BIO-349134",
-   "ORIGEM": "INTERFACEAMENTO",
-   "NO_RECEBIMENTO": true,
-   "LINHA_MANUAL": null,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26091101,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [],
    "DESTINO": [
@@ -1296,33 +1186,51 @@
    ]
   },
   {
-   "ID": "BIO-366530",
+   "ID": "BIO-368812",
    "ORIGEM": "INTERFACEAMENTO",
    "NO_RECEBIMENTO": true,
    "LINHA_MANUAL": null,
-   "INATIVADO": true,
-   "LINHA_INAT": [
-    4
-   ],
+   "INATIVADO": false,
+   "LINHA_INAT": [],
    "REGISTRAR_LJ": "SIM",
-   "STATUS": "INATIVADO",
-   "PARTICIPA": "NÃO",
-   "TIPO_PLOTAGEM": "X_VERMELHO",
-   "RUN": 26101401,
-   "NA_ESTATISTICA": "NÃO",
+   "STATUS": "ATIVO",
+   "PARTICIPA": "SIM",
+   "TIPO_PLOTAGEM": "NORMAL",
+   "RUN": 26102304,
+   "NA_ESTATISTICA": "SIM",
    "NO_RECORTE_ESTATISTICA": true,
-   "NO_LJ": "X",
+   "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [],
    "DESTINO": [
-    "X"
+    "PARTICIPA"
    ],
-   "MOTIVO": "inativação registrada",
-   "CENARIOS": [
-    "E10"
-   ]
+   "MOTIVO": null,
+   "CENARIOS": []
   },
   {
-   "ID": "BIO-366708",
+   "ID": "BIO-369420",
+   "ORIGEM": "INTERFACEAMENTO",
+   "NO_RECEBIMENTO": true,
+   "LINHA_MANUAL": null,
+   "INATIVADO": false,
+   "LINHA_INAT": [],
+   "REGISTRAR_LJ": "SIM",
+   "STATUS": "ATIVO",
+   "PARTICIPA": "SIM",
+   "TIPO_PLOTAGEM": "NORMAL",
+   "RUN": 26102601,
+   "NA_ESTATISTICA": "SIM",
+   "NO_RECORTE_ESTATISTICA": true,
+   "NO_LJ": "FORA_DA_TELA",
+   "ACHADOS_QA": [],
+   "DESTINO": [
+    "PARTICIPA"
+   ],
+   "MOTIVO": null,
+   "CENARIOS": []
+  },
+  {
+   "ID": "BIO-369482",
    "ORIGEM": "INTERFACEAMENTO",
    "NO_RECEBIMENTO": true,
    "LINHA_MANUAL": null,
@@ -1334,9 +1242,9 @@
    "STATUS": "INATIVADO",
    "PARTICIPA": "NÃO",
    "TIPO_PLOTAGEM": "X_VERMELHO",
-   "RUN": 26101401,
+   "RUN": 26102602,
    "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
+   "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [],
    "DESTINO": [
@@ -1345,6 +1253,76 @@
    "MOTIVO": "inativação registrada",
    "CENARIOS": [
     "E13b"
+   ]
+  },
+  {
+   "ID": "BIO-369956",
+   "ORIGEM": "INTERFACEAMENTO",
+   "NO_RECEBIMENTO": true,
+   "LINHA_MANUAL": null,
+   "INATIVADO": false,
+   "LINHA_INAT": [],
+   "REGISTRAR_LJ": "SIM",
+   "STATUS": "ATIVO",
+   "PARTICIPA": "SIM",
+   "TIPO_PLOTAGEM": "NORMAL",
+   "RUN": 26102704,
+   "NA_ESTATISTICA": "NÃO",
+   "NO_RECORTE_ESTATISTICA": false,
+   "NO_LJ": "FORA_DA_TELA",
+   "ACHADOS_QA": [],
+   "DESTINO": [
+    "PARTICIPA"
+   ],
+   "MOTIVO": null,
+   "CENARIOS": []
+  },
+  {
+   "ID": "BIO-370355",
+   "ORIGEM": "INTERFACEAMENTO",
+   "NO_RECEBIMENTO": true,
+   "LINHA_MANUAL": null,
+   "INATIVADO": false,
+   "LINHA_INAT": [],
+   "REGISTRAR_LJ": "SIM",
+   "STATUS": "ATIVO",
+   "PARTICIPA": "SIM",
+   "TIPO_PLOTAGEM": "NORMAL",
+   "RUN": 26102702,
+   "NA_ESTATISTICA": "SIM",
+   "NO_RECORTE_ESTATISTICA": true,
+   "NO_LJ": "FORA_DA_TELA",
+   "ACHADOS_QA": [],
+   "DESTINO": [
+    "PARTICIPA"
+   ],
+   "MOTIVO": null,
+   "CENARIOS": []
+  },
+  {
+   "ID": "BIO-370467",
+   "ORIGEM": "INTERFACEAMENTO",
+   "NO_RECEBIMENTO": true,
+   "LINHA_MANUAL": null,
+   "INATIVADO": true,
+   "LINHA_INAT": [
+    4
+   ],
+   "REGISTRAR_LJ": "SIM",
+   "STATUS": "INATIVADO",
+   "PARTICIPA": "NÃO",
+   "TIPO_PLOTAGEM": "X_VERMELHO",
+   "RUN": 26102702,
+   "NA_ESTATISTICA": "NÃO",
+   "NO_RECORTE_ESTATISTICA": true,
+   "NO_LJ": "X",
+   "ACHADOS_QA": [],
+   "DESTINO": [
+    "X"
+   ],
+   "MOTIVO": "inativação registrada",
+   "CENARIOS": [
+    "E10"
    ]
   },
   {
@@ -1375,9 +1353,9 @@
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26101901,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
+   "RUN": 26102501,
+   "NA_ESTATISTICA": "SIM",
+   "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [],
    "DESTINO": [
@@ -1402,7 +1380,7 @@
    "TIPO_PLOTAGEM": "NAO_PLOTAR",
    "RUN": null,
    "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
+   "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [
     "A01"
@@ -1426,9 +1404,9 @@
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26101902,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
+   "RUN": 26102502,
+   "NA_ESTATISTICA": "SIM",
+   "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [],
    "DESTINO": [
@@ -1450,9 +1428,9 @@
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26101903,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
+   "RUN": 26102503,
+   "NA_ESTATISTICA": "SIM",
+   "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [],
    "DESTINO": [
@@ -1476,7 +1454,7 @@
    "TIPO_PLOTAGEM": "NAO_PLOTAR",
    "RUN": null,
    "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
+   "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [
     "A01"
@@ -1500,9 +1478,9 @@
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26101904,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
+   "RUN": 26102504,
+   "NA_ESTATISTICA": "SIM",
+   "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [],
    "DESTINO": [
@@ -1581,9 +1559,9 @@
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26101905,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
+   "RUN": 26102505,
+   "NA_ESTATISTICA": "SIM",
+   "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [],
    "DESTINO": [
@@ -3279,246 +3257,6 @@
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 81,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26070411,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": [
-    "E11B-sintetico"
-   ]
-  },
-  {
-   "ID": "MAN_0134",
-   "ORIGEM": "MANUAL",
-   "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 82,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26070412,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": [
-    "E11B-sintetico"
-   ]
-  },
-  {
-   "ID": "MAN_0135",
-   "ORIGEM": "MANUAL",
-   "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 83,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26070413,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": [
-    "E11B-sintetico"
-   ]
-  },
-  {
-   "ID": "MAN_0136",
-   "ORIGEM": "MANUAL",
-   "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 84,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26070414,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": [
-    "E11B-sintetico"
-   ]
-  },
-  {
-   "ID": "MAN_0137",
-   "ORIGEM": "MANUAL",
-   "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 85,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26070415,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": [
-    "E11B-sintetico"
-   ]
-  },
-  {
-   "ID": "MAN_0138",
-   "ORIGEM": "MANUAL",
-   "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 86,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26070416,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": [
-    "E11B-sintetico"
-   ]
-  },
-  {
-   "ID": "MAN_0139",
-   "ORIGEM": "MANUAL",
-   "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 87,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26070417,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": [
-    "E11B-sintetico"
-   ]
-  },
-  {
-   "ID": "MAN_0140",
-   "ORIGEM": "MANUAL",
-   "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 88,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26070418,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": [
-    "E11B-sintetico"
-   ]
-  },
-  {
-   "ID": "MAN_0141",
-   "ORIGEM": "MANUAL",
-   "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 89,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26070419,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": [
-    "E11B-sintetico"
-   ]
-  },
-  {
-   "ID": "MAN_0142",
-   "ORIGEM": "MANUAL",
-   "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 90,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26070420,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": [
-    "E11B-sintetico"
-   ]
-  },
-  {
-   "ID": "MAN_0143",
-   "ORIGEM": "MANUAL",
-   "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 91,
    "INATIVADO": true,
    "LINHA_INAT": [
     7
@@ -3527,7 +3265,7 @@
    "STATUS": "INATIVADO",
    "PARTICIPA": "NÃO",
    "TIPO_PLOTAGEM": "NAO_PLOTAR",
-   "RUN": 26101402,
+   "RUN": 26102603,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
@@ -3541,10 +3279,10 @@
    ]
   },
   {
-   "ID": "MAN_0144",
+   "ID": "MAN_0134",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 92,
+   "LINHA_MANUAL": 82,
    "INATIVADO": true,
    "LINHA_INAT": [
     8
@@ -3553,7 +3291,7 @@
    "STATUS": "INATIVADO",
    "PARTICIPA": "NÃO",
    "TIPO_PLOTAGEM": "X_VERMELHO",
-   "RUN": 26101403,
+   "RUN": 26102602,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
@@ -3567,10 +3305,10 @@
    ]
   },
   {
-   "ID": "MAN_0145",
+   "ID": "MAN_0135",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 93,
+   "LINHA_MANUAL": 83,
    "INATIVADO": false,
    "LINHA_INAT": [],
    "REGISTRAR_LJ": "SIM",
@@ -3595,10 +3333,10 @@
    ]
   },
   {
-   "ID": "MAN_0146",
+   "ID": "MAN_0136",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 94,
+   "LINHA_MANUAL": 84,
    "INATIVADO": false,
    "LINHA_INAT": [],
    "REGISTRAR_LJ": "SIM",
@@ -3621,10 +3359,10 @@
    ]
   },
   {
-   "ID": "MAN_0147",
+   "ID": "MAN_0137",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 95,
+   "LINHA_MANUAL": 85,
    "INATIVADO": false,
    "LINHA_INAT": [],
    "REGISTRAR_LJ": "SIM",
@@ -3647,10 +3385,10 @@
    ]
   },
   {
-   "ID": "MAN_0148",
+   "ID": "MAN_0138",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 96,
+   "LINHA_MANUAL": 86,
    "INATIVADO": false,
    "LINHA_INAT": [],
    "REGISTRAR_LJ": "NÃO",
@@ -3673,20 +3411,20 @@
    ]
   },
   {
-   "ID": "MAN_0149",
+   "ID": "MAN_0139",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 97,
+   "LINHA_MANUAL": 87,
    "INATIVADO": false,
    "LINHA_INAT": [],
    "REGISTRAR_LJ": "SIM",
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26101901,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_JANELA",
+   "RUN": 26102501,
+   "NA_ESTATISTICA": "SIM",
+   "NO_RECORTE_ESTATISTICA": true,
+   "NO_LJ": "PONTO",
    "ACHADOS_QA": [],
    "DESTINO": [
     "PARTICIPA"
@@ -3697,41 +3435,17 @@
    ]
   },
   {
-   "ID": "MAN_0150",
+   "ID": "MAN_0140",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 98,
+   "LINHA_MANUAL": 88,
    "INATIVADO": false,
    "LINHA_INAT": [],
    "REGISTRAR_LJ": "SIM",
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26101901,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": [
-    "E14"
-   ]
-  },
-  {
-   "ID": "MAN_0151",
-   "ORIGEM": "MANUAL",
-   "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 99,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26101901,
+   "RUN": 26102501,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
@@ -3745,17 +3459,17 @@
    ]
   },
   {
-   "ID": "MAN_0152",
+   "ID": "MAN_0141",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 100,
+   "LINHA_MANUAL": 89,
    "INATIVADO": false,
    "LINHA_INAT": [],
    "REGISTRAR_LJ": "SIM",
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26101901,
+   "RUN": 26102501,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
@@ -3769,10 +3483,34 @@
    ]
   },
   {
-   "ID": "MAN_0153",
+   "ID": "MAN_0142",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 101,
+   "LINHA_MANUAL": 90,
+   "INATIVADO": false,
+   "LINHA_INAT": [],
+   "REGISTRAR_LJ": "SIM",
+   "STATUS": "ATIVO",
+   "PARTICIPA": "SIM",
+   "TIPO_PLOTAGEM": "NORMAL",
+   "RUN": 26102501,
+   "NA_ESTATISTICA": "NÃO",
+   "NO_RECORTE_ESTATISTICA": false,
+   "NO_LJ": "FORA_DA_TELA",
+   "ACHADOS_QA": [],
+   "DESTINO": [
+    "PARTICIPA"
+   ],
+   "MOTIVO": null,
+   "CENARIOS": [
+    "E14"
+   ]
+  },
+  {
+   "ID": "MAN_0143",
+   "ORIGEM": "MANUAL",
+   "NO_RECEBIMENTO": false,
+   "LINHA_MANUAL": 91,
    "INATIVADO": false,
    "LINHA_INAT": [],
    "REGISTRAR_LJ": "NÃO",
@@ -3781,7 +3519,7 @@
    "TIPO_PLOTAGEM": "NAO_PLOTAR",
    "RUN": null,
    "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
+   "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [
     "A01",
@@ -3808,7 +3546,7 @@
    "TIPO_PLOTAGEM": "NAO_PLOTAR",
    "RUN": null,
    "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
+   "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [
     "E04"
@@ -3834,7 +3572,7 @@
    "TIPO_PLOTAGEM": "NAO_PLOTAR",
    "RUN": null,
    "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
+   "NO_RECORTE_ESTATISTICA": true,
    "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [
     "E04"

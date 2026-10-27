@@ -17,12 +17,16 @@ Para cada produto:
      dica do LJ (070), selecao de rodadas do CEQ e Sigma com CV pooled de N meses (071), limites por lote com
      rastreabilidade (073), aba Analitos com um bloco por lote e anos de referencia CLIA/VB (074; antes, o resgate
      das digitacoes que nao chegaram a LotesStore -- 078), linhas do alvo que nao dependem das corridas e troca de
-     lote sem gravar na LotesStore (078), camada de dados em VBA com Sync_Log (079), eixo X = corrida do lote por nivel (080) e blindagem.
+     lote sem gravar na LotesStore (078), camada de dados em VBA com Sync_Log (079), eixo X = corrida do lote por nivel (080),
+     manual que substitui um resultado do interfaceamento por escolha (SUBSTITUI_ID, 082) e blindagem. ANTES de todos,
+     o relatorio da mudanca de veredicto de Westgard (083: regras do mesmo nivel na sequencia de ativos), que precisa
+     do VBA antigo da producao.
      Todos idempotentes; cada um instala o VBA inteiro das fontes (codigo_atual.py);
   3. guarda os bytes instalados e roda, cada suite numa copia propria deles:
      qa_seguranca, qa_casos_extremos, qa_troca_lote, qa_lotes_auto, qa_graficos (Excel VISIVEL),
      qa_incerteza (recalculo independente), qa_desempenho, qa_final, qa_etl_recebimento, qa_etl, qa_rodadas_cv,
-     qa_inativar, qa_migracao_adr070, qa_lotes_limites, qa_blocos_lote, qa_varredura_lotes, qa_linhas_alvo, qa_sync, qa_corrida_lote. A producao ORIGINAL (copiada para <produto>/producao_original/ antes de
+     qa_inativar, qa_migracao_adr070, qa_lotes_limites, qa_blocos_lote, qa_varredura_lotes, qa_linhas_alvo, qa_sync, qa_corrida_lote,
+     qa_inativar_ux, qa_manual_substitui, qa_westgard_sequencia. A producao ORIGINAL (copiada para <produto>/producao_original/ antes de
      instalar, conferida por SHA-256) vai para as suites pela variavel QC_PROD_ORIGINAL: o R00 do qa_rodadas_cv
      compara a copia instalada com ela (regressao do gate) e o qa_migracao_adr070 testa a migracao sobre ela e
      confere que as inativacoes reais sobrevivem (M06) -- nenhum caminho de rede no codigo;
@@ -57,7 +61,9 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_linhas_alvo.py',                           # ADR-078: linhas do alvo antes da 1a corrida, troca sem gravar
           'qa_sync.py',                                  # ADR-079: incremental, idempotente, falhas, reserva PQ
           'qa_corrida_lote.py',                          # ADR-080/081: corrida do lote (so ativos), X entre corridas
-          'qa_inativar_ux.py']                           # ADR-081: inativar/reativar pelo grafico, simples
+          'qa_inativar_ux.py',                           # ADR-081: inativar/reativar pelo grafico, simples
+          'qa_manual_substitui.py',                      # ADR-082: manual substitui o automatico (SUBSTITUI_ID)
+          'qa_westgard_sequencia.py']                    # ADR-083: Westgard do mesmo nivel na sequencia de ativos
 
 
 def sha(p):
@@ -96,7 +102,10 @@ def entregar(produto, modo, testar, pasta, origem=None):
     print(f'\n## {produto}\n   producao sha256 {sha_inicio[:16]} -> copia de trabalho', flush=True)
 
     # cada instalador instala TODO o VBA atual (codigo_atual.py) e cuida da sua parte de planilha
-    passos = [('modo_fonte', ['instalar_modo_historico.py', produto, alvo, '--modo', modo]
+    # ADR-083 PRIMEIRO: o relatorio da mudanca de veredicto de Westgard precisa do VBA ANTIGO da producao (qualquer
+    # outro instalador ja levaria o mEstatistica novo pelo codigo_atual e a troca sairia sem relatorio)
+    passos = [('westgard_seq', ['instalar_adr083.py', produto, alvo]),
+              ('modo_fonte', ['instalar_modo_historico.py', produto, alvo, '--modo', modo]
                + (['--caminho', origem] if origem else [])),
               ('lotes', ['instalar_adr060.py', produto, alvo, '--registrar']),
               ('seguranca', ['instalar_seguranca_usuarios.py', produto, alvo]),
@@ -114,6 +123,7 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('motor_dados', ['instalar_adr079.py', produto, alvo]),    # ADR-079: camada de dados em VBA + Sync_Log
               ('corrida_lote', ['instalar_adr080.py', produto, alvo]),   # ADR-080/081: eixo X = corrida do lote (ativos)
               ('inativar_ux', ['instalar_frm_inativar.py', produto, alvo]),  # ADR-081: inativar/reativar pelo grafico
+              ('manual_subst', ['instalar_adr082.py', produto, alvo]),   # ADR-082: SUBSTITUI_ID (manual no lugar do automatico)
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:
         ok, fim = rodar(os.path.join(trab, f'{nome}.log'), AQUI, *args)
@@ -153,7 +163,36 @@ def entregar(produto, modo, testar, pasta, origem=None):
     if sha(prod) != instalado:
         shutil.copy2(os.path.join(bk, ARQ[produto]), prod)
         return False, 'copia para a producao divergiu: producao devolvida do backup'
-    return True, f'ENTREGUE sha256 {instalado[:16]} (backup em {bk})'
+    try:
+        rel = relatorio_westgard(trab, prod)
+    except OSError as e:                     # a producao ja foi trocada: o relatorio continua em trab
+        rel = [f'NAO copiado ({e}); ver {trab}']
+    return True, f'ENTREGUE sha256 {instalado[:16]} (backup em {bk})' + (f'; Westgard: {", ".join(rel)}' if rel else '')
+
+
+def relatorio_westgard(trab, prod):
+    """ADR-083: o relatorio da mudanca de veredicto de Westgard (instalar_adr083.py, ao lado da copia de trabalho) vai
+    tambem para o lado do arquivo de producao -- e a lista para o laboratorio decidir sobre a revisao de laudos. Um que
+    ja esteja la nunca e sobrescrito: o mesmo conteudo nao e copiado de novo; conteudo diferente ganha data/hora no nome,
+    e a mensagem diz o nome que o Audit_Log cita e o nome final (os dois aparecem no resumo da entrega). Previa
+    (_PREVIA, --sem-salvar) nao vai."""
+    base = os.path.splitext(os.path.basename(prod))[0] + '_ADR083_mudancas_westgard'
+    out = []
+    for nome in sorted(os.listdir(trab)):
+        if nome.startswith(base) and nome.endswith('.csv') and not nome.endswith('_PREVIA.csv'):
+            orig = os.path.join(trab, nome)
+            dest = os.path.join(os.path.dirname(prod), nome)
+            if os.path.exists(dest):
+                if sha(dest) == sha(orig):
+                    out.append(f'{dest} (ja estava)')
+                    continue
+                dest = dest[:-4] + '_' + time.strftime('%Y%m%d_%H%M%S') + '.csv'
+                shutil.copy2(orig, dest)
+                out.append(f'{dest} (o Audit_Log cita {nome}; ja havia outro com esse nome ao lado da producao)')
+                continue
+            shutil.copy2(orig, dest)
+            out.append(dest)
+    return out
 
 
 def main(argv):

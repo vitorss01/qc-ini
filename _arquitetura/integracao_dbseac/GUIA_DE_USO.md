@@ -19,7 +19,9 @@ agendada atualiza a cada 2 minutos.
      de período, aparece o número real da corrida no lote.
 4. Passe o mouse num ponto do gráfico. Aparecem o **ID**, a corrida (RUN), a data/hora e o valor. Nos pontos já
    inativados (X vermelho) aparece também **INATIVADO**.
-5. Confira o Status da corrida, as regras de Westgard violadas e o histórico do analito.
+5. Confira o Status da corrida, as regras de Westgard violadas e o histórico do analito. As regras do mesmo nível (2-2s
+   entre corridas) olham os resultados ativos seguidos daquele nível, mesmo com corrida só de outro nível no meio
+   (ADR-083; ver a seção 2).
 6. Olhe a aba **QA_INTEGRACAO**:
    - **ERRO**: precisa de ação;
    - **ALERTA**: o sistema protegeu o dado, mas alguém deve olhar;
@@ -45,6 +47,28 @@ inativada, o resultado seguinte passa a ser a corrida 3 — o gráfico continua 
 **entre** as corridas vizinhas (ex.: entre a 2 e a 3), sem número. O resultado é sempre identificado pela **ID**, que
 nunca muda; a dica do ponto mostra a corrida, a ID e o RUN do dia. Reativar devolve a numeração exatamente como era.
 
+**Atenção — na Bioquímica, inativar ou reativar pode mudar o veredicto de corridas POSTERIORES do mesmo nível
+(ADR-083).** As regras de Westgard do mesmo nível comparam os resultados **ativos seguidos** daquele nível: o 2-2s liga
+dois N1 seguidos acima de +2DP mesmo que haja uma corrida só do N2 entre eles. Por isso:
+
+- inativar um N1 que estava entre dois N1 acima de +2DP **cria** um 2-2s na corrida seguinte (que pode já ter sido
+  liberada) e ela vira REJEITADO;
+- reativar esse N1, ou digitar entre os dois um manual **dentro de ±2DP**, **desfaz** o 2-2s (um manual acima de +2DP
+  forma outro 2-2s).
+
+Na **Hematologia** as regras do mesmo nível são só complementares: aparecem na aba Eventos_Westgard como COMPLEMENTAR,
+mas nenhum veredicto muda.
+
+A regra oficial que entra ou sai fica no **Audit_Log**, com o RUN, o analito, o nível e a regra:
+WESTGARD_EVENTO_NOVO / WESTGARD_EVENTO_REMOVIDO quando a corrida já tinha sido avaliada (o parecer começa com
+`[RETROATIVO]`) e WESTGARD_EVENTO_CORRIDA_NOVA quando a regra disparou numa corrida nova (rotina). **A trilha cobre
+todos os lotes e, na Bioquímica, os dois equipamentos** — não só o que está no Painel: o sistema guarda uma foto das
+regras oficiais de cada lote × equipamento (aba técnica oculta) e, a cada ATUALIZAR ou inativação pelo gráfico, audita
+o lote cujo resultado mudou (inclusive o inativado pela aba Inativar, de qualquer lote). Não precisa trocar o lote do
+Painel antes de inativar. Depois de inativar, confira o status das corridas seguintes do mesmo nível no Painel.
+As regras entre níveis (R-4s, 2-2s e 2 de 3 dentro da corrida, 4-1s, 3-1s, 8x e 6x oficiais) continuam pela corrida do
+dia.
+
 **Pela aba Inativar (quem preferir digitar):** na próxima linha livre, digite a **ID** (o analito se preenche
 sozinho), marque ou não **Registrar-LJ** (X vermelho), escreva o **motivo** e clique em ⟳ **ATUALIZAR DADOS**.
 
@@ -58,10 +82,45 @@ sozinho), marque ou não **Registrar-LJ** (X vermelho), escreva o **motivo** e c
 
 1. Na aba **Digitar Resultados**, preencha data, hora, lote, nível, analito, resultado e motivo. O ID (MAN_0001…) é
    gerado sozinho.
-2. Atualize e confira o STATUS:
+2. Atualize e confira o STATUS (e a coluna DETALHE):
    - **ATIVO** = entrou na estatística;
-   - **CONFLITO_MANUAL** = o mesmo resultado já veio pelo interfaceamento. O manual fica guardado, fora do cálculo.
-     Manual **nunca** substitui automático.
+   - **CONFLITO_MANUAL** = o mesmo resultado já veio pelo interfaceamento (mesma chave, até 30 min) e vale o
+     automático. O manual fica guardado, fora do cálculo. Para o manual valer no lugar dele, use o SUBSTITUI_ID
+     (abaixo);
+   - **MANUAL_INCOMPLETO** = falta campo (o DETALHE diz qual).
+
+**Substituir um resultado do interfaceamento pelo manual (ADR-082 — por escolha, nunca sozinho):**
+
+1. Passe o mouse no ponto do gráfico e anote o número do **ID** do resultado que vai ser substituído.
+2. Na próxima linha livre da aba **Digitar Resultados**, digite primeiro esse número na coluna **SUBSTITUI_ID** (a
+   última). Equipamento, lote, nível, analito, data e hora se preenchem sozinhos com os do resultado indicado (só o que
+   estiver vazio). Se o ID não existir, aparece um aviso e nada é preenchido. Se algum desses campos já estava
+   preenchido com outro valor (por exemplo o equipamento padrão), aparece um aviso dizendo qual: corrija-o, senão nada
+   é substituído (QA E12 "tem outra chave").
+3. Digite o **RESULTADO** correto e o **MOTIVO** (obrigatório para substituir) e clique em ⟳ **ATUALIZAR DADOS**.
+4. Confira: o manual fica **ATIVO** (DETALHE "substitui o resultado do interfaceamento …"); o automático fica
+   **SUBSTITUIDO_MANUAL** — guardado na base, fora da estatística e do gráfico, sem corrida. A dica do ponto mostra
+   "ID MAN_0007 (substitui 54565)". A aba QA_INTEGRACAO registra a troca (INFO **I04**: os dois IDs, os dois valores, a
+   diferença e o motivo) e o Audit_Log grava RESULTADO_SUBSTITUIDO_POR_MANUAL.
+
+- Só vale o ID de um resultado do **interfaceamento** com o **mesmo** equipamento, matriz, lote, nível e analito, que
+  não seja retransmissão e que nenhum outro manual já substitua. Fora disso nada é substituído e o QA dá **ERRO E12**
+  dizendo por quê. Dois manuais para o mesmo ID: vale o primeiro; o segundo fica CONFLITO_MANUAL.
+- Resultado do interfaceamento **sem valor** ou **sem data/hora** também pode ser substituído (é o caso típico).
+- Resultado já **inativado** pelo usuário continua **INATIVADO** (X vermelho e não conformidade preservados); o manual
+  vale do mesmo jeito. O inativado não ganha corrida própria: o X vermelho aparece na corrida do manual e nenhuma
+  outra corrida do dia muda (nem se você inativar ou reativar o automático depois).
+- O manual entra na corrida pela **própria** data/hora (a que se preencheu sozinha é a do resultado substituído). Se
+  você mudar a hora para fora do bloco dos outros níveis (mais de 10 min), ele abre uma corrida própria e as seguintes
+  do dia andam +1.
+- **Inativar o manual NÃO traz o automático de volta** (a janela de inativar avisa). Para voltar ao automático,
+  apague o SUBSTITUI_ID (ou a linha do manual) e clique em ATUALIZAR DADOS; o Audit_Log grava
+  SUBSTITUICAO_POR_MANUAL_DESFEITA. Se o automático também estava inativado, reative-o (o I04 diz isso).
+- Digitou o manual errado, inativou-o e digitou outro com o mesmo SUBSTITUI_ID? O primeiro continua substituindo e o
+  segundo fica CONFLITO_MANUAL (o QA E12 explica): apague o SUBSTITUI_ID do primeiro e atualize — o segundo passa a
+  valer (Audit_Log: SUBSTITUICAO_POR_MANUAL_ALTERADA).
+- Corrigir depois o valor ou a hora de um manual fica no Audit_Log (RESULTADO_MANUAL_ALTERADO).
+- Manuais antigos (sem SUBSTITUI_ID) continuam como estavam: nada muda no histórico.
 
 ## 4. Especificações de qualidade (aba Especificações, nos dois QCs)
 

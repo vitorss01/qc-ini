@@ -21,6 +21,7 @@ O QUE MEDE
   D. Semantica ............. series construidas acendem a regra certa
   E. Fronteira ............. n-1 consecutivos NAO acendem; n acende
   F. Cobertura ............. TOTAL so quando nome E limiar concordam
+  ADR-083: regras do MESMO nivel na sequencia de ativos do nivel (2 cenarios no bloco D)
 
 Uso:
     python testar_westgard_por_modulo.py <arquivo.xlsm>
@@ -272,6 +273,12 @@ def main():
                   (0, 2): .3, (1, 2): .7}, 2,
                  lambda: [('6x N3/R2 nao dispara', False, det('6x|N3_R2')),
                           ('registrado NAO_AVALIAVEL', True, naoaval('6x|N3_R2'))])
+            # ADR-083: complementar 2of3_2s do MESMO nivel = 2 ou mais de 3 (antes 3 de 3); nao e o WITHIN_RUN
+            cena('D', 'ADR-083: 2of3_2s N1 +2,3 +0,5 +2,4',
+                 {(0, 1): 2.3, (0, 2): 0.5, (0, 3): 2.4, (1, 1): .1, (1, 2): .1, (1, 3): .1,
+                  (2, 1): .1, (2, 2): .1, (2, 3): .1}, 3,
+                 lambda: [('2of3_2s mesmo nivel (complementar)', True, det('2of3_2s|SAME_LEVEL_R3')),
+                          ('2of3_2s WITHIN_RUN nao', False, det('2of3_2s|WITHIN_RUN'))])
         else:
             # secao 36 cenario A
             cena('D', 'A: N1+2,3 N2+2,4',
@@ -288,6 +295,12 @@ def main():
                  {(0, 1): 2.3, (0, 2): 2.2}, 2,
                  lambda: [('2_2s across-run', True,
                            det('2_2s|ACROSS_RUN_SAME_LEVEL'))])
+            # ADR-083: o MESMO nivel anda pela sequencia de ativos do nivel -- corrida so de N2 no meio nao
+            # interrompe o 2_2s do N1 (antes: janela nao avaliavel)
+            cena('D', 'ADR-083: 2_2s N1 com corrida so de N2',
+                 {(0, 1): 2.3, (1, 1): 0.1, (1, 2): 0.2, (0, 3): 2.2, (1, 3): 0.1}, 3,
+                 lambda: [('2_2s across-run', True,
+                           det('2_2s|ACROSS_RUN_SAME_LEVEL|WITHIN_MATERIAL_ACROSS_RUN|OFICIAL|run=3|runIni=1'))])
             # 4_1s N2/R2
             cena('D', '4_1s N2/R2',
                  {(0, 1): 1.3, (1, 1): 1.2, (0, 2): 1.4, (1, 2): 1.5}, 2,

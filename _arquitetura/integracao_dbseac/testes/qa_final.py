@@ -673,7 +673,10 @@ def executar(produto, caminho, saida):
         man_valor = round(xval * 1.01, 2)
         q.escrever_linha('tblResultados_Manuais', {'DATA': dtm.datetime.combine(dia, dtm.time()), 'HORA': 23.0 / 24 + 59.0 / 1440,
                                                    'LOTE': str(lote), 'NIVEL': 1, 'ANALITO': analito, 'RESULTADO': man_valor,
-                                                   'MOTIVO': 'Falha do interfaceamento'})
+                                                   'MOTIVO': 'Falha do interfaceamento',
+                                                   # lancado depois da meia-noite (gate 4.4 quando o ultimo dia e HOJE)
+                                                   'REGISTRADO_EM': dtm.datetime.combine(dia + dtm.timedelta(days=1),
+                                                                                         dtm.time(0, 10))})
         man = [r for r in q.ler('tblResultados_Manuais') if r['ID_REGISTRO']]
         q.atualizar()
         fin4 = q.final_por_id()
@@ -713,8 +716,8 @@ def executar(produto, caminho, saida):
         ok = (f2 and f2['STATUS_ANALITICO'] == 'CONFLITO_MANUAL' and f2['PARTICIPA_ESTATISTICA'] == NAO
               and f2['ID_RELACIONADO'] == esperado and fi['STATUS_ANALITICO'] == 'ATIVO' and a01
               and not any(v > 1 for v in part5.values()))
-        reg('T16 Duplicidade manual x interfaceamento: chave (equip, matriz, lote, nível, analito, dia, ±30 min) -> '
-            'CONFLITO_MANUAL; interfaceamento prevalece; QA A01; nada duplica em silêncio', ok,
+        reg('T16 Duplicidade manual x interfaceamento (SUBSTITUI_ID vazio): chave (equip, matriz, lote, nível, analito, '
+            'dia, ±30 min) -> CONFLITO_MANUAL; interfaceamento prevalece; QA A01; nada duplica em silêncio', ok,
             {'manual': f2 and {k: f2[k] for k in ('ID_REGISTRO', 'STATUS_ANALITICO', 'ID_RELACIONADO', 'MOTIVO_EXCLUSAO_AUTOMATICA')},
              'interface': {k: fi[k] for k in ('ID_REGISTRO', 'STATUS_ANALITICO')}, 'alerta': a01[0] if a01 else None})
 

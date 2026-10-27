@@ -48,15 +48,20 @@ I_AREA, I_NIV, I_REGRA, I_DET, I_ATIVO, I_N, I_R, I_ESC, I_LIM = range(9)
 DESCRICAO = {
     'INDIVIDUAL': 'Resultado isolado alem do limite, sem depender de outro nivel nem da corrida anterior',
     'WITHIN_RUN': 'Avaliado apenas dentro da corrida atual',
-    'ACROSS_RUN_SAME_LEVEL': 'Corridas consecutivas do mesmo nivel de controle',
+    'ACROSS_RUN_SAME_LEVEL': 'Observacoes ativas seguidas do mesmo nivel de controle (corrida so de outro nivel no '
+                             'meio nao interrompe; ADR-083)',
     'N2_R2': '2 niveis x 2 corridas = 4 observacoes',
     'N2_R4': '2 niveis x 4 corridas = 8 observacoes',
     'N3_R1': '3 niveis da mesma corrida',
     'N3_R2': '3 niveis x 2 corridas = 6 observacoes',
-    'SAME_LEVEL_R3': 'Complementar: 3 corridas seguidas do mesmo nivel',
-    'SAME_LEVEL_R4': 'Complementar: 4 corridas seguidas do mesmo nivel',
-    'SAME_LEVEL_R6': 'Complementar: 6 corridas seguidas do mesmo nivel',
-    'SAME_LEVEL_R8': 'Complementar: 8 corridas seguidas do mesmo nivel',
+    'SAME_LEVEL_R3': 'Complementar: 3 observacoes ativas seguidas do mesmo nivel (corrida so de outro nivel no '
+                     'meio nao interrompe; ADR-083)',
+    'SAME_LEVEL_R4': 'Complementar: 4 observacoes ativas seguidas do mesmo nivel (corrida so de outro nivel no '
+                     'meio nao interrompe; ADR-083)',
+    'SAME_LEVEL_R6': 'Complementar: 6 observacoes ativas seguidas do mesmo nivel (corrida so de outro nivel no '
+                     'meio nao interrompe; ADR-083)',
+    'SAME_LEVEL_R8': 'Complementar: 8 observacoes ativas seguidas do mesmo nivel (corrida so de outro nivel no '
+                     'meio nao interrompe; ADR-083)',
 }
 
 

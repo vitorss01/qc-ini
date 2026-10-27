@@ -232,6 +232,9 @@ End Function
 ' ===================== ESCRITA =====================
 
 ' Ponto UNICO de gravacao no log. Devolve o ID do evento.
+' ADR-083: semChave = True grava RUN, nivel e analito nas colunas proprias SEM a chave de resultado (AU_CHAVE) e sem
+' AU_SEQ -- para eventos DERIVADOS (trilha do Westgard), que nao alteram o resultado daquela chave e nao podem entrar
+' no HistoricoDoRegistro nem deslocar a numeracao das alteracoes reais dele.
 Public Function Auditar(ByVal categoria As String, ByVal acao As String, _
                         ByVal modulo As String, _
                         ByVal run As Long, ByVal dtCorrida As Variant, _
@@ -239,7 +242,8 @@ Public Function Auditar(ByVal categoria As String, ByVal acao As String, _
                         ByVal nivel As Long, ByVal analito As String, _
                         ByVal resAnt As Variant, ByVal resNovo As Variant, _
                         ByVal stAnt As String, ByVal stNovo As String, _
-                        ByVal motivo As String, ByVal parecer As String) As String
+                        ByVal motivo As String, ByVal parecer As String, _
+                        Optional ByVal semChave As Boolean = False) As String
 
     Dim ws As Worksheet, lin As Long, v() As Variant, i As Long
     Dim hashAnt As String, id As String, chave As String, agora As Date
@@ -256,7 +260,7 @@ Public Function Auditar(ByVal categoria As String, ByVal acao As String, _
     End If
 
     If Trim$(analito) <> "" Then
-        chave = CStr(run) & "|" & CStr(nivel) & "|" & UCase$(Trim$(analito))
+        If Not semChave Then chave = CStr(run) & "|" & CStr(nivel) & "|" & UCase$(Trim$(analito))
     End If
 
     id = "AUD-" & Format$(lin - AUDIT_R0 + 1, "000000") & "-" & Format$(agora, "yyyymmddhhnnss")

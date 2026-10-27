@@ -45,10 +45,12 @@ ABAS = [
     ('Digitar Resultados',
      'DIGITAR RESULTADOS — continuidade quando o interfaceamento falha',
      'Entrada paralela (staging) · entra na DB_CQ_FINAL pelo mesmo caminho dos resultados automáticos',
-     ['1) Preencha DATA, HORA, LOTE, NÍVEL, ANALITO e RESULTADO na próxima linha livre — o ID (MAN_0001, MAN_0002…) '
-      'é gerado sozinho.  2) Clique ⟳ ATUALIZAR DADOS.',
-      '3) Confira STATUS: ATIVO = entrou na estatística · CONFLITO_MANUAL = o mesmo resultado já veio pelo '
-      'interfaceamento (o manual fica guardado, fora do cálculo) · MANUAL_INCOMPLETO = falta campo.']),
+     ['1) Preencha DATA, HORA, LOTE, NÍVEL, ANALITO, RESULTADO e MOTIVO na próxima linha livre — o ID (MAN_0001…) '
+      'é gerado sozinho. Para SUBSTITUIR um resultado do interfaceamento, digite primeiro o ID dele em SUBSTITUI_ID '
+      '(o resto se preenche) e o MOTIVO.  2) Clique ⟳ ATUALIZAR DADOS.',
+      '3) Confira STATUS e DETALHE: ATIVO = entrou na estatística (com SUBSTITUI_ID, no lugar do automático) · '
+      'CONFLITO_MANUAL = o mesmo resultado já veio pelo interfaceamento e vale o automático (para o manual valer, '
+      'informe o SUBSTITUI_ID) · MANUAL_INCOMPLETO = falta campo.']),
     ('Inativar',
      'INATIVAR — retirar resultados da estatística',
      'O resultado continua na base (auditoria) e sai do cálculo · REGISTRAR - LJ marcado = X vermelho no gráfico · '
@@ -114,6 +116,9 @@ ENTRADAS = {
         ('STATUS', 20, 'General', LOOKUP.format(c='STATUS_ANALITICO')),
         ('DETALHE', 50, 'General', '=IF([@ID_REGISTRO]="","",IFERROR(XLOOKUP([@ID_REGISTRO],tblCQ_Final[ID_REGISTRO],'
                                    'tblCQ_Final[MOTIVO_EXCLUSAO_AUTOMATICA]),"atualize os dados"))'),
+        # ADR-082: opcional, NO FIM (tabela existente ganha a coluna sem mexer nas outras). ID do resultado do
+        # interfaceamento que este manual substitui; exige MOTIVO. O DETALHE mostra "substitui ..." ou por que nao vale
+        ('SUBSTITUI_ID', 14, '@', 'in'),
     ]),
     # ADR-070: so o que o usuario preenche (ID, ANALITO de conferencia, caixa, MOTIVO) + a trilha de auditoria
     # (data e usuario, carimbados pelo VBA, travados). Sem formula: o Power Query confere o ID contra o analito.
@@ -139,6 +144,10 @@ ENTRADAS = {
 # (o ANALITO antigo era XLOOKUP; o novo e digitado e, nas linhas antigas, vem da tblCQ_Final)
 INAT_FORMULAS_LEGADO = ['ANALITO', 'NIVEL', 'LOTE', 'DATA_HORA', 'RUN', 'RESULTADO', 'PLOTAGEM_LJ', 'JUSTIFICATIVA']
 MOTIVOS_MANUAL = ['Falha do interfaceamento', 'Resultado não transmitido', 'Equipamento em contingência', 'Outro']
+# ADR-082: mensagem da celula SUBSTITUI_ID (Validation.InputMessage: no maximo 255 caracteres)
+DICA_SUBST = ('Substitui (opcional)',
+              'ID do resultado do interfaceamento que este manual substitui (o número da dica do gráfico). Digite-o '
+              'primeiro: o resto da linha se preenche. Exige MOTIVO. Vazio = resultado adicional.')
 
 LARG_SAIDA = {'ID_REGISTRO': 13, 'DATA': 11, 'DATA_HORA': 16, 'HORA': 8, 'ANALITO': 24, 'ANALITO_ORIGEM': 12,
               'STATUS_ANALITICO': 19, 'TIPO_PLOTAGEM_LJ': 15, 'COMENTARIO_TECNICO': 40, 'GOVERNANCA': 30,
@@ -492,6 +501,14 @@ def validacoes(wb, produto, nome, lo):
         r.Validation.ErrorMessage = msg
         r.Validation.ShowError = True
 
+    def dica(col, titulo, msg):
+        r = lo.ListColumns(col).DataBodyRange
+        r.Validation.Delete()
+        r.Validation.Add(0, 1, 1)                                     # xlValidateInputOnly: so a mensagem
+        r.Validation.InputTitle = titulo
+        r.Validation.InputMessage = msg
+        r.Validation.ShowInput = True
+
     if nome == 'tblResultados_Manuais':
         p = cp.PRODUTOS[produto]
         lista('EQUIPAMENTO', ','.join(p['equipamentos']), 'Escolha o equipamento da lista.')
@@ -512,6 +529,8 @@ def validacoes(wb, produto, nome, lo):
         r.Validation.Delete()
         r.Validation.Add(2, 1, 7, '-1E+307')                              # decimal
         r.Validation.ErrorMessage = 'Resultado numérico.'
+        if any(c.Name == 'SUBSTITUI_ID' for c in lo.ListColumns):        # ADR-082
+            dica('SUBSTITUI_ID', DICA_SUBST[0], DICA_SUBST[1])
     elif nome == 'tblInativacao_NaoConformes':
         # ADR-070: o analito e a CONFERENCIA do ID -- sugerido pela lista do cadastro (a mesma do Painel).
         # Revisao 07/10/2026: estilo AVISO, nao Parar. Resultado de analito SEM cadastro (Bio FERR, TNIH, UCFP,
@@ -523,14 +542,6 @@ def validacoes(wb, produto, nome, lo):
               'Nome fora do cadastro. Analito sem cadastro: digite como na coluna ANALITO da Principal - '
               'Resultados (ex.: FERR) e clique Sim. O ATUALIZAR confere o ID com o analito (E10/E11).', estilo=2,
               titulo='Analito fora do cadastro')
-
-        def dica(col, titulo, msg):
-            r = lo.ListColumns(col).DataBodyRange
-            r.Validation.Delete()
-            r.Validation.Add(0, 1, 1)                                     # xlValidateInputOnly: so a mensagem
-            r.Validation.InputTitle = titulo
-            r.Validation.InputMessage = msg
-            r.Validation.ShowInput = True
         dica('ID_REGISTRO', 'ID do resultado', 'Digite só o número do ID (ex.: 314216): é o número que aparece ao '
                                               'passar o mouse no ponto do Levey-Jennings, no Painel.')
         dica('MOTIVO', 'Motivo (obrigatório)', 'Por que este resultado sai da estatística? '
@@ -564,9 +575,9 @@ def carregar_saida(wb, consulta, m_alternativo=None):
     return lo, t
 
 
-def resumo_saidas(wb):
-    """Linha 5 de cada aba de saida: contagem viva por formula (sem VBA)."""
-    f = {
+def formulas_resumo():
+    """Formula da linha 5 de cada aba de saida (aba -> formula). Separada para os instaladores conferirem (ADR-082)."""
+    return {
         'DB': '="Recebidos: "&TEXT(ROWS(tblDB_Recebimento),"#,##0")&" resultados  ·  último resultado: "&'
                           'TEXT(MAX(tblDB_Recebimento[DATA_HORA]),"dd/mm/yyyy hh:mm")&"  ·  última chegada: "&'
                           'TEXT(MAX(tblDB_Recebimento[RECEBIDO_EM]),"dd/mm/yyyy hh:mm")',
@@ -575,12 +586,17 @@ def resumo_saidas(wb):
                        'TEXT(COUNTIFS(tblCQ_Final[PARTICIPA_ESTATISTICA],"SIM"),"#,##0")&"  ·  X vermelho: "&'
                        'COUNTIFS(tblCQ_Final[TIPO_PLOTAGEM_LJ],"X_VERMELHO")&"  ·  inativados: "&'
                        'COUNTIFS(tblCQ_Final[STATUS_ANALITICO],"INATIVADO")&"  ·  manuais: "&'
-                       'COUNTIFS(tblCQ_Final[ORIGEM_RESULTADO],"MANUAL")',
+                       'COUNTIFS(tblCQ_Final[ORIGEM_RESULTADO],"MANUAL")&"  ·  substituídos por manual: "&'
+                       'COUNTIFS(tblCQ_Final[STATUS_ANALITICO],"SUBSTITUIDO_MANUAL")',          # ADR-082
         'QA_INTEGRACAO': '="ERROS: "&COUNTIFS(tblQA_Integracao[SEVERIDADE],"ERRO")&"   ·   ALERTAS: "&'
                          'COUNTIFS(tblQA_Integracao[SEVERIDADE],"ALERTA")&"   ·   INFO: "&'
                          'COUNTIFS(tblQA_Integracao[SEVERIDADE],"INFO")',
     }
-    for nome_aba, formula in f.items():
+
+
+def resumo_saidas(wb):
+    """Linha 5 de cada aba de saida: contagem viva por formula (sem VBA)."""
+    for nome_aba, formula in formulas_resumo().items():
         ws = [w for w in wb.Worksheets if w.Name == nome_aba][0]
         c = ws.Range('A5')
         c.Formula2 = formula

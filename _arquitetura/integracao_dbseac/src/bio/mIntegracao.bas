@@ -23,6 +23,10 @@ Option Explicit
 '  Toda execucao (VBA ou PQ, ok ou falha) deixa uma linha no Sync_Log.
 '  ADR-081: inativar/reativar pelo grafico sem dialogo aqui (DadosDoPonto, InativarPorId, ReativarPorId) e o
 '  ATUALIZAR so das entradas (AtualizarSoEntradas); a janela e do mUI.
+'  ADR-082: coluna SUBSTITUI_ID da aba Digitar Resultados -- o manual substitui o resultado do interfaceamento
+'  indicado (quem decide e o motor de dados). Aqui: normalizar o ID, preencher a linha a partir do resultado indicado
+'  (EntradaMudou), a trilha da substituicao e da edicao do manual (Audit_Log) e o gancho da trilha do Westgard
+'  (ADR-083: mEstatistica.AuditarFotosWestgard, todos os lotes x equipamento).
 ' ============================================================================
 Private Const ABA_MANUAL As String = "Digitar Resultados"
 Private Const ABA_INAT As String = "Inativar"
@@ -33,6 +37,7 @@ Private Const TB_COMENT As String = "tblComentariosTecnicos"
 Private Const COL_LJ As String = "REGISTRAR - LJ"
 Private Const FOLGA As Long = 100              ' linhas acrescentadas quando a tabela de entrada enche
 Private Const TXT_FALHA As String = "Nada foi alterado. Tente de novo ou clique em ATUALIZAR DADOS."   ' ADR-081
+Private Const COL_SUBST As String = "SUBSTITUI_ID"                      ' ADR-082: coluna opcional da tblResultados_Manuais
 
 ' ordem do refresh = ordem das camadas
 Private Function Camadas() As Variant
@@ -74,6 +79,7 @@ Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False,
     Dim camada As Variant, t0 As Double, tempos As String
     Dim antes As Object, depois As Object, nRec0 As Long, nRec1 As Long, etapa As String, hist As Boolean
     Dim resLotes As String, vba As Boolean, nNovos As Long, mudou As Boolean, semOrigem As Boolean
+    Dim tWg As Double, tWgS As Double, resWg As String
     mApp.InicioUsuario "Atualizando dados: preparando as entradas..."
     On Error GoTo falha
     hist = ModoHistorico()
@@ -129,12 +135,29 @@ Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False,
     If Not soEntradas Then mDados.AtualizarListasAno
     mLotes.AtualizarListaLiberacao
     mEstatistica.AtualizarEstatistica
+    ' ADR-083 (opcao completa, 27/10/2026): trilha das mudancas de veredicto de Westgard em TODOS os lotes x equipamento
+    ' (gancho pedido no ADR-082). A foto dos eventos OFICIAIS fica na aba tecnica Westgard_Fotos; so os lotes cuja
+    ' impressao digital mudou (resultado novo, inativacao, reativacao, manual, substituicao, media/DP) sao refeitos, em
+    ' memoria -- Eventos_Westgard e o Painel continuam no lote em que estavam. Logo depois de AtualizarEstatistica (o
+    ' snapshot do banco ja esta carregado), antes do periodo e da incerteza; vale tambem para o caminho rapido da
+    ' inativacao pelo grafico (AtualizarSoEntradas). A foto so muda depois de auditar: se algo falhar aqui ou depois,
+    ' o proximo ATUALIZAR compara com a foto antiga e nada se perde. Nunca derruba a atualizacao; o tempo vai no TEMPOS.
+    tWg = Timer
+    resWg = ""
+    On Error Resume Next
+    resWg = mEstatistica.AuditarFotosWestgard()
+    If Err.Number <> 0 Then resWg = "ERRO|" & Err.Description
+    Err.Clear
+    On Error GoTo falha
+    tWgS = Timer - tWg
+    If tWgS < 0 Then tWgS = tWgS + 86400#              ' meia-noite
     RodarSeExistir "RecalcularEstatPeriodo"
     ' ADR-064: incerteza de medicao (CIQ + CEQ). ADR-081: depois de inativar/reativar UM resultado so a incerteza do
     ' analito dele muda (a dos outros depende so dos resultados deles; o CEQ nao muda) -- recalcula so as linhas dele
     mIncerteza.RecalcularIncerteza IIf(soEntradas, analitoAlvo, "")
     mDados.EncerrarSnapshot
-    tempos = tempos & " · motor " & Format$(Timer - t0, "0.0") & "s"
+    tempos = tempos & " · motor " & Format$(Timer - t0, "0.0") & "s" & _
+             " · westgard_fotos " & Format$(tWgS, "0.00") & "s [" & resWg & "]"      ' ADR-083 (dentro do motor)
     mEtlSync.AnotarLog "T_MOTOR", Round(Timer - t0, 2)
     mEtlSync.AnotarLog "QA_ERROS", ContarQA("ERRO")
     mEtlSync.AnotarLog "QA_ALERTAS", ContarQA("ALERTA")
@@ -164,6 +187,8 @@ falha:
     nE = Err.Number: sE = Err.Description
     On Error Resume Next
     mDados.EncerrarSnapshot
+    ' ADR-083 (opcao completa): nada a fazer aqui -- a foto por lote x equipamento (Westgard_Fotos) so muda depois de
+    ' auditada; o proximo ATUALIZAR compara com ela
     If vba And Len(mEtlSync.EtapaAtual()) > 0 Then etapa = etapa & " / " & mEtlSync.EtapaAtual()
     mAuditoria.RegistrarLog "ATUALIZACAO_FALHOU", "Etapa: " & etapa & " | Erro " & nE & ": " & sE
     mEtlSync.FecharLog "ERRO", "Etapa: " & etapa & " | Erro " & nE & ": " & sE
@@ -340,12 +365,23 @@ End Function
 ' ============================================================================
 '  AUDITORIA (ISO 15189 8.4) -- o que mudou de estado entre duas atualizacoes
 ' ============================================================================
-' ID -> Array(estado, analito, lote, nivel, run, data, equip, resultado, comentario)
-' So o que interessa a trilha: resultados INATIVADOS e resultados MANUAIS.
+' ID -> Array(estado, analito, lote, nivel, run, data, equip, resultado, comentario, valor do manual, motivo automatico,
+' quem lancou o manual)
+' So o que interessa a trilha: resultados INATIVADOS, SUBSTITUIDOS por manual e MANUAIS.
 ' ADR-070: "comentario" = MOTIVO da inativacao (aba Inativar) + COMENTARIO_TECNICO.
+' ADR-082: estado = partes separadas por "|": "INATIVADO/<plotagem>" ou "SUBSTITUIDO" (status); "SUBST:<manual>" no
+'   resultado do interfaceamento que um manual substitui (tambem o que continua INATIVADO); "MANUAL:<status>",
+'   "VAL:<resultado>" e "DH:<data/hora>" no manual (a edicao do valor/instante de um manual fica na trilha).
+'   Array de TAMANHO FIXO (0..11) para todas as linhas: x(9) = valor do manual que substitui, x(10) =
+'   MOTIVO_EXCLUSAO_AUTOMATICA, x(11) = "manual lancado por <USUARIO> em <data>" (do manual que substitui, ou do
+'   proprio manual: a decisao humana na trilha, ISO 15189 8.4 -- o Audit_Log grava o usuario da sessao que rodou o
+'   ATUALIZAR, que pode ser a atualizacao agendada); x(8) continua o parecer da inativacao. O SUBSTITUIDO_MANUAL nao
+'   tem RUN: x(4) = o do manual.
 Private Function EstadoAuditavel() As Object
     Dim d As Object, lo As ListObject, n As Long, i As Long
     Dim vId, vSt, vPl, vOr, vAn, vLt, vNv, vRun, vDt, vEq, vRes, vCom, vMot, est As String, txt As String
+    Dim vRel As Variant, vMex As Variant, manRes As Object, manRun As Object, rel As String, x As Variant
+    Dim vUsr As Variant, vReg As Variant, manQuem As Object, uq As Variant, dq As Variant
     Set d = CreateObject("Scripting.Dictionary")
     Set EstadoAuditavel = d
     Set lo = AcharTabela(FONTE_CQ)
@@ -364,55 +400,187 @@ Private Function EstadoAuditavel() As Object
     vEq = lo.ListColumns("EQUIPAMENTO").DataBodyRange.Value
     vRes = lo.ListColumns("RESULTADO").DataBodyRange.Value
     vCom = lo.ListColumns("COMENTARIO_TECNICO").DataBodyRange.Value
-    vMot = Empty
+    vMot = Empty: vRel = Empty: vMex = Empty: vUsr = Empty: vReg = Empty
     On Error Resume Next                       ' coluna nova (ADR-070): ausente ate a 1a atualizacao com a consulta nova
     vMot = lo.ListColumns("MOTIVO_INATIVACAO").DataBodyRange.Value
+    vRel = lo.ListColumns("ID_RELACIONADO").DataBodyRange.Value
+    vMex = lo.ListColumns("MOTIVO_EXCLUSAO_AUTOMATICA").DataBodyRange.Value
+    vUsr = lo.ListColumns("USUARIO_MANUAL").DataBodyRange.Value
+    vReg = lo.ListColumns("RECEBIDO_EM").DataBodyRange.Value         ' no manual = REGISTRADO_EM (carimbo da digitacao)
     On Error GoTo 0
+    ' ADR-082: valor, RUN e quem lancou cada manual (o SUBSTITUIDO_MANUAL fica sem RUN: a trilha registra o do manual)
+    Set manRes = CreateObject("Scripting.Dictionary")
+    Set manRun = CreateObject("Scripting.Dictionary")
+    Set manQuem = CreateObject("Scripting.Dictionary")
+    For i = 1 To n
+        If CStr(vOr(i, 1)) = "MANUAL" Then
+            manRes(CStr(vId(i, 1))) = vRes(i, 1)
+            manRun(CStr(vId(i, 1))) = vRun(i, 1)
+            uq = Empty: dq = Empty
+            If IsArray(vUsr) Then uq = vUsr(i, 1)
+            If IsArray(vReg) Then dq = vReg(i, 1)
+            manQuem(CStr(vId(i, 1))) = TextoQuemLancou(uq, dq)
+        End If
+    Next i
     For i = 1 To n
         est = ""
-        If CStr(vSt(i, 1)) = "INATIVADO" Then est = "INATIVADO/" & CStr(vPl(i, 1))
-        If CStr(vOr(i, 1)) = "MANUAL" Then est = est & "|MANUAL:" & CStr(vSt(i, 1))
+        rel = ""
+        If IsArray(vRel) Then rel = CStr(vRel(i, 1))
+        If CStr(vSt(i, 1)) = "INATIVADO" Then
+            est = "INATIVADO/" & CStr(vPl(i, 1))
+        ElseIf CStr(vSt(i, 1)) = "SUBSTITUIDO_MANUAL" Then
+            est = "SUBSTITUIDO"
+        End If
+        ' ADR-082: o vinculo com o manual que substitui (ID_RELACIONADO de um interfaceamento que nao e retransmissao)
+        If CStr(vOr(i, 1)) = "INTERFACEAMENTO" And Len(rel) > 0 And CStr(vSt(i, 1)) <> "DUPLICIDADE_ORIGEM" Then
+            est = est & "|SUBST:" & rel
+        End If
+        If CStr(vOr(i, 1)) = "MANUAL" Then
+            est = est & "|MANUAL:" & CStr(vSt(i, 1)) & "|VAL:" & TextoAudit(vRes(i, 1)) & "|DH:" & TextoAudit(vDt(i, 1))
+        End If
         If Len(est) > 0 Then
             txt = CStr(vCom(i, 1))
             If IsArray(vMot) Then
                 If Len(CStr(vMot(i, 1))) > 0 Then txt = "MOTIVO: " & CStr(vMot(i, 1)) & IIf(Len(txt) > 0, " | " & txt, "")
             End If
-            d(CStr(vId(i, 1))) = Array(est, vAn(i, 1), vLt(i, 1), vNv(i, 1), vRun(i, 1), vDt(i, 1), vEq(i, 1), vRes(i, 1), txt)
+            x = Array(est, vAn(i, 1), vLt(i, 1), vNv(i, 1), vRun(i, 1), vDt(i, 1), vEq(i, 1), vRes(i, 1), txt, Empty, Empty, "")
+            If InStr(est, "|SUBST:") > 0 Then
+                If manRes.Exists(rel) Then
+                    x(9) = manRes(rel)
+                    If Len(CStr(x(4))) = 0 Then x(4) = manRun(rel)
+                    x(11) = manQuem(rel)
+                End If
+            End If
+            If CStr(vOr(i, 1)) = "MANUAL" Then x(11) = manQuem(CStr(vId(i, 1)))
+            If IsArray(vMex) Then x(10) = CStr(vMex(i, 1))
+            d(CStr(vId(i, 1))) = x
         End If
     Next i
 End Function
 
+' ADR-082: "manual lancado por <USUARIO_MANUAL> em <dd/mm/yyyy hh:nn>" ("" sem os dois). Nunca levanta erro.
+Private Function TextoQuemLancou(ByVal usuario As Variant, ByVal quando As Variant) As String
+    Dim u As String, s As String
+    If Not (IsEmpty(usuario) Or IsNull(usuario) Or IsError(usuario)) Then u = Trim$(CStr(usuario))
+    If Len(u) > 0 Then s = " por " & u
+    If Not IsError(quando) Then
+        If IsDate(quando) Then s = s & " em " & Format$(CDate(quando), "dd/mm/yyyy hh:nn")
+    End If
+    If Len(s) > 0 Then TextoQuemLancou = "manual lancado" & s
+End Function
+
+' Texto estavel de um valor da tblCQ_Final para o estado auditavel (numero, data/hora ou texto; vazio = "")
+Private Function TextoAudit(ByVal v As Variant) As String
+    If IsEmpty(v) Or IsNull(v) Or IsError(v) Then Exit Function
+    If VarType(v) = vbDate Then
+        TextoAudit = Format$(v, "yyyy-mm-dd hh:nn:ss")
+    ElseIf VarType(v) = vbString Then
+        TextoAudit = v
+    ElseIf IsNumeric(v) Then
+        TextoAudit = CStr(CDbl(v))
+    Else
+        TextoAudit = CStr(v)
+    End If
+End Function
+
+' ADR-082: a parte "<rotulo>valor" do estado auditavel ("" se nao houver). Toda parte rotulada vem depois de um "|".
+Private Function ParteEstado(ByVal est As String, ByVal rotulo As String) As String
+    Dim p As Long, q As Long
+    p = InStr(1, est, "|" & rotulo, vbBinaryCompare)
+    If p = 0 Then Exit Function
+    p = p + Len(rotulo) + 1
+    q = InStr(p, est, "|", vbBinaryCompare)
+    If q = 0 Then ParteEstado = Mid$(est, p) Else ParteEstado = Mid$(est, p, q - p)
+End Function
+
+' O status no estado auditavel (antes do 1o "|"): "INATIVADO/X_VERMELHO", "SUBSTITUIDO" ou ""
+Private Function StatusEstado(ByVal est As String) As String
+    Dim p As Long
+    p = InStr(1, est, "|", vbBinaryCompare)
+    If p = 0 Then StatusEstado = est Else StatusEstado = Left$(est, p - 1)
+End Function
+
+Private Sub JuntarAcao(ByRef acao As String, ByVal nova As String)
+    acao = acao & IIf(Len(acao) > 0, "+", "") & nova
+End Sub
+
 Private Sub AuditarMudancas(ByVal antes As Object, ByVal depois As Object)
-    Dim k As Variant, a As String, b As String, x As Variant
+    Dim k As Variant, a As String, b As String, xA As Variant
     On Error Resume Next                       ' a trilha nunca derruba a atualizacao
     For Each k In depois.Keys
         b = depois(k)(0)
-        If antes.Exists(k) Then a = antes(k)(0) Else a = ""
-        If a <> b Then Registrar CStr(k), a, b, depois(k)
+        If antes.Exists(k) Then
+            a = antes(k)(0): xA = antes(k)
+        Else
+            a = "": xA = Empty
+        End If
+        If a <> b Then Registrar CStr(k), a, b, xA, depois(k)
     Next k
     For Each k In antes.Keys
-        If Not depois.Exists(k) Then Registrar CStr(k), antes(k)(0), "", antes(k)
+        If Not depois.Exists(k) Then Registrar CStr(k), antes(k)(0), "", antes(k), Empty
     Next k
 End Sub
 
-Private Sub Registrar(ByVal id As String, ByVal a As String, ByVal b As String, ByVal x As Variant)
-    Dim acao As String, inA As Boolean, inB As Boolean, manA As Boolean, manB As Boolean
+' a/b = estado antes/depois; xA/xB = os dados de antes/depois (Empty = o ID nao estava rastreado daquele lado)
+Private Sub Registrar(ByVal id As String, ByVal a As String, ByVal b As String, ByVal xA As Variant, ByVal xB As Variant)
+    Dim acao As String, inA As Boolean, inB As Boolean, manA As Boolean, manB As Boolean, x As Variant
+    Dim sA As String, sB As String, resAnt As Variant, resNovo As Variant, nota As String, parecer As String
+    Dim quem As String
+    If IsArray(xB) Then x = xB Else x = xA          ' dados do resultado: os de depois (se saiu da trilha, os de antes)
+    quem = CStr(x(11))                             ' ADR-082: quem lancou o manual (vazio fora das acoes do manual)
     inA = Left$(a, 9) = "INATIVADO": inB = Left$(b, 9) = "INATIVADO"
-    manA = InStr(a, "MANUAL:") > 0: manB = InStr(b, "MANUAL:") > 0
+    manA = InStr(a, "|MANUAL:") > 0: manB = InStr(b, "|MANUAL:") > 0
+    sA = ParteEstado(a, "SUBST:"): sB = ParteEstado(b, "SUBST:")
+    resAnt = x(7): resNovo = x(7)
     If inB And Not inA Then
         acao = "RESULTADO_INATIVADO"
     ElseIf inA And Not inB Then
         acao = "RESULTADO_REATIVADO"
     ElseIf inA And inB Then
-        acao = "PLOTAGEM_LJ_ALTERADA"
+        ' ADR-082: so a parte do status (a plotagem); o vinculo e o valor do manual tem acao propria
+        If StatusEstado(a) <> StatusEstado(b) Then acao = "PLOTAGEM_LJ_ALTERADA"
     End If
-    If manB And Not manA Then acao = acao & IIf(Len(acao) > 0, "+", "") & "RESULTADO_MANUAL_INCLUIDO"
-    If manA And Not manB Then acao = acao & IIf(Len(acao) > 0, "+", "") & "RESULTADO_MANUAL_RETIRADO"
-    If manA And manB And Not (inA Or inB) Then acao = "RESULTADO_MANUAL_STATUS"
+    ' ADR-082: substituicao pelo manual (SUBSTITUI_ID): resAnt/resNovo = o que valia antes e o que vale depois
+    If Len(sB) > 0 And Len(sA) = 0 Then
+        JuntarAcao acao, "RESULTADO_SUBSTITUIDO_POR_MANUAL"
+        resNovo = x(9)
+        If Left$(CStr(x(10)), 11) = "substituido" Then nota = CStr(x(10)) Else nota = "substituido pelo manual " & sB
+        If Len(quem) > 0 Then nota = nota & " (" & quem & ")"
+    ElseIf Len(sA) > 0 And Len(sB) = 0 Then
+        JuntarAcao acao, "SUBSTITUICAO_POR_MANUAL_DESFEITA"
+        If IsArray(xA) Then resAnt = xA(9)
+        nota = "o manual " & sA & " deixou de substituir este resultado (SUBSTITUI_ID apagado ou invalido, ou manual retirado)"
+    ElseIf Len(sA) > 0 And sA <> sB Then
+        JuntarAcao acao, "SUBSTITUICAO_POR_MANUAL_ALTERADA"
+        If IsArray(xA) Then resAnt = xA(9)
+        resNovo = x(9)
+        nota = "era substituido pelo manual " & sA & "; agora pelo manual " & sB
+        If Len(quem) > 0 Then nota = nota & " (" & quem & ")"
+    End If
+    If manB And Not manA Then
+        JuntarAcao acao, "RESULTADO_MANUAL_INCLUIDO"
+        If Len(quem) > 0 Then nota = nota & IIf(Len(nota) > 0, " | ", "") & quem
+    End If
+    If manA And Not manB Then JuntarAcao acao, "RESULTADO_MANUAL_RETIRADO"
+    If manA And manB Then
+        If ParteEstado(a, "MANUAL:") <> ParteEstado(b, "MANUAL:") And Not (inA Or inB) Then JuntarAcao acao, "RESULTADO_MANUAL_STATUS"
+        ' ADR-082: valor ou data/hora do manual editados (o numero que vale no lugar do dado do equipamento)
+        If ParteEstado(a, "VAL:") <> ParteEstado(b, "VAL:") Or ParteEstado(a, "DH:") <> ParteEstado(b, "DH:") Then
+            JuntarAcao acao, "RESULTADO_MANUAL_ALTERADO"
+            If IsArray(xA) Then resAnt = xA(7)
+            resNovo = x(7)
+            If ParteEstado(a, "DH:") <> ParteEstado(b, "DH:") Then
+                nota = nota & IIf(Len(nota) > 0, " | ", "") & "data/hora " & ParteEstado(a, "DH:") & " -> " & ParteEstado(b, "DH:")
+            End If
+            If Len(quem) > 0 Then nota = nota & IIf(Len(nota) > 0, " | ", "") & quem
+        End If
+    End If
     If Len(acao) = 0 Then Exit Sub
+    parecer = CStr(x(8))
+    If Len(nota) > 0 Then parecer = parecer & IIf(Len(parecer) > 0, " | ", "") & nota
     mAuditoria.Auditar mAuditoria.CAT_DADO, acao, "mIntegracao", CLng(Val(CStr(x(4)))), x(5), CStr(x(6)), _
-                       CStr(x(2)), CLng(Val(CStr(x(3)))), CStr(x(1)), x(7), x(7), a, b, _
-                       "ID " & id, CStr(x(8))
+                       CStr(x(2)), CLng(Val(CStr(x(3)))), CStr(x(1)), resAnt, resNovo, a, b, _
+                       "ID " & id, parecer
 End Sub
 
 ' ============================================================================
@@ -533,9 +701,26 @@ Private Sub PrepararLinha(ByVal lo As ListObject, ByVal r As Long)
             If Len(Trim$(CStr(Celula(lo, r, "MATRIZ").Value))) = 0 Then
                 Celula(lo, r, "MATRIZ").Value = Cfg("MATRIZ_PADRAO")
             End If
+            ' ADR-082: SUBSTITUI_ID normalizado como o ID da aba Inativar ("54565" -> "HEM-54565"). Tabela ainda sem a
+            ' coluna (antes do instalar_adr082): nada
+            If TemColuna(lo, COL_SUBST) Then
+                id = TextoCel(lo, r, COL_SUBST)
+                If Len(id) > 0 Then
+                    idN = NormalizarId(id)
+                    If idN <> CStr(Celula(lo, r, COL_SUBST).Value) Then Celula(lo, r, COL_SUBST).Value = idN
+                End If
+            End If
             Carimbar Celula(lo, r, "REGISTRADO_EM"), Celula(lo, r, "USUARIO")
     End Select
 End Sub
+
+' A tabela tem a coluna? (ADR-082: SUBSTITUI_ID so existe depois do instalar_adr082)
+Private Function TemColuna(ByVal lo As ListObject, ByVal coluna As String) As Boolean
+    Dim c As ListColumn
+    For Each c In lo.ListColumns
+        If c.Name = coluna Then TemColuna = True: Exit Function
+    Next c
+End Function
 
 Private Function Celula(ByVal lo As ListObject, ByVal r As Long, ByVal coluna As String) As Range
     Set Celula = lo.ListColumns(coluna).DataBodyRange.Cells(r, 1)
@@ -787,6 +972,94 @@ Private Function TextoIdNaoEncontrado(ByVal idN As String) As String
     TextoIdNaoEncontrado = "ID " & mUI.IdCurto(idN) & " não encontrado nos resultados."
 End Function
 
+' ADR-082: o ID do resultado do interfaceamento que o manual "id" substitui ("" se nao e manual, nao existe ou nao
+' substitui). Le a tblCQ_Final (o que o motor de dados decidiu): manual ATIVO ou INATIVADO com ID_RELACIONADO. Para a
+' dica do grafico e a janela de inativar (mUI). Nunca levanta erro.
+Public Function SubstituidoPeloManual(ByVal id As String) As String
+    Dim lo As ListObject, rq As Long, idN As String, st As String
+    On Error GoTo sai
+    idN = NormalizarId(id)
+    If Left$(idN, 4) <> "MAN_" Then Exit Function
+    Set lo = AcharTabela(FONTE_CQ)
+    rq = LinhaCQ(lo, idN)
+    If rq = 0 Then Exit Function
+    If UCase$(Trim$(CStr(ValorCQ(lo, rq, "ORIGEM_RESULTADO")))) <> "MANUAL" Then Exit Function
+    st = UCase$(Trim$(CStr(ValorCQ(lo, rq, "STATUS_ANALITICO"))))
+    If st <> "ATIVO" And st <> "INATIVADO" Then Exit Function
+    SubstituidoPeloManual = Trim$(CStr(ValorCQ(lo, rq, "ID_RELACIONADO")))
+sai:
+End Function
+
+' ADR-082: o manual que substitui o resultado do interfaceamento "id" ("" se nao e do interfaceamento, nao existe ou
+' nenhum manual o substitui). Le a tblCQ_Final: ID_RELACIONADO = MAN_... num resultado do interfaceamento que nao e
+' retransmissao. Para a janela de reativar (mUI): reativado, ele continua fora (SUBSTITUIDO_MANUAL). Nunca levanta erro.
+Public Function ManualQueSubstitui(ByVal id As String) As String
+    Dim lo As ListObject, rq As Long, idN As String, rel As String
+    On Error GoTo sai
+    idN = NormalizarId(id)
+    If Len(idN) = 0 Or Left$(idN, 4) = "MAN_" Then Exit Function
+    Set lo = AcharTabela(FONTE_CQ)
+    rq = LinhaCQ(lo, idN)
+    If rq = 0 Then Exit Function
+    If UCase$(Trim$(CStr(ValorCQ(lo, rq, "ORIGEM_RESULTADO")))) <> "INTERFACEAMENTO" Then Exit Function
+    If UCase$(Trim$(CStr(ValorCQ(lo, rq, "STATUS_ANALITICO")))) = "DUPLICIDADE_ORIGEM" Then Exit Function
+    rel = Trim$(CStr(ValorCQ(lo, rq, "ID_RELACIONADO")))
+    If Left$(rel, 4) = "MAN_" Then ManualQueSubstitui = rel
+sai:
+End Function
+
+' ADR-082: digitou o SUBSTITUI_ID na linha r da aba Digitar Resultados -> preenche SO o que estiver vazio (EQUIPAMENTO,
+' MATRIZ, LOTE, NIVEL, ANALITO, DATA e HORA) com os dados do resultado indicado, da Principal - Resultados. Devolve o
+' aviso para quem digita ("" = preenchido): ID inexistente ou que nao e do interfaceamento; ou, sem sobrescrever nada,
+' os campos da chave que ja estavam preenchidos com outro valor (o padrao do CFG que o PrepararLinha pos no 1o toque,
+' outro nivel...) -- sem o aviso, quem digita da esquerda para a direita so veria o E12 "tem outra chave" no ATUALIZAR.
+Private Function PreencherDoSubstituido(ByVal lo As ListObject, ByVal r As Long, ByVal idN As String) As String
+    Dim loQ As ListObject, rq As Long, dh As Variant, c As Variant, v As Variant, s As Long
+    Dim jaTem As String, alvoTxt As String, difs As String
+    Set loQ = AcharTabela(FONTE_CQ)
+    rq = LinhaCQ(loQ, idN)
+    If rq = 0 Then
+        PreencherDoSubstituido = TextoIdNaoEncontrado(idN) & " O SUBSTITUI_ID aceita só o ID de um resultado do " & _
+            "interfaceamento (o número da dica do gráfico); se o resultado acabou de chegar, clique em ATUALIZAR DADOS " & _
+            "antes. Sem um ID válido, nada é substituído."
+        Exit Function
+    End If
+    If UCase$(Trim$(CStr(ValorCQ(loQ, rq, "ORIGEM_RESULTADO")))) <> "INTERFACEAMENTO" Then
+        PreencherDoSubstituido = "O ID " & mUI.IdCurto(idN) & " é de um resultado manual: o SUBSTITUI_ID aceita só o ID " & _
+            "de um resultado do interfaceamento. Sem um ID válido, nada é substituído."
+        Exit Function
+    End If
+    For Each c In Array("EQUIPAMENTO", "MATRIZ", "LOTE", "NIVEL", "ANALITO")
+        v = ValorCQ(loQ, rq, CStr(c))
+        jaTem = TextoCel(lo, r, CStr(c))
+        If Len(jaTem) = 0 Then
+            If Not IsEmpty(v) Then Celula(lo, r, CStr(c)).Value = v
+        Else
+            alvoTxt = Trim$(CStr(v))
+            If jaTem <> alvoTxt Then difs = difs & vbLf & "  " & CStr(c) & ": na linha '" & jaTem & "', no resultado '" & alvoTxt & "'"
+        End If
+    Next c
+    If Len(difs) > 0 Then
+        PreencherDoSubstituido = "Estes campos já estavam preenchidos e são diferentes do resultado " & mUI.IdCurto(idN) & _
+            ":" & difs & vbLf & vbLf & "Nada foi sobrescrito. Para o manual substituir o resultado, corrija-os (com a " & _
+            "chave diferente, o QA acusa E12 ""tem outra chave"" e nada é substituído)."
+    End If
+    dh = ValorCQ(loQ, rq, "DATA_HORA")
+    If IsDate(dh) Then
+        ' a data e a hora do proprio resultado (ao segundo): o manual entra na mesma corrida
+        If Len(TextoCel(lo, r, "DATA")) = 0 Then Celula(lo, r, "DATA").Value = CDate(Int(CDbl(dh)))
+        If Len(TextoCel(lo, r, "HORA")) = 0 Then
+            s = CLng(Int((CDbl(dh) - Int(CDbl(dh))) * 86400# + 0.5))
+            If s > 86399 Then s = 86399
+            Celula(lo, r, "HORA").Value = CDbl(s) / 86400#
+        End If
+    Else
+        ' sem DATA_HORA no interfaceamento (SEM_DATA_HORA): so a data, se houver -- a hora fica para quem digita
+        v = ValorCQ(loQ, rq, "DATA")
+        If IsDate(v) And Len(TextoCel(lo, r, "DATA")) = 0 Then Celula(lo, r, "DATA").Value = CDate(Int(CDbl(v)))
+    End If
+End Function
+
 ' Grava a inativacao na aba Inativar: ID normalizado, ANALITO DA tblCQ_Final (nunca o da tela -- a conferencia
 ' E10 do Power Query nao recusa o que o grafico mandou), REGISTRAR - LJ = plotarX, MOTIVO, data e usuario
 ' carimbados como no evento. Motivo obrigatorio. ID ja na aba com o analito certo = recusa ("ja inativado"); com
@@ -998,7 +1271,7 @@ End Sub
 ' Chamado pelo Worksheet_Change das abas de entrada.
 Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
     Dim lo As ListObject, cel As Range, ar As Range, r As Long, prot As Boolean, an As String
-    Dim idDig As String, celAviso As Range, txtAviso As String
+    Dim idDig As String, celAviso As Range, txtAviso As String, tituloAviso As String, aviso As String
     If mApp.Ocupado() Then Exit Sub
     Set lo = Nothing
     On Error Resume Next
@@ -1057,10 +1330,26 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
                     If Application.Interactive And celAviso Is Nothing And Left$(idDig, 4) <> "MAN_" Then
                         Set celAviso = Celula(lo, r, "ID_REGISTRO")
                         txtAviso = TextoIdNaoEncontrado(idDig) & " Confira o número no gráfico (passe o mouse no ponto)."
+                        tituloAviso = "Inativar"
                     End If
                 ElseIf Len(TextoCel(lo, r, "ANALITO")) = 0 Then
                     an = AnalitoDoId(idDig)
                     If Len(an) > 0 Then Celula(lo, r, "ANALITO").Value = an
+                End If
+            End If
+        ElseIf ws.Name = ABA_MANUAL Then
+            ' ADR-082: digitou o SUBSTITUI_ID -> a linha se preenche com os dados do resultado indicado (so o vazio)
+            If TemColuna(lo, COL_SUBST) Then
+                If Not Intersect(Target, Celula(lo, r, COL_SUBST)) Is Nothing Then
+                    idDig = NormalizarId(TextoCel(lo, r, COL_SUBST))
+                    If Len(idDig) > 0 Then
+                        aviso = PreencherDoSubstituido(lo, r, idDig)
+                        If Len(aviso) > 0 And Application.Interactive And celAviso Is Nothing Then
+                            Set celAviso = Celula(lo, r, COL_SUBST)
+                            txtAviso = aviso
+                            tituloAviso = "Digitar Resultados"
+                        End If
+                    End If
                 End If
             End If
         End If
@@ -1077,7 +1366,7 @@ fim:
     Application.EnableEvents = True
     If Not celAviso Is Nothing Then
         On Error Resume Next
-        MsgBox txtAviso, vbExclamation, "Inativar"
+        MsgBox txtAviso, vbExclamation, tituloAviso
         celAviso.Select                        ' o ID digitado fica selecionado para corrigir
     End If
 End Sub

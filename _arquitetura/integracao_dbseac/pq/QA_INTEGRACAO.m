@@ -9,6 +9,7 @@
 //  Le as tabelas JA carregadas (tblCQ_Final e as de entrada) -- roda depois do
 //  DB_CQ_FINAL e nao refaz nenhuma regra: so CONFERE o que ele decidiu.
 //  Unica releitura da origem: A03, que compara o recebido com o DB_SEAC atual.
+//  26 codigos: E01-E12, A01-A10, I01-I04 (ADR-082: E12 SUBSTITUI_ID invalido; I04 substituido por manual).
 // =====================================================================
 let
     C = CFG_INTEGRACAO,
@@ -16,6 +17,7 @@ let
     Txt = (x as any) as nullable text => if x = null then null else
             let t = Text.Trim(Text.From(x)) in if t = "" then null else t,
     SIM = "SIM", NAO = "NÃO",
+    SubInv = "SUBSTITUI_ID invalido: ",                                 // ADR-082: inicio do motivo do E12
     SoDigitos = (t as text) as logical => t <> "" and Text.Length(Text.Select(t, {"0".."9"})) = Text.Length(t),
     // mesma normalizacao do DB_CQ_FINAL (D14): numero puro = ID do setor, sem zeros a esquerda; sem NBSP; MAN_7 -> MAN_0007
     SemZeros = (d as text) as text => let z = Text.TrimStart(d, "0") in if z = "" then "0" else z,
@@ -104,11 +106,43 @@ let
             Table.SelectRows(F, each [CORRIDA_NO_DIA] <> null and [CORRIDA_NO_DIA] > 99),
             each "RUN nao atribuido; revisar o dado do dia"),
 
-    // A01 -- duplicidade manual x interfaceamento / manual x manual
+    // ADR-082: resultado do interfaceamento -> o manual que o substitui (o vinculo do SUBSTITUI_ID valido; tambem o do
+    //        que continua INATIVADO). Para o A01/A09 nao mandarem "informe o ID em SUBSTITUI_ID" quando outro manual ja vale
+    SubstPor = Table.Buffer(Table.RenameColumns(Table.SelectColumns(Table.SelectRows(F, each
+                    [ORIGEM_RESULTADO] = "INTERFACEAMENTO" and [ID_RELACIONADO] <> null and
+                    [STATUS_ANALITICO] <> "DUPLICIDADE_ORIGEM"), {"ID_REGISTRO", "ID_RELACIONADO"}),
+                    {{"ID_REGISTRO", "_SP_ID"}, {"ID_RELACIONADO", "_SP_MAN"}})),
+
+    // A01 -- duplicidade manual x interfaceamento / manual x manual. ADR-082: no conflito com o interfaceamento (sem
+    //        SUBSTITUI_ID valido) vale o automatico -- o texto diz como fazer o manual valer no lugar dele; se o
+    //        automatico ja esta substituido por outro manual, quem vale e aquele manual (orienta apagar o repetido)
     A01 = Achado("ALERTA", "A01", "Possivel duplicidade de resultado manual",
-            Table.SelectRows(F, each [STATUS_ANALITICO] = "CONFLITO_MANUAL"),
+            Table.Join(Table.SelectRows(F, each [STATUS_ANALITICO] = "CONFLITO_MANUAL"), {"ID_RELACIONADO"}, SubstPor, {"_SP_ID"},
+                       JoinKind.LeftOuter),
             each _[MOTIVO_EXCLUSAO_AUTOMATICA] & (if _[ID_RELACIONADO] <> null then " -> " & _[ID_RELACIONADO] else "") &
-                 ". O manual ficou FORA da estatistica; confirme e inative um deles ou corrija o manual."),
+                 ". O manual ficou FORA da estatistica" &
+                 (if Text.StartsWith(_[MOTIVO_EXCLUSAO_AUTOMATICA] ?? "", "coincide")
+                  then (if _[_SP_MAN] <> null
+                        then " (vale o manual " & _[_SP_MAN] & ", que ja substitui o automatico " & _[ID_RELACIONADO] &
+                             "). Se este for o mesmo resultado repetido, apague-o."
+                        else " (vale o automatico). Para o manual valer no lugar do automatico, informe o ID dele em " &
+                             "SUBSTITUI_ID (com MOTIVO); se for o mesmo resultado repetido, apague o manual.")
+                  else "; confirme e inative um deles ou corrija o manual.")),
+
+    // E12 (ADR-082) -- SUBSTITUI_ID invalido: nada foi substituido. O motivo exato vem do DB_CQ_FINAL
+    //        (MOTIVO_EXCLUSAO_AUTOMATICA do manual, a partir de "SUBSTITUI_ID invalido: "); o manual incompleto ja e E04.
+    //        "outro manual (MAN_x) ja substitui" com o MAN_x INATIVADO: ele continua substituindo (vale o 1o manual que
+    //        existe, nao o ativo) -- a correcao e apagar o SUBSTITUI_ID do MAN_x, nao o deste
+    IdsManInat = List.Buffer(Table.SelectRows(F, each [ORIGEM_RESULTADO] = "MANUAL" and [STATUS_ANALITICO] = "INATIVADO")[ID_REGISTRO]),
+    E12 = Achado("ERRO", "E12", "SUBSTITUI_ID invalido (nada foi substituido)",
+            Table.SelectRows(F, each [ORIGEM_RESULTADO] = "MANUAL" and [STATUS_ANALITICO] <> "MANUAL_INCOMPLETO" and
+                                     [MOTIVO_EXCLUSAO_AUTOMATICA] <> null and Text.Contains([MOTIVO_EXCLUSAO_AUTOMATICA], SubInv)),
+            each Text.Middle(_[MOTIVO_EXCLUSAO_AUTOMATICA], Text.PositionOf(_[MOTIVO_EXCLUSAO_AUTOMATICA], SubInv)) &
+                 (if _[STATUS_ANALITICO] = "CONFLITO_MANUAL" and _[ID_RELACIONADO] <> null and List.Contains(IdsManInat, _[ID_RELACIONADO])
+                  then ". O manual " & _[ID_RELACIONADO] & " esta INATIVADO, mas continua substituindo o resultado: para este " &
+                       "manual valer, apague o SUBSTITUI_ID do " & _[ID_RELACIONADO] & " (ou a linha dele)."
+                  else ". Corrija o SUBSTITUI_ID (o ID de um resultado do interfaceamento com o mesmo " &
+                       "equipamento, matriz, lote, nivel e analito) ou apague-o.")),
 
     // A02 -- retransmissao do interfaceamento
     A02 = Achado("ALERTA", "A02", "Retransmissao do interfaceamento (duplicidade de origem)",
@@ -200,17 +234,27 @@ let
 
     // A06 -- manual ATIVO e interfaceamento no mesmo dia/chave, FORA da tolerancia:
     //        nao e tratado como conflito automatico (podem ser duas corridas), mas
-    //        nunca passa em silencio
+    //        nunca passa em silencio. ADR-082: o resultado que o manual substitui (ID_RELACIONADO) nao entra na
+    //        lista; o manual com SUBSTITUI_ID valido (isento do conflito: os listados podem estar DENTRO da
+    //        tolerancia) tem titulo e texto proprios -- nunca "informe o ID em SUBSTITUI_ID", que desfaria a substituicao
     Chave6 = {"EQUIPAMENTO", "MATRIZ", "LOTE", "NIVEL", "ANALITO", "DATA"},
     ManAtivo = Table.SelectRows(F, each [ORIGEM_RESULTADO] = "MANUAL" and [STATUS_ANALITICO] = "ATIVO"),
     IntDia = Table.SelectColumns(Table.SelectRows(F, each [ORIGEM_RESULTADO] = "INTERFACEAMENTO" and
                                      ([STATUS_ANALITICO] = "ATIVO" or [STATUS_ANALITICO] = "INATIVADO")), Chave6 & {"ID_REGISTRO"}),
-    MesmoDia = Table.SelectRows(Table.NestedJoin(ManAtivo, Chave6, IntDia, Chave6, "_d", JoinKind.LeftOuter),
-                                each not Table.IsEmpty([_d])),
-    A06 = Achado("ALERTA", "A06", "Resultado manual e do interfaceamento no mesmo dia (fora da tolerancia)",
-            MesmoDia,
-            each "mesmo equipamento/lote/nivel/analito no dia: " & Text.Combine(List.FirstN(_[_d][ID_REGISTRO], 5), ", ") &
-                 ". Os dois participam (corridas diferentes). Se forem o MESMO resultado, inative o manual."),
+    MesmoDia = Table.SelectRows(Table.AddColumn(Table.NestedJoin(ManAtivo, Chave6, IntDia, Chave6, "_d", JoinKind.LeftOuter),
+                                    "_d2", each let rel = [ID_RELACIONADO] in Table.SelectRows([_d], (x) => x[ID_REGISTRO] <> rel)),
+                                each not Table.IsEmpty([_d2])),
+    A06 = Table.Combine({
+            Achado("ALERTA", "A06", "Resultado manual e do interfaceamento no mesmo dia (fora da tolerancia)",
+                Table.SelectRows(MesmoDia, each [ID_RELACIONADO] = null),
+                each "mesmo equipamento/lote/nivel/analito no dia: " & Text.Combine(List.FirstN(_[_d2][ID_REGISTRO], 5), ", ") &
+                     ". Os listados participam (corridas diferentes). Se um deles for o MESMO resultado, informe o ID dele em " &
+                     "SUBSTITUI_ID (com MOTIVO) para o manual valer no lugar do automatico."),
+            Achado("ALERTA", "A06", "Resultado manual que substitui e outros do interfaceamento no mesmo dia",
+                Table.SelectRows(MesmoDia, each [ID_RELACIONADO] <> null),
+                each "este manual substitui " & _[ID_RELACIONADO] & "; no dia ha outros resultados com o mesmo " &
+                     "equipamento/lote/nivel/analito: " & Text.Combine(List.FirstN(_[_d2][ID_REGISTRO], 5), ", ") &
+                     ". Os listados continuam valendo. Se um deles tambem for o mesmo resultado, inative-o na aba Inativar.")}),
 
     // I03 -- lote recebido que nao esta no cadastro de lotes (Configuracao!C26:C125):
     //        os resultados estao na base, mas o Painel so mostra lote cadastrado (e com media/DP)
@@ -237,9 +281,11 @@ let
                  (try DateTime.ToText(DateTime.From(_[DATA_HORA]), "dd/MM/yyyy HH:mm") otherwise "?") &
                  ". Na rede do laboratorio, voltar Cfg_Integracao MODO_FONTE = SEAC."),
 
-    // E09 (D16) -- resultado do interfaceamento sem DATA_HORA: fora da corrida e do calculo (SEM_DATA_HORA)
+    // E09 (D16) -- resultado do interfaceamento sem DATA_HORA: fora da corrida e do calculo (SEM_DATA_HORA).
+    //        ADR-082: o que um manual substitui (ID_RELACIONADO = MAN_...) ja foi resolvido pelo usuario -- o I04 registra
     E09 = Achado("ERRO", "E09", "Resultado do interfaceamento sem DATA_HORA",
-            Table.SelectRows(F, each [ORIGEM_RESULTADO] = "INTERFACEAMENTO" and [DATA_HORA] = null),
+            Table.SelectRows(F, each [ORIGEM_RESULTADO] = "INTERFACEAMENTO" and [DATA_HORA] = null and
+                                     not Text.StartsWith([ID_RELACIONADO] ?? "", "MAN_")),
             each "sem DATA_HORA na origem: fora da corrida (RUN vazio), do grafico e da estatistica. Corrigir na origem."),
 
     // A08 (D06) -- "REGISTRAR - LJ" com valor nao reconhecido: vale NAO (nao plota), mas nunca em silencio
@@ -255,15 +301,39 @@ let
             each "valor '" & Text.From(_[#"REGISTRAR - LJ"]) & "' na inativacao: tratado como NAO (o X nao aparece). " &
                  "Marque ou desmarque a caixa."),
 
-    // A09 (D09b, DECIDIDO pelo laboratorio em 06/10/2026: manual NUNCA substitui automatico) -- manual que coincide
-    // com interfaceamento INATIVADO continua fora da estatistica (CONFLITO_MANUAL). Resultado ruim se inativa; o
-    // manual e para o que o interfaceamento nao trouxe
-    IdsInat = List.Buffer(Table.SelectRows(F, each [STATUS_ANALITICO] = "INATIVADO")[ID_REGISTRO]),
+    // A09 -- manual que coincide com interfaceamento INATIVADO, sem SUBSTITUI_ID valido, continua fora da estatistica
+    // (CONFLITO_MANUAL). ADR-082 (22/10/2026; revoga a D09b de 06/10): o manual so vale no lugar do automatico por
+    // escolha explicita -- o texto diz como (SUBSTITUI_ID). So o automatico INATIVADO que nenhum manual substitui: um
+    // manual inativado (CONFLITO com outro manual) ou um automatico ja substituido nao cabem aqui (o A01 orienta)
+    IdsInat = List.Buffer(Table.SelectRows(F, each [STATUS_ANALITICO] = "INATIVADO" and
+                                                   [ORIGEM_RESULTADO] = "INTERFACEAMENTO" and [ID_RELACIONADO] = null)[ID_REGISTRO]),
     A09 = Achado("ALERTA", "A09", "Manual coincide com resultado do interfaceamento inativado",
             Table.SelectRows(F, each [ORIGEM_RESULTADO] = "MANUAL" and [STATUS_ANALITICO] = "CONFLITO_MANUAL" and
                                      [ID_RELACIONADO] <> null and List.Contains(IdsInat, [ID_RELACIONADO])),
             each "o automatico " & _[ID_RELACIONADO] & " esta INATIVADO e este manual tem a mesma chave e instante: o manual " &
-                 "NAO participa: resultado manual nunca substitui um automatico (decisao do laboratorio, 06/10/2026)."),
+                 "NAO participa (nenhum dos dois entra na estatistica). Para o manual valer no lugar do automatico, informe o ID " &
+                 _[ID_RELACIONADO] & " em SUBSTITUI_ID (com MOTIVO)."),
+
+    // I04 (ADR-082) -- resultado do interfaceamento substituido por manual (SUBSTITUI_ID): os dois IDs, os dois valores,
+    //        a diferenca e o motivo. Tambem o que continua INATIVADO (a inativacao prevalece). Um achado por resultado.
+    ManF = Table.Buffer(Table.RenameColumns(Table.SelectColumns(Table.SelectRows(F, each [ORIGEM_RESULTADO] = "MANUAL"),
+                {"ID_REGISTRO", "RESULTADO", "STATUS_ANALITICO", "MOTIVO_MANUAL"}),
+                {{"ID_REGISTRO", "_M_ID"}, {"RESULTADO", "_M_RES"}, {"STATUS_ANALITICO", "_M_ST"}, {"MOTIVO_MANUAL", "_M_MOT"}})),
+    Subst = Table.Join(Table.SelectRows(F, each [ORIGEM_RESULTADO] = "INTERFACEAMENTO" and [ID_RELACIONADO] <> null and
+                                               [STATUS_ANALITICO] <> "DUPLICIDADE_ORIGEM"),
+                       {"ID_RELACIONADO"}, ManF, {"_M_ID"}, JoinKind.LeftOuter),
+    NumTxt = (v as any) as text => if v = null then "sem valor" else Text.From(v),
+    I04 = Achado("INFO", "I04", "Resultado do interfaceamento substituido por manual", Subst,
+            each "substituido pelo manual " & _[ID_RELACIONADO] & " (motivo: " & (Txt(_[_M_MOT]) ?? "?") & "): vale o manual (" &
+                 NumTxt(_[_M_RES]) & "); este resultado (" & NumTxt(_[RESULTADO]) & ") " &
+                 (if _[STATUS_ANALITICO] = "SUBSTITUIDO_MANUAL" then "fica guardado, fora do calculo e do grafico"
+                  else "continua " & _[STATUS_ANALITICO] & " (a inativacao prevalece sobre a substituicao)") &
+                 ". Diferenca manual - automatico: " &
+                 (if _[_M_RES] <> null and _[RESULTADO] <> null then Text.From(Number.Round(_[_M_RES] - _[RESULTADO], 6)) else "-") &
+                 "." & (if _[_M_ST] = "INATIVADO" then " O manual esta INATIVADO: nenhum dos dois entra na estatistica." else "") &
+                 (if _[STATUS_ANALITICO] = "SUBSTITUIDO_MANUAL"
+                  then " Para voltar ao automatico, apague o SUBSTITUI_ID (ou a linha) do manual."
+                  else " Para o automatico voltar a valer, reative-o (aba Inativar) e apague o SUBSTITUI_ID (ou a linha) do manual.")),
 
     // A10 (D12) -- Hematologia (sem seletor de equipamento): o Painel, a Estatistica e o Westgard sao do
     // EQUIPAMENTO_PADRAO do CFG; resultado de outro equipamento fica na base, fora dessas series -- nunca em silencio
@@ -278,7 +348,8 @@ let
                  "Westgard da Hematologia sao do equipamento padrao (CFG EQUIPAMENTO_PADRAO = " & EqPad & "). Se for o mesmo " &
                  "aparelho com outro nome, corrija o lancamento."),
 
-    Tudo = Table.Combine({E01, E02, E03, E04, E05, E06, E07, E08, E09, E10, E11, A01, A02, A03, A04, A05, A06, A07, A08, A09, A10, I01, I02, I03}),
+    Tudo = Table.Combine({E01, E02, E03, E04, E05, E06, E07, E08, E09, E10, E11, E12, A01, A02, A03, A04, A05, A06, A07, A08, A09, A10,
+                          I01, I02, I03, I04}),
     Peso = (s as text) as number => if s = "ERRO" then 1 else if s = "ALERTA" then 2 else 3,
     Ordenado = Table.Sort(Tudo, {{each Peso([SEVERIDADE]), Order.Ascending}, {"CODIGO", Order.Ascending}, {"DATA_HORA", Order.Ascending}}),
     Tipos = Table.TransformColumnTypes(Ordenado, {{"SEVERIDADE", type text}, {"CODIGO", type text}, {"TESTE", type text},

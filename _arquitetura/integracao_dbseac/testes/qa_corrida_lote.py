@@ -352,7 +352,10 @@ def executar(produto, caminho):
         q.escrever_linha('tblResultados_Manuais', {
             'DATA': dt.datetime.combine(dia, dt.time()), 'HORA': (23 * 60 + 50) / 1440.0, 'LOTE': lote0, 'NIVEL': 1,
             'ANALITO': an, 'RESULTADO': n1v[len(n1v) // 2], 'EQUIPAMENTO': ult['EQUIPAMENTO'],
-            'MOTIVO': 'QA ADR-080 corrida da noite'})
+            'MOTIVO': 'QA ADR-080 corrida da noite',
+            # lancado depois da meia-noite: se o ultimo dia com corrida for HOJE, 23:50 sem carimbo seria "DATA/HORA
+            # posterior ao lancamento" (gate 4.4) e o manual nao entraria
+            'REGISTRADO_EM': dt.datetime.combine(dia + dt.timedelta(days=1), dt.time(0, 10))})
         f4, e4, o4 = estado(an)
         man = [r for r in f4 if r['ORIGEM_RESULTADO'] == 'MANUAL' and txt(r['ANALITO']).upper() == an.upper()
                and isinstance(r['DATA_HORA'], dt.datetime) and r['DATA_HORA'] == quando]

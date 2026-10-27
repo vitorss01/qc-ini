@@ -13,6 +13,9 @@ Attribute VB_Name = "mEtlCQ"
 '    - corte de corrida: intervalo ESTRITAMENTE maior que GAP_CORRIDA_MIN.
 '  Saida: matriz (n, 40) nas colunas e na ordem da tblCQ_Final (NomesColunas). Datas e horas saem como SERIAL
 '  (Double, ms exatos); textos como String -- gravar com .Value2 e as colunas de texto formatadas como texto.
+'  ADR-082: SUBSTITUI_ID da tblResultados_Manuais -- o manual valido substitui o resultado do interfaceamento
+'  indicado (SUBSTITUIDO_MANUAL; inativado pelo usuario continua INATIVADO). O indicado nunca forma corrida; o que
+'  continua com status de corrida real fica com a CORRIDA_NO_DIA/RUN do manual. Mesmas regras e textos do PQ.
 ' ============================================================================
 Option Explicit
 Option Compare Binary
@@ -31,7 +34,12 @@ Private Const F_CONFM As Long = 26, F_CONFID As Long = 27, F_MOTM As Long = 28, 
 Private Const F_DHMS As Long = 30, F_PRIMID As Long = 31, F_KMAN As Long = 32, F_PRIMK As Long = 33, F_IDPRIMK As Long = 34
 Private Const F_ST As Long = 35, F_GK As Long = 36, F_BLK As Long = 37, F_POS As Long = 38, F_COR As Long = 39
 Private Const F_RUN As Long = 40, F_INAT As Long = 41, F_COMENT As Long = 42, F_LJ As Long = 43, F_IDDIG As Long = 44
-Private Const NF As Long = 44
+' ADR-082: no manual, SUBSTITUI_ID (NormId), por que nao vale (Empty = valido), se vale (o 1o para o ID), o manual que ja
+' substitui (repetido) e a nota; no interfaceamento, o manual que o substitui, o MOTIVO dele e a linha dele em U
+Private Const F_SUBDIG As Long = 45, F_SUBR As Long = 46, F_SUBOK As Long = 47, F_SUBREP As Long = 48
+Private Const F_SUBPOR As Long = 49, F_SUBMOT As Long = 50, F_NOTA As Long = 51, F_SUBIDX As Long = 52
+Private Const NF As Long = 52
+Private Const SUF_SUB As String = " (este manual nao substitui nada)"
 
 Private mPrefixo As String
 Private mRx As Object
@@ -583,6 +591,8 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
             st = "DUPLICIDADE_ORIGEM"
         ElseIf Not IsEmpty(U(i, F_CONFM)) Then
             st = "CONFLITO_MANUAL"
+        ElseIf Not IsEmpty(U(i, F_SUBPOR)) And Not inatOk Then
+            st = "SUBSTITUIDO_MANUAL"                    ' ADR-082 (inativado pelo usuario continua INATIVADO)
         ElseIf IsEmpty(U(i, F_DH)) Then
             st = "SEM_DATA_HORA"
         ElseIf IsEmpty(U(i, F_VL)) Then
@@ -604,13 +614,21 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
             Case "MANUAL_INCOMPLETO": out(i, 32) = "campos obrigatorios ausentes/invalidos: " & U(i, F_FALTA)
             Case "DUPLICIDADE_ORIGEM": out(i, 32) = "retransmissao do interfaceamento"
             Case "CONFLITO_MANUAL": out(i, 32) = U(i, F_CONFM)
+            Case "SUBSTITUIDO_MANUAL": out(i, 32) = TextoSubstituido(U, i)
             Case "SEM_DATA_HORA": out(i, 32) = "resultado do interfaceamento sem DATA_HORA (fora da corrida)"
             Case "SEM_VALOR": out(i, 32) = "resultado sem valor numerico (flag " & IIf(IsEmpty(U(i, F_FL)), "vazia", U(i, F_FL)) & ")"
+            Case Else
+                ' ADR-082: inativado pelo usuario e substituido continua INATIVADO, com o vinculo; manual: a nota
+                If Not IsEmpty(U(i, F_SUBPOR)) Then out(i, 32) = TextoSubstituido(U, i) Else out(i, 32) = U(i, F_NOTA)
         End Select
         If st = "DUPLICIDADE_ORIGEM" Then
             out(i, 33) = U(i, F_DUPDE)
         ElseIf st = "CONFLITO_MANUAL" Then
             out(i, 33) = U(i, F_CONFID)
+        ElseIf Not IsEmpty(U(i, F_SUBPOR)) Then
+            out(i, 33) = U(i, F_SUBPOR)                 ' ADR-082: vinculo nos dois sentidos
+        ElseIf U(i, F_SUBOK) = True Then
+            out(i, 33) = U(i, F_SUBDIG)
         End If
         out(i, 25) = IIf(inatOk, SIM, NAO)
         If inatOk Then
@@ -671,6 +689,49 @@ Private Function MesmoValor(ByVal a As Variant, ByVal b As Variant) As Boolean
     If IsEmpty(a) Or IsEmpty(b) Then MesmoValor = (IsEmpty(a) And IsEmpty(b)) Else MesmoValor = (a = b)
 End Function
 
+' ADR-082: MOTIVO_EXCLUSAO_AUTOMATICA do resultado do interfaceamento substituido por um manual
+Private Function TextoSubstituido(ByRef U() As Variant, ByVal i As Long) As String
+    Dim m As String, mt As String
+    If IsEmpty(U(i, F_SUBPOR)) Then m = "?" Else m = CStr(U(i, F_SUBPOR))
+    If IsEmpty(U(i, F_SUBMOT)) Then mt = "?" Else mt = CStr(U(i, F_SUBMOT))
+    TextoSubstituido = "substituido pelo manual " & m & " (motivo: " & mt & ")"
+End Function
+
+' ADR-082: por que o SUBSTITUI_ID do manual i NAO vale (Empty = vale). idxInt = ID do interfaceamento -> linha de U.
+' Mesma ordem e mesmos textos do PQ (MS2): inexistente / manual, retransmissao, chave diferente.
+Private Function RazaoSubstituicao(ByRef U() As Variant, ByVal i As Long, ByVal idxInt As Object) As Variant
+    Dim s As String, x As Long
+    RazaoSubstituicao = Empty
+    s = CStr(U(i, F_SUBDIG))
+    If Not idxInt.Exists(s) Then
+        If Left$(s, 4) = "MAN_" Then
+            RazaoSubstituicao = s & " e resultado manual (SUBSTITUI_ID aceita so resultado do interfaceamento)"
+        Else
+            RazaoSubstituicao = "o ID " & s & " nao existe nos resultados do interfaceamento"
+        End If
+        Exit Function
+    End If
+    x = idxInt(s)
+    If U(x, F_DUP) Then
+        RazaoSubstituicao = s & " e retransmissao de " & CStr(U(x, F_DUPDE)) & " (informe o ID original)"
+    ElseIf KDup(U(x, F_EQ)) <> KDup(U(i, F_EQ)) Or KDup(U(x, F_MZ)) <> KDup(U(i, F_MZ)) Or _
+           KDup(U(x, F_LT)) <> KDup(U(i, F_LT)) Or KDup(U(x, F_NV)) <> KDup(U(i, F_NV)) Or _
+           KDup(U(x, F_AN)) <> KDup(U(i, F_AN)) Then
+        RazaoSubstituicao = s & " tem outra chave: " & ChaveTxt(U, x) & " (este manual: " & ChaveTxt(U, i) & ")"
+    End If
+End Function
+
+' "EQUIPAMENTO | MATRIZ | LOTE | NIVEL | ANALITO" (vazio = "?"), como o ChaveTxt do PQ
+Private Function ChaveTxt(ByRef U() As Variant, ByVal r As Long) As String
+    Dim c As Variant, s As String, k As Long
+    For Each c In Array(F_EQ, F_MZ, F_LT, F_NV, F_AN)
+        If k > 0 Then s = s & " | "
+        If IsEmpty(U(r, c)) Then s = s & "?" Else s = s & CStr(TextFrom(U(r, c)))
+        k = k + 1
+    Next c
+    ChaveTxt = s
+End Function
+
 Private Function AnKey(ByVal x As Variant) As Variant
     Dim t As Variant
     t = Txt(x)
@@ -706,7 +767,7 @@ Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As 
     Dim i As Long, L As Long, conta As Long, cc As Variant, idn As Variant, dtv As Variant, hr As Variant
     Dim eq As Variant, mz As Variant, v As Variant, lt As Variant, nv As Variant, an As Variant, res As Variant
     Dim isnum As Boolean, rtx As Variant, amb As Boolean, vl As Variant, orig As Long, ndesc As Variant, dh As Variant
-    Dim reg As Variant, regc As Variant, valido As Boolean, falt As String, ini As Long
+    Dim reg As Variant, regc As Variant, valido As Boolean, falt As String, ini As Long, subd As Variant
     ini = nU + 1
     For L = 1 To nMan
         conta = 0
@@ -775,6 +836,11 @@ Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As 
             If IsEmpty(an) Then falt = falt & ", ANALITO"
             If amb Then falt = falt & ", RESULTADO ambiguo (use virgula decimal: 1,5)"
             If IsEmpty(vl) And Not amb Then falt = falt & ", RESULTADO"
+            ' ADR-082: SUBSTITUI_ID preenchido exige MOTIVO (sem ele nada e substituido)
+            subd = NormId(Campo(dM, cM, L, "SUBSTITUI_ID"))
+            If Not IsEmpty(subd) Then
+                If IsEmpty(Txt(Campo(dM, cM, L, "MOTIVO"))) Then falt = falt & ", MOTIVO (obrigatorio para substituir um resultado)"
+            End If
             If Len(falt) > 0 Then falt = Mid$(falt, 3)
             nU = nU + 1
             U(nU, F_ID) = IIf(valido, idn, "MAN_INVALIDO_L" & L)
@@ -790,6 +856,7 @@ Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As 
             U(nU, F_AN) = an: U(nU, F_OR) = "MANUAL": U(nU, F_LM) = L: U(nU, F_FALTA) = falt
             U(nU, F_MOTM) = Txt(Campo(dM, cM, L, "MOTIVO")): U(nU, F_USRM) = Txt(Campo(dM, cM, L, "USUARIO"))
             U(nU, F_DUP) = False: U(nU, F_DUPDE) = Empty
+            U(nU, F_SUBDIG) = subd: U(nU, F_SUBOK) = False
         End If
     Next L
     If nU < ini Then Exit Sub
@@ -830,6 +897,47 @@ Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As 
             If Not porK.Exists(km) Then porK.Add km, i Else If U(i, F_LM) < U(porK(km), F_LM) Then porK(km) = i
         End If
     Next i
+    Dim temSub As Boolean
+    For i = ini To nU
+        If U(i, F_FALTA) = "" Then
+            U(i, F_PRIMK) = U(porK(U(i, F_KMAN)), F_LM)
+            U(i, F_IDPRIMK) = U(porK(U(i, F_KMAN)), F_ID)
+            If Not IsEmpty(U(i, F_SUBDIG)) Then temSub = True
+        End If
+    Next i
+    ' ADR-082: substituicao escolhida pelo usuario (SUBSTITUI_ID) -- manual completo que nao repete outro manual (mesmo ID
+    ' ou mesma chave e instante). Valido: ID do INTERFACEAMENTO (qualquer status), nao retransmissao, mesma chave; sem
+    ' limite de horario. Entre os validos com o mesmo ID vale o de menor _LINHA_MANUAL (os manuais estao em U na ordem
+    ' da aba); o seguinte fica com F_SUBREP (CONFLITO_MANUAL abaixo). Ifs aninhados: o VBA nao faz curto-circuito.
+    Dim idxInt As Object, venc As Object, alvo As Long, razao As Variant
+    If temSub Then
+        Set idxInt = CreateObject("Scripting.Dictionary")
+        For i = 1 To nInterface
+            If Not idxInt.Exists(U(i, F_ID)) Then idxInt.Add U(i, F_ID), i
+        Next i
+        Set venc = CreateObject("Scripting.Dictionary")
+        For i = ini To nU
+            If U(i, F_FALTA) = "" Then
+                If Not IsEmpty(U(i, F_SUBDIG)) Then
+                    If U(i, F_PRIMID) = U(i, F_LM) Then
+                        If U(i, F_PRIMK) = U(i, F_LM) Then
+                            razao = RazaoSubstituicao(U, i, idxInt)
+                            If Not IsEmpty(razao) Then
+                                U(i, F_SUBR) = razao
+                            ElseIf venc.Exists(U(i, F_SUBDIG)) Then
+                                U(i, F_SUBREP) = U(venc(U(i, F_SUBDIG)), F_ID)
+                            Else
+                                venc.Add U(i, F_SUBDIG), i
+                                U(i, F_SUBOK) = True
+                                alvo = idxInt(U(i, F_SUBDIG))
+                                U(alvo, F_SUBPOR) = U(i, F_ID): U(alvo, F_SUBMOT) = U(i, F_MOTM): U(alvo, F_SUBIDX) = i
+                            End If
+                        End If
+                    End If
+                End If
+            End If
+        Next i
+    End If
     ' interfaceamento valido por (chave + DATA), na ordem da Interface
     Dim iv As Object, ki As String
     Set iv = CreateObject("Scripting.Dictionary")
@@ -844,8 +952,6 @@ Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As 
     Dim dd As Variant, melhor As Double, idMelhor As Variant, dist As Double, base As String, achou As Boolean
     For i = ini To nU
         If U(i, F_FALTA) = "" Then
-            U(i, F_PRIMK) = U(porK(U(i, F_KMAN)), F_LM)
-            U(i, F_IDPRIMK) = U(porK(U(i, F_KMAN)), F_ID)
             base = KDup(U(i, F_EQ)) & Chr$(0) & KDup(U(i, F_MZ)) & Chr$(0) & KDup(U(i, F_LT)) & Chr$(0) & KDup(U(i, F_NV)) & _
                    Chr$(0) & KDup(U(i, F_AN)) & Chr$(0)
             achou = False
@@ -862,11 +968,24 @@ Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As 
                 U(i, F_CONFM) = "ID_REGISTRO manual repetido (vale a 1a linha)": U(i, F_CONFID) = Empty
             ElseIf U(i, F_PRIMK) <> U(i, F_LM) Then
                 U(i, F_CONFM) = "resultado manual repetido (mesma chave e instante)": U(i, F_CONFID) = U(i, F_IDPRIMK)
+            ElseIf Not IsEmpty(U(i, F_SUBREP)) Then
+                ' ADR-082: dois manuais validos para o mesmo resultado -- vale o 1o; este nao duplica em silencio
+                U(i, F_CONFM) = "SUBSTITUI_ID invalido: outro manual (" & U(i, F_SUBREP) & ") ja substitui " & U(i, F_SUBDIG) & SUF_SUB
+                U(i, F_CONFID) = U(i, F_SUBREP)
+            ElseIf U(i, F_SUBOK) = True Then
+                U(i, F_CONFM) = Empty                     ' ADR-082: escolha explicita, isento do conflito por horario
             ElseIf achou And melhor <= TOL Then
                 U(i, F_CONFM) = "coincide com resultado do interfaceamento (" & Format$(Int(melhor + 0.5), "0") & " min)"
+                If Not IsEmpty(U(i, F_SUBR)) Then U(i, F_CONFM) = U(i, F_CONFM) & "; SUBSTITUI_ID invalido: " & U(i, F_SUBR) & SUF_SUB
                 U(i, F_CONFID) = idMelhor
             Else
                 U(i, F_CONFM) = Empty
+            End If
+            ' ADR-082: nota do manual ATIVO/INATIVADO (MOTIVO_EXCLUSAO_AUTOMATICA; a coluna DETALHE da aba a mostra)
+            If U(i, F_SUBOK) = True Then
+                U(i, F_NOTA) = "substitui o resultado do interfaceamento " & U(i, F_SUBDIG)
+            ElseIf Not IsEmpty(U(i, F_SUBR)) And IsEmpty(U(i, F_CONFM)) Then
+                U(i, F_NOTA) = "SUBSTITUI_ID invalido: " & U(i, F_SUBR) & SUF_SUB
             End If
         End If
     Next i
@@ -879,7 +998,10 @@ Private Sub CalcularCorridas(ByRef U() As Variant, ByVal nU As Long, ByVal GAP A
     ReDim reais(1 To IIf(nU > 0, nU, 1))
     For i = 1 To nU
         U(i, F_COR) = Empty: U(i, F_RUN) = Empty
-        If U(i, F_FALTA) = "" And Not U(i, F_DUP) And IsEmpty(U(i, F_CONFM)) And Not IsEmpty(U(i, F_DH)) Then
+        ' ADR-082: o resultado que um manual valido substitui nunca forma corrida, inativado ou nao (o manual entra pela
+        ' propria DATA_HORA); o que continua com status de corrida real recebe o RUN do manual no fim (HerdarCorrida)
+        If U(i, F_FALTA) = "" And Not U(i, F_DUP) And IsEmpty(U(i, F_CONFM)) And Not IsEmpty(U(i, F_DH)) And _
+           IsEmpty(U(i, F_SUBPOR)) Then
             nRe = nRe + 1: reais(nRe) = i
             gk = ""
             For Each c In Array(U(i, F_EQ), U(i, F_MZ), U(i, F_LT), U(i, F_AN), IIf(IsEmpty(U(i, F_DT)), Empty, CStr(Year(U(i, F_DT)) * 10000& + Month(U(i, F_DT)) * 100& + Day(U(i, F_DT)))))
@@ -942,4 +1064,20 @@ Private Sub CalcularCorridas(ByRef U() As Variant, ByVal nU As Long, ByVal GAP A
             U(u_, F_RUN) = CDbl(Year(U(u_, F_DT)) Mod 100) * 1000000# + Month(U(u_, F_DT)) * 10000# + Day(U(u_, F_DT)) * 100# + U(u_, F_COR)
         End If
     Next j
+    HerdarCorrida U, nU
+End Sub
+
+' ADR-082 (= o Junto do PQ): o resultado indicado que continua com status de corrida real (INATIVADO, ou SEM_VALOR
+' inativado -- a inativacao prevalece) fica com a CORRIDA_NO_DIA e o RUN do manual que o substitui: o X vermelho
+' aparece na corrida do manual e nenhuma outra corrida do dia muda. SUBSTITUIDO_MANUAL e SEM_DATA_HORA: sem RUN.
+Private Sub HerdarCorrida(ByRef U() As Variant, ByVal nU As Long)
+    Dim i As Long, m As Long
+    For i = 1 To nU
+        If Not IsEmpty(U(i, F_SUBPOR)) Then
+            If U(i, F_ST) = "ATIVO" Or U(i, F_ST) = "INATIVADO" Or U(i, F_ST) = "SEM_VALOR" Then
+                m = U(i, F_SUBIDX)
+                If m > 0 Then U(i, F_COR) = U(m, F_COR): U(i, F_RUN) = U(m, F_RUN)
+            End If
+        End If
+    Next i
 End Sub
