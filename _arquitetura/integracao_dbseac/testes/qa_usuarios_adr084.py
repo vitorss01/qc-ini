@@ -260,7 +260,7 @@ def central_de_teste(copia_qc):
     uma pasta ao lado da copia do QC e instala o ADR-084 nele (instalar_cadastro_central). Descartavel."""
     sys.path.insert(0, os.path.join(AQUI, '..'))
     import instalar_cadastro_central as icc
-    raiz = os.path.abspath(os.path.join(AQUI, '..', '..', '..'))
+    raiz = os.environ.get('QC_RAIZ') or os.path.abspath(os.path.join(AQUI, '..', '..', '..'))
     origem = os.path.join(raiz, 'QC_INI_cadastrar usuários.xlsm')
     if not os.path.exists(origem):
         raise SystemExit(f'cadastro central nao encontrado para o teste: {origem}')
