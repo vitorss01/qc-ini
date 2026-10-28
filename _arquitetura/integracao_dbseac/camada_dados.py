@@ -457,6 +457,8 @@ def montar_entrada(wb, produto, nome):
             # coluna de formula NUNCA em '@' (a formula viraria texto literal); Geral pelo nome local
             if formula or str(colr.Cells(1, 1).NumberFormat) == '@':
                 formato_geral(colr)
+        elif 'y' in fmt:
+            fmt_data(colr, fmt)
         else:
             colr.NumberFormat = fmt
         if tipo == 'in':
@@ -571,16 +573,27 @@ def carregar_saida(wb, consulta, m_alternativo=None):
     larguras(ws, lo, LARG_SAIDA)
     for col in lo.ListColumns:
         if col.Name in FMT_SAIDA and col.DataBodyRange is not None:
-            col.DataBodyRange.NumberFormat = FMT_SAIDA[col.Name]
+            fmt_data(col.DataBodyRange, FMT_SAIDA[col.Name])
     return lo, t
+
+
+def fmt_data(rng, fmt):
+    """Formato de data/hora. Por esta automacao o NumberFormat e lido na lingua local: 'yyyy' num Excel em
+    portugues vira o TEXTO 'yyyy' (28/10/2026: a aba DB mostrava 'dd/mm/yyyy'). Converte o codigo do ano para o
+    do Excel instalado (pt-BR: 'aaaa') e grava no formato local."""
+    ano = str(rng.Application.International[19 - 1] or "y")     # xlYearCode (por esta automacao: tupla)
+    rng.NumberFormatLocal = fmt.replace('y', ano)
 
 
 def formulas_resumo():
     """Formula da linha 5 de cada aba de saida (aba -> formula). Separada para os instaladores conferirem (ADR-082)."""
     return {
-        'DB': '="Recebidos: "&TEXT(ROWS(tblDB_Recebimento),"#,##0")&" resultados  ·  último resultado: "&'
-                          'TEXT(MAX(tblDB_Recebimento[DATA_HORA]),"dd/mm/yyyy hh:mm")&"  ·  última chegada: "&'
-                          'TEXT(MAX(tblDB_Recebimento[RECEBIDO_EM]),"dd/mm/yyyy hh:mm")',
+        # 28/10/2026: o ano por YEAR() -- o "yyyy" do TEXT e lido na lingua do Excel e aparecia como "yyyy" no pt-BR
+        'DB': '="Recebidos: "&FIXED(ROWS(tblDB_Recebimento),0)&" resultados  ·  último resultado: "&'
+              'TEXT(MAX(tblDB_Recebimento[DATA_HORA]),"dd/mm/")&YEAR(MAX(tblDB_Recebimento[DATA_HORA]))&'
+              'TEXT(MAX(tblDB_Recebimento[DATA_HORA])," hh:mm")&"  ·  última chegada: "&'
+              'TEXT(MAX(tblDB_Recebimento[RECEBIDO_EM]),"dd/mm/")&YEAR(MAX(tblDB_Recebimento[RECEBIDO_EM]))&'
+              'TEXT(MAX(tblDB_Recebimento[RECEBIDO_EM])," hh:mm")',
         'DB_ORGANIZADO': '="Linhas (instante × nível): "&TEXT(ROWS(tblDB_Organizado),"#,##0")',
         'Principal - Resultados': '="Total: "&TEXT(ROWS(tblCQ_Final),"#,##0")&"  ·  participam: "&'
                        'TEXT(COUNTIFS(tblCQ_Final[PARTICIPA_ESTATISTICA],"SIM"),"#,##0")&"  ·  X vermelho: "&'
