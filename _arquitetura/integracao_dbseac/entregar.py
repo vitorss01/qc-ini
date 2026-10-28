@@ -63,7 +63,9 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_corrida_lote.py',                          # ADR-080/081: corrida do lote (so ativos), X entre corridas
           'qa_inativar_ux.py',                           # ADR-081: inativar/reativar pelo grafico, simples
           'qa_manual_substitui.py',                      # ADR-082: manual substitui o automatico (SUBSTITUI_ID)
-          'qa_westgard_sequencia.py']                    # ADR-083: Westgard do mesmo nivel na sequencia de ativos
+          'qa_westgard_sequencia.py',                    # ADR-083: Westgard do mesmo nivel na sequencia de ativos
+          'qa_adr084.py',                                # ADR-084: status, motivo livre, indicador, calibracao pelo ID
+          'qa_usuarios_adr084.py']                       # ADR-084: cadastro central, PBKDF2, login e assinatura
 
 
 def sha(p):
@@ -124,6 +126,7 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('corrida_lote', ['instalar_adr080.py', produto, alvo]),   # ADR-080/081: eixo X = corrida do lote (ativos)
               ('inativar_ux', ['instalar_frm_inativar.py', produto, alvo]),  # ADR-081: inativar/reativar pelo grafico
               ('manual_subst', ['instalar_adr082.py', produto, alvo]),   # ADR-082: SUBSTITUI_ID (manual no lugar do automatico)
+              ('adr084', ['instalar_adr084.py', produto, alvo]),         # ADR-084: calibracao pelo ID, indicador, usuarios central
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:
         ok, fim = rodar(os.path.join(trab, f'{nome}.log'), AQUI, *args)

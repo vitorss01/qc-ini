@@ -24,7 +24,8 @@ NOVOS = ['mIncerteza',                        # ADR-064
          'mLotesBlocos',                       # ADR-074: aba Analitos com um bloco por lote
          'mEtlReceb', 'mEtlCQ', 'mEtlQA', 'mEtlSync',   # ADR-079: camada de dados em VBA
          'mCarregando',                        # ADR-084: indicador das operacoes demoradas (frmCarregando)
-         'mCalibracao']                        # ADR-084: calibracao registrada pelo ID do resultado (aba Registros)
+         'mCalibracao',                        # ADR-084: calibracao registrada pelo ID do resultado (aba Registros)
+         'mSenha', 'mUsuariosCentral']         # ADR-084: PBKDF2 com salt + copia do cadastro central de usuarios
 # modulos de CLASSE (criados como classe se faltarem). ADR-070: a clsCht (eventos dos graficos do Painel)
 # so existia dentro dos .xlsm; virou fonte versionada
 CLASSES = ['clsCht']

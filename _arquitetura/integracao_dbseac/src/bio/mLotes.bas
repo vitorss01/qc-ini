@@ -657,6 +657,7 @@ Public Sub TrocarLote()
     iAtual = BlocoDoLote(atual)
     If iAtual > 0 Then SalvarViewNoBloco iAtual           ' persiste o lote que estava em uso
     CarregarBlocoNaView iNovo
+    mSeguranca.RedesenharAssinaturas          ' ADR-084: imagens de assinatura do lote que entrou (pelo login de cada linha)
     ThisWorkbook.Names("loteCarregado").RefersToRange.Value = novo
     SalvarViewNoBloco iNovo
     AtualizarListaLiberacao

@@ -209,12 +209,76 @@ Private Function NivelPapel(ByVal p As String) As Long
     End Select
 End Function
 
-' Papel do usuario segundo a tabela (aba Usuarios, coluna C).
+' Papel do usuario segundo o cadastro (ADR-084: o central primeiro, senao a aba Usuarios local, coluna C).
 Public Function PapelDoUsuario(ByVal login As String) As String
-    Dim r As Long
-    r = FindUserRow(login)
-    If r > 0 Then PapelDoUsuario = NormalizarPapel(CStr(ThisWorkbook.Sheets("Usuarios").Cells(r, 3).Value))
+    Dim nm As String, pp As String, hs As String, cg As String, cs As String, asn As String, org As String
+    Dim sit As String, lin As Long
+    If DadosUsuario(login, nm, pp, hs, cg, cs, asn, org, sit, lin) Then PapelDoUsuario = pp
 End Function
+
+' ADR-084: o login no cadastro central (copia Usuarios_Central, mUsuariosCentral) vale primeiro; o que nao esta la
+' continua na aba Usuarios local -- os acessos que ja existem nao se perdem. origem = "CENTRAL" ou "LOCAL";
+' linhaLocal so na origem LOCAL. Usuario central com SITUACAO diferente de ATIVO volta com papel "" (sem acesso).
+' login volta com a grafia do cadastro.
+Private Function DadosUsuario(ByRef login As String, ByRef nome As String, ByRef papel As String, _
+                              ByRef hash As String, ByRef cargo As String, ByRef conselho As String, _
+                              ByRef assinatura As String, ByRef origem As String, ByRef situacao As String, _
+                              ByRef linhaLocal As Long) As Boolean
+    Dim ws As Worksheet, lg As String, pc As String
+    lg = Trim$(login)
+    If Len(lg) = 0 Then Exit Function
+    If mUsuariosCentral.Buscar(lg, nome, cargo, pc, hash, assinatura, conselho, situacao) Then
+        login = lg
+        origem = "CENTRAL"
+        linhaLocal = 0
+        If UCase$(Trim$(situacao)) = "ATIVO" Then papel = NormalizarPapel(pc) Else papel = ""
+        DadosUsuario = True
+        Exit Function
+    End If
+    linhaLocal = FindUserRow(lg)
+    If linhaLocal = 0 Then Exit Function
+    Set ws = ThisWorkbook.Sheets("Usuarios")
+    login = CStr(ws.Cells(linhaLocal, 1).Value)
+    nome = CStr(ws.Cells(linhaLocal, 2).Value)
+    cargo = CStr(ws.Cells(linhaLocal, 3).Value)
+    papel = NormalizarPapel(cargo)
+    hash = CStr(ws.Cells(linhaLocal, 4).Value)
+    assinatura = ""
+    conselho = ""
+    origem = "LOCAL"
+    situacao = "ATIVO"
+    DadosUsuario = True
+End Function
+
+' ADR-084: confere a senha com o hash gravado. PBKDF2 (mSenha) ou o SHA-256 sem salt antigo (ADR-059) -- este so na
+' aba Usuarios local e e trocado pelo PBKDF2 no proximo login certo (MigrarHashLocal). Nunca compara texto puro.
+Private Function SenhaConfere(ByVal senha As String, ByVal gravado As String) As Boolean
+    On Error GoTo nao
+    If Len(senha) = 0 Then Exit Function
+    gravado = Trim$(gravado)
+    If mSenha.EhHashPbkdf2(gravado) Then
+        SenhaConfere = mSenha.VerificarSenha(senha, gravado)
+    ElseIf Len(gravado) = 64 Then
+        SenhaConfere = (LCase$(gravado) = SHA256Hex(senha))
+    End If
+nao:
+End Function
+
+' ADR-084: login certo de usuario local com o hash antigo -> grava o PBKDF2 no lugar (a senha nao muda para o usuario).
+Private Sub MigrarHashLocal(ByVal r As Long, ByVal senha As String)
+    Dim ws As Worksheet, prot As Boolean
+    On Error GoTo sai
+    Set ws = ThisWorkbook.Sheets("Usuarios")
+    prot = LiberarEscrita(ws)
+    ws.Cells(r, 4).Value = mSenha.GerarHashSenha(senha)
+    RestaurarProtecao ws, prot
+    AuditarSeg "SENHA_MIGRADA_PBKDF2", "", "", "login " & ws.Cells(r, 1).Value & ": hash SHA-256 sem salt trocado por " & _
+               mSenha.PREFIXO & " (" & mSenha.ITERACOES_PADRAO & " iteracoes)"
+    Exit Sub
+sai:
+    On Error Resume Next
+    RestaurarProtecao ws, prot
+End Sub
 
 Private Function ContarAdm() As Long
     Dim ws As Worksheet, i As Long
@@ -264,25 +328,37 @@ End Sub
 
 Public Sub DoLogin()
     Dim u As String, p As String, r As Long, ok As Boolean, papel As String, login As String
+    Dim nome As String, hash As String, cargo As String, conselho As String, assin As String, origem As String
+    Dim situacao As String
     On Error Resume Next
     u = Trim$(CStr(ThisWorkbook.Names("loginUser").RefersToRange.Value))
     p = CStr(ThisWorkbook.Names("loginPass").RefersToRange.Value)
     On Error GoTo 0
     EscreverNome "loginPass", ""
     EncerrarSessao                       ' nada da sessao anterior sobrevive a uma tentativa
-    r = FindUserRow(u)
-    If r > 0 And p <> "" Then ok = (LCase$(CStr(ThisWorkbook.Sheets("Usuarios").Cells(r, 4).Value)) = SHA256Hex(p))
+    ' ADR-084: copia do cadastro central (no maximo 1 leitura a cada 5 min; falha = vale a ultima copia)
+    On Error Resume Next
+    mUsuariosCentral.Sincronizar
+    On Error GoTo 0
+    login = u
+    If DadosUsuario(login, nome, papel, hash, cargo, conselho, assin, origem, situacao, r) Then
+        If p <> "" Then ok = SenhaConfere(p, hash)
+    End If
+    If ok And origem = "LOCAL" And Not mSenha.EhHashPbkdf2(hash) Then MigrarHashLocal r, p
     p = ""
     If Not ok Then
         EscreverNome "loginMsg", "Usuario ou senha invalidos."
         AuditarSeg "LOGIN_FALHOU", "", "", "login informado: " & Left$(u, 60)
         Exit Sub
     End If
-    login = CStr(ThisWorkbook.Sheets("Usuarios").Cells(r, 1).Value)
-    papel = NormalizarPapel(CStr(ThisWorkbook.Sheets("Usuarios").Cells(r, 3).Value))
     If Len(papel) = 0 Then
-        EscreverNome "loginMsg", "Usuario sem funcao valida (ADM, ANALISTA ou TÉCNICO). Procure o administrador."
-        AuditarSeg "LOGIN_FALHOU", "", "", "login " & login & " com funcao invalida na tabela"
+        If origem = "CENTRAL" And UCase$(Trim$(situacao)) <> "ATIVO" Then
+            EscreverNome "loginMsg", "Usuario inativo no cadastro central. Procure o administrador."
+            AuditarSeg "LOGIN_FALHOU", "", "", "login " & login & " INATIVO no cadastro central"
+        Else
+            EscreverNome "loginMsg", "Usuario sem funcao valida (ADM, ANALISTA ou TÉCNICO). Procure o administrador."
+            AuditarSeg "LOGIN_FALHOU", "", "", "login " & login & " com funcao invalida (" & origem & ": " & cargo & ")"
+        End If
         Exit Sub
     End If
     EscreverNome "currentUser", login
@@ -343,6 +419,8 @@ Public Sub CadastrarUsuario()
         recusa = "Sessao invalida: faca login novamente."
     ElseIf lg = "" Or sN = "" Then
         recusa = "Preencha login e senha."
+    ElseIf NoCentral(lg) Then
+        recusa = "O login '" & lg & "' é do cadastro central: altere-o no arquivo " & mUsuariosCentral.ARQUIVO_PADRAO & "."
     ElseIf Len(papelNovo) = 0 Then
         recusa = "Funcao invalida: use ADM, ANALISTA ou TÉCNICO."
     ElseIf NivelPapel(papelNovo) > NivelPapel(papelAtor) Then
@@ -365,7 +443,7 @@ Public Sub CadastrarUsuario()
     ws.Cells(r, 1).Value = lg
     If novo Or Len(nm) > 0 Then ws.Cells(r, 2).Value = nm
     ws.Cells(r, 3).Value = papelNovo
-    ws.Cells(r, 4).Value = SHA256Hex(sN)
+    ws.Cells(r, 4).Value = mSenha.GerarHashSenha(sN)        ' ADR-084: PBKDF2 com salt (era SHA-256 sem salt)
 restaura:
     nE = Err.Number: sE = Err.Description
     RestaurarProtecao ws, prot
@@ -387,37 +465,127 @@ restaura:
     AuditarSeg acao, papelAnt, papelNovo, "alvo: " & lg
 End Sub
 
+' ADR-084: a identidade vem do cadastro (central ou local) da credencial conferida -- ninguem digita nome nem
+' conselho. O registro textual (nome · cargo · conselho · data/hora · login) fica na celula ao lado e no Audit_Log
+' como era NA HORA: mudar o cadastro depois nao reescreve uma liberacao passada. Imagem: a do cadastro central
+' (pasta "assinaturas"), desenhada pelo login gravado no texto daquela linha (RedesenharAssinaturas); usuario local
+' continua com a rubrica da coluna E da aba Usuarios. Sem imagem, a liberacao segue com a identificacao textual.
+' "Assinatura eletronica" = autenticacao por login e senha + registro rastreavel; nao e assinatura digital
+' qualificada (ICP-Brasil).
 Public Function AssinarCom(ByVal tcell As Range, ByVal login As String, ByVal senha As String, ByVal tipo As String) As String
-    Dim r As Long, papel$, ws As Worksheet
+    Dim r As Long, papel As String, ws As Worksheet, nome As String, hash As String, cargo As String
+    Dim conselho As String, assin As String, origem As String, situacao As String, ident As String, quando As String
+    Dim imagem As String
     On Error Resume Next
     Set ws = ThisWorkbook.Sheets("Usuarios")
-    r = FindUserRow(login)
-    If r = 0 Then
+    If Not DadosUsuario(login, nome, papel, hash, cargo, conselho, assin, origem, situacao, r) Then
         AssinarCom = "Usuario nao encontrado."
         AuditarSeg "ASSINATURA_RECUSADA", "", "", tipo & " | login informado: " & Left$(login, 60) & " | " & AssinarCom
         Exit Function
     End If
-    If LCase$(CStr(ws.Cells(r, 4).Value)) <> SHA256Hex(senha) Or senha = "" Then
+    If Not SenhaConfere(senha, hash) Then
         AssinarCom = "Senha invalida."
-        AuditarSeg "ASSINATURA_RECUSADA", "", "", tipo & " | login " & ws.Cells(r, 1).Value & " | " & AssinarCom
+        AuditarSeg "ASSINATURA_RECUSADA", "", "", tipo & " | login " & login & " | " & AssinarCom
         Exit Function
     End If
-    papel = NormalizarPapel(CStr(ws.Cells(r, 3).Value))
+    If Len(papel) = 0 Then
+        AssinarCom = "Usuario sem acesso (inativo ou sem funcao valida). Procure o administrador."
+        AuditarSeg "ASSINATURA_RECUSADA", "", "", tipo & " | login " & login & " | " & AssinarCom
+        Exit Function
+    End If
     If UCase$(tipo) = "FINALIZADO" And papel <> PAPEL_ANALISTA And papel <> PAPEL_ADM Then
         AssinarCom = "Apenas ANALISTA/ADM pode finalizar/liberar o equipamento."
-        AuditarSeg "ASSINATURA_RECUSADA", "", papel, tipo & " | login " & ws.Cells(r, 1).Value & " | " & AssinarCom
+        AuditarSeg "ASSINATURA_RECUSADA", "", papel, tipo & " | login " & login & " | " & AssinarCom
         Exit Function
     End If
-    CarimbarRubrica ws, r, tcell
-    tcell.Offset(0, 1).Value = ws.Cells(r, 1).Value & " · " & Format(Now, "dd/mm/yyyy hh:mm")
-    On Error Resume Next
-    tcell.Offset(0, 1).EntireColumn.AutoFit
-    On Error GoTo 0
+    quando = Format(Now, "dd/mm/yyyy hh:mm")
+    ident = IdentificacaoProfissional(nome, cargo, conselho, login)
+    If origem = "LOCAL" Then
+        CarimbarRubrica ws, r, tcell
+        imagem = "rubrica da aba Usuarios"
+    Else
+        imagem = mUsuariosCentral.ArquivoAssinatura(assin)
+        CarimbarTexto tcell
+        If Len(imagem) = 0 Then imagem = IIf(Len(assin) > 0, "imagem nao encontrada: " & assin, "sem imagem cadastrada")
+    End If
+    tcell.Offset(0, 1).Value = ident & " · " & quando
+    tcell.Offset(0, 1).WrapText = True
+    RedesenharAssinaturas tcell.Worksheet
     ' quem assinou pode nao ser quem esta logado (assinatura pede login e senha
     ' proprios): o signatario vai no detalhe, a sessao fica no usuario do evento
-    AuditarSeg "ASSINATURA_" & UCase$(tipo), "", papel, "signatario: " & ws.Cells(r, 1).Value & _
-               " | " & tcell.Worksheet.Name & "!" & tcell.Address(False, False)
+    AuditarSeg "ASSINATURA_" & UCase$(tipo), "", papel, "signatario: " & ident & " | " & quando & " | " & _
+               tcell.Worksheet.Name & "!" & tcell.Address(False, False) & " | RUN " & _
+               CStr(tcell.Worksheet.Cells(tcell.Row, 1).Value) & " | cadastro " & origem & " | assinatura: " & imagem
     AssinarCom = "OK"
+End Function
+
+' "Nome Completo · Cargo · CRBM 1234 · login fulano" (campos vazios saem). O login no fim e a chave da imagem.
+Public Function IdentificacaoProfissional(ByVal nome As String, ByVal cargo As String, ByVal conselho As String, _
+                                          ByVal login As String) As String
+    Dim s As String, sep As String
+    sep = " " & ChrW$(183) & " "
+    s = Trim$(nome)
+    If Len(s) = 0 Then s = login
+    If Len(Trim$(cargo)) > 0 Then s = s & sep & Trim$(cargo)
+    If Len(Trim$(conselho)) > 0 Then s = s & sep & Trim$(conselho)
+    IdentificacaoProfissional = s & sep & "login " & login
+End Function
+
+' Celula da assinatura de um usuario do cadastro central: texto curto (a imagem, quando houver, fica por cima).
+Private Sub CarimbarTexto(ByVal tcell As Range)
+    On Error Resume Next
+    tcell.Value = ChrW$(10003) & " Assinado eletronicamente"
+    tcell.Locked = True
+End Sub
+
+' ADR-084: as imagens de assinatura da aba Liberação sao refeitas a partir do TEXTO de cada linha ("... login X ·
+' data"): a imagem e sempre a do login gravado naquela linha -- nunca sobra imagem de outra linha nem de outro lote
+' (a LiberStore guarda so valores). Chamada depois de assinar e na troca do lote em uso (mLotes). Sem imagem ou
+' arquivo ausente: so o texto. Nunca levanta erro.
+Public Sub RedesenharAssinaturas(Optional ByVal ws As Worksheet = Nothing)
+    Dim sh As Shape, r As Long, c As Variant, txt As String, lg As String, p As Long, q As Long, arq As String
+    Dim cel As Range, prot As Boolean, nm As String, cg As String, pp As String, hs As String, asn As String
+    Dim cs As String, st As String, fig As Shape, escala As Double
+    On Error Resume Next
+    If ws Is Nothing Then Set ws = ThisWorkbook.Worksheets("Liberação")
+    If ws Is Nothing Then Exit Sub
+    prot = LiberarEscrita(ws)
+    For Each sh In ws.Shapes
+        If Left$(sh.Name, 8) = "qcAssin_" Then sh.Delete
+    Next sh
+    For r = 4 To 203
+        For Each c In Array(3, 5)                      ' C = INICIADO, E = FINALIZADO; o texto fica em D / F
+            txt = CStr(ws.Cells(r, c + 1).Value)
+            p = InStrRev(txt, "login ")
+            If p > 0 And Left$(CStr(ws.Cells(r, c).Value), 1) = ChrW$(10003) Then
+                lg = Mid$(txt, p + 6)
+                q = InStr(lg, " ")
+                If q > 0 Then lg = Left$(lg, q - 1)
+                arq = ""
+                If mUsuariosCentral.Buscar(lg, nm, cg, pp, hs, asn, cs, st) Then arq = mUsuariosCentral.ArquivoAssinatura(asn)
+                If Len(arq) > 0 Then
+                    Set cel = ws.Cells(r, c)
+                    Set fig = ws.Shapes.AddPicture(arq, False, True, cel.Left + 1, cel.Top + 1, -1, -1)
+                    If Not fig Is Nothing Then
+                        fig.LockAspectRatio = msoTrue
+                        escala = (cel.Height - 2) / fig.Height
+                        If fig.Width * escala > cel.Width - 2 Then escala = (cel.Width - 2) / fig.Width
+                        fig.Height = fig.Height * escala
+                        fig.Name = "qcAssin_" & cel.Address(False, False)
+                        fig.Placement = xlMoveAndSize
+                        fig.AlternativeText = "Assinatura de " & lg
+                    End If
+                    Set fig = Nothing
+                End If
+            End If
+        Next c
+    Next r
+    RestaurarProtecao ws, prot
+End Sub
+
+Private Function NoCentral(ByVal login As String) As Boolean
+    Dim nm As String, cg As String, pp As String, hs As String, asn As String, cs As String, st As String
+    NoCentral = mUsuariosCentral.Buscar(login, nm, cg, pp, hs, asn, cs, st)
 End Function
 
 Private Sub CarimbarRubrica(ByVal ws As Worksheet, ByVal userRow As Long, ByVal tcell As Range)
@@ -500,7 +668,7 @@ Public Sub UnlockApp()
         Select Case ws.Name
             Case SHEET_LOGIN
                 ws.Visible = xlSheetVeryHidden
-            Case "Calc", "LiberStore", "RegistrosStore", "Cfg_Integracao"   ' ADR-073: LotesStore visivel a todos (historico de limites, protegida)
+            Case "Calc", "LiberStore", "RegistrosStore", "Cfg_Integracao", "Usuarios_Central"   ' ADR-073: LotesStore visivel a todos (historico de limites, protegida)
                 ws.Visible = IIf(isAdm, xlSheetVisible, xlSheetVeryHidden)
             Case Else
                 ws.Visible = xlSheetVisible

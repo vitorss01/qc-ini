@@ -119,6 +119,56 @@ def calc(wb):
     return alvo
 
 
+CAB_UC = ['LOGIN', 'NOME', 'CARGO', 'PAPEL', 'SENHA_HASH', 'ASSINATURA', 'CONSELHO', 'SITUACAO', 'SINCRONIZADO_EM']
+CFG_CAMINHO = ('CAMINHO_USUARIOS', '', 'ADR-084: caminho do cadastro central de profissionais (QC_INI_cadastrar '
+               'usuários.xlsm). Vazio = a mesma pasta deste arquivo.')
+
+
+def usuarios_central(wb):
+    """Aba tecnica Usuarios_Central (copia do cadastro central; o mUsuariosCentral grava). Oculta e protegida."""
+    nomes = [w.Name for w in wb.Worksheets]
+    if 'Usuarios_Central' not in nomes:
+        ws = wb.Worksheets.Add(After=wb.Worksheets(wb.Worksheets.Count))
+        ws.Name = 'Usuarios_Central'
+        MUDANCAS.append('aba Usuarios_Central criada')
+    ws = wb.Worksheets('Usuarios_Central')
+    if str(ws.Range('A1').Value or '') != 'Cópia do cadastro central em:':
+        ws.Range('A1').Value = 'Cópia do cadastro central em:'
+        ws.Range('C1').Value = 'arquivo:'
+        ws.Range('A2').Value = ('ADR-084: gravada pelo mUsuariosCentral.Sincronizar (login). Não editar: altere o '
+                                'cadastro no arquivo central.')
+        MUDANCAS.append('Usuarios_Central A1:A2')
+    atual = [str(v or '') for v in ws.Range('A3:I3').Value[0]]
+    if atual != CAB_UC:
+        ws.Range('A3:I3').Value = tuple(CAB_UC)
+        ws.Range('A3:I3').Font.Bold = True
+        ws.Columns('E').NumberFormat = '@'
+        MUDANCAS.append('Usuarios_Central cabecalho')
+    if ws.Visible != 2:
+        ws.Visible = 2                                   # xlSheetVeryHidden
+        MUDANCAS.append('Usuarios_Central oculta')
+    # Usuarios local: o rotulo do hash
+    us = wb.Worksheets('Usuarios')
+    if str(us.Range('D3').Value or '') != 'Hash da senha (PBKDF2)':
+        us.Range('D3').Value = 'Hash da senha (PBKDF2)'
+        MUDANCAS.append('Usuarios D3')
+    a2 = ('Usuários locais (login, senha, papel). Os profissionais do cadastro central (QC_INI_cadastrar usuários.xlsm) '
+          'entram com o login e a senha de lá. Senha gravada só como hash PBKDF2-SHA256 com salt. Só o ADM cadastra.')
+    if str(us.Range('A2').Value or '') != a2:
+        us.Range('A2').Value = a2
+        MUDANCAS.append('Usuarios A2')
+    # chave do caminho do cadastro central
+    lo = wb.Worksheets('Cfg_Integracao').ListObjects('tblConfigIntegracao')
+    ks = [str(r[0] or '').strip().upper() for r in lo.DataBodyRange.Value]
+    if CFG_CAMINHO[0] not in ks:
+        lin = lo.ListRows.Add()
+        lin.Range.Cells(1, 1).Value = CFG_CAMINHO[0]
+        lin.Range.Cells(1, 2).Value = CFG_CAMINHO[1]
+        if lo.ListColumns.Count >= 3:
+            lin.Range.Cells(1, 3).Value = CFG_CAMINHO[2]
+        MUDANCAS.append('Cfg CAMINHO_USUARIOS')
+
+
 def main(produto, caminho, salvar=True):
     try:
         sys.stdout.reconfigure(errors='replace')
@@ -146,6 +196,8 @@ def main(produto, caminho, salvar=True):
         log('3. Registros: K "ID do resultado", L "Equipamento", regView B4:L203, regID, regEquip; RegistrosStore J1/K1')
         cols = calc(wb)
         log(f'4. Calc: icone de calibracao com equipamento nas colunas {[a78.col(k) for k in cols]}')
+        usuarios_central(wb)
+        log('4b. Usuarios_Central (oculta), Cfg CAMINHO_USUARIOS, rótulos da aba Usuarios (PBKDF2)')
         a78.MUDANCAS.clear()
         a78.painel(wb, a78.mapa(wb, nlv), nlv)
         MUDANCAS.extend(a78.MUDANCAS)
@@ -160,6 +212,9 @@ def main(produto, caminho, salvar=True):
         log(f'   fumaca: status {st}')
         log(f'MUDANCAS {len(MUDANCAS)}' + (': ' + '; '.join(MUDANCAS[:14]) if MUDANCAS else ''))
         devolver_protecao(wb, foto)
+        uc = wb.Worksheets('Usuarios_Central')
+        if not uc.ProtectContents:
+            uc.Protect(ii.SENHA, True, True, True)      # aba tecnica: so o VBA grava (LiberarEscrita)
         if estrutura:
             wb.Protect(ii.SENHA, True, False)
         if salvar:

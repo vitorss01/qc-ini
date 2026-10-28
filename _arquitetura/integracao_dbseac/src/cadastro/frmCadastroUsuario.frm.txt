@@ -1,0 +1,65 @@
+Option Explicit
+' ============================================================================
+'  frmCadastroUsuario -- cadastro de profissional / redefinicao de senha (ADR-084)
+'  Criado pelo instalador (instalar_cadastro_central.py: controles declarados, sem
+'  .frx). Quem grava e o mCadastro (CadastrarOuRedefinir / DefinirSituacao); a
+'  janela so coleta e mostra o resultado. Os campos de senha sao limpos depois
+'  de qualquer tentativa (sucesso ou recusa) e nunca aparecem em mensagem.
+' ============================================================================
+
+Private Sub UserForm_Initialize()
+    Dim c As Variant
+    cboCargo.Clear
+    For Each c In mCadastro.Cargos()
+        cboCargo.AddItem CStr(c)
+    Next c
+    lblMsg.Caption = "Login novo = cadastro. Login existente = nova senha (e os campos preenchidos são atualizados)."
+End Sub
+
+Private Sub btnSalvar_Click()
+    Dim r As String
+    r = mCadastro.CadastrarOuRedefinir(txtNome.Value, txtLogin.Value, cboCargo.Value, txtSenha.Value, _
+                                       txtConfirma.Value, txtConselho.Value, txtAdmLogin.Value, txtAdmSenha.Value)
+    LimparSenhas
+    If Left$(r, 3) = "OK|" Then
+        MsgBox IIf(Split(r, "|")(1) = "CRIADO", "Profissional cadastrado: ", "Cadastro atualizado (nova senha): ") & _
+               Trim$(txtLogin.Value) & "." & vbCrLf & vbCrLf & _
+               "A assinatura (imagem) é cadastrada depois pelo administrador, na coluna ASSINATURA. " & _
+               "Os QCs recebem o cadastro no próximo login.", vbInformation, "Cadastro de profissionais"
+        txtNome.Value = "": txtLogin.Value = "": txtConselho.Value = "": cboCargo.Value = ""
+        lblMsg.Caption = ""
+    Else
+        lblMsg.Caption = Mid$(r, 6)
+        MsgBox Mid$(r, 6), vbExclamation, "Cadastro de profissionais"
+    End If
+End Sub
+
+Private Sub btnInativar_Click()
+    Dim r As String
+    If Len(Trim$(txtLogin.Value)) = 0 Then MsgBox "Informe o login a inativar.", vbExclamation: Exit Sub
+    If MsgBox("Inativar o login '" & Trim$(txtLogin.Value) & "'? Ele deixa de entrar e de assinar nos QCs; " & _
+              "o histórico das liberações é mantido.", vbYesNo + vbQuestion + vbDefaultButton2, _
+              "Cadastro de profissionais") <> vbYes Then Exit Sub
+    r = mCadastro.DefinirSituacao(txtLogin.Value, False, txtAdmLogin.Value, txtAdmSenha.Value)
+    LimparSenhas
+    If Left$(r, 3) = "OK|" Then
+        MsgBox "Login '" & Trim$(txtLogin.Value) & "' inativado.", vbInformation, "Cadastro de profissionais"
+    Else
+        MsgBox Mid$(r, 6), vbExclamation, "Cadastro de profissionais"
+    End If
+End Sub
+
+Private Sub btnCancelar_Click()
+    LimparSenhas
+    Me.Hide
+End Sub
+
+Private Sub LimparSenhas()
+    txtSenha.Value = ""
+    txtConfirma.Value = ""
+    txtAdmSenha.Value = ""
+End Sub
+
+Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
+    LimparSenhas
+End Sub

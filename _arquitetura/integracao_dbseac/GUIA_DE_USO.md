@@ -34,10 +34,11 @@ agendada atualiza a cada 2 minutos.
 1. No Painel, dê **duplo clique** (ou clique com o botão direito) no ponto.
 2. Abre a janela **Inativar o resultado ID …** com o analito, o nível, a corrida, a data/hora, o valor e o lote —
    confira que é o ponto certo.
-3. Escolha o **motivo** na lista (em "Outro", escreva o complemento). A caixa **Mostrar como X vermelho no gráfico**
-   já vem marcada; desmarque se o resultado não deve aparecer no gráfico.
-4. Clique em **Inativar**. O gráfico se atualiza sozinho em alguns segundos e mostra "✓ ID … inativado". Não precisa
-   clicar em ATUALIZAR.
+3. **Escreva o motivo** com suas palavras (ADR-084: texto livre; Enter muda de linha; acentos e símbolos valem). O
+   botão só habilita com o motivo escrito. A caixa **Mostrar como X vermelho no gráfico** já vem marcada; desmarque
+   se o resultado não deve aparecer no gráfico.
+4. Clique em **Inativar**. Uma janela mostra as etapas ("Etapa k de 7") enquanto o gráfico se atualiza; no fim
+   aparece "✓ ID … inativado" e você continua no Painel. Não precisa clicar em ATUALIZAR.
 
 **Reativar:** duplo clique no **X vermelho** → janela **Reativar** → motivo → **Reativar**. Resultado inativado sem X
 (caixa desmarcada) não aparece no gráfico: reative pela aba Inativar (apague a linha e clique em ATUALIZAR).
@@ -157,8 +158,9 @@ laboratório preencher (ADR-075).
   **DP = 1,5 × o do lote em uso**, só para os limites aparecerem.
   - A LotesStore marca esses valores por nível (colunas TESTE_N1..N3).
   - O resumo do bloco avisa "contém valores de TESTE".
-  - O Painel mostra **"(alvo TESTE)"** no status do nível. O veredito com alvo de teste não serve para liberar
-    resultado.
+  - Desde o ADR-084 (28/10/2026, pedido do laboratório) o Painel **não mostra mais "(alvo TESTE)"**: o status traz só
+    o veredito. Quem sabe que o lote está com valores de TESTE é o resumo do bloco (aba Analitos) — confira antes de
+    liberar com um lote novo.
   - **Substitua pelos valores corretos**: basta digitar por cima. A marca sai do nível quando a Média e o DP de
     teste foram trocados (trocar só um deles mantém o aviso).
   - Os limites (Média ± 1, 2 e 3 DP), o CV, o ET e o Sigma do lote aparecem ao lado.
@@ -238,6 +240,35 @@ ficou sem Sigma.
   2. faça uma entrega (`entregar.py`);
   3. não publique a senha nova no GitHub. Use uma variável de ambiente; o desenvolvimento pode preparar isso se for
      pedido.
+
+## 6b. Registrar uma calibração pelo ID (aba Registros — ADR-084)
+
+1. Na aba **Registros**, coluna **K (ID do resultado)**, digite o ID do resultado de controle medido logo depois da
+   calibração (ex.: `BIO-365293`, ou só `365293`).
+2. A linha se preenche sozinha: data/hora, analito, nível "Todos", RUN, "Foi calibrado? = Sim", responsável e
+   equipamento (coluna L). Escreva a observação na coluna G, se quiser.
+3. No Painel, o ícone de calibração aparece **na média do lote** de cada nível, nas corridas desse dia, só no gráfico
+   daquele equipamento.
+
+ID inexistente, com formato errado ou já registrado é recusado com o motivo, e a célula volta vazia. Para desfazer,
+limpe a linha. "Foi calibrado? = Sim" digitado à mão continua valendo, para todos os equipamentos.
+
+## 6c. Profissionais, senhas e assinatura (cadastro central — ADR-084)
+
+- **Onde se cadastra:** só no arquivo **QC_INI_cadastrar usuários.xlsm**, botão **CADASTRAR / REDEFINIR SENHA**. Toda
+  gravação pede o login e a senha de um **ADMIN**.
+- **Primeiro acesso:** o ADMIN da tabela define a própria senha, informando o login dele também em "Autorização".
+- **Senha:** gravada só como hash PBKDF2-SHA256 com salt; ninguém consegue lê-la. Esqueceu: o ADMIN define outra.
+- **Imagem da assinatura:**
+  1. salve a imagem (PNG/JPG) na pasta `assinaturas`, ao lado do arquivo central;
+  2. escreva o nome do arquivo na coluna ASSINATURA da linha do profissional.
+- **Inativar um profissional:** login + autorização → **Inativar login**. Ele deixa de entrar e assinar, e o histórico
+  fica.
+- **Nos QCs:** o login lê o cadastro central sozinho. Se o arquivo central estiver fora do ar, vale a última cópia.
+  Os usuários antigos da aba Usuarios continuam entrando.
+- **Liberação:** ao assinar (INICIADO/FINALIZADO), a linha guarda nome, cargo, conselho, login, data e hora, e mostra a
+  imagem quando houver. É assinatura **eletrônica** (login + senha + registro); não é assinatura digital ICP-Brasil.
+- **Arquivo central em outra pasta:** preencha `CAMINHO_USUARIOS` na aba Cfg_Integracao de cada QC.
 
 ## 7b. Registro de cada atualização (aba Sync_Log — ADR-079)
 

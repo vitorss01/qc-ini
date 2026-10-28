@@ -31,6 +31,8 @@ import traceback
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 from qa_final import QA, reg, RES, sha256_arquivo  # noqa: E402
+sys.path.insert(0, os.path.join(AQUI, '..'))
+import instalar_integracao as ii  # noqa: E402
 from qa_inativar_ux import criar_usuario, fazer_login, preparar_painel, series, Leitor  # noqa: E402
 
 USUARIO_QA = 'QA_INATIVAR_UX'           # o mesmo usuario de teste do qa_inativar_ux (senha de teste de la)
@@ -267,7 +269,7 @@ def executar(produto, caminho, saida):
              'icone_y': icones, 'media_do_lote': medias})
         # equipamento: outro equipamento na linha = o icone sai deste grafico
         q.ex.xl.EnableEvents = False
-        reg_ws.Unprotect('qcini2025')
+        reg_ws.Unprotect(ii.SENHA)
         reg_ws.Range(f'L{lin10}').Value = 'QA_OUTRO_EQUIPAMENTO'
         q.ex.xl.Calculate()
         some = all(not isinstance(calc.Cells(3 + i, k).Value, float) for k in cols_cal for i in rows_dia)
