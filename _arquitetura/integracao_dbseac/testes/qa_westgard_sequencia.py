@@ -86,7 +86,7 @@ sys.path.insert(0, os.path.join(AQUI, '..', 'estudos'))
 import instalar_integracao as ii  # noqa: E402
 import codigo_atual  # noqa: E402
 import lint_vba  # noqa: E402
-from instalar_adr083 import tem_identidade_bi, Seletor, ler_eventos, ler_foto, conferir_foto, LOTE_DA_ABA  # noqa: E402
+from instalar_adr083 import Seletor, ler_eventos, ler_foto, conferir_foto, LOTE_DA_ABA  # noqa: E402
 
 SRC = os.path.join(AQUI, '..', 'src')
 ABA_EV = 'Eventos_Westgard'
@@ -373,6 +373,21 @@ def txt(v):
     if isinstance(v, float) and v.is_integer():
         return str(int(v))
     return '' if v is None else str(v).strip()
+
+
+def tem_identidade_bi(wb):
+    """O arquivo tem a BI ligada (nomes bi* + modulo mBI)? -- veio do instalar_adr083, que nao toca mais a BI_Data."""
+    for n in ('biProduto', 'biWorkbookID', 'biContratoVersao'):
+        try:
+            v = wb.Names(n).RefersToRange.Value
+        except Exception:                                      # noqa: BLE001 -- nome ausente ou constante
+            try:
+                v = str(wb.Names(n).RefersTo or '').lstrip('=').strip('"')
+            except Exception:                                  # noqa: BLE001
+                return False
+        if not txt(v):
+            return False
+    return 'mBI' in {c.Name for c in wb.VBProject.VBComponents}
 
 
 def iint(v):
