@@ -39,6 +39,30 @@ def sha(t):
     return hashlib.sha256(t.encode('latin-1')).hexdigest()
 
 
+def confere(senha, h):
+    """ADR-084: a senha bate com o hash gravado -- SHA-256 antigo (o teste o grava) ou PBKDF2 (o login certo migra o
+    antigo; o cadastro do ADM ja grava PBKDF2)."""
+    h = str(h or '').strip()
+    p = h.split('$')
+    if len(p) == 4 and p[0] == 'pbkdf2_sha256':
+        return hashlib.pbkdf2_hmac('sha256', senha.encode('utf-8'), bytes.fromhex(p[2]), int(p[1])).hex() == p[3]
+    return h.lower() == sha(senha)
+
+
+
+def mesmas_senhas(h0, h1):
+    """Nenhuma senha mudou entre as duas fotos da coluna de hash. ADR-084: o login certo de um usuario com o SHA-256
+    antigo regrava o hash em PBKDF2 (mesma senha) -- isso nao e troca de senha."""
+    conhecidas = list(SENHAS.values()) + list(NOVAS.values())
+    for i in set(h0) | set(h1):
+        a, b = h0.get(i, ''), h1.get(i, '')
+        if a == b:
+            continue
+        if not any(a == sha(x) and confere(x, b) for x in conhecidas):
+            return False
+    return True
+
+
 class Seg:
     def __init__(self, caminho):
         self.ex = xlh.Excel()
@@ -178,7 +202,7 @@ def executar(produto, caminho, saida):
         reg('S08 ANALISTA não cria usuário (definir a senha inicial é definir senha): recusado, ninguém criado, formulário sem senha',
             q.usuario('QA_TEC2') is None and so_adm in msg8 and q.val('cadSenha') == '' and len(rec) >= 4, {'msg': msg8})
         reg('S09 ANALISTA não troca nem a própria senha: recusado, hash intacto, recusa na trilha',
-            q.usuario('QA_ANA')['hash'] == sha(SENHAS['QA_ANA']) and so_adm in msg9 and len(rec) >= 5, {'msg': msg9})
+            confere(SENHAS['QA_ANA'], q.usuario('QA_ANA')['hash']) and so_adm in msg9 and len(rec) >= 5, {'msg': msg9})
 
         # ------------------------------------------------------------ S10: sessao forjada (celula e login da sessao)
         # o que barra a DIGITACAO e celula travada em aba protegida. (Escrita por COM nao
@@ -221,9 +245,9 @@ def executar(produto, caminho, saida):
         reg('S12 TÉCNICO: não cria usuário, não troca a própria senha, UnprotectAll (Alt+F8) não desprotege nada; '
             'nenhum hash mudou sob sessão TÉCNICO/ANALISTA',
             q.usuario('QA_DO_TECNICO') is None and so_adm in msg12a and so_adm in msg12b
-            and q.usuario('QA_TEC')['hash'] == h_tec and ainda and hashes1 == hashes0,
+            and q.usuario('QA_TEC')['hash'] == h_tec and ainda and mesmas_senhas(hashes0, hashes1),
             {'msg_criar': msg12a, 'msg_propria': msg12b, 'abas_continuam_protegidas': ainda,
-             'hashes_inalterados': hashes1 == hashes0})
+             'hashes_inalterados': mesmas_senhas(hashes0, hashes1)})
         q.run('mSeguranca.Logout')
 
         # ------------------------------------------------------------ S13/S14: ADM
@@ -238,9 +262,9 @@ def executar(produto, caminho, saida):
         alterado = [e for e in evs if e['acao'] == 'USUARIO_ALTERADO']
         propria = [e for e in evs if e['acao'] == 'SENHA_PROPRIA_ALTERADA']
         reg('S13 ADM cria TÉCNICO ("Tecnico" normalizado), redefine senha e função de outro e troca a própria: tudo aceito e na trilha',
-            p == 'ADM' and t2 is not None and t2['papel'] == 'TÉCNICO' and t2['hash'] == sha(NOVAS['QA_TEC2'])
-            and q.usuario('QA_TEC2')['papel'] == 'ANALISTA' and q.usuario('QA_TEC2')['hash'] == sha(NOVAS['QA_ADM_RESET'])
-            and q.usuario('QA_ADM')['hash'] == sha(NOVAS['QA_ADM_PROPRIA']) and q.val('cadSenha') == ''
+            p == 'ADM' and t2 is not None and t2['papel'] == 'TÉCNICO' and confere(NOVAS['QA_TEC2'], t2['hash'])
+            and q.usuario('QA_TEC2')['papel'] == 'ANALISTA' and confere(NOVAS['QA_ADM_RESET'], q.usuario('QA_TEC2')['hash'])
+            and confere(NOVAS['QA_ADM_PROPRIA'], q.usuario('QA_ADM')['hash']) and q.val('cadSenha') == ''
             and criado and criado[-1]['st_novo'] == 'TÉCNICO'
             and alterado and alterado[-1]['st_ant'] == 'TÉCNICO' and alterado[-1]['st_novo'] == 'ANALISTA' and propria,
             {'msgs': [msg13a, msg13b, msg13c]})
