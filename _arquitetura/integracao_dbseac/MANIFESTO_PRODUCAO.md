@@ -20,6 +20,8 @@ público — decisão do gestor em `estudos/DECISAO_GESTOR_2026-10-06.md`). A ve
 | 21/10/2026 | QC_Hematologia.xlsm | 14445422 | `64086540377c4a673e7ca95f686f91085b28b2754241d3c876b9090a1762f55a` | 078b1c3 | 19 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-079 (camada de dados em VBA, Sync_Log; tblCQ_Final refeita com MOTIVO_INATIVACAO) e ADR-080 (eixo X = corrida do lote por nível) |
 | 21/10/2026 | QC_Hematologia.xlsm | 14575814 | `3dbf411f9bc385ac0c4e66e74cfcd0d70554184bd606368bae3f81eda7487645` | ed2aaf4 | 20 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-081 (inativar pela ID no gráfico, corridas só com ativos) e registro de lotes sempre |
 | 21/10/2026 | QC_Bioquimica.xlsm | 17101301 | `77d63b3dae36163a151e3ef0482412f72fc5f1ad9ebb7022801e1e430a388ed3` | ed2aaf4 | 20 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-079 (camada de dados em VBA, Sync_Log), ADR-080 (eixo = corrida do lote por nível) e ADR-081 (inativar pela ID no gráfico) |
+| 27/10/2026 | QC_Hematologia.xlsm | 37353668 | `7529ac0bab0d05b436c229d0be5f19942453a12acb10c04a081cf733ab95e4a1` | 27e77dc | 22 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-082 (manual substitui pelo SUBSTITUI_ID) e ADR-083 (Westgard do mesmo nível na sequência de ativos; aba Westgard_Fotos). A BI_Data foi refeita pelo instalador (ver ADR-083) |
+| 27/10/2026 | QC_Bioquimica.xlsm | 32766278 | `a6e9d3c30859892b13ef1304156a7e1d6ce47e7322fa5db90bf8874751e12c3a` | 27e77dc | 22 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-082 e ADR-083 (idem) |
 
 O hash muda a cada gravação no laboratório (uso normal). Para conferir a versão entregue, compare com o arquivo
 `_entrega_<data>/<produto>/<arquivo>.xlsm` da pasta de entrega (não versionada).

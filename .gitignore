@@ -83,3 +83,6 @@ _entrega_*/
 
 # copia local do DB_SEAC do laboratorio (dados clinicos; repositorio publico)
 INTERFACEAMENTO_DB -  TESTE/
+
+# Relatorio de mudancas de veredicto do ADR-083 (dados do laboratorio; fica ao lado do .xlsm)
+*_ADR083_mudancas_westgard.csv

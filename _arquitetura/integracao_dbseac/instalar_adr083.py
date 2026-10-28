@@ -26,8 +26,8 @@ Idempotente (a 2a execucao registra 0 mudancas e o relatorio sai vazio). Passos:
   4b. aba Cfg_Westgard_Escopo: a Descricao dos detectores do mesmo nivel (ACROSS_RUN_SAME_LEVEL, SAME_LEVEL_Rn) passa a
      dizer "observacoes ativas seguidas" (o mesmo texto de scripts_fase3/materializar_cfg_westgard.py);
   5. o Painel volta ao lote/equipamento em que estava (analito e periodo nao sao tocados); o motor e recalculado
-     (InvalidarCache + AtualizarEstatistica) e, se o Westgard mudou e o arquivo tiver a identidade de BI,
-     mBI.AtualizarBIData;
+     (InvalidarCache + AtualizarEstatistica). A BI_Data NAO e tocada (pedido do usuario em 27/10/2026: "nao mexer em
+     nada de bi/power bi por enquanto"); ela se atualiza quando o laboratorio rodar "Atualizar BI";
   5b. FOTO POR LOTE x EQUIPAMENTO (opcao completa do ADR-083, 27/10/2026): cria (idempotente) a aba tecnica
      Westgard_Fotos -- oculta (veryHidden) e protegida, como as outras abas tecnicas -- e grava nela, pelo proprio VBA
      (mEstatistica.GravarFotosWestgard), a foto dos eventos OFICIAIS de TODOS os lotes x equipamento: uma linha
@@ -456,20 +456,6 @@ def conferir_foto(foto_ev, depois, bio, eq_hema):
     return dif, n
 
 
-def tem_identidade_bi(wb):
-    for n in ('biProduto', 'biWorkbookID', 'biContratoVersao'):
-        try:
-            v = wb.Names(n).RefersToRange.Value
-        except Exception:                                      # noqa: BLE001 -- nome ausente ou constante
-            try:
-                v = str(wb.Names(n).RefersTo or '').lstrip('=').strip('"')
-            except Exception:                                  # noqa: BLE001
-                return False
-        if not txt(v):
-            return False
-    return 'mBI' in {c.Name for c in wb.VBProject.VBComponents}
-
-
 def main(produto, caminho, salvar=True):
     try:
         sys.stdout.reconfigure(errors='replace')
@@ -563,16 +549,10 @@ def main(produto, caminho, salvar=True):
         for mac in ('mEstatistica.InvalidarCache', 'mEstatistica.AtualizarEstatistica'):
             ex.run(f"'{wb.Name}'!{mac}", teto=900)
         ex.esperar()
-        if not mudou:
-            log('   BI_Data nao tocada: o Westgard nao mudou nesta execucao')
-        elif tem_identidade_bi(wb):
-            try:
-                ex.run(f"'{wb.Name}'!mBI.AtualizarBIData", teto=1200)
-                log('   BI_Data atualizada (mBI.AtualizarBIData)')
-            except Exception as e:                             # noqa: BLE001 -- a BI nao impede a instalacao
-                log(f'   AVISO: mBI.AtualizarBIData falhou ({e!r:.200}); rodar "Atualizar BI" no arquivo')
-        else:
-            log('   BI sem identidade (biProduto/biWorkbookID/biContratoVersao) ou sem mBI: BI_Data nao atualizada')
+        # 27/10/2026: a BI nao e tocada pelo instalador (usuario: "nao mexer em nada de bi/power bi por enquanto").
+        # A entrega 27 rodou mBI.AtualizarBIData aqui e a BI_Data passou de um retrato antigo para o historico inteiro
+        log('   BI_Data nao tocada (a BI fica com o laboratorio: botao "Atualizar BI")'
+            + ('; o Westgard mudou -- a BI so reflete isso depois do "Atualizar BI"' if mudou else ''))
 
         if mudou:
             det = (('ADR-083: regras de Westgard do MESMO nivel na sequencia de ativos do nivel (entre niveis pelo RUN). '
