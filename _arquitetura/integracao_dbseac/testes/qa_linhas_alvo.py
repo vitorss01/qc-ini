@@ -12,7 +12,8 @@ O caso do usuario (15/10/2026): trocou 8974 -> 8973 no Painel com a Media/DP dig
   A03 lote em uso com um periodo sem corrida (2000): status "SEM CORRIDA NO PERIODO" e as 7 linhas continuam
   A04 trocar de lote nao grava: 6 trocas (em uso <-> sem resultado <-> outro), inclusive com a tela do motor
       (Especificacoes E:J) DESATUALIZADA de proposito -- a LotesStore (C:H de todas as linhas) fica identica
-  A05 marca TESTE (ADR-076): nivel com valor de TESTE -> status "(alvo TESTE)" e o aviso no A39; a marca e por campo
+  A05 marca TESTE (ADR-076/084): nivel com valor de TESTE fica marcado na LotesStore, mas o status e o A39 NAO dizem
+      "alvo TESTE" (ADR-084); a marca e por campo
       (Media/DP): trocar os dois no bloco tira a marca SO daquele nivel
   A06 filtro da rotina: ir a um lote sem resultado no periodo do lote em uso ajusta o filtro com aviso (H4, A39);
       voltar ao lote em uso devolve o filtro de antes (De/Ate, Ano, Periodo, analito, equipamento)
@@ -281,8 +282,10 @@ def executar(produto, caminho, saida):
             if txt(q.nome('selAnalito').Value) != at:          # o ajuste do ADR-077 pode ter mudado o analito
                 ir_analito(at)
             st5, a395 = status(), txt(p.Range('A39').Value)
-            ok_a = st5[nv - 1].endswith('(alvo TESTE)')
-            ok_b = 'ALVO DE TESTE' in a395
+            # ADR-084 (28/10/2026, pedido do usuario): o Painel mostra so o veredito -- a marca TESTE continua na
+            # LotesStore (mLotes.AlvoDeTeste), mas nem o status nem o A39 falam de "alvo TESTE"
+            ok_a = bool(q.run('mLotes.AlvoDeTeste', lt, at, nv)) and 'TESTE' not in st5[nv - 1].upper()
+            ok_b = 'TESTE' not in a395.upper()
             h5 = blocos(b).get(lt)
             r5 = h5 + O_AN + nomes_cat.index(at)
             m_old, s_old = b.Cells(r5, 5 + 2 * (nv - 1)).Value, b.Cells(r5, 6 + 2 * (nv - 1)).Value
@@ -298,7 +301,7 @@ def executar(produto, caminho, saida):
             ok_e = all(bool(q.run('mLotes.AlvoDeTeste', lt, at, k)) == (fl[k - 1] > 0) for k in outros)
             st5b = status()
             trocar(lote0)                                       # volta ao lote em uso: o filtro da rotina volta
-            reg('A05 Marca TESTE (ADR-076): o nível com valor de TESTE aparece "(alvo TESTE)" no Painel, com o aviso no A39; '
+            reg('A05 Marca TESTE (ADR-076/084): a marca fica na LotesStore e o Painel NÃO mostra "alvo TESTE" (status e A39); '
                 'trocar só a Média mantém a marca se o DP era de teste; trocar a Média e o DP tira a marca só daquele nível',
                 ok_a and ok_b and ok_c and ok_d and ok_e and not st5b[nv - 1].endswith('(alvo TESTE)'),
                 {'lote': lt, 'analito': at, 'nivel': nv, 'bits': fl, 'status_antes': st5, 'status_depois': st5b,

@@ -873,12 +873,17 @@ Private Function InativarPontoNucleo(ByVal nivel As Long, ByVal serie As Long, B
     msg = ChrW$(&H23F3) & " " & IIf(reativar, "Reativando", "Inativando") & " o ID " & idc & ChrW$(&H2026) & _
           " aguarde (cerca de " & IIf(mEstatistica.NLV >= 3, 25, 15) & " s)"
     MostrarProgresso nivel, msg
+    ' ADR-084: o indicador central (frmCarregando) -- gravar + as etapas reais do AtualizarDadosCore
+    mCarregando.Abrir IIf(reativar, "Reativando", "Inativando") & " o resultado ID " & idc, _
+                      1 + mIntegracao.ETAPAS_ATUALIZAR
+    mCarregando.Etapa "Gravando na aba Inativar"
     If reativar Then
         r = mIntegracao.ReativarPorId(CStr(p(1)), motivo)
     Else
         r = mIntegracao.InativarPorId(CStr(p(1)), motivo, plotarX, CStr(p(4)))
     End If
     If Left$(r, 3) <> "OK|" Then
+        mCarregando.Fechar
         msg = Mid$(r, InStr(r, "|") + 1)
         Application.StatusBar = False
         If Application.Interactive And Not teste Then MsgBox msg, vbExclamation, titulo
@@ -886,6 +891,7 @@ Private Function InativarPontoNucleo(ByVal nivel As Long, ByVal serie As Long, B
         Exit Function
     End If
     r = mIntegracao.AtualizarSoEntradas(CStr(p(2)))     ' ADR-081: so a incerteza do analito do ponto
+    mCarregando.Fechar
     If Left$(r, 3) <> "OK|" Then
         msg = "Gravado na aba Inativar, mas a atualização não terminou. Clique em ATUALIZAR DADOS para aplicar." & _
               vbCrLf & "(detalhe: " & Mid$(r, InStr(r, "|") + 1) & ")"
@@ -902,6 +908,7 @@ Private Function InativarPontoNucleo(ByVal nivel As Long, ByVal serie As Long, B
 falha:
     msg = TXT_FALHA & vbCrLf & "(detalhe: " & Err.Description & ")"
     On Error Resume Next
+    mCarregando.Fechar
     If Not f Is Nothing Then Unload f
     Application.StatusBar = False
     If Application.Interactive And Not teste Then MsgBox msg, vbExclamation, "Inativar resultado"

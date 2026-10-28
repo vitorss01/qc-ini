@@ -614,8 +614,9 @@ Private Sub SalvarViewNoBloco(ByVal iBloco As Long)
     Dim wsReg As Worksheet, rr0 As Long, srcR As Range
     Set wsReg = ThisWorkbook.Sheets("RegistrosStore")
     rr0 = 2 + (iBloco - 1) * NLB_LIBER
-    Set srcR = ThisWorkbook.Names("regView").RefersToRange          ' B4:J203 (200 x 9) -- ADR-057: sem Rep 1-3
-    wsReg.Range(wsReg.Cells(rr0, 1), wsReg.Cells(rr0 + NLB_LIBER - 1, 9)).Value = srcR.Value
+    ' ADR-084: B4:L203 (200 x 11; K = ID do resultado da calibracao, L = equipamento) -- a largura vem do nome
+    Set srcR = ThisWorkbook.Names("regView").RefersToRange          ' B4:J203 (200 x 9) antes do ADR-084
+    wsReg.Range(wsReg.Cells(rr0, 1), wsReg.Cells(rr0 + NLB_LIBER - 1, srcR.Columns.Count)).Value = srcR.Value
 End Sub
 
 Private Sub CarregarBlocoNaView(ByVal iBloco As Long)
@@ -631,7 +632,7 @@ Private Sub CarregarBlocoNaView(ByVal iBloco As Long)
     Set wsReg = ThisWorkbook.Sheets("RegistrosStore")
     rr0 = 2 + (iBloco - 1) * NLB_LIBER
     Set dstR = ThisWorkbook.Names("regView").RefersToRange
-    dstR.Value = wsReg.Range(wsReg.Cells(rr0, 1), wsReg.Cells(rr0 + NLB_LIBER - 1, 9)).Value
+    dstR.Value = wsReg.Range(wsReg.Cells(rr0, 1), wsReg.Cells(rr0 + NLB_LIBER - 1, dstR.Columns.Count)).Value   ' ADR-084
 End Sub
 
 ' Chamado pelo Worksheet_Change da Configuracao quando o lote EM USO muda.

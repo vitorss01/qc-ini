@@ -304,8 +304,11 @@ Public Sub DoLogin()
     On Error Resume Next
     mLotes.AvisarLotesSemValidade
     ' ADR-062: o 1o clique no Painel nao paga mais a leitura do banco e o indice
+    mCarregando.Abrir "Entrando no QC_INI"                  ' ADR-084: ~2 s na 1a leitura do banco
+    mCarregando.Etapa "Preparando o Painel (leitura dos resultados)"
     Application.StatusBar = "Preparando o Painel..."
     mEstatistica.AquecerMotor
+    mCarregando.Fechar
     Application.StatusBar = False
 End Sub
 

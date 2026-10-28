@@ -38,6 +38,8 @@ Private Const COL_LJ As String = "REGISTRAR - LJ"
 Private Const FOLGA As Long = 100              ' linhas acrescentadas quando a tabela de entrada enche
 Private Const TXT_FALHA As String = "Nada foi alterado. Tente de novo ou clique em ATUALIZAR DADOS."   ' ADR-081
 Private Const COL_SUBST As String = "SUBSTITUI_ID"                      ' ADR-082: coluna opcional da tblResultados_Manuais
+' ADR-084: quantas vezes o AtualizarDadosCore chama mCarregando.Etapa (o total da barra "Etapa k de n")
+Public Const ETAPAS_ATUALIZAR As Long = 6
 
 ' ordem do refresh = ordem das camadas
 Private Function Camadas() As Variant
@@ -51,7 +53,9 @@ Public Sub AtualizarDados()
     Dim volta As Object, resumo As String
     Set volta = mApp.TelaAtual()
     On Error GoTo falha
+    mCarregando.Abrir "Atualizando dados", ETAPAS_ATUALIZAR      ' ADR-084: indicador com as etapas reais
     resumo = AtualizarDadosCore()
+    mCarregando.Fechar
     mApp.VoltarPara volta
     MsgBox resumo, IIf(ContarQA("ERRO") > 0, vbExclamation, vbInformation), "Atualizar dados"
     mLotes.AvisarLotesSemValidade          ' ADR-060: lote novo sem validade -> "vamos inserir agora?"
@@ -59,6 +63,7 @@ Public Sub AtualizarDados()
 falha:
     Dim nE As Long, sE As String
     nE = Err.Number: sE = Err.Description
+    mCarregando.Fechar                     ' a caixa de erro nunca fica atras do indicador
     mApp.VoltarPara volta
     MsgBox "A atualização NÃO foi concluída." & vbCrLf & vbCrLf & sE & vbCrLf & vbCrLf & _
            "Os gráficos e a Estatística continuam com os dados da atualização anterior. " & _
@@ -88,6 +93,7 @@ Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False,
     mEtlSync.IniciarLog IIf(vba, "VBA", "PQ"), IIf(hist, "HISTORICO", IIf(semOrigem, "SO_ENTRADAS", "SEAC"))
 
     etapa = "preparar as tabelas de entrada"
+    mCarregando.Etapa "Preparando as entradas (inativações, manuais e comentários)"
     PrepararEntradas
     nRec0 = Linhas("tblDB_Recebimento")
     Set antes = EstadoAuditavel()
@@ -95,13 +101,16 @@ Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False,
     If vba Then
         etapa = "atualizar os dados (VBA)"
         If semOrigem And Not hist Then
+            mCarregando.Etapa "Aplicando a alteração (sem ler o DB_SEAC)"
             Application.StatusBar = "Aplicando a inativação: recalculando sem ler o DB_SEAC..."
         Else
+            mCarregando.Etapa IIf(hist, "Reprocessando o histórico já recebido", "Lendo o DB_SEAC e recalculando os resultados")
             Application.StatusBar = "Atualizando dados: lendo o DB_SEAC e recalculando..."
         End If
         ' ADR-081: no "so entradas" os achados do QA que dependem da origem ficam como estavam (mEtlSync)
         tempos = mEtlSync.Sincronizar(semOrigem, nNovos, mudou, resLotes, semOrigem And Not hist)
     Else
+        mCarregando.Etapa "Atualizando as consultas do Power Query (DB_SEAC)"
         For Each camada In Camadas()
             ' ADR-060: lote novo entra no cadastro ANTES do QA, que confere o cadastro (I03)
             If CStr(camada) = "tblQA_Integracao" Then
@@ -121,11 +130,13 @@ Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False,
     If Linhas(FONTE_CQ) = 0 Then Err.Raise vbObjectError + 571, , "a tabela Principal - Resultados voltou vazia"
 
     etapa = "registrar a auditoria"
+    mCarregando.Etapa "Conferindo os resultados e registrando a auditoria"
     Set depois = EstadoAuditavel()
     AuditarMudancas antes, depois
 
     ' ---- consumidores: so depois de TODAS as consultas terminarem ----
     etapa = "atualizar o motor (Levey-Jennings, Westgard, Estatistica)"
+    mCarregando.Etapa "Atualizando Levey-Jennings, Westgard e Estatística"
     Application.StatusBar = "Atualizando Levey-Jennings, Westgard e Estatistica..."
     t0 = Timer
     mDados.IniciarSnapshot                         ' ADR-079: uma leitura da tblCQ_Final para o motor inteiro
@@ -142,6 +153,7 @@ Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False,
     ' snapshot do banco ja esta carregado), antes do periodo e da incerteza; vale tambem para o caminho rapido da
     ' inativacao pelo grafico (AtualizarSoEntradas). A foto so muda depois de auditar: se algo falhar aqui ou depois,
     ' o proximo ATUALIZAR compara com a foto antiga e nada se perde. Nunca derruba a atualizacao; o tempo vai no TEMPOS.
+    mCarregando.Etapa "Conferindo os vereditos de Westgard de todos os lotes"
     tWg = Timer
     resWg = ""
     On Error Resume Next
@@ -151,6 +163,7 @@ Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False,
     On Error GoTo falha
     tWgS = Timer - tWg
     If tWgS < 0 Then tWgS = tWgS + 86400#              ' meia-noite
+    mCarregando.Etapa "Recalculando a estatística do período e a incerteza de medição"
     RodarSeExistir "RecalcularEstatPeriodo"
     ' ADR-064: incerteza de medicao (CIQ + CEQ). ADR-081: depois de inativar/reativar UM resultado so a incerteza do
     ' analito dele muda (a dos outros depende so dos resultados deles; o CEQ nao muda) -- recalcula so as linhas dele
@@ -865,6 +878,21 @@ Public Function AnalitoDoId(ByVal id As String) As String
 sai:
 End Function
 
+' ADR-084: motivo em texto livre (janela frmInativar). Quebras de linha viram a quebra da celula (vbLf) e sao
+' mantidas; espacos, tabulacoes e linhas em branco nas EXTREMIDADES saem (Trim$ so tira espaco).
+Private Function LimparMotivo(ByVal s As String) As String
+    s = Replace(Replace(s, vbCrLf, vbLf), vbCr, vbLf)
+    Do While Len(s) > 0
+        If InStr(1, " " & vbLf & vbTab, Left$(s, 1), vbBinaryCompare) = 0 Then Exit Do
+        s = Mid$(s, 2)
+    Loop
+    Do While Len(s) > 0
+        If InStr(1, " " & vbLf & vbTab, Right$(s, 1), vbBinaryCompare) = 0 Then Exit Do
+        s = Left$(s, Len(s) - 1)
+    Loop
+    LimparMotivo = s
+End Function
+
 ' Texto gravado como TEXTO: um motivo que comeca com = + - @ viraria formula (ou erro) na celula.
 Private Function TextoParaCelula(ByVal s As String) As String
     If Len(s) > 0 Then
@@ -972,6 +1000,40 @@ Private Function TextoIdNaoEncontrado(ByVal idN As String) As String
     TextoIdNaoEncontrado = "ID " & mUI.IdCurto(idN) & " não encontrado nos resultados."
 End Function
 
+' ADR-084: o resultado de um ID, para a calibracao pela aba Registros (mCalibracao). Busca EXATA pelo ID normalizado
+' (a mesma do inativar: LinhaCQ), nunca aproximada. Devolve, separado por "|":
+'   "OK|<ID>|<analito>|<nivel>|<equipamento>|<lote>|<RUN>|<data/hora (numero de serie)>|<estado>"
+' ou "ERRO|<mensagem para o usuario>". Nunca levanta erro.
+Public Function DadosDoId(ByVal id As String) As String
+    Dim lo As ListObject, rq As Long, idN As String, dh As Variant, pre As String
+    On Error GoTo falha
+    idN = NormalizarId(id)
+    pre = UCase$(Trim$(Cfg("PREFIXO_ID"))) & "-"
+    If Len(idN) = 0 Then DadosDoId = "ERRO|Informe o ID do resultado.": Exit Function
+    If Left$(idN, Len(pre)) <> pre And Left$(idN, 4) <> "MAN_" Then
+        DadosDoId = "ERRO|ID em formato inválido: '" & Trim$(CStr(id)) & "'. Use o ID do resultado (ex.: " & pre & _
+                    "365293, ou só o número)."
+        Exit Function
+    End If
+    Set lo = AcharTabela(FONTE_CQ)
+    rq = LinhaCQ(lo, idN)
+    If rq = 0 Then DadosDoId = "ERRO|" & TextoIdNaoEncontrado(idN): Exit Function
+    dh = ValorCQ(lo, rq, "DATA_HORA")
+    If Not IsDate(dh) Then dh = ValorCQ(lo, rq, "DATA")
+    If Not IsDate(dh) Then DadosDoId = "ERRO|O resultado ID " & mUI.IdCurto(idN) & " está sem data nos resultados.": _
+                           Exit Function
+    If Len(Trim$(CStr(ValorCQ(lo, rq, "ANALITO")))) = 0 Then
+        DadosDoId = "ERRO|O resultado ID " & mUI.IdCurto(idN) & " está sem analito nos resultados.": Exit Function
+    End If
+    DadosDoId = "OK|" & idN & "|" & Trim$(CStr(ValorCQ(lo, rq, "ANALITO"))) & "|" & CStr(ValorCQ(lo, rq, "NIVEL")) & _
+                "|" & Trim$(CStr(ValorCQ(lo, rq, "EQUIPAMENTO"))) & "|" & Trim$(CStr(ValorCQ(lo, rq, "LOTE"))) & _
+                "|" & CStr(ValorCQ(lo, rq, "RUN")) & "|" & CStr(CDbl(CDate(dh))) & "|" & _
+                Trim$(CStr(ValorCQ(lo, rq, "STATUS_ANALITICO")))
+    Exit Function
+falha:
+    DadosDoId = "ERRO|" & TXT_FALHA & " (detalhe: " & Err.Description & ")"
+End Function
+
 ' ADR-082: o ID do resultado do interfaceamento que o manual "id" substitui ("" se nao e manual, nao existe ou nao
 ' substitui). Le a tblCQ_Final (o que o motor de dados decidiu): manual ATIVO ou INATIVADO com ID_RELACIONADO. Para a
 ' dica do grafico e a janela de inativar (mUI). Nunca levanta erro.
@@ -1072,9 +1134,9 @@ Public Function InativarPorId(ByVal id As String, ByVal motivo As String, ByVal 
     Dim rq As Long, an As String, r As Long, livre As Long, anAntigo As String, corrigida As Boolean, sE As String
     On Error GoTo falha
     idN = NormalizarId(id)
-    motivo = Trim$(motivo)
+    motivo = LimparMotivo(motivo)
     If Len(idN) = 0 Then InativarPorId = "ERRO|Informe o ID do resultado.": Exit Function
-    If Len(motivo) = 0 Then InativarPorId = "ERRO|Escolha o motivo da inativação.": Exit Function
+    If Len(motivo) = 0 Then InativarPorId = "ERRO|Informe o motivo da inativação.": Exit Function
     Set loQ = AcharTabela(FONTE_CQ)
     rq = LinhaCQ(loQ, idN)
     If rq = 0 Then InativarPorId = "ERRO|" & TextoIdNaoEncontrado(idN): Exit Function
@@ -1136,9 +1198,9 @@ Public Function ReativarPorId(ByVal id As String, ByVal motivo As String) As Str
     Dim achou As Collection, it As Variant
     On Error GoTo falha
     idN = NormalizarId(id)
-    motivo = Trim$(motivo)
+    motivo = LimparMotivo(motivo)
     If Len(idN) = 0 Then ReativarPorId = "ERRO|Informe o ID do resultado.": Exit Function
-    If Len(motivo) = 0 Then ReativarPorId = "ERRO|Escolha o motivo da reativação.": Exit Function
+    If Len(motivo) = 0 Then ReativarPorId = "ERRO|Informe o motivo da reativação.": Exit Function
     Set lo = AcharTabela(TB_INAT)
     If lo Is Nothing Then ReativarPorId = "ERRO|A aba Inativar não foi encontrada. Nada foi alterado.": Exit Function
     Set ws = lo.Parent

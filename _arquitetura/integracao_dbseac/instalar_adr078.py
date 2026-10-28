@@ -256,16 +256,16 @@ def eng_saida(wb):
 
 # ---------------------------------------------------------------- Painel
 def status_nivel(m, i):
+    # ADR-084 (28/10/2026, pedido do usuario): o status mostra so o veredito -- sem o sufixo " (alvo TESTE)". A marca
+    # TESTE continua na LotesStore (lsTesteN*) e no Calc (alvoTeste); so nao aparece mais no Painel
     M = 'Calc!' + m['niveis'][i - 1]['M']
-    t = f'Calc!${col(m["teste"][i - 1])}$1'
     return ('=IF(OR((""&engLote)<>(""&loteAnalise),(""&engAnalito)<>(""&selAnalito),' + EQ_DIF + '),"DESATUALIZADO",'
             'IF(N(engNLoteBase)<0,"BASE SEM DADOS",'
             f'IF({M}="","SEM MÉDIA/DP",'
             'IF(N(engNLoteBase)=0,"AGUARDANDO 1ª CORRIDA",'
             'IF(N(engNTotal)=0,"SEM CORRIDA DESTE ANALITO",'
             'IF(COUNTIF(Calc!$D$3:$D$182,1)=0,"SEM CORRIDA NO PERÍODO",'
-            f'IF(INDEX(engPainel,{i},10)="","SEM PONTO NO PERÍODO",INDEX(engPainel,{i},10)))))'
-            f'&IF({t}=TRUE," (alvo TESTE)",""))))')
+            f'IF(INDEX(engPainel,{i},10)="","SEM PONTO NO PERÍODO",INDEX(engPainel,{i},10))))))))')
 
 
 def q4(nlv):
@@ -275,9 +275,8 @@ def q4(nlv):
             f'IF(COUNTIF({J},"REJEITADO*")>0,"REJEITADO",'
             f'IF(COUNTIF({J},"SEM MÉDIA/DP*")>0,"SEM MÉDIA/DP",'
             f'IF(COUNTIF({J},"AGUARDANDO*")>0,"AGUARDANDO 1ª CORRIDA",'
-            f'IF(COUNTIF({J},"SEM *")>0,SUBSTITUTE(INDEX({J},MATCH("SEM *",{J},0))," (alvo TESTE)",""),'
-            f'IF(COUNTIF({J},"OK*")>0,"OK","—")))))))'
-            f'&IF(COUNTIF({J},"*alvo TESTE*")>0," (alvo TESTE)","")')
+            f'IF(COUNTIF({J},"SEM *")>0,INDEX({J},MATCH("SEM *",{J},0)),'
+            f'IF(COUNTIF({J},"OK*")>0,"OK","—")))))))')
 
 
 def a39(m, nlv):
@@ -290,10 +289,8 @@ def a39(m, nlv):
     quais = 'TRIM(' + '&'.join(f'IF({x}="","{n} ","")' for x, n in zip(Ms, nomes)) + ')'
     alvo = '"Lote "&loteAnalise&" · alvo ' + '&" · '.join(
         f'{n} "&FIXED({x},{dec})&" ± "&FIXED({s},{dec}+1)' for n, x, s in zip(nomes, Ms, Ss)) + '&". "'
-    teste = 'OR(' + ','.join(f'Calc!${col(k)}$1=TRUE' for k in m['teste']) + ')'
     return (f'=IF({vazio},"⛔ LOTE "&loteAnalise&" · "&selAnalito&": SEM MÉDIA/DP em "&IF({todos},"{" e ".join(nomes) if nlv == 2 else "N1, N2 e N3"}",{quais})'
             f'&" — digite a Média e o DP no bloco do lote (aba Analitos). Westgard não avaliado. ",{alvo})'
-            f'&IF({teste},"ALVO DE TESTE (ADR-076): o veredito não serve para liberar resultado — substitua pela Média/DP do lote. ","")'
             '&IF(selAnalito="","",IF(N(engNLoteBase)<0,"A base de resultados está vazia ou não foi carregada (ATUALIZAR DADOS). ",'
             'IF(N(engNLoteBase)=0,"Lote "&loteAnalise&" sem nenhum resultado na base: as linhas mostram o alvo cadastrado (confira antes da 1ª corrida). ",'
             'IF(N(engNTotal)=0,"O lote não tem resultado de "&selAnalito&" no "&engEquip&". ",'

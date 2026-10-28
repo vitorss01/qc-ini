@@ -86,3 +86,6 @@ INTERFACEAMENTO_DB -  TESTE/
 
 # Relatorio de mudancas de veredicto do ADR-083 (dados do laboratorio; fica ao lado do .xlsm)
 *_ADR083_mudancas_westgard.csv
+/QC_INI_cadastrar*.xlsm
+_backup_pre_fmt_datas_*/
+_backup_pre_adr084_*/

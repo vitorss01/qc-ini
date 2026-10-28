@@ -83,6 +83,7 @@ Public Sub fim()
     Application.ScreenUpdating = mTela
     Application.Cursor = xlDefault
     Application.StatusBar = False
+    mCarregando.Fechar                    ' ADR-084: reserva -- a operacao acabou (ou falhou), o indicador sai
 End Sub
 
 ' Estado limpo: calculo automatico, eventos e tela ligados. Para Workbook_Open
@@ -95,6 +96,7 @@ Public Sub Reset()
     Application.ScreenUpdating = True
     Application.Cursor = xlDefault
     Application.StatusBar = False
+    mCarregando.Fechar                    ' ADR-084
 End Sub
 
 Public Function Ocupado() As Boolean

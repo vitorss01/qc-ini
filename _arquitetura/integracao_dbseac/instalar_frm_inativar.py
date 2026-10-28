@@ -34,6 +34,7 @@ LARANJA = 0x0050C0                     # BGR: RGB(192, 80, 0) -- aviso do X desm
 FORM = {'Caption': 'Inativar resultado', 'Width': 372, 'Height': 297, 'StartUpPosition': 1}   # 1 = centro do Excel
 
 # (ProgID, nome, propriedades). 'Font.X' = propriedade da fonte do controle. TabIndex: motivo primeiro.
+# ADR-084 (28/10/2026): cboMotivo + txtComplemento deram lugar a UM campo de texto livre (txtMotivo).
 CONTROLES = [
     ('Forms.Label.1', 'lblTitulo', {
         'Left': 12, 'Top': 9, 'Width': 342, 'Height': 21, 'Caption': 'Inativar o resultado',
@@ -42,21 +43,16 @@ CONTROLES = [
         'Left': 12, 'Top': 33, 'Width': 342, 'Height': 27, 'Caption': '',
         'Font.Name': FONTE_UI, 'Font.Size': 9, 'WordWrap': True}),
     ('Forms.Label.1', 'lblMotivo', {
-        'Left': 12, 'Top': 63, 'Width': 342, 'Height': 15, 'Caption': 'Motivo',
+        'Left': 12, 'Top': 63, 'Width': 342, 'Height': 15, 'Caption': 'Motivo da inativação (obrigatório)',
         'Font.Name': FONTE_UI, 'Font.Size': 9, 'Font.Bold': True}),
-    ('Forms.ComboBox.1', 'cboMotivo', {
-        'Left': 12, 'Top': 78, 'Width': 342, 'Height': 21, 'Style': 2,          # 2 = so a lista (sem digitar)
-        'Font.Name': FONTE_UI, 'Font.Size': 9, 'ListRows': 8, 'TabIndex': 0}),
-    ('Forms.Label.1', 'lblComplemento', {
-        'Left': 12, 'Top': 105, 'Width': 342, 'Height': 15, 'Caption': 'Complemento (opcional)',
-        'Font.Name': FONTE_UI, 'Font.Size': 9}),
-    ('Forms.TextBox.1', 'txtComplemento', {
-        'Left': 12, 'Top': 120, 'Width': 342, 'Height': 33, 'MultiLine': True, 'WordWrap': True,
-        'EnterKeyBehavior': False, 'ScrollBars': 2, 'MaxLength': 300,
-        'Font.Name': FONTE_UI, 'Font.Size': 9, 'TabIndex': 1}),
+    # ADR-084: texto livre, varias linhas (Enter quebra a linha; Tab vai ao proximo controle). Sem lista de frases.
+    ('Forms.TextBox.1', 'txtMotivo', {
+        'Left': 12, 'Top': 78, 'Width': 342, 'Height': 75, 'MultiLine': True, 'WordWrap': True,
+        'EnterKeyBehavior': True, 'TabKeyBehavior': False, 'ScrollBars': 2, 'MaxLength': 1000,
+        'Font.Name': FONTE_UI, 'Font.Size': 9, 'TabIndex': 0}),
     ('Forms.CheckBox.1', 'chkX', {
         'Left': 12, 'Top': 159, 'Width': 342, 'Height': 18, 'Caption': 'Mostrar como X vermelho no gráfico',
-        'Value': True, 'Font.Name': FONTE_UI, 'Font.Size': 9, 'TabIndex': 2}),
+        'Value': True, 'Font.Name': FONTE_UI, 'Font.Size': 9, 'TabIndex': 1}),
     # ADR-081 (UX): aparece so com a caixa do X desmarcada (chkX_Change)
     ('Forms.Label.1', 'lblAvisoX', {
         'Left': 12, 'Top': 177, 'Width': 342, 'Height': 24, 'Caption': '', 'WordWrap': True, 'ForeColor': LARANJA,
@@ -66,10 +62,10 @@ CONTROLES = [
         'Font.Name': FONTE_UI, 'Font.Size': 8}),
     ('Forms.CommandButton.1', 'btnOK', {
         'Left': 162, 'Top': 237, 'Width': 93, 'Height': 27, 'Caption': 'Inativar', 'Default': False,
-        'Font.Name': FONTE_UI, 'Font.Size': 9, 'Font.Bold': True, 'TabIndex': 3}),
+        'Font.Name': FONTE_UI, 'Font.Size': 9, 'Font.Bold': True, 'TabIndex': 2}),
     ('Forms.CommandButton.1', 'btnCancelar', {
         'Left': 261, 'Top': 237, 'Width': 93, 'Height': 27, 'Caption': 'Cancelar', 'Cancel': True,   # Esc
-        'Font.Name': FONTE_UI, 'Font.Size': 9, 'TabIndex': 4}),
+        'Font.Name': FONTE_UI, 'Font.Size': 9, 'TabIndex': 3}),
 ]
 NUMERICAS = {'Left', 'Top', 'Width', 'Height', 'Font.Size'}
 
@@ -107,8 +103,10 @@ def _normalizar(t):
     return codigo_atual.normalizar(t).lower()
 
 
-def _diferencas(comp, texto):
+def _diferencas(comp, texto, form=None, controles=None):
     """O que o form no arquivo tem de diferente do daqui (lista vazia = igual)."""
+    form = FORM if form is None else form
+    controles = CONTROLES if controles is None else controles
     dif = []
     # 22/10/2026: num arquivo REABERTO, Properties do UserForm so responde depois que o designer e tocado -- sem isto
     # Caption/Width/Height/StartUpPosition davam erro ('?') e o form era refeito a cada execucao (nunca 0 mudancas)
@@ -116,17 +114,17 @@ def _diferencas(comp, texto):
         comp.Designer
     except Exception:                                  # noqa: BLE001
         pass
-    for k, v in FORM.items():
+    for k, v in form.items():
         try:
             if not _igual(k, comp.Properties(k).Value, v):
                 dif.append(f'form.{k}')
         except Exception:                              # noqa: BLE001
             dif.append(f'form.{k}?')
     ctls = {c.Name: c for c in comp.Designer.Controls}
-    if sorted(ctls) != sorted(n for _, n, _ in CONTROLES):
+    if sorted(ctls) != sorted(n for _, n, _ in controles):
         dif.append(f'controles {sorted(ctls)}')
         return dif
-    for _, n, props in CONTROLES:
+    for _, n, props in controles:
         for k, v in props.items():
             try:
                 if not _igual(k, _ler(ctls[n], k), v):
@@ -141,41 +139,45 @@ def _diferencas(comp, texto):
     return dif
 
 
-def criar_form(wb, log=print):
-    """Cria/atualiza o UserForm frmInativar. Idempotente. Devolve o numero de mudancas (0 = ja estava igual)."""
-    texto = ii.codigo(FONTE)
+def criar_form(wb, log=print, nome=None, fonte=None, form=None, controles=None):
+    """Cria/atualiza o UserForm (padrao: frmInativar). Idempotente. Devolve o numero de mudancas (0 = ja estava igual).
+    ADR-084: nome/fonte/form/controles servem a outras janelas declarativas (frmCarregando)."""
+    NOME_ = NOME if nome is None else nome
+    form = FORM if form is None else form
+    controles = CONTROLES if controles is None else controles
+    texto = ii.codigo(FONTE if fonte is None else fonte)
     vbp = wb.VBProject
     nomes = [c.Name for c in vbp.VBComponents]
-    if NOME in nomes:
-        comp = vbp.VBComponents(NOME)
+    if NOME_ in nomes:
+        comp = vbp.VBComponents(NOME_)
         if comp.Type != VBEXT_CT_MSFORM:
-            raise SystemExit(f'{NOME} existe e nao e um UserForm (tipo {comp.Type}) -- nada foi feito')
-        dif = _diferencas(comp, texto)
+            raise SystemExit(f'{NOME_} existe e nao e um UserForm (tipo {comp.Type}) -- nada foi feito')
+        dif = _diferencas(comp, texto, form, controles)
         if not dif:
-            log(f'   {NOME}: igual ao instalador (0 mudancas)')
+            log(f'   {NOME_}: igual ao instalador (0 mudancas)')
             return 0
-        log(f'   {NOME}: refeito ({", ".join(dif)})')
+        log(f'   {NOME_}: refeito ({", ".join(dif)})')
     else:
         comp = vbp.VBComponents.Add(VBEXT_CT_MSFORM)
-        comp.Name = NOME
-        log(f'   {NOME}: criado')
+        comp.Name = NOME_
+        log(f'   {NOME_}: criado')
     # codigo fora antes de mexer nos controles: evento orfao de controle removido nao chega a existir
     cm = comp.CodeModule
     if cm.CountOfLines:
         cm.DeleteLines(1, cm.CountOfLines)
-    for k, v in FORM.items():
+    for k, v in form.items():
         comp.Properties(k).Value = v
     des = comp.Designer
     for n in [c.Name for c in des.Controls]:
         des.Controls.Remove(n)
-    for progid, n, props in CONTROLES:
+    for progid, n, props in controles:
         ctl = des.Controls.Add(progid, n, True)
         for k, v in props.items():
             _gravar(ctl, k, v)
     cm.AddFromString(texto)
-    dif = _diferencas(comp, texto)
+    dif = _diferencas(comp, texto, form, controles)
     if dif:
-        raise SystemExit(f'{NOME} ficou diferente do instalador: {dif} -- nada foi salvo')
+        raise SystemExit(f'{NOME_} ficou diferente do instalador: {dif} -- nada foi salvo')
     return 1
 
 

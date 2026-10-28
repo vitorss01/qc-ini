@@ -15,7 +15,7 @@ teste no lugar da janela (mUI.DefinirRespostaTeste). Nada e salvo no arquivo.
   U02 InativarPorId com X + AtualizarSoEntradas: INATIVADO / X_VERMELHO / PARTICIPA = NAO; as corridas ativas do nivel
       renumeradas sem buraco (as anteriores iguais, as seguintes -1) e o X numa posicao fracionaria entre as vizinhas
   U03 sem X: NAO_PLOTAR, renumera, nenhum X do ID
-  U04 motivo vazio: "Escolha o motivo da inativacao." e nada gravado
+  U04 motivo vazio (ou so espacos e linhas em branco): "Informe o motivo da inativacao." e nada gravado
   U05 ID ja inativado: recusa; linha com o analito errado: corrigida no lugar (sem linha nova)
   U06 ANALITO gravado = o da tblCQ_Final (ID de outro analito que nao o da tela)
   U07 ReativarPorId: linha limpa, ATIVO, numeracao EXATAMENTE a de antes (Eng_Saida BK..BM), Audit_Log com o motivo
@@ -374,7 +374,7 @@ def executar(produto, caminho, saida):
         r4 = run('mIntegracao.InativarPorId', P2[2], '   ', True, str(int(P2[3])), teto=60)
         inat4 = L.inativar()
         reg('U04 Motivo vazio: InativarPorId devolve ERRO e nada é gravado na aba Inativar',
-            r4 == 'ERRO|Escolha o motivo da inativação.' and inat4 == inat0, {'retorno': r4, 'aba_igual': inat4 == inat0})
+            r4 == 'ERRO|Informe o motivo da inativação.' and inat4 == inat0, {'retorno': r4, 'aba_igual': inat4 == inat0})
 
         # ------------------------------------------------------------ U02 inativar com X + renumeracao
         mot2 = 'QA ADR-081: repetição por erro analítico'
@@ -427,8 +427,10 @@ def executar(produto, caminho, saida):
              'corridas_diferentes': dif7[:10], 'audit': a7[-6:], 'tempo_s': tempos.get('U07')})
 
         # ------------------------------------------------------------ U03 + U09 sem X, motivo com simbolos
-        mot3 = 'QA ADR-081: z ≥ 3σ; ação corretiva — recalibração (Δ > ET)'
-        r3 = run('mIntegracao.InativarPorId', curto(P3[2]), mot3, False, str(int(P3[3])), teto=60)
+        # ADR-084: texto livre em DUAS linhas, com espaco e linha em branco nas pontas (saem; a quebra do meio fica)
+        mot3 = 'QA ADR-081: z ≥ 3σ; ação corretiva —\nrecalibração (Δ > ET)'
+        r3 = run('mIntegracao.InativarPorId', curto(P3[2]), ' \r\n' + mot3.replace('\n', '\r\n') + ' \r\n ', False,
+                 str(int(P3[3])), teto=60)
         inat3 = L.inativar()
         lin3 = next((x for x in inat3.values() if str(x['ID_REGISTRO']) == P3[2]), {})
         atualizar_so_entradas('U03')
@@ -444,8 +446,8 @@ def executar(produto, caminho, saida):
             {'ID': P3[2], 'retorno': r3, 'linha': lin3, 'cq': {k: f3.get(k) for k in
              ('STATUS_ANALITICO', 'TIPO_PLOTAGEM_LJ', 'PARTICIPA_ESTATISTICA')}, 'renumeracao': ev_ren3,
              'tempo_s': tempos.get('U03')})
-        reg('U09 Motivo com acentos e símbolos (≥ σ Δ — ç ã) preservado na aba Inativar e na Principal - Resultados '
-            '(a janela usa TextBox Unicode; o InputBox ANSI do ADR-070 saiu)',
+        reg('U09 Motivo livre com acentos, símbolos (≥ σ Δ — ç ã) e quebra de linha preservado na aba Inativar e na '
+            'Principal - Resultados; espaços e linhas em branco das pontas removidos (ADR-084)',
             lin3.get('MOTIVO') == mot3 and f3.get('MOTIVO_INATIVACAO') == mot3,
             {'enviado': mot3, 'aba': lin3.get('MOTIVO'), 'principal': f3.get('MOTIVO_INATIVACAO')})
         r3b = run('mIntegracao.ReativarPorId', P3[2], 'QA ADR-081: limpeza do teste', teto=60)

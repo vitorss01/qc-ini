@@ -1,0 +1,35 @@
+Option Explicit
+' ============================================================================
+'  frmCarregando -- janela "processando" das operacoes demoradas (ADR-084)
+'
+'  Sem modal, aberta e fechada SO pelo mCarregando (Abrir / Etapa / Fechar).
+'  Criada pelo instalador (instalar_frm_carregando.py: controles e propriedades;
+'  sem .frx versionado) com este codigo. A barra e real: com o total de etapas,
+'  largura = etapa / total; sem total (indeterminado), um bloco que anda um
+'  passo a cada etapa -- nunca uma porcentagem que o sistema nao conhece.
+' ============================================================================
+Private Const LARG_BLOCO As Single = 72
+
+Public Sub Mostrar(ByVal titulo As String, ByVal etapa As String, ByVal passo As Long, ByVal total As Long)
+    Dim trilho As Single, x As Single
+    lblTitulo.Caption = titulo
+    lblEtapa.Caption = etapa
+    trilho = lblTrilho.Width
+    If total > 0 Then
+        lblBarra.Left = lblTrilho.Left
+        lblBarra.Width = trilho * passo / total
+        lblBarra.Visible = (passo > 0)
+        lblPasso.Caption = "Etapa " & passo & " de " & total
+    Else
+        x = ((passo * LARG_BLOCO) Mod (trilho - LARG_BLOCO + 1))
+        lblBarra.Left = lblTrilho.Left + x
+        lblBarra.Width = LARG_BLOCO
+        lblBarra.Visible = True
+        lblPasso.Caption = "Processando..."
+    End If
+End Sub
+
+' A janela nao fecha pelo X: quem fecha e o mCarregando, ao fim da operacao (ou do erro).
+Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
+    If CloseMode = vbFormControlMenu Then Cancel = True
+End Sub
