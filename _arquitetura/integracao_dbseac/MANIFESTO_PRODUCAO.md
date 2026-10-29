@@ -23,6 +23,8 @@ público — decisão do gestor em `estudos/DECISAO_GESTOR_2026-10-06.md`). A ve
 | 27/10/2026 | QC_Hematologia.xlsm | 37353668 | `7529ac0bab0d05b436c229d0be5f19942453a12acb10c04a081cf733ab95e4a1` | 27e77dc | 22 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-082 (manual substitui pelo SUBSTITUI_ID) e ADR-083 (Westgard do mesmo nível na sequência de ativos; aba Westgard_Fotos). A BI_Data foi refeita pelo instalador (ver ADR-083) |
 | 27/10/2026 | QC_Bioquimica.xlsm | 32766278 | `a6e9d3c30859892b13ef1304156a7e1d6ce47e7322fa5db90bf8874751e12c3a` | 27e77dc | 22 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-082 e ADR-083 (idem) |
 | 28/10/2026 | QC_Hematologia.xlsm | 37638688 | `74509c6ffb7c17ee4a2c33dfd632f84c36aa8e914d3cb0045cd0c6f0b4a6f693` | 4965ec5 | 24 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-084 (motivo livre, indicador de carregamento, status sem "alvo TESTE", calibração pelo ID, cadastro central + PBKDF2, identificação na liberação) |
+| 29/10/2026 | QC_Bioquimica.xlsm | 33243853 | `6d169170c7b9a69cc198ac7f7300170b0695e73c2306eb6bd4c326f43d00a281` | 67c7bf5 | 24 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-084 (idem) + Audit_Log Q/R como texto + manual que substitui não renumera a corrida vizinha |
+| 29/10/2026 | QC_Hematologia.xlsm | 37688457 | `5e15de65044627c2b297f2930b4e8b6f4f441bda89722040ea81c031e97d3dec` | 67c7bf5 | 24 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — as mesmas duas correções |
 
 O hash muda a cada gravação no laboratório (uso normal). Para conferir a versão entregue, compare com o arquivo
 `_entrega_<data>/<produto>/<arquivo>.xlsm` da pasta de entrega (não versionada).
