@@ -1468,16 +1468,22 @@ def _e11(ctx, fin0):
     mA_row = f1.get(idA)
     run_m = iint((mA_row or {}).get('RUN'))
     sl = s1['eng']['runs'].index(run_m) if run_m in s1['eng']['runs'] else None
-    dia_runs0 = [iint(r['RUN']) for r in linhas_do_dia(s0['fin'], aA, lote, quandoA.date()) if r['RUN'] not in (None, '')]
+    # 28/10/2026: a corrida e numerada POR EQUIPAMENTO (_GK) -- na Bioquimica so contam as linhas do equipamento do
+    # manual (27/10: DIMENSION 2 com 1 corrida e DIMENSION 1 com 2; o manual do DIMENSION 2 e a corrida 2 dele)
+    def mesmo_eq(r):
+        return not ctx.bio or cstr(r.get('EQUIPAMENTO')).strip() == cstr(eqA).strip()
+    dia_runs0 = [iint(r['RUN']) for r in linhas_do_dia(s0['fin'], aA, lote, quandoA.date())
+                 if r['RUN'] not in (None, '') and mesmo_eq(r)]
     # 20/10/2026: "corrida propria no fim" = um slot do NIVEL 1 depois de todos os N1 do dia e so dele. A corrida
     # e a ordem de (bloco, posicao NO NIVEL) no dia (pq/DB_CQ_FINAL.m): se o ultimo bloco do dia so tem N2, o N1 das
     # 23:50 recebe o numero seguinte ao ultimo N1 -- que pode coincidir com o desse bloco de N2 (14/10: N2 09:14 na
     # corrida 2, manual N1 23:50 tambem 2; PQ e VBA iguais, equivalencia_cq MAN_0009/0010). Antes o teste exigia
     # max(todos os niveis) + 1 e passava so porque o dia escolhido nao tinha esse padrao.
     n1_runs0 = [iint(r['RUN']) for r in linhas_do_dia(s0['fin'], aA, lote, quandoA.date())
-                if r['RUN'] not in (None, '') and iint(r['NIVEL']) == 1]
+                if r['RUN'] not in (None, '') and iint(r['NIVEL']) == 1 and mesmo_eq(r)]
     n1_mesmo_run = [i for i, r in f1.items() if i != idA and up(r['ANALITO']) == aA.upper()
-                    and cstr(r['LOTE']).strip() == lote and iint(r['NIVEL']) == 1 and iint(r.get('RUN')) == run_m]
+                    and cstr(r['LOTE']).strip() == lote and iint(r['NIVEL']) == 1 and iint(r.get('RUN')) == run_m
+                    and mesmo_eq(r)]
     renum = [i for i, v in s0['run'].items() if s1['run'].get(i) != v]
     reg('E11a S1 ≠ S0 (sensibilidade): manual extremo (média+20·DP às 23:50) ATIVO em corrida própria no fim, sem '
         'renumerar; n(N1)+1, média deslocada e 1_3s no seu slot'
@@ -1487,7 +1493,7 @@ def _e11(ctx, fin0):
         and run_m <= (max(dia_runs0) + 1 if dia_runs0 else run_m) and not renum
         and painel_n(s1['painel']) == painel_n(s0['painel']) + 1
         and not perto(s1['painel'][0][2], s0['painel'][0][2]) and s1['eng']['flags'][sl][0] == 1,
-        {'analito': aA, 'lote': lote, 'periodo': [de_serial(iniA), de_serial(dA)], 'corridas_ate_o_fim': cumA,
+        {'analito': aA, 'lote': lote, 'equipamento': eqA, 'periodo': [de_serial(iniA), de_serial(dA)], 'corridas_ate_o_fim': cumA,
          'manual': resumo(mA_row), 'extremo': ext_a, 'alvo_lote': [mA, sA], 'slot': sl,
          'runs_do_dia_S0': sorted(set(dia_runs0)), 'runs_N1_do_dia_S0': sorted(set(n1_runs0)),
          'outros_N1_no_mesmo_run': n1_mesmo_run[:5],
