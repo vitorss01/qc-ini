@@ -44,7 +44,7 @@ SIM = 'SIM'
 TB = 'tblInativacao_NaoConformes'
 CAB = ['ID_REGISTRO', 'ANALITO', 'REGISTRAR - LJ', 'MOTIVO', 'DATA_INATIVACAO', 'USUARIO']
 SEP = ' · '
-DICA_USO = 'Duplo clique num ponto para inativar ou reativar'   # ADR-081: caixa sem ponto (mUI.DicaDeUso)
+DICA_USO = 'Duplo clique num ponto: não conforme, inativar ou comentário técnico'   # ADR-085 (era ADR-081)
 
 
 def curto(i):

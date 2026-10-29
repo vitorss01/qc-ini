@@ -390,6 +390,42 @@ Private Function Campo(ByRef dados As Variant, ByVal cab As Object, ByVal r As L
     End If
 End Function
 
+' ADR-085: o COMENTARIO_TECNICO que o CalcularCQFinal publicaria para UM ID -- a mesma leitura da tabela, a mesma
+' normalizacao (NormId, com o PREFIXO_ID da CFG) e a mesma juncao " | " das linhas do ID, na ordem da tabela. Empty =
+' sem comentario. Para o comentario gravado pela janela do grafico ir a Principal - Resultados sem recalcular tudo
+' (mIntegracao.AplicarComentarioNaBase): uma regra so, aqui.
+Public Function ComentarioConsolidado(ByVal id As Variant) As Variant
+    Dim cCfg As Object, dCfg As Variant, nCfg As Long, i As Long, k As Variant, v As Variant
+    Dim cK As Object, dK As Variant, nK As Long, alvo As Variant, idn As Variant, tx As Variant, s As Variant
+    dCfg = LerTabela("tblConfigIntegracao", cCfg, nCfg)
+    For i = 1 To nCfg
+        k = Txt(Campo(dCfg, cCfg, i, "CHAVE"))
+        If Not IsEmpty(k) Then
+            If UCase$(k) = "PREFIXO_ID" Then
+                v = Campo(dCfg, cCfg, i, "VALOR")
+                If VarType(v) = vbString Then v = TrimU(v)
+                mPrefixo = UCase$(TrimU(CStr(TextFrom(v))))
+                Exit For
+            End If
+        End If
+    Next i
+    alvo = NormId(id)
+    If IsEmpty(alvo) Then Exit Function
+    dK = LerTabela("tblComentariosTecnicos", cK, nK)
+    For i = 1 To nK
+        idn = NormId(Campo(dK, cK, i, "ID_REGISTRO"))
+        If Not IsEmpty(idn) Then
+            If idn = alvo Then
+                tx = Txt(Campo(dK, cK, i, "COMENTARIO_TECNICO"))
+                If Not IsEmpty(tx) Then
+                    If IsEmpty(s) Then s = tx Else s = s & " | " & tx
+                End If
+            End If
+        End If
+    Next i
+    ComentarioConsolidado = s
+End Function
+
 ' ================================================================ o calculo
 ' Calcula a tblCQ_Final a partir do recebimento e das tabelas de entrada da propria pasta. agora = Now (manuais).
 Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant

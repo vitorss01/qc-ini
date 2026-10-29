@@ -1,50 +1,112 @@
 Option Explicit
 ' ============================================================================
-'  frmInativar -- janela "Inativar / Reativar resultado" do grafico (ADR-081/084)
+'  frmInativar -- janela "Registrar no resultado" do grafico (ADR-081/084/085)
 '
 '  Aberta pelo duplo clique (ou clique direito) num ponto do Levey-Jennings:
 '  mUI.InativarPontoUI chama Preparar e Show. A janela NAO grava nada: devolve
-'  a escolha em Confirmado, Motivo e PlotarX, e quem chamou grava, atualiza e
-'  confirma na caixa do grafico. Criada pelo instalador (instalar_frm_inativar.py:
-'  controles e propriedades; sem .frx versionado) com este codigo.
-'  ADR-084 (28/10/2026, pedido do usuario): o motivo e TEXTO LIVRE (txtMotivo,
-'  varias linhas; Enter quebra a linha) -- a lista de frases prontas saiu. O
-'  TextBox do MSForms e Unicode: acentos e simbolos (>=, sigma, delta) chegam
-'  inteiros. As quebras de linha sao mantidas; as extremidades sao limpas aqui e
-'  de novo no mIntegracao (LimparMotivo), que grava na mesma coluna MOTIVO.
+'  a escolha em Confirmado, Acao, Motivo (e PlotarX, do ADR-081), e quem chamou
+'  grava, atualiza e confirma na caixa do grafico. Criada pelo instalador
+'  (instalar_frm_inativar.py: controles e propriedades; sem .frx versionado).
+'  ADR-084: o texto e LIVRE (txtMotivo, varias linhas; Enter quebra a linha).
+'  ADR-085 (29/10/2026, pedido do usuario): acoes EXPLICITAS, uma escolha
+'  obrigatoria (nada vem marcado):
+'    ponto ativo .. optNC     = NC       marcar como NAO CONFORME (X vermelho)
+'                   optInat   = INATIVAR sai do grafico (registro preservado)
+'                   optComent = COMENTAR so o comentario tecnico
+'    X vermelho ... optNC     = REATIVAR
+'                   optInat   = TIRAR_X  o X sai do grafico (continua inativado)
+'                   optComent = COMENTAR
+'  O texto vale como comentario tecnico do ID (aba COMENTARIOS_TECNICOS) e como
+'  motivo da aba Inativar. Antes de salvar, a conferencia mostra a identificacao
+'  do resultado, a acao e o texto (OK salva; Cancelar volta para a janela).
 ' ============================================================================
 Public Confirmado As Boolean
 Public Motivo As String
 Public PlotarX As Boolean
+Public Acao As String
 Private mReativar As Boolean
+Private mEfeitoEsp As String
+Private mResumo As String
 
-' Monta a janela para um ponto: reativar = o ponto e um X vermelho (ja inativado).
-Public Sub Preparar(ByVal reativar As Boolean, ByVal titulo As String, ByVal detalhe As String)
+' Monta a janela para um ponto: reativar = o ponto e um X vermelho (ja inativado); detalhe = a identificacao do
+' resultado (do registro de origem); comentario = o comentario tecnico atual do ID (para editar).
+Public Sub Preparar(ByVal reativar As Boolean, ByVal titulo As String, ByVal detalhe As String, _
+                    Optional ByVal comentario As String = "")
     mReativar = reativar
     Confirmado = False
     Motivo = ""
     PlotarX = True
+    Acao = ""
+    mEfeitoEsp = ""
+    mResumo = titulo & vbLf & detalhe
     lblTitulo.Caption = titulo
     lblDetalhe.Caption = detalhe
+    optNC.Value = False
+    optInat.Value = False
+    optComent.Value = False
     If reativar Then
-        Me.Caption = "Reativar resultado"
-        btnOK.Caption = "Reativar"
-        lblMotivo.Caption = "Motivo da reativação (obrigatório)"
-        lblEfeito.Caption = "O resultado volta à média, ao DP e às regras de Westgard; a numeração das corridas " & _
-                            "volta a ser como era."
+        Me.Caption = "Resultado não conforme " & ChrW$(8212) & " registrar"
+        optNC.Caption = "REATIVAR " & ChrW$(8212) & " o resultado volta a ser ativo (média, DP e Westgard)"
+        optInat.Caption = "INATIVAR " & ChrW$(8212) & " tirar o X do gráfico (continua inativado; o registro fica)"
+        optComent.Caption = "Só atualizar o comentário técnico (continua não conforme)"
     Else
-        Me.Caption = "Inativar resultado"
-        btnOK.Caption = "Inativar"
-        lblMotivo.Caption = "Motivo da inativação (obrigatório)"
-        lblEfeito.Caption = "O resultado sai da média, do DP e das regras de Westgard, mas não é apagado. " & _
-                            "As corridas seguintes deste nível são renumeradas."
+        Me.Caption = "Registrar no resultado"
+        optNC.Caption = "A " & ChrW$(183) & " MARCAR COMO NÃO CONFORME " & ChrW$(8212) & " continua visível no gráfico " & _
+                        "como X vermelho"
+        optInat.Caption = "B " & ChrW$(183) & " INATIVAR " & ChrW$(8212) & " sai do gráfico; o registro original fica " & _
+                          "preservado"
+        optComent.Caption = "Só registrar um comentário técnico " & ChrW$(8212) & " o resultado continua ativo"
     End If
-    txtMotivo.Value = ""
-    chkX.Value = True
-    chkX.Visible = Not reativar
-    lblAvisoX.Caption = "Sem o X, o ponto some do gráfico e só poderá ser reativado pela aba Inativar."
-    lblAvisoX.Visible = False
+    lblAcao.Caption = "O que fazer com este resultado? (escolha uma opção)"
+    lblMotivo.Caption = "Comentário técnico " & ChrW$(8212) & " texto livre (obrigatório)"
+    txtMotivo.Value = comentario
+    lblEfeito.Caption = "Escolha uma das opções acima. Nada é gravado antes de você conferir e confirmar."
     AtualizarBotao
+End Sub
+
+' ADR-082: texto de efeito especial (manual que substitui um automatico) -- vale para a acao que ele descreve:
+' inativar/marcar como nao conforme (ponto ativo) ou reativar (X vermelho).
+Public Sub DefinirEfeitoEspecial(ByVal efeito As String)
+    mEfeitoEsp = efeito
+    MostrarEfeito
+End Sub
+
+' A acao marcada ("" = nenhuma).
+Private Function AcaoMarcada() As String
+    If optNC.Value = True Then
+        AcaoMarcada = IIf(mReativar, "REATIVAR", "NC")
+    ElseIf optInat.Value = True Then
+        AcaoMarcada = IIf(mReativar, "TIRAR_X", "INATIVAR")
+    ElseIf optComent.Value = True Then
+        AcaoMarcada = "COMENTAR"
+    End If
+End Function
+
+' O efeito de cada acao sobre o grafico e a estatistica (regras do QC_INI: o resultado inativado -- com ou sem X --
+' nao entra na media, no DP nem no Westgard; nada e apagado).
+Private Sub MostrarEfeito()
+    Dim a As String
+    a = AcaoMarcada()
+    Select Case a
+        Case "NC"
+            lblEfeito.Caption = "Fica no gráfico como X vermelho e sai da média, do DP e do Westgard. O valor original " & _
+                                "não muda; as corridas seguintes deste nível são renumeradas."
+        Case "INATIVAR"
+            lblEfeito.Caption = "Some do gráfico e sai da média, do DP e do Westgard. Nada é apagado: ID, valor, data, " & _
+                                "motivo e trilha ficam. Para reativar depois: aba Inativar."
+        Case "REATIVAR"
+            lblEfeito.Caption = "Volta à média, ao DP e às regras de Westgard; a numeração das corridas volta a ser " & _
+                                "como era. O comentário técnico fica no histórico."
+        Case "TIRAR_X"
+            lblEfeito.Caption = "O X sai do gráfico; o resultado continua inativado (fora da média, do DP e do " & _
+                                "Westgard). Para reativar depois: aba Inativar."
+        Case "COMENTAR"
+            lblEfeito.Caption = "Nada muda no gráfico nem na estatística: o comentário fica ligado a este ID (aba " & _
+                                "COMENTARIOS_TECNICOS e Principal - Resultados)."
+        Case Else
+            lblEfeito.Caption = "Escolha uma das opções acima. Nada é gravado antes de você conferir e confirmar."
+    End Select
+    If Len(mEfeitoEsp) > 0 And (a = "NC" Or a = "INATIVAR" Or a = "REATIVAR") Then lblEfeito.Caption = mEfeitoEsp
 End Sub
 
 ' O texto digitado sem espacos, tabulacoes e linhas em branco nas extremidades (as quebras do meio ficam).
@@ -62,31 +124,62 @@ Private Function MotivoDigitado() As String
     MotivoDigitado = s
 End Function
 
-' Botao Inativar/Reativar so habilita com o motivo escrito.
+' Salvar so habilita com uma acao escolhida e o texto escrito.
 Private Sub AtualizarBotao()
-    btnOK.Enabled = (Len(MotivoDigitado()) > 0)
+    btnOK.Enabled = (Len(AcaoMarcada()) > 0 And Len(MotivoDigitado()) > 0)
 End Sub
 
 Private Sub txtMotivo_Change()
     AtualizarBotao
 End Sub
 
-' Desmarcar o X: avisa que o ponto some do grafico e so volta pela aba Inativar (o duplo clique precisa do ponto).
-Private Sub chkX_Change()
-    lblAvisoX.Visible = (chkX.Visible And chkX.Value = False)
+Private Sub optNC_Click()
+    MostrarEfeito
+    AtualizarBotao
 End Sub
 
+Private Sub optInat_Click()
+    MostrarEfeito
+    AtualizarBotao
+End Sub
+
+Private Sub optComent_Click()
+    MostrarEfeito
+    AtualizarBotao
+End Sub
+
+' Nome da acao para a conferencia.
+Private Function NomeAcao(ByVal a As String) As String
+    Select Case a
+        Case "NC": NomeAcao = "MARCAR COMO NÃO CONFORME (X vermelho no gráfico)"
+        Case "INATIVAR": NomeAcao = "INATIVAR (sai do gráfico; registro preservado)"
+        Case "REATIVAR": NomeAcao = "REATIVAR (volta a ser resultado ativo)"
+        Case "TIRAR_X": NomeAcao = "TIRAR O X DO GRÁFICO (continua inativado)"
+        Case "COMENTAR": NomeAcao = "SÓ REGISTRAR O COMENTÁRIO TÉCNICO"
+    End Select
+End Function
+
+' Conferencia antes de gravar: a identificacao do resultado, a acao e o texto. OK = grava; Cancelar = volta para a
+' janela (nada foi gravado).
 Private Sub btnOK_Click()
-    Dim m As String
+    Dim m As String, a As String, conf As String
+    a = AcaoMarcada()
+    If Len(a) = 0 Then
+        MsgBox "Escolha uma das opções antes de salvar.", vbExclamation, Me.Caption
+        Exit Sub
+    End If
     m = MotivoDigitado()
     If Len(m) = 0 Then
-        MsgBox "Escreva o motivo antes de confirmar.", vbExclamation, Me.Caption
+        MsgBox "Escreva o comentário técnico antes de salvar.", vbExclamation, Me.Caption
         txtMotivo.SetFocus
         Exit Sub
     End If
+    conf = "Confira antes de salvar:" & vbLf & vbLf & mResumo & vbLf & vbLf & "AÇÃO: " & NomeAcao(a) & vbLf & vbLf & _
+           "COMENTÁRIO TÉCNICO:" & vbLf & m
+    If MsgBox(conf, vbOKCancel + vbQuestion + vbDefaultButton1, "Conferir e salvar") <> vbOK Then Exit Sub
     Motivo = m
-    If chkX.Value = True Then PlotarX = True Else PlotarX = False
-    If mReativar Then PlotarX = True
+    Acao = a
+    PlotarX = (a = "NC" Or a = "REATIVAR")
     Confirmado = True
     Me.Hide
 End Sub

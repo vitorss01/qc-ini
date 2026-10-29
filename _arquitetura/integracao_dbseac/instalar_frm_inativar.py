@@ -27,45 +27,51 @@ FONTE = os.path.join(AQUI, 'src', 'comum', 'frmInativar.frm.txt')
 VBEXT_CT_MSFORM = 3
 FONTE_UI = 'Segoe UI'
 CINZA = 0x606060                       # BGR = RGB (cinza neutro)
-LARANJA = 0x0050C0                     # BGR: RGB(192, 80, 0) -- aviso do X desmarcado
 
-# Janela <= 380 x 300 pt, nao redimensionavel (UserForm nao tem borda de redimensionar). Medidas em multiplos de
-# 3 pt (4 px a 96 dpi): o MSForms arredonda ao pixel, e a conferencia de idempotencia compara o que leu de volta.
-FORM = {'Caption': 'Inativar resultado', 'Width': 372, 'Height': 297, 'StartUpPosition': 1}   # 1 = centro do Excel
+# Medidas em multiplos de 3 pt (4 px a 96 dpi): o MSForms arredonda ao pixel, e a conferencia de idempotencia compara
+# o que leu de volta. ADR-085: janela maior (ficha do resultado + 3 acoes + comentario), ainda nao redimensionavel.
+FORM = {'Caption': 'Registrar no resultado', 'Width': 438, 'Height': 420, 'StartUpPosition': 1}   # 1 = centro do Excel
 
-# (ProgID, nome, propriedades). 'Font.X' = propriedade da fonte do controle. TabIndex: motivo primeiro.
+# (ProgID, nome, propriedades). 'Font.X' = propriedade da fonte do controle.
 # ADR-084 (28/10/2026): cboMotivo + txtComplemento deram lugar a UM campo de texto livre (txtMotivo).
+# ADR-085 (29/10/2026): chkX + lblAvisoX deram lugar a TRES acoes explicitas (optNC / optInat / optComent, mesmo
+# GroupName, nenhuma marcada de inicio); lblDetalhe virou a ficha do resultado (4 linhas) e lblAcao o titulo das acoes.
 CONTROLES = [
     ('Forms.Label.1', 'lblTitulo', {
-        'Left': 12, 'Top': 9, 'Width': 342, 'Height': 21, 'Caption': 'Inativar o resultado',
+        'Left': 12, 'Top': 9, 'Width': 408, 'Height': 21, 'Caption': 'Resultado',
         'Font.Name': FONTE_UI, 'Font.Size': 11, 'Font.Bold': True, 'WordWrap': False}),
     ('Forms.Label.1', 'lblDetalhe', {
-        'Left': 12, 'Top': 33, 'Width': 342, 'Height': 27, 'Caption': '',
+        'Left': 12, 'Top': 33, 'Width': 408, 'Height': 63, 'Caption': '',
         'Font.Name': FONTE_UI, 'Font.Size': 9, 'WordWrap': True}),
+    ('Forms.Label.1', 'lblAcao', {
+        'Left': 12, 'Top': 102, 'Width': 408, 'Height': 15, 'Caption': 'O que fazer com este resultado?',
+        'Font.Name': FONTE_UI, 'Font.Size': 9, 'Font.Bold': True}),
+    ('Forms.OptionButton.1', 'optNC', {
+        'Left': 18, 'Top': 120, 'Width': 402, 'Height': 27, 'Caption': 'A', 'GroupName': 'acao', 'WordWrap': True,
+        'Font.Name': FONTE_UI, 'Font.Size': 9, 'TabIndex': 0}),
+    ('Forms.OptionButton.1', 'optInat', {
+        'Left': 18, 'Top': 150, 'Width': 402, 'Height': 27, 'Caption': 'B', 'GroupName': 'acao', 'WordWrap': True,
+        'Font.Name': FONTE_UI, 'Font.Size': 9, 'TabIndex': 1}),
+    ('Forms.OptionButton.1', 'optComent', {
+        'Left': 18, 'Top': 180, 'Width': 402, 'Height': 18, 'Caption': 'C', 'GroupName': 'acao', 'WordWrap': True,
+        'Font.Name': FONTE_UI, 'Font.Size': 9, 'TabIndex': 2}),
+    ('Forms.Label.1', 'lblEfeito', {
+        'Left': 12, 'Top': 204, 'Width': 408, 'Height': 30, 'Caption': '', 'WordWrap': True, 'ForeColor': CINZA,
+        'Font.Name': FONTE_UI, 'Font.Size': 8}),
     ('Forms.Label.1', 'lblMotivo', {
-        'Left': 12, 'Top': 63, 'Width': 342, 'Height': 15, 'Caption': 'Motivo da inativação (obrigatório)',
+        'Left': 12, 'Top': 240, 'Width': 408, 'Height': 15, 'Caption': 'Comentário técnico (obrigatório)',
         'Font.Name': FONTE_UI, 'Font.Size': 9, 'Font.Bold': True}),
     # ADR-084: texto livre, varias linhas (Enter quebra a linha; Tab vai ao proximo controle). Sem lista de frases.
     ('Forms.TextBox.1', 'txtMotivo', {
-        'Left': 12, 'Top': 78, 'Width': 342, 'Height': 75, 'MultiLine': True, 'WordWrap': True,
+        'Left': 12, 'Top': 255, 'Width': 408, 'Height': 90, 'MultiLine': True, 'WordWrap': True,
         'EnterKeyBehavior': True, 'TabKeyBehavior': False, 'ScrollBars': 2, 'MaxLength': 1000,
-        'Font.Name': FONTE_UI, 'Font.Size': 9, 'TabIndex': 0}),
-    ('Forms.CheckBox.1', 'chkX', {
-        'Left': 12, 'Top': 159, 'Width': 342, 'Height': 18, 'Caption': 'Mostrar como X vermelho no gráfico',
-        'Value': True, 'Font.Name': FONTE_UI, 'Font.Size': 9, 'TabIndex': 1}),
-    # ADR-081 (UX): aparece so com a caixa do X desmarcada (chkX_Change)
-    ('Forms.Label.1', 'lblAvisoX', {
-        'Left': 12, 'Top': 177, 'Width': 342, 'Height': 24, 'Caption': '', 'WordWrap': True, 'ForeColor': LARANJA,
-        'Visible': False, 'Font.Name': FONTE_UI, 'Font.Size': 8, 'Font.Bold': True}),
-    ('Forms.Label.1', 'lblEfeito', {
-        'Left': 12, 'Top': 204, 'Width': 342, 'Height': 27, 'Caption': '', 'WordWrap': True, 'ForeColor': CINZA,
-        'Font.Name': FONTE_UI, 'Font.Size': 8}),
-    ('Forms.CommandButton.1', 'btnOK', {
-        'Left': 162, 'Top': 237, 'Width': 93, 'Height': 27, 'Caption': 'Inativar', 'Default': False,
-        'Font.Name': FONTE_UI, 'Font.Size': 9, 'Font.Bold': True, 'TabIndex': 2}),
-    ('Forms.CommandButton.1', 'btnCancelar', {
-        'Left': 261, 'Top': 237, 'Width': 93, 'Height': 27, 'Caption': 'Cancelar', 'Cancel': True,   # Esc
         'Font.Name': FONTE_UI, 'Font.Size': 9, 'TabIndex': 3}),
+    ('Forms.CommandButton.1', 'btnOK', {
+        'Left': 231, 'Top': 354, 'Width': 93, 'Height': 27, 'Caption': 'Salvar', 'Default': False,
+        'Font.Name': FONTE_UI, 'Font.Size': 9, 'Font.Bold': True, 'TabIndex': 4}),
+    ('Forms.CommandButton.1', 'btnCancelar', {
+        'Left': 327, 'Top': 354, 'Width': 93, 'Height': 27, 'Caption': 'Cancelar', 'Cancel': True,   # Esc
+        'Font.Name': FONTE_UI, 'Font.Size': 9, 'TabIndex': 5}),
 ]
 NUMERICAS = {'Left', 'Top', 'Width', 'Height', 'Font.Size'}
 

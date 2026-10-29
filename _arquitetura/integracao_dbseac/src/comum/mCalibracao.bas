@@ -15,6 +15,13 @@ Option Explicit
 '       do resultado, F "Sim", H usuario da sessao, J status, L equipamento;
 '    4. registra no Audit_Log (CALIBRACAO_REGISTRADA / CALIBRACAO_RECUSADA).
 '
+'  ADR-085 (29/10/2026): a linha tambem mostra o valor do resultado (J) e pode ser
+'  ASSINADA -- duplo clique na coluna I (Assinatura): a mesma assinatura da
+'  Liberacao (mSeguranca.AssinarCom: login e senha proprios conferidos, identidade
+'  do cadastro, imagem), com o texto da identidade em H terminando em "ID <id>".
+'  A assinatura fica presa ao ID: sem ID nao assina; trocar ou apagar o ID de uma
+'  linha assinada ANULA a assinatura (Audit_Log ASSINATURA_ANULADA).
+'
 '  O GRAFICO nao muda de regra: o icone "Calibracao" continua na MEDIA DO LOTE do
 '  nivel (Calc AX1/AZ1/BT1...), nas corridas do mesmo dia e analito com
 '  "Foi calibrado? = Sim" -- a mesma regra da marcacao manual. O ADR-084 so
@@ -30,6 +37,7 @@ Private Const C_NIVEL As Long = 4
 Private Const C_CORRIDA As Long = 5
 Private Const C_CALIB As Long = 6
 Private Const C_RESP As Long = 8
+Private Const C_ASSIN As Long = 9
 Private Const C_STATUS As Long = 10
 Private Const C_ID As Long = 11
 Private Const C_EQUIP As Long = 12
@@ -46,7 +54,7 @@ Public Function RegistrarCalibracaoPorId(ByVal id As String, Optional ByVal linh
         Auditar "CALIBRACAO_RECUSADA", "ID informado: " & Left$(Trim$(CStr(id)), 40) & " | " & Mid$(d, 6)
         Exit Function
     End If
-    p = Split(d, "|")                        ' OK|ID|analito|nivel|equip|lote|RUN|data|estado
+    p = Split(d, "|")                        ' OK|ID|analito|nivel|equip|lote|RUN|data|estado|resultado
     Set ws = ThisWorkbook.Worksheets(ABA)
     dup = LinhaDoId(ws, CStr(p(1)), linha)
     If dup > 0 Then
@@ -71,8 +79,15 @@ Public Function RegistrarCalibracaoPorId(ByVal id As String, Optional ByVal linh
     ws.Cells(r, C_NIVEL).Value = "Todos"
     ws.Cells(r, C_CORRIDA).Value = CStr(p(6))
     ws.Cells(r, C_CALIB).Value = "Sim"
-    ws.Cells(r, C_RESP).Value = mAuditoria.UsuarioSistema()
-    ws.Cells(r, C_STATUS).Value = "Calibração registrada pelo ID"
+    ' ADR-085: linha ja assinada para este mesmo ID (o ID foi redigitado igual): a identidade da assinatura fica
+    If InStr(1, CStr(ws.Cells(r, C_RESP).Value), " " & ChrW$(183) & " ID ", vbBinaryCompare) = 0 Then _
+        ws.Cells(r, C_RESP).Value = mAuditoria.UsuarioSistema()
+    If UBound(p) >= 9 Then                   ' ADR-085: o valor do resultado do ID, sem redigitar
+        ws.Cells(r, C_STATUS).Value = "Calibração registrada pelo ID " & ChrW$(183) & " N" & p(3) & " = " & p(9) & _
+                                      " " & ChrW$(183) & " lote " & p(5)
+    Else
+        ws.Cells(r, C_STATUS).Value = "Calibração registrada pelo ID"
+    End If
     ws.Cells(r, C_ID).Value = CStr(p(1))
     ws.Cells(r, C_EQUIP).Value = CStr(p(4))
     mSeguranca.RestaurarProtecao ws, prot
@@ -98,6 +113,7 @@ Public Sub IdDigitado(ByVal Target As Range)
     Set area = Intersect(Target, Target.Worksheet.Range(Target.Worksheet.Cells(R0, C_ID), Target.Worksheet.Cells(R1, C_ID)))
     If area Is Nothing Then Exit Sub
     For Each cel In area.Cells
+        AnularAssinaturaSeOutroId cel.Worksheet, cel.Row, CStr(cel.Value)     ' ADR-085: assinatura presa ao ID
         If Len(Trim$(CStr(cel.Value))) > 0 Then
             r = RegistrarCalibracaoPorId(CStr(cel.Value), cel.Row)
             If Left$(r, 3) = "OK|" Then
@@ -124,6 +140,86 @@ Public Sub IdDigitado(ByVal Target As Range)
     End If
 fim:
     Application.EnableEvents = True
+End Sub
+
+' ADR-085: assina a linha da aba Registros com login e senha (nucleo sem dialogo -- o QA chama este). Exige o ID do
+' resultado na coluna K e que ele exista nos resultados (a mesma busca exata do inativar). A assinatura e a da
+' Liberacao: AssinarCom confere a credencial, grava "Assinado eletronicamente" (ou a rubrica do usuario local) em I e a
+' identidade do cadastro + data/hora + "ID <id>" em H, desenha a imagem e registra ASSINATURA_REGISTRO no Audit_Log.
+' Devolve "OK|<linha>" ou "ERRO|<mensagem>" (nada gravado no ERRO).
+Public Function AssinarRegistroCom(ByVal linha As Long, ByVal login As String, ByVal senha As String) As String
+    Dim ws As Worksheet, d As String, p As Variant, res As String, prot As Boolean, ev As Boolean
+    On Error GoTo falha
+    If linha < R0 Or linha > R1 Then AssinarRegistroCom = "ERRO|Linha fora da tabela de registros.": Exit Function
+    Set ws = ThisWorkbook.Worksheets(ABA)
+    If Len(Trim$(CStr(ws.Cells(linha, C_ID).Value))) = 0 Then
+        AssinarRegistroCom = "ERRO|Informe o ID do resultado na coluna K antes de assinar: a assinatura fica ligada a ele."
+        Exit Function
+    End If
+    d = mIntegracao.DadosDoId(CStr(ws.Cells(linha, C_ID).Value))
+    If Left$(d, 3) <> "OK|" Then AssinarRegistroCom = d: Exit Function
+    p = Split(d, "|")
+    ev = Application.EnableEvents
+    Application.EnableEvents = False
+    prot = mSeguranca.LiberarEscrita(ws)
+    res = mSeguranca.AssinarCom(ws.Cells(linha, C_ASSIN), login, senha, "REGISTRO", ws.Cells(linha, C_RESP), _
+                                "ID " & CStr(p(1)))
+    mSeguranca.RestaurarProtecao ws, prot
+    Application.EnableEvents = ev
+    If res <> "OK" Then AssinarRegistroCom = "ERRO|" & res: Exit Function
+    AssinarRegistroCom = "OK|" & linha
+    Exit Function
+falha:
+    On Error Resume Next
+    If Not ws Is Nothing Then mSeguranca.RestaurarProtecao ws, prot
+    If ev Then Application.EnableEvents = True
+    AssinarRegistroCom = "ERRO|Não foi possível assinar (detalhe: " & Err.Description & ")"
+End Function
+
+' Duplo clique na coluna I da aba Registros: pede login e senha (a mesma janela da Liberacao) e assina a linha.
+Public Sub AssinarRegistro(ByVal cel As Range)
+    Dim u As String, s As String, r As String
+    On Error Resume Next
+    If cel.Row < R0 Or cel.Row > R1 Then Exit Sub
+    If Len(Trim$(CStr(cel.Worksheet.Cells(cel.Row, C_ID).Value))) = 0 Then
+        MsgBox "Informe o ID do resultado na coluna K antes de assinar: a assinatura fica ligada a ele.", _
+               vbExclamation, "Assinatura do registro"
+        Exit Sub
+    End If
+    frmAssinar.lblTipo.Caption = "Assinatura eletrônica - Registro (ID " & _
+                                 mUI.IdCurto(mIntegracao.NormalizarId(cel.Worksheet.Cells(cel.Row, C_ID).Value)) & ")"
+    frmAssinar.txtLogin.Value = ""
+    frmAssinar.txtSenha.Value = ""
+    frmAssinar.Show
+    If Not frmAssinar.Confirmado Then Unload frmAssinar: Exit Sub
+    u = Trim$(frmAssinar.txtLogin.Value): s = frmAssinar.txtSenha.Value
+    Unload frmAssinar
+    r = AssinarRegistroCom(cel.Row, u, s)
+    s = ""
+    If Left$(r, 3) <> "OK|" Then MsgBox Mid$(r, 6), vbExclamation, "Assinatura do registro"
+End Sub
+
+' ADR-085: a linha estava assinada para um ID e o ID da coluna K mudou (ou foi apagado): a assinatura NAO passa para o
+' novo ID -- I e H sao limpos, a imagem sai e o Audit_Log registra ASSINATURA_ANULADA (com o ID antigo e o novo).
+Private Sub AnularAssinaturaSeOutroId(ByVal ws As Worksheet, ByVal r As Long, ByVal idNovo As String)
+    Dim txt As String, p As Long, idAss As String, idN As String, prot As Boolean, ev As Boolean
+    On Error Resume Next
+    txt = CStr(ws.Cells(r, C_RESP).Value)
+    p = InStrRev(txt, " " & ChrW$(183) & " ID ")
+    If p = 0 Then Exit Sub                               ' linha nao assinada pelo ADR-085
+    idAss = Trim$(Mid$(txt, p + 6))
+    idN = mIntegracao.NormalizarId(idNovo)
+    If Len(idN) > 0 And idN = mIntegracao.NormalizarId(idAss) Then Exit Sub
+    ev = Application.EnableEvents
+    Application.EnableEvents = False
+    prot = mSeguranca.LiberarEscrita(ws)
+    ws.Cells(r, C_ASSIN).ClearContents
+    ws.Cells(r, C_RESP).ClearContents
+    mSeguranca.RestaurarProtecao ws, prot
+    Application.EnableEvents = ev
+    mSeguranca.RedesenharAssinaturas ws
+    Auditar "ASSINATURA_ANULADA", "aba Registros linha " & r & " | assinatura era do ID " & idAss & _
+                                  " | ID agora: " & IIf(Len(idN) > 0, idN, "(apagado)") & " | " & Left$(txt, 200)
 End Sub
 
 ' Linha (R0..R1) que ja tem este ID na coluna K, fora da linha "exceto"; 0 = nenhuma.

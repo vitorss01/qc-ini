@@ -472,7 +472,11 @@ End Sub
 ' continua com a rubrica da coluna E da aba Usuarios. Sem imagem, a liberacao segue com a identificacao textual.
 ' "Assinatura eletronica" = autenticacao por login e senha + registro rastreavel; nao e assinatura digital
 ' qualificada (ICP-Brasil).
-Public Function AssinarCom(ByVal tcell As Range, ByVal login As String, ByVal senha As String, ByVal tipo As String) As String
+' ADR-085: a mesma assinatura serve a aba Registros -- celTexto = onde vai o texto da identidade (padrao: a celula
+' ao lado, como na Liberacao) e chave = o que a assinatura identifica no Audit_Log e no texto (o ID do resultado;
+' padrao: "RUN <coluna A>", como na Liberacao).
+Public Function AssinarCom(ByVal tcell As Range, ByVal login As String, ByVal senha As String, ByVal tipo As String, _
+                           Optional ByVal celTexto As Range = Nothing, Optional ByVal chave As String = "") As String
     Dim r As Long, papel As String, ws As Worksheet, nome As String, hash As String, cargo As String
     Dim conselho As String, assin As String, origem As String, situacao As String, ident As String, quando As String
     Dim imagem As String
@@ -508,14 +512,20 @@ Public Function AssinarCom(ByVal tcell As Range, ByVal login As String, ByVal se
         CarimbarTexto tcell
         If Len(imagem) = 0 Then imagem = IIf(Len(assin) > 0, "imagem nao encontrada: " & assin, "sem imagem cadastrada")
     End If
-    tcell.Offset(0, 1).Value = ident & " · " & quando
-    tcell.Offset(0, 1).WrapText = True
+    If celTexto Is Nothing Then Set celTexto = tcell.Offset(0, 1)
+    If Len(chave) > 0 Then
+        celTexto.Value = ident & " · " & quando & " · " & chave
+    Else
+        celTexto.Value = ident & " · " & quando
+    End If
+    celTexto.WrapText = True
     RedesenharAssinaturas tcell.Worksheet
     ' quem assinou pode nao ser quem esta logado (assinatura pede login e senha
     ' proprios): o signatario vai no detalhe, a sessao fica no usuario do evento
     AuditarSeg "ASSINATURA_" & UCase$(tipo), "", papel, "signatario: " & ident & " | " & quando & " | " & _
-               tcell.Worksheet.Name & "!" & tcell.Address(False, False) & " | RUN " & _
-               CStr(tcell.Worksheet.Cells(tcell.Row, 1).Value) & " | cadastro " & origem & " | assinatura: " & imagem
+               tcell.Worksheet.Name & "!" & tcell.Address(False, False) & " | " & _
+               IIf(Len(chave) > 0, chave, "RUN " & CStr(tcell.Worksheet.Cells(tcell.Row, 1).Value)) & _
+               " | cadastro " & origem & " | assinatura: " & imagem
     AssinarCom = "OK"
 End Function
 
@@ -545,7 +555,7 @@ End Sub
 Public Sub RedesenharAssinaturas(Optional ByVal ws As Worksheet = Nothing)
     Dim sh As Shape, r As Long, c As Variant, txt As String, lg As String, p As Long, q As Long, arq As String
     Dim cel As Range, prot As Boolean, nm As String, cg As String, pp As String, hs As String, asn As String
-    Dim cs As String, st As String, fig As Shape, escala As Double
+    Dim cs As String, st As String, fig As Shape, escala As Double, pares As Variant
     On Error Resume Next
     If ws Is Nothing Then Set ws = ThisWorkbook.Worksheets("Liberação")
     If ws Is Nothing Then Exit Sub
@@ -553,18 +563,20 @@ Public Sub RedesenharAssinaturas(Optional ByVal ws As Worksheet = Nothing)
     For Each sh In ws.Shapes
         If Left$(sh.Name, 8) = "qcAssin_" Then sh.Delete
     Next sh
+    ' ADR-085: na aba Registros a imagem fica em I (Assinatura) e o texto em H (Responsavel)
+    If ws.Name = "Registros" Then pares = Array(Array(9, 8)) Else pares = Array(Array(3, 4), Array(5, 6))
     For r = 4 To 203
-        For Each c In Array(3, 5)                      ' C = INICIADO, E = FINALIZADO; o texto fica em D / F
-            txt = CStr(ws.Cells(r, c + 1).Value)
+        For Each c In pares                            ' Liberacao: C = INICIADO, E = FINALIZADO; texto em D / F
+            txt = CStr(ws.Cells(r, c(1)).Value)
             p = InStrRev(txt, "login ")
-            If p > 0 And Left$(CStr(ws.Cells(r, c).Value), 1) = ChrW$(10003) Then
+            If p > 0 And Left$(CStr(ws.Cells(r, c(0)).Value), 1) = ChrW$(10003) Then
                 lg = Mid$(txt, p + 6)
                 q = InStr(lg, " ")
                 If q > 0 Then lg = Left$(lg, q - 1)
                 arq = ""
                 If mUsuariosCentral.Buscar(lg, nm, cg, pp, hs, asn, cs, st) Then arq = mUsuariosCentral.ArquivoAssinatura(asn)
                 If Len(arq) > 0 Then
-                    Set cel = ws.Cells(r, c)
+                    Set cel = ws.Cells(r, c(0))
                     Set fig = ws.Shapes.AddPicture(arq, False, True, cel.Left + 1, cel.Top + 1, -1, -1)
                     If Not fig Is Nothing Then
                         fig.LockAspectRatio = msoTrue

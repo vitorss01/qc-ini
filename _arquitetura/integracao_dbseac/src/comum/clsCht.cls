@@ -6,10 +6,12 @@ Option Explicit
 '  grafico = nivel). Ao passar o mouse ou clicar num ponto, a caixa "tip" no
 '  canto do grafico mostra de QUEM e o ponto -- ID (o numero que se digita na
 '  aba Inativar), RUN real, data/hora e valor --, texto montado por
-'  mUI.DicaPonto a partir do Eng_Saida (o que o motor publicou). Duplo clique
-'  ou clique direito num ponto: mUI.InativarPeloGrafico (ADR-081: janela
-'  Inativar/Reativar, grava e ja atualiza o grafico; a confirmacao aparece
-'  nesta mesma caixa por alguns segundos -- mUI.AvisoGrafico).
+'  mUI.DicaPonto a partir do Eng_Saida (o que o motor publicou); ADR-085: no
+'  ponto com violacao, uma 2a linha com as regras de Westgard (DicaCompleta).
+'  Duplo clique ou clique direito num ponto: mUI.CliqueNoGrafico (ADR-085:
+'  janela de registrar -- nao conforme, inativar ou comentario --, grava e ja
+'  atualiza o grafico; a confirmacao aparece nesta mesma caixa por alguns
+'  segundos). O Excel nunca abre "Formatar" nem o menu de contexto no grafico.
 '  Ate o ADR-069 esta classe so existia dentro dos .xlsm e lia a aba Calc:
 '  mostrava "RUN <indice do ponto>", data e valor, sem o ID.
 ' ============================================================================
@@ -31,23 +33,23 @@ Private Sub c_MouseDown(ByVal Button As Long, ByVal Shift As Long, ByVal x As Lo
     mX = x: mY = y
 End Sub
 
+' ADR-085 (29/10/2026, pedido do usuario): o duplo clique em QUALQUER lugar do grafico do Painel nunca abre o painel
+' "Formatar" do Excel (eixo, serie, area, legenda) -- Cancel = True e a 1a instrucao, antes de qualquer conferencia.
+' Num ponto de resultado: a janela de registrar (nao conforme / inativar / comentario). Fora dele: so a dica de uso.
 Private Sub c_BeforeDoubleClick(ByVal ElementID As Long, ByVal Arg1 As Long, ByVal Arg2 As Long, Cancel As Boolean)
+    Cancel = True
     On Error Resume Next                   ' evento de grafico: erro nunca abre o depurador
-    If ElementID <> xlSeries Or Arg2 < 1 Then Exit Sub
-    Cancel = True                          ' nada de painel "Formatar serie"
-    mUI.InativarPeloGrafico Nivel, Arg1, Arg2
+    mUI.CliqueNoGrafico Nivel, ElementID, Arg1, Arg2
 End Sub
 
-' ADR-081: clique direito num PONTO DE DADOS = a mesma janela do duplo clique (no lugar do menu de contexto).
-' Fora de um resultado (eixo, legenda, linha de limite, area vazia) o menu do Excel continua.
+' ADR-081/085: clique direito = o mesmo do duplo clique. O menu de contexto do grafico (Formatar, Alterar tipo,
+' Selecionar dados...) nunca abre no Painel: so a janela de registrar, num ponto de resultado.
 Private Sub c_BeforeRightClick(Cancel As Boolean)
     Dim eid As Long, a1 As Long, a2 As Long
+    Cancel = True
     On Error Resume Next
     c.GetChartElement mX, mY, eid, a1, a2
-    If eid <> xlSeries Or a2 < 1 Then Exit Sub
-    If Left$(mIntegracao.DadosDoPonto(Nivel, a1, a2), 3) <> "OK|" Then Exit Sub
-    Cancel = True
-    mUI.InativarPeloGrafico Nivel, a1, a2
+    mUI.CliqueNoGrafico Nivel, eid, a1, a2
 End Sub
 
 Private Sub Apontar(ByVal x As Long, ByVal y As Long, ByVal sempre As Boolean)
@@ -64,7 +66,7 @@ Private Sub Apontar(ByVal x As Long, ByVal y As Long, ByVal sempre As Boolean)
     End If
     If chave = mUltimo And Not sempre Then Exit Sub
     mUltimo = chave
-    If eid = xlSeries And a2 >= 1 Then msg = mUI.DicaPonto(Nivel, a1, a2)
+    If eid = xlSeries And a2 >= 1 Then msg = mUI.DicaCompleta(Nivel, a1, a2)   ' ADR-085: + regras de Westgard
     Mostrar msg
 End Sub
 

@@ -1002,7 +1002,8 @@ End Function
 
 ' ADR-084: o resultado de um ID, para a calibracao pela aba Registros (mCalibracao). Busca EXATA pelo ID normalizado
 ' (a mesma do inativar: LinhaCQ), nunca aproximada. Devolve, separado por "|":
-'   "OK|<ID>|<analito>|<nivel>|<equipamento>|<lote>|<RUN>|<data/hora (numero de serie)>|<estado>"
+'   "OK|<ID>|<analito>|<nivel>|<equipamento>|<lote>|<RUN>|<data/hora (numero de serie)>|<estado>|<resultado>"
+'   (ADR-085: o resultado no fim, para a aba Registros mostrar o valor do ID)
 ' ou "ERRO|<mensagem para o usuario>". Nunca levanta erro.
 Public Function DadosDoId(ByVal id As String) As String
     Dim lo As ListObject, rq As Long, idN As String, dh As Variant, pre As String
@@ -1028,7 +1029,7 @@ Public Function DadosDoId(ByVal id As String) As String
     DadosDoId = "OK|" & idN & "|" & Trim$(CStr(ValorCQ(lo, rq, "ANALITO"))) & "|" & CStr(ValorCQ(lo, rq, "NIVEL")) & _
                 "|" & Trim$(CStr(ValorCQ(lo, rq, "EQUIPAMENTO"))) & "|" & Trim$(CStr(ValorCQ(lo, rq, "LOTE"))) & _
                 "|" & CStr(ValorCQ(lo, rq, "RUN")) & "|" & CStr(CDbl(CDate(dh))) & "|" & _
-                Trim$(CStr(ValorCQ(lo, rq, "STATUS_ANALITICO")))
+                Trim$(CStr(ValorCQ(lo, rq, "STATUS_ANALITICO"))) & "|" & CStr(ValorCQ(lo, rq, "RESULTADO"))
     Exit Function
 falha:
     DadosDoId = "ERRO|" & TXT_FALHA & " (detalhe: " & Err.Description & ")"
@@ -1254,6 +1255,252 @@ falha:
     If Not ws Is Nothing Then RestaurarProtecao ws, prot
     If ev Then Application.EnableEvents = True
     ReativarPorId = "ERRO|" & TXT_FALHA & " (detalhe: " & sE & ")"
+End Function
+
+' ============================================================================
+'  COMENTARIO TECNICO PELO GRAFICO -- fonte unica (ADR-085)
+' ============================================================================
+' A aba COMENTARIOS_TECNICOS (tblComentariosTecnicos) e a UNICA fonte dos comentarios tecnicos: a Principal -
+' Resultados (COMENTARIO_TECNICO, TEM_JUSTIFICATIVA, GOVERNANCA) le dela no ATUALIZAR (mEtlCQ e a reserva DB_CQ_FINAL
+' juntam as linhas do ID com " | "). Pela janela do grafico cada ID tem UMA linha: a 1a com o ID e atualizada, nunca
+' uma linha nova para o mesmo ID. ANALITO e NIVEL vem do registro de origem (tblCQ_Final, pelo ID); DATA e USUARIO =
+' agora e a sessao; INATIVADO = SIM/NAO pela acao. Trilha no Audit_Log encadeado: COMENTARIO_TECNICO_REGISTRADO, ou
+' COMENTARIO_TECNICO_ALTERADO com o texto, a data e o autor anteriores -- a celula guarda o atual, o historico fica
+' na trilha. Nada aqui abre dialogo nem atualiza o grafico (quem chama decide).
+
+' Grava (ou atualiza) o comentario do ID. texto = "" -> so a coluna INATIVADO muda (reativacao) e so se o ID ja tiver
+' linha ("OK|0|SEM_LINHA|" quando nao tem). linha/antes (ByRef): a linha tocada e os valores dela ANTES, para o
+' DesfazerComentario. Devolve "OK|<linha>|NOVO|", "OK|<linha>|ALTERADO|<texto anterior>", "OK|<linha>|IGUAL|" ou
+' "ERRO|<mensagem>" (nada gravado).
+Public Function GravarComentarioTecnico(ByVal id As String, ByVal texto As String, ByVal inativado As String, _
+                                        Optional ByRef linha As Long, Optional ByRef antes As Variant) As String
+    Dim lo As ListObject, loQ As ListObject, ws As Worksheet, prot As Boolean, ev As Boolean, idN As String
+    Dim rq As Long, r As Long, livre As Long, ant As String, situacao As String, sE As String
+    Dim dAnt As String, uAnt As String, est As String, mexeu As Boolean
+    On Error GoTo falha
+    linha = 0: antes = Empty
+    idN = NormalizarId(id)
+    texto = LimparMotivo(texto)
+    If Len(idN) = 0 Then GravarComentarioTecnico = "ERRO|Informe o ID do resultado.": Exit Function
+    Set loQ = AcharTabela(FONTE_CQ)
+    rq = LinhaCQ(loQ, idN)
+    If rq = 0 Then GravarComentarioTecnico = "ERRO|" & TextoIdNaoEncontrado(idN): Exit Function
+    Set lo = AcharTabela(TB_COMENT)
+    If lo Is Nothing Then
+        GravarComentarioTecnico = "ERRO|A aba COMENTARIOS_TECNICOS não foi encontrada. Nada foi alterado."
+        Exit Function
+    End If
+    Set ws = lo.Parent
+    r = LinhaComent(lo, idN, livre)
+    If Len(texto) = 0 And r = 0 Then GravarComentarioTecnico = "OK|0|SEM_LINHA|": Exit Function
+    ev = Application.EnableEvents
+    Application.EnableEvents = False
+    prot = LiberarEscrita(ws)
+    mexeu = True
+    If r = 0 Then
+        If livre = 0 Then                      ' tabela cheia: cresce FOLGA linhas (a aba protegida nao deixa)
+            lo.Resize lo.Range.Resize(lo.Range.rows.Count + FOLGA)
+            livre = lo.ListRows.Count - FOLGA + 1
+        End If
+        r = livre
+        situacao = "NOVO"
+    End If
+    linha = r
+    antes = lo.ListRows(r).Range.Value
+    ant = TextoCel(lo, r, "COMENTARIO_TECNICO")
+    dAnt = TextoCel(lo, r, "DATA")
+    uAnt = TextoCel(lo, r, "USUARIO")
+    If Len(texto) = 0 Then
+        situacao = "IGUAL"                     ' so a marca INATIVADO
+    ElseIf situacao <> "NOVO" Then
+        If Replace(ant, vbCr, "") = texto Then situacao = "IGUAL" Else situacao = "ALTERADO"
+    End If
+    If situacao = "NOVO" Or situacao = "ALTERADO" Then
+        Celula(lo, r, "ID_REGISTRO").Value = idN
+        Celula(lo, r, "COMENTARIO_TECNICO").Value = TextoParaCelula(texto)
+        Celula(lo, r, "DATA").Value = Now
+        Celula(lo, r, "USUARIO").Value = mAuditoria.UsuarioSistema()
+        If TemColuna(lo, "ANALITO") Then Celula(lo, r, "ANALITO").Value = Trim$(CStr(ValorCQ(loQ, rq, "ANALITO")))
+        If TemColuna(lo, "NIVEL") Then Celula(lo, r, "NIVEL").Value = ValorCQ(loQ, rq, "NIVEL")
+    End If
+    If Len(inativado) > 0 And TemColuna(lo, "INATIVADO") Then Celula(lo, r, "INATIVADO").Value = inativado
+    RestaurarProtecao ws, prot
+    Application.EnableEvents = ev
+    mexeu = False
+    est = Trim$(CStr(ValorCQ(loQ, rq, "STATUS_ANALITICO")))
+    If situacao = "NOVO" Then
+        AuditarPedido "COMENTARIO_TECNICO_REGISTRADO", loQ, rq, est, est, texto, "ID " & idN & _
+                      " | aba COMENTARIOS_TECNICOS linha " & r & " | pela janela do gráfico"
+    ElseIf situacao = "ALTERADO" Then
+        AuditarPedido "COMENTARIO_TECNICO_ALTERADO", loQ, rq, est, est, texto, "ID " & idN & _
+                      " | aba COMENTARIOS_TECNICOS linha " & r & " | texto anterior: " & IIf(Len(ant) > 0, ant, "(vazio)") & _
+                      " | registrado em " & IIf(Len(dAnt) > 0, dAnt, "?") & " por " & IIf(Len(uAnt) > 0, uAnt, "?")
+    End If
+    GravarComentarioTecnico = "OK|" & r & "|" & situacao & "|" & IIf(situacao = "ALTERADO", ant, "")
+    Exit Function
+falha:
+    sE = Err.Description
+    On Error Resume Next
+    If mexeu And linha > 0 And IsArray(antes) Then lo.ListRows(linha).Range.Value = antes   ' nada pela metade
+    If Not ws Is Nothing Then RestaurarProtecao ws, prot
+    If ev Then Application.EnableEvents = True
+    linha = 0: antes = Empty
+    GravarComentarioTecnico = "ERRO|O comentário técnico não foi gravado. Nada foi alterado. (detalhe: " & sE & ")"
+End Function
+
+' Devolve a linha do comentario exatamente ao que era antes do GravarComentarioTecnico (a gravacao do estado que vinha
+' depois falhou). linha = 0 ou antes vazio: nada a fazer. Registra COMENTARIO_TECNICO_REVERTIDO. Nunca levanta erro.
+Public Sub DesfazerComentario(ByVal linha As Long, ByVal antes As Variant)
+    Dim lo As ListObject, ws As Worksheet, prot As Boolean, ev As Boolean
+    On Error Resume Next
+    If linha < 1 Or Not IsArray(antes) Then Exit Sub
+    Set lo = AcharTabela(TB_COMENT)
+    If lo Is Nothing Then Exit Sub
+    Set ws = lo.Parent
+    ev = Application.EnableEvents
+    Application.EnableEvents = False
+    prot = LiberarEscrita(ws)
+    lo.ListRows(linha).Range.Value = antes
+    RestaurarProtecao ws, prot
+    Application.EnableEvents = ev
+    mAuditoria.RegistrarLog "COMENTARIO_TECNICO_REVERTIDO", "aba COMENTARIOS_TECNICOS linha " & linha & _
+                            " voltou ao que era: a gravação do estado do resultado falhou"
+End Sub
+
+' O comentario tecnico atual do ID (a 1a linha com o ID na aba COMENTARIOS_TECNICOS; "" se nao houver). A janela do
+' grafico o mostra para editar, em vez de pedir tudo de novo.
+Public Function ComentarioTecnicoDoId(ByVal id As String) As String
+    Dim lo As ListObject, r As Long, livre As Long
+    On Error GoTo sai
+    Set lo = AcharTabela(TB_COMENT)
+    If lo Is Nothing Then Exit Function
+    r = LinhaComent(lo, NormalizarId(id), livre)
+    If r > 0 Then ComentarioTecnicoDoId = Replace(TextoCel(lo, r, "COMENTARIO_TECNICO"), vbCr, "")
+sai:
+End Function
+
+' So o comentario mudou (acao COMENTAR da janela): aplica na linha do ID da Principal - Resultados o que o ATUALIZAR
+' publicaria -- COMENTARIO_TECNICO (mEtlCQ.ComentarioConsolidado: a mesma normalizacao e a mesma juncao " | ") e as
+' duas colunas que dependem dele, TEM_JUSTIFICATIVA e GOVERNANCA (a mesma regra do mEtlCQ). Grafico, estatistica e
+' Westgard nao dependem do comentario: nada mais e recalculado. O proximo ATUALIZAR encontra a linha igual e nao
+' a regrava (publicacao a partir da 1a linha diferente). "OK|<linha>" ou "ERRO|<mensagem>".
+Public Function AplicarComentarioNaBase(ByVal id As String) As String
+    Dim loQ As ListObject, rq As Long, idN As String, v As Variant, mot As String, st As String, gov As String
+    Dim ws As Worksheet, prot As Boolean, sE As String, tem As Boolean
+    On Error GoTo falha
+    idN = NormalizarId(id)
+    Set loQ = AcharTabela(FONTE_CQ)
+    rq = LinhaCQ(loQ, idN)
+    If rq = 0 Then AplicarComentarioNaBase = "ERRO|" & TextoIdNaoEncontrado(idN): Exit Function
+    v = mEtlCQ.ComentarioConsolidado(idN)
+    mot = Trim$(CStr(ValorCQ(loQ, rq, "MOTIVO_INATIVACAO")))
+    st = UCase$(Trim$(CStr(ValorCQ(loQ, rq, "STATUS_ANALITICO"))))
+    tem = (Not IsEmpty(v)) Or Len(mot) > 0
+    If st = "INATIVADO" And IsEmpty(v) And Len(mot) = 0 Then
+        gov = "ERRO DE GOVERNANÇA: INATIVADO SEM JUSTIFICATIVA TÉCNICA"
+    Else
+        gov = "OK"
+    End If
+    Set ws = loQ.Parent
+    prot = LiberarEscrita(ws)
+    With loQ.ListColumns("COMENTARIO_TECNICO").DataBodyRange.Cells(rq, 1)
+        If IsEmpty(v) Then
+            .ClearContents
+        Else
+            .NumberFormat = "@"
+            .Value2 = CStr(v)
+        End If
+    End With
+    With loQ.ListColumns("TEM_JUSTIFICATIVA").DataBodyRange.Cells(rq, 1)
+        .NumberFormat = "@"
+        .Value2 = IIf(tem, "SIM", "NÃO")
+    End With
+    With loQ.ListColumns("GOVERNANCA").DataBodyRange.Cells(rq, 1)
+        .NumberFormat = "@"
+        .Value2 = gov
+    End With
+    RestaurarProtecao ws, prot
+    AplicarComentarioNaBase = "OK|" & rq
+    Exit Function
+falha:
+    sE = Err.Description
+    On Error Resume Next
+    If Not ws Is Nothing Then RestaurarProtecao ws, prot
+    AplicarComentarioNaBase = "ERRO|O comentário não foi aplicado na Principal - Resultados (detalhe: " & sE & ")"
+End Function
+
+' X vermelho -> sem X (ou o contrario): muda so a caixa REGISTRAR - LJ da linha do ID na aba Inativar. O resultado
+' continua inativado, com o motivo e o carimbo originais; o novo texto vai ao Audit_Log (PLOTAGEM_LJ_ALTERADA) e ao
+' comentario tecnico (quem chama). NAO atualiza os dados. "OK|<linha>" ou "ERRO|<motivo>".
+Public Function TrocarPlotagemPorId(ByVal id As String, ByVal motivo As String, ByVal plotarX As Boolean) As String
+    Dim lo As ListObject, loQ As ListObject, ws As Worksheet, prot As Boolean, ev As Boolean, idN As String
+    Dim r As Long, livre As Long, rq As Long, sE As String
+    On Error GoTo falha
+    idN = NormalizarId(id)
+    motivo = LimparMotivo(motivo)
+    If Len(idN) = 0 Then TrocarPlotagemPorId = "ERRO|Informe o ID do resultado.": Exit Function
+    If Len(motivo) = 0 Then TrocarPlotagemPorId = "ERRO|Escreva o comentário técnico.": Exit Function
+    Set lo = AcharTabela(TB_INAT)
+    If lo Is Nothing Then TrocarPlotagemPorId = "ERRO|A aba Inativar não foi encontrada. Nada foi alterado.": Exit Function
+    r = LinhaInat(lo, idN, livre)
+    If r = 0 Then
+        TrocarPlotagemPorId = "ERRO|O ID " & mUI.IdCurto(idN) & " não está na aba Inativar (não está inativado)."
+        Exit Function
+    End If
+    Set ws = lo.Parent
+    ev = Application.EnableEvents
+    Application.EnableEvents = False
+    prot = LiberarEscrita(ws)
+    Celula(lo, r, COL_LJ).Value = plotarX
+    RestaurarProtecao ws, prot
+    Application.EnableEvents = ev
+    Set loQ = AcharTabela(FONTE_CQ)
+    rq = LinhaCQ(loQ, idN)
+    If rq > 0 Then
+        AuditarPedido "PLOTAGEM_LJ_ALTERADA", loQ, rq, "INATIVADO", "INATIVADO", motivo, "ID " & idN & _
+                      " | X vermelho no grafico: " & IIf(plotarX, "SIM", "NÃO") & " | aba Inativar linha " & r
+    End If
+    TrocarPlotagemPorId = "OK|" & r
+    Exit Function
+falha:
+    sE = Err.Description
+    On Error Resume Next
+    If Not ws Is Nothing Then RestaurarProtecao ws, prot
+    If ev Then Application.EnableEvents = True
+    TrocarPlotagemPorId = "ERRO|" & TXT_FALHA & " (detalhe: " & sE & ")"
+End Function
+
+' 1a linha da tabela de comentarios com o ID (0 = nenhuma) e, em livre, a 1a linha TOTALMENTE vazia (0 = cheia).
+' Uma leitura em bloco da tabela (nao celula a celula).
+Private Function LinhaComent(ByVal lo As ListObject, ByVal idN As String, ByRef livre As Long) As Long
+    Dim v As Variant, i As Long, j As Long, cId As Long, vazia As Boolean
+    livre = 0
+    If Len(idN) = 0 Or lo.ListRows.Count = 0 Then Exit Function
+    v = lo.DataBodyRange.Value
+    If Not IsArray(v) Then
+        Dim u(1 To 1, 1 To 1) As Variant: u(1, 1) = v: v = u
+    End If
+    cId = lo.ListColumns("ID_REGISTRO").Index
+    For i = 1 To UBound(v, 1)
+        If LinhaComent = 0 And Not IsError(v(i, cId)) Then
+            If Len(Trim$(CStr(v(i, cId)))) > 0 Then
+                If NormalizarId(v(i, cId)) = idN Then LinhaComent = i
+            End If
+        End If
+        If livre = 0 Then
+            vazia = True
+            For j = 1 To UBound(v, 2)
+                If IsError(v(i, j)) Then vazia = False: Exit For
+                If VarType(v(i, j)) = vbBoolean Then
+                    If v(i, j) Then vazia = False: Exit For
+                ElseIf Len(Trim$(CStr(v(i, j)))) > 0 Then
+                    vazia = False: Exit For
+                End If
+            Next j
+            If vazia Then livre = i
+        End If
+        If LinhaComent > 0 And livre > 0 Then Exit Function
+    Next i
 End Function
 
 Private Sub Carimbar(ByVal cData As Range, ByVal cUsuario As Range)

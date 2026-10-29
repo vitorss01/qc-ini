@@ -51,7 +51,7 @@ Private Const TIP_DICA As Long = 0                ' dica do ponto: 9 pt negrito
 Private Const TIP_USO As Long = 1                 ' dica de uso (caixa sem ponto): 9 pt cinza
 Private Const TIP_PROGRESSO As Long = 2           ' "aguarde": 10 pt negrito azul
 Private Const TIP_OK As Long = 3                  ' confirmacao: 10 pt negrito verde
-Private Const DICA_USO As String = "Duplo clique num ponto para inativar ou reativar"
+Private Const DICA_USO As String = "Duplo clique num ponto: não conforme, inativar ou comentário técnico"
 Private Const TXT_FALHA As String = "Nada foi alterado. Tente de novo ou clique em ATUALIZAR DADOS."
 
 
@@ -221,6 +221,18 @@ Public Sub HookCharts()
     Next co
 End Sub
 
+' ADR-085: o duplo clique so e interceptado (nada de "Formatar" do Excel) com cada grafico ligado a uma clsCht. Perdida
+' a colecao (reset do VBA, erro nao tratado em outra rotina), religa: chamada a cada clique no Painel (GrafVigiaLigar)
+' e a cada tique do vigia (1 s, so com o Painel na frente). Custa uma contagem.
+Public Sub GarantirHooks()
+    On Error Resume Next
+    If gHooks Is Nothing Then
+        HookCharts
+    ElseIf gHooks.Count <> ThisWorkbook.Sheets("Painel").ChartObjects.Count Then
+        HookCharts
+    End If
+End Sub
+
 
 ' ===================== ORQUESTRACAO (Etapa 7) =====================
 ' Rotinas de responsabilidade unica; a cadeia completa e AtualizarTudo.
@@ -313,6 +325,7 @@ Public Function FechandoPasta() As Boolean
 End Function
 
 Public Sub GrafVigiaLigar()
+    GarantirHooks                         ' ADR-085: duplo clique sempre interceptado
     If mVigiaProx <> 0 Then
         If mVigiaProx > Now - TimeSerial(0, 0, 5) Then Exit Sub   ' ha tique vivo na fila
     End If
@@ -368,6 +381,7 @@ Public Sub GrafVigiaTique()               ' alvo do OnTime
     If mFechando Then Exit Sub            ' pasta fechando: nao reagenda
     mApp.GarantirEventos                  ' ADR-078: ANTES do GrafVigiaPode (que exige eventos ligados)
     If Not GrafVigiaPode() Then Exit Sub  ' NAO reagenda: a corrente morre sozinha
+    GarantirHooks                         ' ADR-085: religa os graficos se o VBA perdeu a colecao
     On Error Resume Next
     If (Not mApp.Ocupado()) And (Application.CutCopyMode = 0) Then
         Set w = Application.ActiveWindow
@@ -776,6 +790,66 @@ Public Sub InativarPeloGrafico(ByVal nivel As Long, ByVal serie As Long, ByVal p
     r = InativarPontoUI(nivel, serie, ponto)
 End Sub
 
+' ADR-085: todo duplo clique / clique direito num grafico do Painel chega aqui (o clsCht ja cancelou o Excel: nada de
+' "Formatar" nem menu de contexto). Ponto de RESULTADO (normal ou X vermelho) = a janela de registrar; qualquer outro
+' lugar (eixo, legenda, titulo, linha de limite, calibracao, area vazia) = so a dica de uso na caixa do grafico, por
+' alguns segundos, sem MsgBox. Publica e sem dialogo fora da janela: o QA a chama com os mesmos argumentos do evento.
+' Devolve "JANELA|<o que a InativarPontoUI devolveu>" ou "DICA|<texto mostrado>". Nunca levanta erro.
+Public Function CliqueNoGrafico(ByVal nivel As Long, ByVal elemento As Long, ByVal serie As Long, _
+                                ByVal ponto As Long) As String
+    Dim msg As String
+    On Error Resume Next                          ' DadosDoPonto e InativarPontoUI nao levantam erro
+    If elemento = xlSeries And ponto >= 1 Then
+        If Left$(mIntegracao.DadosDoPonto(nivel, serie, ponto), 3) = "OK|" Then
+            CliqueNoGrafico = "JANELA|" & InativarPontoUI(nivel, serie, ponto)
+            Exit Function
+        End If
+    End If
+    msg = "Dê o duplo clique SOBRE um ponto de resultado para registrar não conforme, inativar ou comentar."
+    DefinirAviso nivel, msg, TIP_USO, 4
+    EscreverTip ChartDoNivel(nivel), msg, TIP_USO
+    CliqueNoGrafico = "DICA|" & msg
+End Function
+
+' ADR-085: a dica do ponto (DicaPonto, inalterada) e, no ponto com violacao, uma 2a linha com as regras de Westgard
+' que o motor marcou nele ("Westgard: 1-3s + R-4s"). E o texto da caixa do grafico (clsCht). "" sem ponto.
+Public Function DicaCompleta(ByVal nivel As Long, ByVal serie As Long, ByVal ponto As Long) As String
+    Dim s As String, rg As String
+    On Error GoTo sai
+    s = DicaPonto(nivel, serie, ponto)
+    If Len(s) = 0 Then Exit Function
+    rg = RegrasNoPonto(nivel, serie, ponto)
+    If Len(rg) > 0 Then s = s & vbLf & "Westgard: " & rg
+    DicaCompleta = s
+sai:
+End Function
+
+' ADR-085: a identificacao do ponto exatamente como a janela a mostra (FichaDoPonto), sem abrir a janela -- para o
+' QA conferir contra o registro de origem. "" quando nao e ponto de resultado.
+Public Function FichaPonto(ByVal nivel As Long, ByVal serie As Long, ByVal ponto As Long) As String
+    Dim d As String
+    On Error GoTo sai
+    d = mIntegracao.DadosDoPonto(nivel, serie, ponto)
+    If Left$(d, 3) = "OK|" Then FichaPonto = FichaDoPonto(nivel, serie, ponto, Split(d, "|"))
+sai:
+End Function
+
+' ADR-085: as regras de Westgard do ponto do grafico (so os pontos de resultado ATIVO: o X vermelho nao entra em regra).
+' Le as marcas que o motor publicou no Eng_Saida para o (nivel, corrida) -- as mesmas que pintam o ponto de vermelho --
+' pelo slot da corrida, nunca pela posicao na tela. "" = sem violacao (ou nao e ponto de resultado).
+Public Function RegrasNoPonto(ByVal nivel As Long, ByVal serie As Long, ByVal ponto As Long) As String
+    Dim ch As Chart, nm As String
+    On Error GoTo sai
+    Set ch = ChartDoNivel(nivel)
+    If ch Is Nothing Then Exit Function
+    If serie < 1 Or serie > ch.SeriesCollection.Count Then Exit Function
+    nm = CStr(ch.SeriesCollection(serie).Name)
+    If nm = "Resultado" Or nm = "OK" Or InStr(1, nm, "Viola", vbTextCompare) = 1 Then
+        RegrasNoPonto = mEstatistica.RegrasDoPonto(nivel, ponto)
+    End If
+sai:
+End Function
+
 ' ADR-081: inativar tem de ser MUITO simples -- duplo clique no ponto, escolher o motivo, confirmar; o grafico ja
 ' volta atualizado (sem passar pela aba Inativar nem pelo ATUALIZAR DADOS). No X vermelho, a mesma janela reativa.
 ' Passos: permissao (mSeguranca.PodeInativar); o ponto (mIntegracao.DadosDoPonto); a janela frmInativar (ou a
@@ -815,17 +889,30 @@ falha:
     InativarPontoUI = "ERRO|" & r
 End Function
 
+' ADR-085 (29/10/2026, pedido do usuario): a janela tem acoes EXPLICITAS, e o texto livre digitado nela e a UNICA
+' digitacao. Ponto ATIVO: NC (marcar como NAO CONFORME -- fica no grafico como X vermelho), INATIVAR (sai do grafico)
+' ou COMENTAR (so o comentario; o resultado continua ativo). X vermelho: REATIVAR, TIRAR_X (o X sai do grafico; continua
+' inativado) ou COMENTAR. O texto vale como MOTIVO na aba Inativar (quando o estado muda) e como COMENTARIO TECNICO do
+' ID na aba COMENTARIOS_TECNICOS (mIntegracao.GravarComentarioTecnico: uma linha por ID, sem duplicar; a edicao leva o
+' texto anterior ao Audit_Log). REATIVAR nao reescreve o comentario: so marca INATIVADO = NAO na linha do ID (o motivo
+' da reativacao vai ao Audit_Log, como antes). Ordem com reversao: o comentario e gravado primeiro; se a gravacao do
+' estado falhar, ele volta exatamente ao que era (DesfazerComentario) -- nada fica pela metade.
+' COMENTAR nao muda grafico nem estatistica: o comentario e aplicado so na linha do ID da Principal - Resultados
+' (AplicarComentarioNaBase, o mesmo texto que o ATUALIZAR publicaria), sem recalcular o resto.
+' Gancho do QA (DefinirRespostaTeste): "ACAO|<NC|INATIVAR|COMENTAR|REATIVAR|TIRAR_X>|texto", "CANCELAR" ou o formato do
+' ADR-081 "CONFIRMAR|texto|1" (1 = NC com X; 0 = INATIVAR sem X; no X vermelho = REATIVAR).
 Private Function InativarPontoNucleo(ByVal nivel As Long, ByVal serie As Long, ByVal ponto As Long, _
                                      ByVal resp As String) As String
-    Dim d As String, p As Variant, reativar As Boolean, conf As Boolean, motivo As String
+    Dim d As String, p As Variant, reativar As Boolean, conf As Boolean, motivo As String, acao As String
     Dim plotarX As Boolean, r As String, t0 As Double, msg As String, idc As String, f As Object
-    Dim titulo As String, detalhe As String, sep As String, k1 As Long, k2 As Long, teste As Boolean, efeito As String
+    Dim titulo As String, detalhe As String, k1 As Long, k2 As Long, teste As Boolean, efeito As String
+    Dim rc As String, linC As Long, antes As Variant, comentAtual As String, verbo As String
     On Error GoTo falha
     teste = (Len(resp) > 0)
     If Not mSeguranca.PodeInativar() Then
         msg = mSeguranca.TextoSemPermissaoInativar()
         Application.StatusBar = msg
-        If Application.Interactive And Not teste Then MsgBox msg, vbExclamation, "Inativar resultado"
+        If Application.Interactive And Not teste Then MsgBox msg, vbExclamation, "Registrar no resultado"
         InativarPontoNucleo = "ERRO|" & msg
         Exit Function
     End If
@@ -833,56 +920,116 @@ Private Function InativarPontoNucleo(ByVal nivel As Long, ByVal serie As Long, B
     If Left$(d, 3) <> "OK|" Then InativarPontoNucleo = d: Exit Function    ' linha de limite, calibracao...
     p = Split(d, "|")
     If UBound(p) < 8 Then InativarPontoNucleo = "ERRO|" & TXT_FALHA & " (detalhe: dados do ponto incompletos)": Exit Function
-    reativar = (p(7) = "INATIVADO")               ' o X vermelho: a mesma janela reativa
+    reativar = (p(7) = "INATIVADO")               ' o X vermelho: a mesma janela reativa, tira o X ou comenta
     idc = IdCurto(CStr(p(1)))
-    sep = " " & ChrW$(183) & " "
-    If reativar Then titulo = "Reativar o resultado ID " & idc Else titulo = "Inativar o resultado ID " & idc
-    detalhe = p(2) & sep & "N" & p(3) & sep & TextoCorrida(CStr(p(4))) & sep & p(5) & sep & p(6) & sep & "lote " & p(8)
-    ' ADR-082: manual que substitui um automatico -- o texto de efeito da janela avisa que inativar nao o traz de volta;
+    If reativar Then
+        titulo = "Resultado ID " & idc & " " & ChrW$(8212) & " NÃO CONFORME (X vermelho)"
+    Else
+        titulo = "Resultado ID " & idc
+    End If
+    detalhe = FichaDoPonto(nivel, serie, ponto, p)
+    ' ADR-082: manual que substitui um automatico -- o texto de efeito avisa que inativar nao o traz de volta;
     ' X de um automatico substituido -- reativado, continua fora (vira SUBSTITUIDO_MANUAL)
     If reativar Then efeito = EfeitoReativar(CStr(p(1))) Else efeito = EfeitoInativar(CStr(p(1)))
-    If teste Then                                 ' "CONFIRMAR|motivo|1" (1 = X vermelho) ou "CANCELAR"
-        k1 = InStr(resp, "|")
-        If k1 = 0 Then k1 = Len(resp) + 1
-        conf = (UCase$(Left$(resp, k1 - 1)) = "CONFIRMAR")
-        k2 = InStrRev(resp, "|")
-        If k2 > k1 Then
-            motivo = Mid$(resp, k1 + 1, k2 - k1 - 1)
-            plotarX = (Trim$(Mid$(resp, k2 + 1)) <> "0")
-        Else
+    comentAtual = mIntegracao.ComentarioTecnicoDoId(CStr(p(1)))
+    If teste Then
+        If UCase$(Left$(resp, 5)) = "ACAO|" Then
+            k1 = InStr(6, resp, "|")
+            If k1 = 0 Then k1 = Len(resp) + 1
+            acao = UCase$(Trim$(Mid$(resp, 6, k1 - 6)))
             motivo = Mid$(resp, k1 + 1)
-            plotarX = True
+            conf = True
+        Else                                      ' ADR-081: "CONFIRMAR|motivo|1" ou "CANCELAR"
+            k1 = InStr(resp, "|")
+            If k1 = 0 Then k1 = Len(resp) + 1
+            conf = (UCase$(Left$(resp, k1 - 1)) = "CONFIRMAR")
+            k2 = InStrRev(resp, "|")
+            If k2 > k1 Then
+                motivo = Mid$(resp, k1 + 1, k2 - k1 - 1)
+                plotarX = (Trim$(Mid$(resp, k2 + 1)) <> "0")
+            Else
+                motivo = Mid$(resp, k1 + 1)
+                plotarX = True
+            End If
+            If reativar Then
+                acao = "REATIVAR"
+            ElseIf plotarX Then
+                acao = "NC"
+            Else
+                acao = "INATIVAR"
+            End If
         End If
     ElseIf Not Application.Interactive Then
         InativarPontoNucleo = "ERRO|sem interface"
         Exit Function
     Else
         Set f = VBA.UserForms.Add("frmInativar")
-        f.Preparar reativar, titulo, detalhe
+        f.Preparar reativar, titulo, detalhe, comentAtual
         If Len(efeito) > 0 Then TrocarEfeito f, efeito
         f.Show
         conf = f.Confirmado
         motivo = f.Motivo
-        plotarX = f.PlotarX
+        acao = AcaoDaJanela(f)
         Unload f
         Set f = Nothing
     End If
     If Not conf Then InativarPontoNucleo = "CANCELADO|nada mudou": Exit Function
+    ' a acao tem de servir ao estado do ponto (o gancho do QA pode pedir qualquer uma)
+    Select Case acao
+        Case "NC", "INATIVAR"
+            If reativar Then InativarPontoNucleo = "ERRO|O resultado ID " & idc & " já está inativado (X vermelho): " & _
+                "escolha reativar, tirar o X do gráfico ou só comentar. Nada foi alterado.": Exit Function
+        Case "REATIVAR", "TIRAR_X"
+            If Not reativar Then InativarPontoNucleo = "ERRO|O resultado ID " & idc & " está ativo: escolha não " & _
+                "conforme, inativar ou só comentar. Nada foi alterado.": Exit Function
+        Case "COMENTAR"
+        Case Else
+            InativarPontoNucleo = "ERRO|Escolha uma ação (não conforme, inativar ou comentário). Nada foi alterado."
+            Exit Function
+    End Select
+    If Len(Trim$(Replace(Replace(Replace(motivo, vbCr, ""), vbLf, ""), vbTab, ""))) = 0 Then
+        InativarPontoNucleo = "ERRO|Escreva o comentário técnico (texto livre). Nada foi alterado."
+        Exit Function
+    End If
+    If acao = "COMENTAR" Then
+        InativarPontoNucleo = ComentarNucleo(nivel, CStr(p(1)), idc, motivo, reativar, teste)
+        Exit Function
+    End If
+    plotarX = (acao = "NC")
     t0 = Timer
+    Select Case acao
+        Case "REATIVAR": verbo = "Reativando"
+        Case "TIRAR_X": verbo = "Tirando do gráfico"
+        Case Else: verbo = "Inativando"
+    End Select
     ' o usuario precisa ver que comecou: a atualizacao congela a tela por alguns segundos
-    msg = ChrW$(&H23F3) & " " & IIf(reativar, "Reativando", "Inativando") & " o ID " & idc & ChrW$(&H2026) & _
+    msg = ChrW$(&H23F3) & " " & verbo & " o ID " & idc & IIf(acao = "NC", " como não conforme", "") & ChrW$(&H2026) & _
           " aguarde (cerca de " & IIf(mEstatistica.NLV >= 3, 25, 15) & " s)"
     MostrarProgresso nivel, msg
-    ' ADR-084: o indicador central (frmCarregando) -- gravar + as etapas reais do AtualizarDadosCore
-    mCarregando.Abrir IIf(reativar, "Reativando", "Inativando") & " o resultado ID " & idc, _
-                      1 + mIntegracao.ETAPAS_ATUALIZAR
-    mCarregando.Etapa "Gravando na aba Inativar"
-    If reativar Then
-        r = mIntegracao.ReativarPorId(CStr(p(1)), motivo)
+    ' ADR-084: o indicador central (frmCarregando) -- comentario + estado + as etapas reais do AtualizarDadosCore
+    mCarregando.Abrir verbo & " o resultado ID " & idc, 2 + mIntegracao.ETAPAS_ATUALIZAR
+    mCarregando.Etapa "Gravando o comentário técnico"
+    If acao = "REATIVAR" Then
+        rc = mIntegracao.GravarComentarioTecnico(CStr(p(1)), "", "NÃO", linC, antes)
     Else
-        r = mIntegracao.InativarPorId(CStr(p(1)), motivo, plotarX, CStr(p(4)))
+        rc = mIntegracao.GravarComentarioTecnico(CStr(p(1)), motivo, "SIM", linC, antes)
     End If
+    If Left$(rc, 3) <> "OK|" Then
+        mCarregando.Fechar
+        msg = Mid$(rc, InStr(rc, "|") + 1)
+        Application.StatusBar = False
+        If Application.Interactive And Not teste Then MsgBox msg, vbExclamation, titulo
+        InativarPontoNucleo = rc
+        Exit Function
+    End If
+    mCarregando.Etapa "Gravando na aba Inativar"
+    Select Case acao
+        Case "REATIVAR": r = mIntegracao.ReativarPorId(CStr(p(1)), motivo)
+        Case "TIRAR_X": r = mIntegracao.TrocarPlotagemPorId(CStr(p(1)), motivo, False)
+        Case Else: r = mIntegracao.InativarPorId(CStr(p(1)), motivo, plotarX, CStr(p(4)))
+    End Select
     If Left$(r, 3) <> "OK|" Then
+        mIntegracao.DesfazerComentario linC, antes            ' nada pela metade: o comentario volta ao que era
         mCarregando.Fechar
         msg = Mid$(r, InStr(r, "|") + 1)
         Application.StatusBar = False
@@ -893,14 +1040,19 @@ Private Function InativarPontoNucleo(ByVal nivel As Long, ByVal serie As Long, B
     r = mIntegracao.AtualizarSoEntradas(CStr(p(2)))     ' ADR-081: so a incerteza do analito do ponto
     mCarregando.Fechar
     If Left$(r, 3) <> "OK|" Then
-        msg = "Gravado na aba Inativar, mas a atualização não terminou. Clique em ATUALIZAR DADOS para aplicar." & _
-              vbCrLf & "(detalhe: " & Mid$(r, InStr(r, "|") + 1) & ")"
+        msg = "Gravado (aba Inativar e comentário técnico), mas a atualização não terminou. Clique em ATUALIZAR DADOS " & _
+              "para aplicar." & vbCrLf & "(detalhe: " & Mid$(r, InStr(r, "|") + 1) & ")"
         Application.StatusBar = False
         If Application.Interactive And Not teste Then MsgBox msg, vbExclamation, titulo
         InativarPontoNucleo = "ERRO|" & msg
         Exit Function
     End If
-    msg = TextoConfirmacao(nivel, CStr(p(1)), idc, reativar, plotarX)
+    If acao = "TIRAR_X" Then
+        msg = ChrW$(&H2713) & " ID " & idc & " continua inativado " & ChrW$(8212) & " o X saiu do gráfico (para " & _
+              "reativar: aba Inativar)"
+    Else
+        msg = TextoConfirmacao(nivel, CStr(p(1)), idc, reativar, plotarX)
+    End If
     MostrarAvisoGrafico nivel, msg
     Application.StatusBar = msg
     InativarPontoNucleo = "OK|" & msg & "|" & Format$(Timer - t0, "0.0")
@@ -911,14 +1063,111 @@ falha:
     mCarregando.Fechar
     If Not f Is Nothing Then Unload f
     Application.StatusBar = False
-    If Application.Interactive And Not teste Then MsgBox msg, vbExclamation, "Inativar resultado"
+    If Application.Interactive And Not teste Then MsgBox msg, vbExclamation, "Registrar no resultado"
     InativarPontoNucleo = "ERRO|" & msg
 End Function
 
-' ADR-082: troca o texto de efeito da janela (lblEfeito). Janela de outra versao, sem o rotulo: fica o texto padrao.
+' ADR-085: so o comentario tecnico -- grafico e estatistica nao mudam, nada e recalculado. Grava na aba
+' COMENTARIOS_TECNICOS (uma linha por ID) e aplica o texto na linha do ID da Principal - Resultados; se a aplicacao
+' falhar, o comentario volta ao que era. Confirmacao na caixa do grafico, como as outras acoes.
+Private Function ComentarNucleo(ByVal nivel As Long, ByVal id As String, ByVal idc As String, ByVal texto As String, _
+                                ByVal inativado As Boolean, ByVal teste As Boolean) As String
+    Dim rc As String, r As String, linC As Long, antes As Variant, msg As String, t0 As Double
+    On Error GoTo falha
+    t0 = Timer
+    rc = mIntegracao.GravarComentarioTecnico(id, texto, IIf(inativado, "SIM", "NÃO"), linC, antes)
+    If Left$(rc, 3) <> "OK|" Then
+        msg = Mid$(rc, InStr(rc, "|") + 1)
+        If Application.Interactive And Not teste Then MsgBox msg, vbExclamation, "Comentário técnico"
+        ComentarNucleo = rc
+        Exit Function
+    End If
+    r = mIntegracao.AplicarComentarioNaBase(id)
+    If Left$(r, 3) <> "OK|" Then
+        mIntegracao.DesfazerComentario linC, antes
+        msg = Mid$(r, InStr(r, "|") + 1)
+        If Application.Interactive And Not teste Then MsgBox msg, vbExclamation, "Comentário técnico"
+        ComentarNucleo = r
+        Exit Function
+    End If
+    If Split(rc, "|")(2) = "IGUAL" Then
+        msg = ChrW$(&H2713) & " ID " & idc & ": o comentário técnico já era este " & ChrW$(8212) & " nada mudou"
+    Else
+        msg = ChrW$(&H2713) & " ID " & idc & ": comentário técnico " & IIf(Split(rc, "|")(2) = "ALTERADO", "atualizado", _
+              "registrado") & " (aba COMENTARIOS_TECNICOS)"
+    End If
+    MostrarAvisoGrafico nivel, msg
+    Application.StatusBar = msg
+    ComentarNucleo = "OK|" & msg & "|" & Format$(Timer - t0, "0.0")
+    Exit Function
+falha:
+    msg = TXT_FALHA & vbCrLf & "(detalhe: " & Err.Description & ")"
+    On Error Resume Next
+    If linC > 0 Then mIntegracao.DesfazerComentario linC, antes
+    If Application.Interactive And Not teste Then MsgBox msg, vbExclamation, "Comentário técnico"
+    ComentarNucleo = "ERRO|" & msg
+End Function
+
+' ADR-085: a acao escolhida na janela (frmInativar.Acao). Janela de versao anterior (sem a propriedade): o X marcado
+' era NC, desmarcado INATIVAR; no X vermelho, REATIVAR.
+Private Function AcaoDaJanela(ByVal f As Object) As String
+    On Error Resume Next
+    AcaoDaJanela = UCase$(CStr(f.Acao))
+    If Err.Number <> 0 Then
+        Err.Clear
+        If f.PlotarX Then AcaoDaJanela = "NC" Else AcaoDaJanela = "INATIVAR"
+    End If
+End Function
+
+' ADR-085: a identificacao do ponto na janela, toda do registro de origem (Principal - Resultados, pelo ID) e do que o
+' motor publicou para a corrida (Eng_Saida) -- nada digitado, nada lido da posicao na tela:
+'   ID 314216 · Proteína total · DIMENSION 2 · Nível 1 · Lote 8977
+'   Corrida 12 (RUN 26102803) · Data 28/10/2026 · Hora 14:32 · Valor 7,1
+'   Gráfico N1 · série "Violação" · Westgard: 1-3s + R-4s
+'   Estado atual: ATIVO (entra na média, no DP e no Westgard)
+Private Function FichaDoPonto(ByVal nivel As Long, ByVal serie As Long, ByVal ponto As Long, ByVal p As Variant) As String
+    Dim sep As String, q As Variant, eq As String, runv As String, s As String, rg As String, nm As String
+    Dim dt As String, hr As String
+    On Error Resume Next
+    sep = " " & ChrW$(183) & " "
+    q = Split(mIntegracao.DadosDoId(CStr(p(1))), "|")         ' OK|ID|analito|nivel|equip|lote|RUN|data|estado
+    If UBound(q) >= 6 Then
+        If q(0) = "OK" Then eq = CStr(q(4)): runv = CStr(q(6))
+    End If
+    dt = Trim$(CStr(p(5)))
+    If InStr(dt, " ") > 0 Then hr = Mid$(dt, InStr(dt, " ") + 1): dt = Left$(dt, InStr(dt, " ") - 1)
+    s = "ID " & IdCurto(CStr(p(1))) & sep & p(2)
+    If Len(eq) > 0 Then s = s & sep & eq
+    s = s & sep & "Nível " & p(3) & sep & "Lote " & p(8) & vbLf
+    s = s & TextoCorrida(CStr(p(4)))
+    If Len(runv) > 0 Then s = s & " (RUN " & runv & ")"
+    s = s & sep & "Data " & dt
+    If Len(hr) > 0 Then s = s & sep & "Hora " & hr
+    s = s & sep & "Valor " & p(6) & vbLf
+    nm = CStr(ChartDoNivel(nivel).SeriesCollection(serie).Name)
+    s = s & "Gráfico N" & nivel & sep & "série """ & nm & """"
+    If p(7) <> "INATIVADO" Then
+        rg = RegrasNoPonto(nivel, serie, ponto)
+        s = s & sep & "Westgard: " & IIf(Len(rg) > 0, rg, "sem violação")
+    End If
+    s = s & vbLf
+    If p(7) = "INATIVADO" Then
+        s = s & "Estado atual: NÃO CONFORME (inativado, X vermelho) " & ChrW$(8212) & " fora da média, do DP e do Westgard"
+    Else
+        s = s & "Estado atual: ATIVO " & ChrW$(8212) & " entra na média, no DP e no Westgard"
+    End If
+    FichaDoPonto = s
+End Function
+
+' ADR-082/085: o texto de efeito especial (manual que substitui um automatico) vai para a janela, que o mostra quando a
+' acao que ele descreve for escolhida. Janela de outra versao: troca o rotulo direto, como antes.
 Private Sub TrocarEfeito(ByVal f As Object, ByVal efeito As String)
     On Error Resume Next
-    f.Controls("lblEfeito").Caption = efeito
+    f.DefinirEfeitoEspecial efeito
+    If Err.Number <> 0 Then
+        Err.Clear
+        f.Controls("lblEfeito").Caption = efeito
+    End If
 End Sub
 
 ' A corrida do campo do DadosDoPonto no texto da dica: "3" -> "Corrida 3"; "entre 2 e 3" -> "Entre as corridas 2 e 3".
@@ -980,12 +1229,13 @@ Private Function TextoConfirmacao(ByVal nivel As Long, ByVal idN As String, ByVa
     ElseIf Not plotarX Then
         TextoConfirmacao = ini & " inativado" & tr & "saiu do gráfico; as seguintes foram renumeradas"
     ElseIf Left$(onde, 6) = "entre " Then
-        TextoConfirmacao = ini & " inativado" & tr & "X vermelho entre as corridas " & Mid$(onde, 7) & _
+        TextoConfirmacao = ini & " não conforme (inativado)" & tr & "X vermelho entre as corridas " & Mid$(onde, 7) & _
                            "; as seguintes foram renumeradas"
     ElseIf onde = "antes da 1" Then
-        TextoConfirmacao = ini & " inativado" & tr & "X vermelho antes da corrida 1; as seguintes foram renumeradas"
+        TextoConfirmacao = ini & " não conforme (inativado)" & tr & "X vermelho antes da corrida 1; as seguintes " & _
+                           "foram renumeradas"
     Else
-        TextoConfirmacao = ini & " inativado" & tr & "as corridas seguintes foram renumeradas"
+        TextoConfirmacao = ini & " não conforme (inativado)" & tr & "as corridas seguintes foram renumeradas"
     End If
 End Function
 

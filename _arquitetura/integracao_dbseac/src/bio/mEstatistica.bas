@@ -1180,6 +1180,33 @@ Public Function LimiarUmSigmaWestgard() As Long
 End Function
 
 
+' ADR-085: as regras de Westgard que o motor marcou no ponto do grafico do nivel "nivel", na corrida do slot "ponto"
+' (o mesmo slot do Eng_Saida e do evento do grafico: linha 2 + ponto) -- as MESMAS marcas que pintam o ponto de
+' vermelho (bloco do nivel em Eng_Saida C..: 1_3s, 2_2s/2of3_2s, R_4s, 4_1s/3_1s, 8x/6x e o alerta 1_2s). So le o que
+' a ultima publicacao gravou: nunca recalcula, nunca depende da posicao na tela. Nomes pela familia do setor (NLV).
+' "1-3s + R-4s"; so o alerta: "1-2s (alerta, nao rejeita)"; "" sem violacao ou sem ponto.
+Public Function RegrasDoPonto(ByVal nivel As Long, ByVal ponto As Long) As String
+    Dim ws As Worksheet, v As Variant, nomes As Variant, k As Long, s As String, c0 As Long
+    On Error GoTo sai
+    If nivel < 1 Or nivel > NLV Or ponto < 1 Or ponto > NK Then Exit Function
+    Set ws = ThisWorkbook.Worksheets("Eng_Saida")
+    If ponto > CLng(Val(CStr(ws.Range("I1").Value))) Then Exit Function
+    c0 = EF0 + (nivel - 1) * NEF
+    v = ws.Range(ws.Cells(KC0 + ponto - 1, c0), ws.Cells(KC0 + ponto - 1, c0 + NEF - 1)).Value
+    If NLV >= 3 Then
+        nomes = Array("1-3s", "2de3-2s", "R-4s", "3-1s", "6x")
+    Else
+        nomes = Array("1-3s", "2-2s", "R-4s", "4-1s", "8x")
+    End If
+    For k = 1 To 5
+        If Val(CStr(v(1, k))) = 1 Then s = s & IIf(Len(s) > 0, " + ", "") & nomes(k - 1)
+    Next k
+    If Len(s) = 0 And Val(CStr(v(1, 6))) = 1 Then s = "1-2s (alerta, não rejeita)"
+    RegrasDoPonto = s
+sai:
+End Function
+
+
 ' O par LiberarEscrita/RestaurarProtecao mudou para mSeguranca (ADR-046).
 '
 ' Ele nasceu aqui, mas a auditoria estatica achou oito pontos com o mesmo

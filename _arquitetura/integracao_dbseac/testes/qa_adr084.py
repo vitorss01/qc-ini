@@ -204,7 +204,7 @@ def executar(produto, caminho, saida):
         reg('K08 Inativar pelo gráfico com motivo livre de 2 linhas: gravado igual (aba Inativar e Principal), '
             'indicador "Gravando" + 6 etapas e fechado, a aba ativa continua o Painel',
             r8.startswith('OK|') and lin8.get('MOTIVO') == mot and f8.get('MOTIVO_INATIVACAO') == mot
-            and etapas_ok(h8, f'Inativando o resultado ID {idc}', ('Gravando na aba Inativar',))
+            and etapas_ok(h8, f'Inativando o resultado ID {idc}', ('Gravando o comentário técnico', 'Gravando na aba Inativar'))
             and aba0 == 'Painel' and aba1 == 'Painel',
             {'retorno': r8[:160], 'motivo_aba': lin8.get('MOTIVO'), 'motivo_principal': f8.get('MOTIVO_INATIVACAO'),
              'historico': h8, 'aba_antes': aba0, 'aba_depois': aba1})
@@ -229,7 +229,7 @@ def executar(produto, caminho, saida):
         f8b = L.cq({alvo[2]}).get(alvo[2], {})
         reg('K08b Reativar pelo mesmo caminho: ATIVO de novo e o indicador passou pelas etapas e fechou',
             r8b.startswith('OK|') and f8b.get('STATUS_ANALITICO') == 'ATIVO'
-            and etapas_ok(h8b, f'Reativando o resultado ID {idc}', ('Gravando na aba Inativar',)),
+            and etapas_ok(h8b, f'Reativando o resultado ID {idc}', ('Gravando o comentário técnico', 'Gravando na aba Inativar')),
             {'retorno': r8b[:160], 'historico': h8b, 'estado': f8b.get('STATUS_ANALITICO')})
         # ------------------------------------------------------------ K10..K14 calibracao pelo ID
         reg_ws = q.ws('Registros')
