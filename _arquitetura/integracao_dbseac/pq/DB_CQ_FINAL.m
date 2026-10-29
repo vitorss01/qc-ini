@@ -493,9 +493,18 @@ let
     // que continua INATIVADO, que recebe o RUN do manual no Junto: sem isso ele abria uma posicao a mais no bloco e
     // todas as corridas seguintes do dia andavam +1).
     // D16: resultado sem DATA_HORA nao entra na corrida (quebraria o corte por GAP); o QA reporta (E09)
-    Reais = Table.SelectColumns(Table.SelectRows(U, each [_MANUAL_FALTA] = "" and not [_DUP] and [_conf] = null and
+    Reais0 = Table.SelectColumns(Table.SelectRows(U, each [_MANUAL_FALTA] = "" and not [_DUP] and [_conf] = null and
                                                         [_S_MAN] = null and [DATA_HORA] <> null),
                 {"ID_REGISTRO", "EQUIPAMENTO", "MATRIZ", "LOTE", "ANALITO", "DATA", "DATA_HORA", "NIVEL", "ITEM_ID"}),
+    // ADR-082 (29/10/2026): o manual que substitui ordena com o ITEM_ID do indicado (_IT_ORD). Sem isso, com dois
+    // resultados do mesmo nivel no MESMO segundo, o manual (ITEM_ID nulo, ordena primeiro) passava a frente do 1o e o
+    // renumerava. So a ordem: o ITEM_ID do manual continua nulo.
+    ItSubst = Table.Buffer(Table.Join(Table.SelectColumns(SubstR, {"_V_SUB", "_V_ID"}), {"_V_SUB"},
+                Table.RenameColumns(Table.Distinct(Table.SelectColumns(InterfaceD, {"ID_REGISTRO", "ITEM_ID"}), {"ID_REGISTRO"}),
+                                    {{"ID_REGISTRO", "_IS_ID"}, {"ITEM_ID", "_IS_IT"}}), {"_IS_ID"}, JoinKind.Inner)),
+    Reais = Table.RemoveColumns(Table.AddColumn(Table.Join(Reais0, {"ID_REGISTRO"},
+                Table.SelectColumns(ItSubst, {"_V_ID", "_IS_IT"}), {"_V_ID"}, JoinKind.LeftOuter),
+                "_IT_ORD", each if [_V_ID] <> null then [_IS_IT] else [ITEM_ID], Int64.Type), {"_V_ID", "_IS_IT"}),
 
     // Cada passo: ordena, poe ao lado de cada linha os valores da linha ANTERIOR
     // (coluna deslocada, montada de uma vez a partir da lista -- leitura
@@ -511,16 +520,16 @@ let
                 Table.AddColumn(Reais, "_GK", each Text.Combine({[EQUIPAMENTO], [MATRIZ], [LOTE], [ANALITO],
                                                                  Date.ToText([DATA], "yyyyMMdd")}, "|"), type text),
                 {{"_GK", Order.Ascending}, {"DATA_HORA", Order.Ascending}, {"NIVEL", Order.Ascending},
-                 {"ITEM_ID", Order.Ascending}, {"ID_REGISTRO", Order.Ascending}}), "_i1", 0, 1, Int64.Type)),
+                 {"_IT_ORD", Order.Ascending}, {"ID_REGISTRO", Order.Ascending}}), "_i1", 0, 1, Int64.Type)),
     T1 = Table.FillDown(Table.AddColumn(ComAnterior(Ordem1, {"_GK", "DATA_HORA"}), "_BL", each
             if [_ANT__GK] = null or [_GK] <> [_ANT__GK] or Duration.TotalMinutes([DATA_HORA] - [_ANT_DATA_HORA]) > GAP
             then [_i1] else null, Int64.Type), {"_BL"}),
 
     // (2) posicao dentro de (bloco, nivel): o 2o resultado do mesmo nivel abre posicao nova
     Ordem2 = Table.Buffer(Table.AddIndexColumn(Table.Sort(
-                Table.SelectColumns(T1, {"ID_REGISTRO", "_GK", "_BL", "NIVEL", "DATA", "DATA_HORA", "ITEM_ID"}),
+                Table.SelectColumns(T1, {"ID_REGISTRO", "_GK", "_BL", "NIVEL", "DATA", "DATA_HORA", "_IT_ORD"}),
                 {{"_BL", Order.Ascending}, {"NIVEL", Order.Ascending}, {"DATA_HORA", Order.Ascending},
-                 {"ITEM_ID", Order.Ascending}, {"ID_REGISTRO", Order.Ascending}}), "_i2", 0, 1, Int64.Type)),
+                 {"_IT_ORD", Order.Ascending}, {"ID_REGISTRO", Order.Ascending}}), "_i2", 0, 1, Int64.Type)),
     T2a = Table.FillDown(Table.AddColumn(ComAnterior(Ordem2, {"_BL", "NIVEL"}), "_I2INI", each
             if [_ANT__BL] = null or [_BL] <> [_ANT__BL] or [NIVEL] <> [_ANT_NIVEL] then [_i2] else null, Int64.Type), {"_I2INI"}),
     T2 = Table.Buffer(Table.SelectColumns(Table.AddColumn(T2a, "_POS", each [_i2] - [_I2INI] + 1, Int64.Type),

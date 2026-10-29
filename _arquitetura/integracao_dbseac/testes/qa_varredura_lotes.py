@@ -121,7 +121,13 @@ def executar(produto, caminho, saida):
             for nv in range(nlv):
                 if not linhas_ok[nv]:
                     erro.append(f'N{nv + 1} linhas do alvo {lin[nv]} (com Media/DP: {tem_alvo[nv]})')
-                if pts[nv] > 0:
+                cad_md = num(exp[2 * nv]) and num(exp[2 * nv + 1])
+                if pts[nv] > 0 and not cad_md:
+                    # 29/10/2026: o lote nao tem Media/DP cadastrada neste nivel (8383 PCR N1 com 1 resultado) -- o
+                    # certo e dizer "SEM MEDIA/DP" e nao desenhar linha; nada de media no grafico
+                    if 'SEM M' not in st[nv].upper() or num(md[2 * nv]) or num(md[2 * nv + 1]):
+                        erro.append(f'N{nv + 1} sem Media/DP cadastrada e o Painel nao diz SEM MEDIA/DP')
+                elif pts[nv] > 0:
                     if 'SEM M' in st[nv].upper():
                         erro.append(f'N{nv + 1} SEM MEDIA/DP')
                     if not (perto(md[2 * nv], exp[2 * nv]) and perto(md[2 * nv + 1], exp[2 * nv + 1])):

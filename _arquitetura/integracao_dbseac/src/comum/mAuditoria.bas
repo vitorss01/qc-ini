@@ -332,6 +332,11 @@ Public Function Auditar(ByVal categoria As String, ByVal acao As String, _
     ' (achado do QA de lotes, ADR-060; mesma familia do item 2.2). O hash cobre o CStr do que
     ' foi relido, igual nos dois casos -- a cadeia nao muda.
     ws.Cells(lin, AU_LOTE).NumberFormat = "@"
+    ' Resultado anterior/novo chegam como TEXTO no formato do Windows ("3,924"). O .Value do VBA le texto no padrao
+    ' americano: "3,924" virava 3924 (virgula = milhar) e "3,8" ficava texto. Achado do qa_manual_substitui M06 em
+    ' 29/10/2026. Com "@" fica o que foi escrito; as linhas antigas nao sao tocadas (append-only).
+    ws.Cells(lin, AU_RESANT).NumberFormat = "@"
+    ws.Cells(lin, AU_RESNOVO).NumberFormat = "@"
 
     ' UMA escrita de bloco em vez de 32 escritas de celula. Cada acesso a
     ' Range custa uma travessia COM; em lote, o Excel resolve tudo de uma vez.

@@ -1011,12 +1011,23 @@ Private Sub CalcularCorridas(ByRef U() As Variant, ByVal nU As Long, ByVal GAP A
         End If
     Next i
     If nRe = 0 Then Exit Sub
+    ' ADR-082 (29/10/2026): o manual que substitui ordena com o ITEM_ID do indicado (= _IT_ORD do PQ). Sem isso, com
+    ' dois resultados do mesmo nivel no MESMO segundo (10/03: itens 26 e 28 as 08:36:18), o manual (ITEM_ID vazio, que
+    ' ordena primeiro) passava a frente do 1o e o renumerava. So a ordem: o ITEM_ID gravado do manual continua vazio.
+    Dim itOrd() As Variant
+    ReDim itOrd(1 To nU)
+    For i = 1 To nU
+        If IsEmpty(itOrd(i)) Then itOrd(i) = U(i, F_IT)
+        If Not IsEmpty(U(i, F_SUBPOR)) Then
+            If U(i, F_SUBIDX) > 0 Then itOrd(U(i, F_SUBIDX)) = U(i, F_IT)
+        End If
+    Next i
     ' o1: (_GK, DATA_HORA, NIVEL, ITEM_ID, ID_REGISTRO) -> blocos separados por intervalo > GAP
     ReDim chave(1 To nRe)
     For j = 1 To nRe
         i = reais(j)
         chave(j) = KS(U(i, F_GK)) & Chr$(0) & P15(U(i, F_DHMS)) & Chr$(0) & KN(U(i, F_NV)) & Chr$(0) & _
-                   KN(U(i, F_IT)) & Chr$(0) & KS(U(i, F_ID))
+                   KN(itOrd(i)) & Chr$(0) & KS(U(i, F_ID))
     Next j
     o1 = OrdenarPorChave(chave, nRe)
     ant = 0
