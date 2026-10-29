@@ -512,7 +512,9 @@ def executar(produto, caminho, saida):
         # ---------------------------------------------------------------- inativacao (soft-delete) sem comentario
         # so o numero (o evento normaliza) e o analito (ADR-070); SEM motivo: o T08 prova o E01
         q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': xid.split('-')[-1], 'ANALITO': X['ANALITO']})
-        lin = [r for r in q.ler('tblInativacao_NaoConformes') if r['ID_REGISTRO']]
+        # a linha DESTE teste (a producao pode ja ter inativacoes reais antes dela)
+        lin = [r for r in q.ler('tblInativacao_NaoConformes')
+               if str(r['ID_REGISTRO'] or '').split('-')[-1] == xid.split('-')[-1]]
         q.atualizar()
         f = q.final_por_id()[xid]
         rec_x1 = [r for r in q.ler('tblDB_Recebimento') if r['ID_REGISTRO'] == xid][0]
@@ -619,11 +621,22 @@ def executar(produto, caminho, saida):
         # D17: a corrida PRECISA estar na janela (sem o slot a asserção passaria por vacuidade) e a varredura
         # cobre os 3 slots de X de TODOS os níveis da corrida: so pode haver X onde a final manda (X_VERMELHO
         # da mesma corrida); o desmarcado nao aparece nem como X nem como ponto normal do N1
+        # ADR-081: o eixo so tem corridas com algum ponto plotavel. Se o desmarcado era o unico da corrida (ex.: a
+        # corrida do dia so com o N1), ela SAI da janela -- correto, desde que a final confirme que nada mais
+        # dessa corrida plota; com outro ponto plotavel na corrida, sumir e defeito
+        restantes = [(int(r['NIVEL']), r['ID_REGISTRO'], r['TIPO_PLOTAGEM_LJ']) for r in fin13.values()
+                     if r['TIPO_PLOTAGEM_LJ'] in ('NORMAL', 'X_VERMELHO') and r['ANALITO'] == analito
+                     and str(r['LOTE']) == str(lote) and int(r['RUN'] or 0) == alvo[1]
+                     and (not q.bio or r['EQUIPAMENTO'] == e0['equip'])]
         if sl2 is None:
+            ok = (not restantes and f['TIPO_PLOTAGEM_LJ'] == 'NAO_PLOTAR' and f['PARTICIPA_ESTATISTICA'] == NAO
+                  and xid in fin13 and f['STATUS_ANALITICO'] == 'INATIVADO' and f['REGISTRAR_RESULTADO_NO_LJ'] == NAO
+                  and alvo[1] not in e2['runs'] and st2[0] == st1[0])
             reg('T13 REGISTRAR-LJ desmarcado: não plota, não participa, continua auditável; estatística igual ao estado X',
-                False, {'falha': 'pré-condição ausente: a corrida do resultado não está na janela do LJ',
-                        'RUN': alvo[1], 'janela_corridas': e2['n'], 'TIPO_PLOTAGEM_LJ': f['TIPO_PLOTAGEM_LJ'],
-                        'tempo_atualizacao_s': round(t13, 1)})
+                ok, {'corrida_saiu_da_janela': True, 'pontos_plotaveis_restantes_na_corrida': restantes,
+                     'RUN': alvo[1], 'janela_corridas': e2['n'], 'TIPO_PLOTAGEM_LJ': f['TIPO_PLOTAGEM_LJ'],
+                     'STATUS_ANALITICO': f['STATUS_ANALITICO'], 'REGISTRAR_RESULTADO_NO_LJ': f['REGISTRAR_RESULTADO_NO_LJ'],
+                     'painel_X': st1[0], 'painel_nao_plotar': st2[0], 'tempo_atualizacao_s': round(t13, 1)})
         else:
             x_lidos = sorted((nv + 1, e2['x'][sl2][nv * 3 + s]) for nv in range(q.nlv) for s in range(3)
                              if e2['x'][sl2][nv * 3 + s] not in (None, ''))
