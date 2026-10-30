@@ -25,7 +25,8 @@ NOVOS = ['mIncerteza',                        # ADR-064
          'mEtlReceb', 'mEtlCQ', 'mEtlQA', 'mEtlSync',   # ADR-079: camada de dados em VBA
          'mCarregando',                        # ADR-084: indicador das operacoes demoradas (frmCarregando)
          'mCalibracao',                        # ADR-084: calibracao registrada pelo ID do resultado (aba Registros)
-         'mSenha', 'mUsuariosCentral']         # ADR-084: PBKDF2 com salt + copia do cadastro central de usuarios
+         'mSenha', 'mUsuariosCentral',         # ADR-084: PBKDF2 com salt + copia do cadastro central de usuarios
+         'mCEQForm']                           # ADR-087: registro e consulta do CEQ (janela frmCEQ)
 # modulos de CLASSE (criados como classe se faltarem). ADR-070: a clsCht (eventos dos graficos do Painel)
 # so existia dentro dos .xlsm; virou fonte versionada
 CLASSES = ['clsCht']

@@ -11,6 +11,10 @@ import sys
 PALAVRAS = {'if', 'then', 'else', 'elseif', 'end', 'for', 'each', 'in', 'next', 'do', 'loop', 'while', 'until', 'wend',
             'select', 'case', 'with', 'set', 'let', 'dim', 'redim', 'preserve', 'exit', 'function', 'sub', 'property',
             'on', 'error', 'resume', 'goto', 'call', 'erase', 'const', 'private', 'public', 'static', 'option'}
+# nome de variavel que o VBA le como palavra-chave (ADR-086: 'Dim aS() As Double' nao compilou)
+RESERVADAS = PALAVRAS | {'as', 'to', 'is', 'or', 'and', 'not', 'xor', 'mod', 'me', 'new', 'nothing', 'true', 'false',
+                         'step', 'rem', 'byval', 'byref', 'optional', 'like', 'eqv', 'imp', 'type', 'enum', 'get',
+                         'empty', 'null', 'stop', 'print', 'open', 'close', 'line', 'input', 'friend', 'global'}
 
 
 def procedimentos(t):
@@ -56,6 +60,8 @@ def checar(caminho):
                 if mm:
                     decl.append(mm.group(1))
         baixos = [d.lower() for d in decl]
+        for d in sorted({x for x in baixos if x in RESERVADAS}):
+            problemas.append(f'{nome}: "{d}" e palavra reservada do VBA (o VBA nao diferencia maiusculas: "aS" = "As")')
         for d in sorted({x for x in baixos if baixos.count(x) > 1}):
             problemas.append(f'{nome}: "{d}" declarado mais de uma vez (o VBA nao diferencia maiusculas)')
         for d in sorted({x for x in baixos if x in mod}):

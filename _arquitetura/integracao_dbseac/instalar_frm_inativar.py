@@ -15,6 +15,7 @@ main(): instala o form, instala todo o VBA atual das fontes (codigo_atual.py, qu
 form entra nessa compilacao), devolve a protecao de cada aba e a da estrutura como estavam. Falha = nada salvo.
 """
 import os
+import re
 import sys
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -88,7 +89,22 @@ def _gravar(obj, prop, valor):
     setattr(obj, prop.split('.')[-1], valor)
 
 
+def _larguras_pt(s):
+    """'200 pt;110 pt' / '7,06 cm;3,88 cm' (o MSForms reescreve na unidade do Windows) -> [200.0, 110.0]."""
+    out = []
+    for p in str(s or '').split(';'):
+        m = re.match(r'\s*([\d.,]+)\s*(pt|cm|in|mm)?\s*$', p)
+        if not m:
+            return None
+        v = float(m.group(1).replace(',', '.'))
+        out.append(v * {'pt': 1, None: 1, 'cm': 72 / 2.54, 'mm': 72 / 25.4, 'in': 72}[m.group(2)])
+    return out
+
+
 def _igual(prop, atual, quer):
+    if prop == 'ColumnWidths':
+        a, b = _larguras_pt(atual), _larguras_pt(quer)
+        return a is not None and b is not None and len(a) == len(b) and all(abs(x - y) <= 1.0 for x, y in zip(a, b))
     if prop in NUMERICAS:
         try:
             return abs(float(atual) - float(quer)) <= 1.0

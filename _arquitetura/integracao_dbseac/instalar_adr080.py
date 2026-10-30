@@ -169,6 +169,8 @@ def graficos(wb, nlv):
         for s_i in range(1, ch.SeriesCollection().Count + 1):
             s = ch.SeriesCollection(s_i)
             f = str(s.Formula)
+            if ',(Calc!' in f:                      # ADR-086: series de limite em degrau -- dono e o adr086
+                continue
             mt = RX_X.match(f)
             if not mt:
                 raise SystemExit(f'grafico {i}, serie {s.Name}: formula fora do padrao: {f}')

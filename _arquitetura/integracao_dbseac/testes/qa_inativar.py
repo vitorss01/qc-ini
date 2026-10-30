@@ -172,7 +172,9 @@ def executar(produto, caminho, saida):
         # ------------------------------------------------------------ N02 dica de ponto normal
         dN = dica(1, s_res, sN + 1)
         okN, espN = confere_dica(dN, N, False)
-        d_lim = dica(1, 1, 1)                       # ADR-078: a linha de limite tem 2 pontos (bordas do eixo)
+        # ADR-086: a linha de limite tem 182 pontos -- corridas 1..180 (degrau, so no modo TODOS: NA no modo normal) e as
+        # 2 bordas do eixo do ADR-078 (181 e 182)
+        d_lim = dica(1, 1, 181)
         d_lim3 = dica(1, 1, 3)
         d_fora = dica(1, s_res, e0['n'] + 1)
         reg('N02 Dica do ponto normal (mUI.DicaPonto): ID curto, RUN real, data/hora e valor = Principal - Resultados; '

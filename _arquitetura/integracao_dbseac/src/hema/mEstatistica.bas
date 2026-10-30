@@ -52,7 +52,8 @@ Public Const ENG_COL_DH0 As Long = 51   ' Eng_Saida AY..BA: DATA_HORA do ponto n
 Public Const ENG_COL_DHX0 As Long = 54  ' Eng_Saida BB..BJ: DATA_HORA de cada X vermelho
 Public Const ENG_COL_CORL0 As Long = 63 ' Eng_Saida BK..BM: CORRIDA DO LOTE de N1..N3 (eixo X do grafico, ADR-080)
 Public Const ENG_COL_XPOS0 As Long = 66 ' Eng_Saida BN..BV: posicao no eixo de cada X vermelho (ADR-081; N1 X1..X3, N2.., N3..)
-Public Const ENG_COL_ULT As Long = 74   ' Eng_Saida BV: ultima coluna publicada por corrida
+Public Const ENG_COL_ULT As Long = 80   ' Eng_Saida CB: ultima coluna publicada por corrida (ADR-086: era BV)
+Public Const ENG_COL_ALVO0 As Long = 75 ' Eng_Saida BW..CB: alvo de cada ponto -- Media/DP de N1, N2, N3 (ADR-086)
 Public Const ENG_COL_VALOR0 As Long = 25 ' Eng_Saida Y: valor do N1 (mesmo que COL_VALOR0, para o mUI)
 Public Const ENG_COL_X0 As Long = 30    ' Eng_Saida AD: 1o X (mesmo que COL_X0, para o mUI)
 Private Const NIDV As Long = 3          ' colunas de ID/DATA_HORA do ponto normal (3 niveis fixos)
@@ -62,6 +63,7 @@ Private Const E0  As Long = 7          ' Estatistica: 1a linha
 
 ' ---- cache ----
 Private mIdxX As Object                ' "ANALITO|LOTE" -> linhas X_VERMELHO de mDB (ADR-057)
+Private mTodosCalc As Boolean          ' ADR-086: a publicacao em curso e de TODOS os lotes (Painel H3 vazio)
 Private mEquipIdx As String            ' equipamento para o qual mIdx/mIdxX foram montados ("" = todos)
 Private mCache As Object               ' chave -> Array(n, media, dp)
 Private mDB As Variant                 ' snapshot do banco
@@ -363,6 +365,60 @@ End Function
 '
 ' ETp: vem da coluna "ETp em uso final %", achada pelo CABECALHO. O indice fixo
 ' 18 apontava para "ETp VB" desde que as colunas de especificacao mudaram.
+' ADR-086: chave da corrida da linha i do banco -- o RUN; no modo TODOS os lotes, RUN|LOTE (o mesmo RUN yymmddkk
+' existe em dois lotes no dia da troca de lote; sem o lote, as duas corridas virariam uma so).
+Private Function KR(ByVal i As Long) As String
+    If mTodosCalc Then
+        KR = CStr(mDB(i, COL_RUN)) & "|" & Trim$(CStr(mDB(i, COL_LOTE)))
+    Else
+        KR = CStr(mDB(i, COL_RUN))
+    End If
+End Function
+
+' ADR-086: linhas X VERMELHO de TODOS os lotes do analito (mesmo arranjo do LinhasDe com lote vazio).
+Private Function LinhasXTodos(ByVal analito As String) As Collection
+    Dim k As Variant, pre As String, c As Collection, x As Variant
+    GarantirIndice
+    pre = UCase$(Trim$(analito)) & "|"
+    Set c = New Collection
+    For Each k In mIdxX.Keys
+        If Left$(k, Len(pre)) = pre Then
+            For Each x In mIdxX(k)
+                c.Add x
+            Next x
+        End If
+    Next k
+    Set LinhasXTodos = c
+End Function
+
+' ADR-086: total de resultados na base (o "lote na base" do modo TODOS); -1 = base nao carregada.
+Private Function NResultadosTodos() As Long
+    NResultadosTodos = -1
+    On Error GoTo sai
+    GarantirDB
+    If IsEmpty(mDB) Then Exit Function
+    NResultadosTodos = UBound(mDB, 1)
+sai:
+End Function
+
+' ADR-086: OrdenarCorridas levando a chave junto (mesmo comparador; empate de data e RUN -- dois lotes no mesmo RUN --
+' pela chave). Insercao estavel: no modo normal a ordem e exatamente a do OrdenarCorridas.
+Private Sub OrdenarCorridasK(ByRef runs() As Long, ByRef dts() As Double, ByRef keys() As String, ByVal n As Long)
+    Dim a As Long, b As Long, tr As Long, td As Double, tk As String
+    For a = 2 To n
+        tr = runs(a): td = dts(a): tk = keys(a): b = a - 1
+        Do While b >= 1
+            If CorridaAntes(td, tr, dts(b), runs(b)) Then
+            ElseIf td = dts(b) And tr = runs(b) And tk < keys(b) Then
+            Else
+                Exit Do
+            End If
+            runs(b + 1) = runs(b): dts(b + 1) = dts(b): keys(b + 1) = keys(b): b = b - 1
+        Loop
+        runs(b + 1) = tr: dts(b + 1) = td: keys(b + 1) = tk
+    Next a
+End Sub
+
 Public Function AlvoAnalito(ByVal analito As String, ByVal nivel As Long, _
                             ByRef alvoMedia As Double, ByRef alvoDP As Double, _
                             ByRef etp As Double, ByVal lote As String) As Boolean
@@ -1245,7 +1301,7 @@ End Function
 Public Sub AtualizarCalc()
     Dim ws As Worksheet, analito As String, lote As String, equip As String
     Dim i As Long, t As Long, nRun As Long, r As Long, e As Long
-    Dim runs() As Long, dts() As Double, valor() As Double, temDado() As Boolean
+    Dim runs() As Long, dts() As Double, valor() As Double, temDado() As Boolean, keys() As String
     Dim r13 As Variant, r2sMulti As Variant, rR4 As Variant, r1sMulti As Variant, rSeq As Variant, a12 As Variant
     Dim alvoM() As Double, alvoS() As Double, etp As Double
     Dim seen As Object, ordem As Object
@@ -1257,6 +1313,10 @@ Public Sub AtualizarCalc()
     CarregarFiltro
     ' ADR-049: o lote e o do PAINEL (loteSel), escolhido pelo usuario.
     lote = mLotes.LotePainel()
+    ' ADR-086: Painel H3 vazio = TODOS os lotes do analito e do equipamento -- cada ponto com o alvo do SEU lote, o
+    ' Westgard avaliado lote a lote (nunca uma regra atravessando dois lotes), a corrida chaveada por RUN|LOTE (o mesmo
+    ' RUN existe em dois lotes no dia da troca). engLote (E1) continua o lote em uso: o Calc compara com loteAnalise.
+    mTodosCalc = mLotes.TodosOsLotes()
     ' ADR-057: na Bioquimica, o equipamento tambem (cada um e uma serie propria)
     equip = mEquipIdx
 
@@ -1287,6 +1347,9 @@ Public Sub AtualizarCalc()
     ' ADR-078: resultados do lote na base (nome engNLoteBase) -- ANTES de qualquer saida antecipada
     ws.Range("V1").Value = "lote na base:"
     ws.Range("W1").Value = NResultadosLote(lote)
+    ws.Range("AC1").Value = "todos os lotes:"
+    ws.Range("AD1").Value = mTodosCalc       ' ADR-086: nome engTodos (o Calc e o Painel leem)
+    If mTodosCalc Then ws.Range("W1").Value = NResultadosTodos()
     If analito = "" Or IsEmpty(mDB) Then GoTo restaura
     ws.Range("O1").Value = LotesNoPeriodo(analito)
 
@@ -1302,12 +1365,19 @@ Public Sub AtualizarCalc()
     ' de antes da inativacao existir: o X nunca entra em regra, media ou DP.
     ' ADR-049: sem teto na descoberta. ADR-050: pelo indice.
     Dim linhas As Collection, linhasX As Collection, x As Variant
-    Set linhas = LinhasDe(analito, lote)
-    Set linhasX = LinhasXDe(analito, lote)    ' LinhasXDe, nao LinhasX: VBA nao diferencia maiusculas e a variavel esconderia a funcao
+    If mTodosCalc Then                        ' ADR-086: todos os lotes do analito (o equipamento ja filtra o indice)
+        Set linhas = LinhasDe(analito, "")
+        Set linhasX = LinhasXTodos(analito)
+    Else
+        Set linhas = LinhasDe(analito, lote)
+        Set linhasX = LinhasXDe(analito, lote)    ' LinhasXDe, nao LinhasX: VBA nao diferencia maiusculas e a variavel esconderia a funcao
+    End If
     Set seen = CreateObject("Scripting.Dictionary")
     Dim elegivel As Object: Set elegivel = CreateObject("Scripting.Dictionary")
     Dim nTodas As Long, runsT() As Long, dtsT() As Double, dd As Double, mxDe As Object, passada As Long
+    Dim keyT() As String                      ' ADR-086: chave da corrida (RUN; no modo TODOS, RUN|LOTE)
     ReDim runsT(1 To linhas.Count + linhasX.Count + 1): ReDim dtsT(1 To linhas.Count + linhasX.Count + 1)
+    ReDim keyT(1 To linhas.Count + linhasX.Count + 1)
     Set mxDe = CreateObject("Scripting.Dictionary")     ' RUN -> maior data/hora
     Dim fonte As Collection
     For passada = 1 To 2
@@ -1316,23 +1386,24 @@ Public Sub AtualizarCalc()
             i = x
             dd = 0
             If IsDate(mDB(i, COL_DATA)) Then dd = CDbl(CDate(mDB(i, COL_DATA)))
-            If passada = 1 Then elegivel(CStr(mDB(i, COL_RUN))) = True
-            If Not seen.Exists(CStr(mDB(i, COL_RUN))) Then
+            If passada = 1 Then elegivel(KR(i)) = True
+            If Not seen.Exists(KR(i)) Then
                 nTodas = nTodas + 1
                 runsT(nTodas) = CLng(Val(mDB(i, COL_RUN)))
+                keyT(nTodas) = KR(i)
                 dtsT(nTodas) = dd
-                seen.Add CStr(mDB(i, COL_RUN)), nTodas
-                mxDe(CStr(mDB(i, COL_RUN))) = dd
-            ElseIf dd > mxDe(CStr(mDB(i, COL_RUN))) Then
+                seen.Add KR(i), nTodas
+                mxDe(KR(i)) = dd
+            ElseIf dd > mxDe(KR(i)) Then
                 ' data EXIBIDA = a maior data/hora da corrida no analito; a ORDEM
                 ' continua pela data da 1a linha (ADR-049)
-                mxDe(CStr(mDB(i, COL_RUN))) = dd
+                mxDe(KR(i)) = dd
             End If
         Next x
     Next passada
     ws.Range("K1").Value = nTodas
     If nTodas = 0 Then GoTo restaura
-    OrdenarCorridas runsT, dtsT, nTodas
+    OrdenarCorridasK runsT, dtsT, keyT, nTodas
 
     ' ---- ADR-080/081: CORRIDA DO LOTE, por nivel (o eixo X do grafico de cada nivel) ----
     ' Cada passagem do controle de um nivel e uma corrida: 1, 2, 3... desde o 1o resultado daquele nivel NO LOTE (todo
@@ -1351,7 +1422,7 @@ Public Sub AtualizarCalc()
         i = x
         If IsNumeric(mDB(i, COL_RESULT)) Then
             t = CLng(Val(mDB(i, COL_NIVEL))) - 1
-            If t >= 0 And t <= NLV - 1 Then temNv(CStr(CLng(Val(mDB(i, COL_RUN)))) & "|" & t) = True
+            If t >= 0 And t <= NLV - 1 Then temNv(KR(i) & "|" & t) = True
         End If
     Next x
     For Each x In linhasX                         ' na mesma ordem em que os X ganham os slots 1..NXN (abaixo)
@@ -1359,7 +1430,7 @@ Public Sub AtualizarCalc()
         If IsNumeric(mDB(i, COL_RESULT)) Then
             t = CLng(Val(mDB(i, COL_NIVEL))) - 1
             If t >= 0 And t <= NLV - 1 Then
-                kNv = CStr(CLng(Val(mDB(i, COL_RUN)))) & "|" & t
+                kNv = KR(i) & "|" & t
                 If nXde.Exists(kNv) Then
                     If nXde(kNv) < NXN Then nXde(kNv) = nXde(kNv) + 1
                 Else
@@ -1375,7 +1446,7 @@ Public Sub AtualizarCalc()
     ReDim contNv(0 To NLV - 1)
     For i = 1 To nTodas
         For t = 0 To NLV - 1
-            kNv = CStr(runsT(i)) & "|" & t
+            kNv = keyT(i) & "|" & t
             If nXde.Exists(kNv) Then
                 kGr = t & "|" & contNv(t)
                 xBase(kNv) = contNv(t)
@@ -1409,12 +1480,12 @@ Public Sub AtualizarCalc()
     Dim nEleg As Long, nSoX As Long, pularX As Long, j As Long
     iniJan = 1
     For i = fimJan To 1 Step -1
-        If elegivel.Exists(CStr(runsT(i))) Then nEleg = nEleg + 1
+        If elegivel.Exists(keyT(i)) Then nEleg = nEleg + 1
         If nEleg >= NK Then iniJan = i: Exit For
     Next i
     If nEleg > NK Then nEleg = NK
     For i = iniJan To fimJan
-        If Not elegivel.Exists(CStr(runsT(i))) Then nSoX = nSoX + 1
+        If Not elegivel.Exists(keyT(i)) Then nSoX = nSoX + 1
     Next i
     pularX = nSoX - (NK - nEleg)
     If pularX < 0 Then pularX = 0
@@ -1422,41 +1493,44 @@ Public Sub AtualizarCalc()
         If PassaFiltro(dtsT(i)) Then nCort = nCort + 1
     Next i
     ws.Range("M1").Value = nCort + pularX
-    ReDim runs(1 To NK): ReDim dts(1 To NK)
+    ReDim runs(1 To NK): ReDim dts(1 To NK): ReDim keys(1 To NK)
     nRun = 0
     j = 0
     For i = iniJan To fimJan
-        If elegivel.Exists(CStr(runsT(i))) Then
+        If elegivel.Exists(keyT(i)) Then
             nRun = nRun + 1
-            runs(nRun) = runsT(i): dts(nRun) = dtsT(i)
+            runs(nRun) = runsT(i): dts(nRun) = dtsT(i): keys(nRun) = keyT(i)
         ElseIf j < pularX Then
             j = j + 1                                  ' so-X mais antiga sem posicao
         Else
             nRun = nRun + 1
-            runs(nRun) = runsT(i): dts(nRun) = dtsT(i)
+            runs(nRun) = runsT(i): dts(nRun) = dtsT(i): keys(nRun) = keyT(i)
         End If
     Next i
     If nRun < 1 Then GoTo restaura
 
     Set ordem = CreateObject("Scripting.Dictionary")
     For i = 1 To nRun
-        ordem(CStr(runs(i))) = i
+        ordem(keys(i)) = i
     Next i
 
     ' ---- coletar valores ELEGIVEIS por nivel (eixo de plotagem) ----
     ReDim valor(0 To NLV - 1, 1 To nRun)
     ReDim temDado(0 To NLV - 1, 1 To nRun)
+    Dim lotePt() As String                    ' ADR-086: o lote de cada ponto (o alvo e o Westgard sao do lote)
+    ReDim lotePt(0 To NLV - 1, 1 To nRun)
     Dim outIdV() As Variant, outDhV() As Variant          ' ADR-070: de quem e cada ponto
     ReDim outIdV(1 To nRun, 1 To NIDV): ReDim outDhV(1 To nRun, 1 To NIDV)
     For Each x In linhas
         i = x
         If IsNumeric(mDB(i, COL_RESULT)) Then
-            If ordem.Exists(CStr(mDB(i, COL_RUN))) Then
+            If ordem.Exists(KR(i)) Then
                 t = CLng(Val(mDB(i, COL_NIVEL))) - 1
                 If t >= 0 And t <= NLV - 1 Then
-                    r = ordem(CStr(mDB(i, COL_RUN)))
+                    r = ordem(KR(i))
                     valor(t, r) = CDbl(mDB(i, COL_RESULT))
                     temDado(t, r) = True
+                    lotePt(t, r) = Trim$(CStr(mDB(i, COL_LOTE)))
                     outIdV(r, t + 1) = CStr(mDB(i, COL_ID))
                     outDhV(r, t + 1) = mDB(i, COL_DATA)
                 End If
@@ -1472,10 +1546,10 @@ Public Sub AtualizarCalc()
     For Each x In linhasX
         i = x
         If IsNumeric(mDB(i, COL_RESULT)) Then
-            If ordem.Exists(CStr(mDB(i, COL_RUN))) Then
+            If ordem.Exists(KR(i)) Then
                 t = CLng(Val(mDB(i, COL_NIVEL))) - 1
                 If t >= 0 And t <= NLV - 1 Then
-                    r = ordem(CStr(mDB(i, COL_RUN)))
+                    r = ordem(KR(i))
                     For s = 1 To NXN
                         If IsEmpty(outX(r, t * NXN + s)) Then
                             outX(r, t * NXN + s) = CDbl(mDB(i, COL_RESULT))
@@ -1499,7 +1573,7 @@ Public Sub AtualizarCalc()
     Dim pDeE() As Long, nE As Long
     ReDim pDeE(1 To nRun)
     For i = 1 To nRun
-        If elegivel.Exists(CStr(runs(i))) Then nE = nE + 1: pDeE(nE) = i
+        If elegivel.Exists(keys(i)) Then nE = nE + 1: pDeE(nE) = i
     Next i
 
     ' ---- alvos e z-scores (no eixo compactado) ----
@@ -1517,33 +1591,85 @@ Public Sub AtualizarCalc()
         stPar = stPar & IIf(t > 0, ";", "") & "N" & (t + 1) & "=" & IIf(parOK(t), "OK", "SEM")
     Next t
     ws.Range("Q1").Value = stPar
+    ' ADR-086: o alvo de cada ponto -- no modo normal, o do lote do Painel (como sempre); no modo TODOS, o do lote do
+    ' proprio ponto (cache por lote x nivel). Nivel/lote sem Media/DP nao entra no Westgard (mesma regra de antes).
+    Dim aM() As Double, aDP() As Double, aOK() As Boolean, cacheAlvo As Object, kA As String, lotesJan As Object
+    Dim m0 As Double, s0 As Double, etpPt As Double, ok0 As Boolean
+    ReDim aM(0 To NLV - 1, 1 To nRun): ReDim aDP(0 To NLV - 1, 1 To nRun): ReDim aOK(0 To NLV - 1, 1 To nRun)
+    Set cacheAlvo = CreateObject("Scripting.Dictionary")
+    Set lotesJan = CreateObject("Scripting.Dictionary")
+    For t = 0 To NLV - 1
+        For i = 1 To nRun
+            If temDado(t, i) Then
+                If mTodosCalc Then
+                    kA = lotePt(t, i) & "|" & t
+                    If Not cacheAlvo.Exists(kA) Then
+                        ok0 = AlvoAnalito(analito, t + 1, m0, s0, etpPt, lotePt(t, i))
+                        cacheAlvo.Add kA, Array(ok0, m0, s0)
+                    End If
+                    aOK(t, i) = cacheAlvo(kA)(0): aM(t, i) = cacheAlvo(kA)(1): aDP(t, i) = cacheAlvo(kA)(2)
+                    lotesJan(lotePt(t, i)) = True
+                Else
+                    aOK(t, i) = parOK(t): aM(t, i) = alvoM(t): aDP(t, i) = alvoS(t)
+                End If
+            End If
+        Next i
+    Next t
     If nE > 0 Then
-        ReDim zc(0 To NLV - 1, 1 To nE): ReDim tac(0 To NLV - 1, 1 To nE)
-        For t = 0 To NLV - 1
+        ' ADR-086: uma passada do Westgard por lote (modo normal: uma so, igual a antes). Cada passada so ve os pontos do
+        ' seu lote -- a sequencia de ativos do nivel (ADR-083) nunca atravessa a troca de lote.
+        Dim c13 As Variant, c2s As Variant, cR4 As Variant, c1s As Variant, cSeq As Variant, c12 As Variant
+        Dim passes As Variant, pL As Variant
+        If mTodosCalc Then passes = lotesJan.Keys Else passes = Array("")
+        Dim eL() As Long, nL As Long, kL As Long
+        For Each pL In passes
+            ' eixo da passada: modo normal = todas as corridas elegiveis (como antes); modo TODOS = so as corridas com ponto
+            ' deste lote, compactadas -- exatamente o eixo da visao do lote (lotes em paralelo nao se intercalam)
+            ReDim eL(1 To nE): nL = 0
             For e = 1 To nE
                 i = pDeE(e)
-                If temDado(t, i) And parOK(t) Then
-                    zc(t, e) = CalcularZ(valor(t, i), alvoM(t), alvoS(t))
-                    tac(t, e) = True
-                    temAval(t, i) = True
+                If Not mTodosCalc Then
+                    nL = nL + 1: eL(nL) = e
+                Else
+                    For t = 0 To NLV - 1
+                        If temDado(t, i) Then
+                            If lotePt(t, i) = CStr(pL) Then nL = nL + 1: eL(nL) = e: Exit For
+                        End If
+                    Next t
                 End If
             Next e
-        Next t
+            If nL > 0 Then
+                ReDim zc(0 To NLV - 1, 1 To nL): ReDim tac(0 To NLV - 1, 1 To nL)
+                For t = 0 To NLV - 1
+                    For kL = 1 To nL
+                        i = pDeE(eL(kL))
+                        If temDado(t, i) And aOK(t, i) Then
+                            If (Not mTodosCalc) Or lotePt(t, i) = CStr(pL) Then
+                                zc(t, kL) = CalcularZ(valor(t, i), aM(t, i), aDP(t, i))
+                                tac(t, kL) = True
+                                temAval(t, i) = True
+                            End If
+                        End If
+                    Next kL
+                Next t
 
-        ' ---- Westgard ----
-        Dim c13 As Variant, c2s As Variant, cR4 As Variant, c1s As Variant, cSeq As Variant, c12 As Variant
-        ReDim c13(0 To NLV - 1, 1 To nE): ReDim c2s(0 To NLV - 1, 1 To nE)
-        ReDim cR4(0 To NLV - 1, 1 To nE): ReDim c1s(0 To NLV - 1, 1 To nE)
-        ReDim cSeq(0 To NLV - 1, 1 To nE): ReDim c12(0 To NLV - 1, 1 To nE)
-        AvaliarWestgard zc, tac, nE, c13, c2s, cR4, c1s, cSeq, c12
-        ' devolve as marcas ao eixo de plotagem
-        For t = 0 To NLV - 1
-            For e = 1 To nE
-                i = pDeE(e)
-                r13(t, i) = c13(t, e): r2sMulti(t, i) = c2s(t, e): rR4(t, i) = cR4(t, e)
-                r1sMulti(t, i) = c1s(t, e): rSeq(t, i) = cSeq(t, e): a12(t, i) = c12(t, e)
-            Next e
-        Next t
+                ' ---- Westgard ----
+                ReDim c13(0 To NLV - 1, 1 To nL): ReDim c2s(0 To NLV - 1, 1 To nL)
+                ReDim cR4(0 To NLV - 1, 1 To nL): ReDim c1s(0 To NLV - 1, 1 To nL)
+                ReDim cSeq(0 To NLV - 1, 1 To nL): ReDim c12(0 To NLV - 1, 1 To nL)
+                AvaliarWestgard zc, tac, nL, c13, c2s, cR4, c1s, cSeq, c12
+                ' devolve as marcas ao eixo de plotagem (modo TODOS: so os pontos desta passada)
+                For t = 0 To NLV - 1
+                    For kL = 1 To nL
+                        If (Not mTodosCalc) Or tac(t, kL) Then
+                            i = pDeE(eL(kL))
+                            r13(t, i) = c13(t, kL): r2sMulti(t, i) = c2s(t, kL): rR4(t, i) = cR4(t, kL)
+                            r1sMulti(t, i) = c1s(t, kL): rSeq(t, i) = cSeq(t, kL): a12(t, i) = c12(t, kL)
+                        End If
+                    Next kL
+                Next t
+            End If
+        Next pL
     End If
 
     ' ---- publicar em Eng_Saida ----
@@ -1564,7 +1690,7 @@ Public Sub AtualizarCalc()
     For i = 1 To nRun
         outFil(i, 1) = IIf(PassaFiltro(dts(i)), 1, 0)
         Dim dMx As Double
-        dMx = mxDe(CStr(runs(i)))
+        dMx = mxDe(keys(i))
         If dMx > 0 Then outDt(i, 1) = CDate(dMx) Else outDt(i, 1) = ""
         ' Chave logica da linha: ANALITO|RUN (o RUN e compartilhado entre analitos)
         outChv(i, 1) = analito & "|" & runs(i)
@@ -1588,7 +1714,7 @@ Public Sub AtualizarCalc()
     ReDim outCor(1 To nRun, 1 To NIDV)
     For i = 1 To nRun
         For t = 0 To NLV - 1
-            kNv = CStr(runs(i)) & "|" & t
+            kNv = keys(i) & "|" & t
             If corLote.Exists(kNv) Then outCor(i, t + 1) = corLote(kNv) Else outCor(i, t + 1) = ""
         Next t
         For t = NLV To NIDV - 1
@@ -1601,7 +1727,7 @@ Public Sub AtualizarCalc()
     ReDim outXPos(1 To nRun, 1 To NX)
     For i = 1 To nRun
         For t = 0 To NLV - 1
-            kNv = CStr(runs(i)) & "|" & t
+            kNv = keys(i) & "|" & t
             For s = 1 To NXN
                 If Not IsEmpty(outX(i, t * NXN + s)) And xBase.Exists(kNv) Then
                     k0 = xBase(kNv)
@@ -1644,6 +1770,20 @@ Public Sub AtualizarCalc()
         Next i
         ws.Range(ws.Cells(KC0, EF0 + t * NEF), ws.Cells(KC0 + nRun - 1, EF0 + t * NEF + NEF - 1)).Value = outLvl
     Next t
+
+    ' ADR-086: o alvo (Media e DP) de cada ponto, por nivel (BW..CB). No modo TODOS as linhas de limite em degrau do
+    ' grafico leem daqui (Calc); no modo normal e o alvo do lote do Painel em todas as linhas.
+    Dim outAlvo() As Variant
+    ReDim outAlvo(1 To nRun, 1 To 6)
+    For i = 1 To nRun
+        For t = 0 To 2
+            outAlvo(i, 2 * t + 1) = "": outAlvo(i, 2 * t + 2) = ""
+            If t <= NLV - 1 Then
+                If temDado(t, i) And aOK(t, i) Then outAlvo(i, 2 * t + 1) = aM(t, i): outAlvo(i, 2 * t + 2) = aDP(t, i)
+            End If
+        Next t
+    Next i
+    ws.Range(ws.Cells(KC0, ENG_COL_ALVO0), ws.Cells(KC0 + nRun - 1, ENG_COL_ALVO0 + 5)).Value = outAlvo
 
     ws.Range("I1").Value = nRun
 restaura:
@@ -1884,6 +2024,12 @@ Public Sub AtualizarPainelEng()
         outStat(t + 1, 8) = IIf(n < 2 Or media = 0, "", et)
         outStat(t + 1, 9) = IIf(etp <= 0, "-", IIf(n < 2 Or cv = 0, "", sg))
         outStat(t + 1, 10) = IIf(n = 0, "", IIf(rejTot > 0, "REJEITADO", "OK"))
+        If mLotes.TodosOsLotes() Then
+            ' ADR-086: H3 vazio = varios lotes -- media/DP/CV/Bias/ET/Sigma juntando lotes nao tem sentido: vazios
+            ' (o n, as contagens de Westgard e o veredito de cada ponto, avaliado no seu lote, continuam)
+            outStat(t + 1, 3) = "": outStat(t + 1, 4) = "": outStat(t + 1, 5) = ""
+            outStat(t + 1, 7) = "": outStat(t + 1, 8) = "": outStat(t + 1, 9) = ""
+        End If
         outStat(t + 1, 11) = ""
         outStat(t + 1, 12) = ""
         For i = 1 To 5
@@ -3668,6 +3814,8 @@ Public Function GarantirMotorDoPainel() As Boolean
     If StrComp(Trim$(CStr(eng.Range("C1").Value)), _
                Trim$(CStr(ThisWorkbook.Names("selAnalito").RefersToRange.Value)), 1) <> 0 _
        Or Trim$(CStr(eng.Range("E1").Value)) <> mLotes.LotePainel() _
+       Or (UCase$(CStr(eng.Range("AD1").Value)) = "VERDADEIRO" Or UCase$(CStr(eng.Range("AD1").Value)) = "TRUE") _
+          <> mLotes.TodosOsLotes() _
        Or UCase$(Trim$(CStr(eng.Range("S1").Value))) <> EquipFiltro() Then
         RecalcularAnalitoAtual
         GarantirMotorDoPainel = True

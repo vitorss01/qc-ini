@@ -66,7 +66,9 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_westgard_sequencia.py',                    # ADR-083: Westgard do mesmo nivel na sequencia de ativos
           'qa_adr084.py',                                # ADR-084: status, motivo livre, indicador, calibracao pelo ID
           'qa_usuarios_adr084.py',                       # ADR-084: cadastro central, PBKDF2, login e assinatura
-          'qa_adr085.py']                                # ADR-085: painel tela unica (acoes no ponto, comentario, Westgard)
+          'qa_adr085.py',                                # ADR-085: painel tela unica (acoes no ponto, comentario, Westgard)
+          'qa_adr086.py',                                # ADR-086: H3 vazio = todos os lotes do periodo
+          'qa_adr087.py']                                # ADR-087: tabela de registros, filtros, CEQ, janelas
 
 
 def sha(p):
@@ -129,6 +131,8 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('manual_subst', ['instalar_adr082.py', produto, alvo]),   # ADR-082: SUBSTITUI_ID (manual no lugar do automatico)
               ('adr084', ['instalar_adr084.py', produto, alvo]),         # ADR-084: calibracao pelo ID, indicador, usuarios central
               ('adr085', ['instalar_adr085.py', produto, alvo]),         # ADR-085: painel tela unica
+              ('adr086', ['instalar_adr086.py', produto, alvo]),         # ADR-086: H3 vazio = todos os lotes
+              ('adr087', ['instalar_adr087.py', produto, alvo]),         # ADR-087: modernizacao das telas
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:
         ok, fim = rodar(os.path.join(trab, f'{nome}.log'), AQUI, *args)

@@ -40,6 +40,23 @@ ETAPAS = ['Preparando as entradas', None, 'Conferindo os resultados', 'Atualizan
           'Conferindo os vereditos de Westgard', 'Recalculando a estat']
 
 
+
+def corpo_registros(ws):
+    """Colunas B..L (Data..Equipamento) de cada linha da tblRegistros (ADR-087), incluindo a linha vazia do fim."""
+    corpo = ws.ListObjects('tblRegistros').DataBodyRange
+    r0, n = corpo.Row, corpo.Rows.Count
+    return ws.Range(f'B{r0}:L{r0 + n - 1}').Value
+
+
+def linha_livre(ws):
+    """A linha vazia de entrada da tblRegistros (o VBA mantem sempre uma no fim da tabela)."""
+    corpo = ws.ListObjects('tblRegistros').DataBodyRange
+    r0 = corpo.Row
+    for k, lin in enumerate(ws.Range(f'B{r0}:L{r0 + corpo.Rows.Count - 1}').Value):
+        if not any(v not in (None, '') for v in lin):
+            return r0 + k
+    raise RuntimeError('tblRegistros sem a linha vazia de entrada')
+
 def etapas_ok(hist, titulo, extra_inicio=()):
     """ABRIR:<titulo>|<extra...>|<6 etapas do nucleo>|FECHAR."""
     p = hist.split('|')
@@ -240,7 +257,7 @@ def executar(produto, caminho, saida):
         id_c = alvo_c[2]
         d_c = run('mIntegracao.DadosDoId', id_c, teto=60).split('|')
         aud_c0 = L.audit_ult()
-        reg_antes = reg_ws.Range('B4:L203').Value
+        reg_antes = corpo_registros(reg_ws)
         r10 = run('mCalibracao.RegistrarCalibracaoPorId', id_c, 0, teto=120)
         lin10 = int(r10.split('|')[1]) if r10.startswith('OK|') else 0
         row10 = reg_ws.Range(f'B{lin10}:L{lin10}').Value[0] if lin10 else ()
@@ -284,7 +301,7 @@ def executar(produto, caminho, saida):
         r12b = run('mCalibracao.RegistrarCalibracaoPorId', 'BIO-999999999' if q.bio else 'HEM-999999999', 0, teto=120)
         r12c = run('mCalibracao.RegistrarCalibracaoPorId', 'XYZ-12', 0, teto=120)
         r12d = run('mCalibracao.RegistrarCalibracaoPorId', '   ', 0, teto=120)
-        reg_dep = reg_ws.Range('B4:L203').Value
+        reg_dep = corpo_registros(reg_ws)
         novas = sum(1 for a_, b_ in zip(reg_antes, reg_dep) if a_ != b_)
         reg('K12 Recusas sem gravar: ID repetido (só o número), ID inexistente, formato inválido e vazio -- só a '
             'linha do K10 mudou na aba',
@@ -293,10 +310,10 @@ def executar(produto, caminho, saida):
             {'repetido': r12, 'inexistente': r12b, 'formato': r12c, 'vazio': r12d, 'linhas_mudadas': novas})
         # digitado na celula (Worksheet_Change da aba Registros): outro ID valido e um invalido
         alvo_d = pts[len(pts) // 4]
-        livre = next(r_ for r_ in range(4, 204) if not any(reg_ws.Range(f'B{r_}:L{r_}').Value[0]))
+        livre = linha_livre(reg_ws)
         reg_ws.Range(f'K{livre}').Value = alvo_d[2].split('-')[-1]
         ok13 = str(reg_ws.Range(f'K{livre}').Value) == alvo_d[2] and reg_ws.Range(f'F{livre}').Value == 'Sim'
-        livre2 = next(r_ for r_ in range(4, 204) if not any(reg_ws.Range(f'B{r_}:L{r_}').Value[0]))
+        livre2 = linha_livre(reg_ws)
         reg_ws.Range(f'K{livre2}').Value = 'XYZ-12'
         ok13b = not reg_ws.Range(f'K{livre2}').Value and not reg_ws.Range(f'B{livre2}').Value
         reg('K13 Digitado na coluna K: a linha se preenche sozinha; ID inválido digitado volta vazio (nada gravado)',
@@ -309,9 +326,12 @@ def executar(produto, caminho, saida):
             and any(id_c in str(x['parecer']) for x in a14),
             {'acoes': acoes[-10:]})
         rv = q.wb.Names('regView').RefersTo
-        reg('K15 regView = B4:L203 (as 11 colunas vão para a RegistrosStore na troca de lote) e cabeçalhos K/L',
-            rv.replace('$', '') == '=Registros!B4:L203' and reg_ws.Range('K3').Value == 'ID do resultado'
-            and reg_ws.Range('L3').Value == 'Equipamento', {'regView': rv})
+        # ADR-087: os registros sao a tabela tblRegistros (cabecalho na linha 6); regView = Data..Equipamento
+        lo = reg_ws.ListObjects('tblRegistros')
+        cab = [str(v) for v in lo.HeaderRowRange.Value[0]]
+        reg('K15 regView = tblRegistros[[Data]:[Equipamento]] (ADR-087) e cabeçalhos K/L da tabela',
+            rv.replace('$', '') == '=tblRegistros[[Data]:[Equipamento]]' and cab[10] == 'ID do resultado'
+            and cab[11] == 'Equipamento', {'regView': rv, 'cabecalho': cab})
     except Exception as ex_geral:                    # noqa: BLE001
         reg('K99 Execução interrompida: os testes seguintes a este ponto não rodaram', False,
             {'erro': f'{type(ex_geral).__name__}: {ex_geral}', 'traceback': traceback.format_exc()[-1500:]})

@@ -1,0 +1,189 @@
+Option Explicit
+' ============================================================================
+'  frmCEQ -- Registrar resultado do Controle Externo da Qualidade (ADR-087)
+'
+'  Quatro grupos, na ordem do relatorio do provedor: 1 Rodada, 2 Analito e
+'  amostra, 3 Resultado, 4 Avaliacao e fonte. A direita, os registros JA
+'  gravados da rodada escolhida (consulta sem percorrer a tabela inteira). Quem
+'  grava e valida e o mCEQForm.SalvarCEQ; a janela mostra o resultado na faixa de
+'  mensagem (lblMsg, acima dos botoes -- nunca por cima de um campo).
+'  "Salvar e proximo" mantem a rodada, o analito e a unidade e limpa a amostra e os
+'  numeros: o proximo resultado da mesma rodada sai sem redigitar o contexto.
+'  Criada pelo instalador (instalar_adr087.py: controles e propriedades).
+' ============================================================================
+Private mCarregando As Boolean
+' Ano e unidade preenchidos pela janela (do registro anterior) podem ser trocados por ela; o que o usuario digitou, nao.
+Private mAnoAuto As Boolean
+Private mUnidAuto As Boolean
+Private mPreenchendo As Boolean
+
+Private Sub UserForm_Initialize()
+    mCarregando = True
+    cboProvedor.Clear
+    cboProvedor.AddItem "CAP"
+    cboProvedor.AddItem "Controllab"
+    cboProvedor.Value = "CAP"
+    mCarregando = False
+    ProvedorMudou
+    Mensagem "Preencha os campos com * e clique em Salvar e próximo.", False
+End Sub
+
+Private Sub Mensagem(ByVal s As String, ByVal erro As Boolean, Optional ByVal sucesso As Boolean = False)
+    lblMsg.Caption = s
+    If erro Then
+        lblMsg.ForeColor = RGB(192, 0, 0)
+    ElseIf sucesso Then
+        lblMsg.ForeColor = RGB(0, 120, 0)
+    Else
+        lblMsg.ForeColor = RGB(90, 90, 90)
+    End If
+End Sub
+
+Private Sub PreencherCombo(ByVal c As Object, ByVal lista As Variant)
+    Dim atual As String, i As Long
+    atual = CStr(c.Text)
+    c.Clear
+    If IsArray(lista) Then
+        For i = LBound(lista) To UBound(lista)
+            c.AddItem CStr(lista(i))
+        Next i
+    End If
+    c.Text = atual
+End Sub
+
+Private Sub ProvedorMudou()
+    Dim p As String
+    p = CStr(cboProvedor.Value)
+    PreencherCombo cboRodada, mCEQForm.DistintosCEQ(p, mCEQForm.CQ_RODADA, True)
+    PreencherCombo cboAnalito, mCEQForm.DistintosCEQ(p, mCEQForm.CQ_ANALITO)
+    PreencherCombo cboAvaliacao, mCEQForm.DistintosCEQ(p, mCEQForm.CQ_AVAL)
+    AtualizarLista
+End Sub
+
+Private Sub cboProvedor_Change()
+    If mCarregando Then Exit Sub
+    ProvedorMudou
+End Sub
+
+' Rodada que ja existe: o ano vem do registro (reaproveitado, nao inventado) -- so com o Ano vazio ou preenchido pela
+' propria janela. Ano digitado pelo usuario nunca e trocado (rodada recorrente sem o ano no nome: "Rodada 1" de 2027).
+Private Sub cboRodada_Change()
+    Dim a As String
+    If mCarregando Then Exit Sub
+    If Len(Trim$(CStr(txtAno.Value))) = 0 Or mAnoAuto Then
+        a = mCEQForm.ValorRegistrado(CStr(cboProvedor.Value), mCEQForm.CQ_RODADA, CStr(cboRodada.Text), mCEQForm.CQ_ANO)
+        mPreenchendo = True
+        txtAno.Value = a                         ' rodada sem registro: o ano de outra rodada nao fica
+        mPreenchendo = False
+        mAnoAuto = (Len(a) > 0)
+    End If
+    AtualizarLista
+End Sub
+
+Private Sub txtAno_Change()
+    If mCarregando Or mPreenchendo Then Exit Sub
+    mAnoAuto = False
+    AtualizarLista
+End Sub
+
+' Analito ja registrado: a unidade do ultimo registro dele -- com a Unidade vazia ou vinda da janela (inclusive a que
+' o "Salvar e proximo" manteve): trocar de analito nao grava a unidade do anterior. Unidade digitada nao e trocada.
+Private Sub cboAnalito_Change()
+    Dim u As String
+    If mCarregando Then Exit Sub
+    If Len(Trim$(CStr(txtUnidade.Value))) = 0 Or mUnidAuto Then
+        u = mCEQForm.ValorRegistrado(CStr(cboProvedor.Value), mCEQForm.CQ_ANALITO, CStr(cboAnalito.Text), mCEQForm.CQ_UNID)
+        mPreenchendo = True
+        txtUnidade.Value = u
+        mPreenchendo = False
+        mUnidAuto = (Len(u) > 0)
+    End If
+End Sub
+
+Private Sub txtUnidade_Change()
+    If mCarregando Or mPreenchendo Then Exit Sub
+    mUnidAuto = False
+End Sub
+
+Private Sub AtualizarLista()
+    Dim v As Variant, i As Long, n As Long
+    lstRegs.Clear
+    v = mCEQForm.RegistrosDaRodada(CStr(cboProvedor.Value), CStr(cboRodada.Text), Trim$(CStr(txtAno.Value)))
+    If IsArray(v) Then
+        n = UBound(v, 1)
+        For i = 1 To n
+            lstRegs.AddItem CStr(v(i, 1))
+            lstRegs.List(lstRegs.ListCount - 1, 1) = CStr(v(i, 2))
+            lstRegs.List(lstRegs.ListCount - 1, 2) = CStr(v(i, 3))
+            lstRegs.List(lstRegs.ListCount - 1, 3) = CStr(v(i, 4))
+        Next i
+    End If
+    If Len(Trim$(CStr(cboRodada.Text))) = 0 Then
+        lblQtd.Caption = "Escolha a rodada para ver o que já foi registrado."
+    ElseIf n = 0 Then
+        lblQtd.Caption = "Nenhum registro nesta rodada ainda."
+    Else
+        lblQtd.Caption = n & " registro(s) nesta rodada"
+    End If
+End Sub
+
+Private Function Campos() As Variant
+    Campos = Array(CStr(cboProvedor.Value), CStr(cboRodada.Text), CStr(txtAno.Value), CStr(cboAnalito.Text), _
+                   CStr(txtAmostra.Value), CStr(txtResultado.Value), CStr(txtAlvo.Value), CStr(txtSD.Value), _
+                   CStr(txtSDI.Value), CStr(txtLimInf.Value), CStr(txtLimSup.Value), CStr(cboAvaliacao.Text), _
+                   CStr(txtNLabs.Value), CStr(txtUnidade.Value), CStr(txtPagina.Value), CStr(txtArquivo.Value))
+End Function
+
+' O controle de cada campo (na ordem de Campos) -- para marcar o que precisa de correcao.
+Private Function ControleDoCampo(ByVal k As Long) As Object
+    Dim nomes As Variant
+    nomes = Array("", "cboProvedor", "cboRodada", "txtAno", "cboAnalito", "txtAmostra", "txtResultado", "txtAlvo", _
+                  "txtSD", "txtSDI", "txtLimInf", "txtLimSup", "cboAvaliacao", "txtNLabs", "txtUnidade", "txtPagina", _
+                  "txtArquivo")
+    If k >= 1 And k <= 16 Then Set ControleDoCampo = Me.Controls(nomes(k))
+End Function
+
+Private Sub LimparMarcas()
+    Dim c As Object
+    For Each c In Me.Controls
+        If TypeName(c) = "TextBox" Or TypeName(c) = "ComboBox" Then c.BackColor = RGB(255, 255, 255)
+    Next c
+End Sub
+
+Private Sub btnSalvar_Click()
+    Dim r As String, p As Variant, c As Object
+    LimparMarcas
+    r = mCEQForm.SalvarCEQ(Campos())
+    p = Split(r, "|")
+    If p(0) <> "OK" Then
+        Set c = ControleDoCampo(CLng(Val(p(1))))
+        If Not c Is Nothing Then
+            c.BackColor = RGB(255, 228, 225)
+            c.SetFocus
+        End If
+        Mensagem Mid$(r, InStr(InStr(r, "|") + 1, r, "|") + 1), True
+        Exit Sub
+    End If
+    Mensagem ChrW$(10003) & " Gravado: " & cboAnalito.Text & " · amostra " & txtAmostra.Value & " (linha " & p(1) & ")." & _
+             IIf(Len(p(2)) > 0, " " & p(2), ""), Len(p(2)) > 0, Len(p(2)) = 0
+    ' proximo resultado da mesma rodada: o contexto fica, a amostra e os numeros saem
+    txtAmostra.Value = "": txtResultado.Value = "": txtAlvo.Value = "": txtSD.Value = "": txtSDI.Value = ""
+    txtLimInf.Value = "": txtLimSup.Value = "": txtNLabs.Value = "": cboAvaliacao.Text = ""
+    mUnidAuto = True                             ' a unidade mantida e do analito gravado: troca junto com o analito
+    mCarregando = True
+    PreencherCombo cboRodada, mCEQForm.DistintosCEQ(CStr(cboProvedor.Value), mCEQForm.CQ_RODADA, True)
+    mCarregando = False
+    AtualizarLista
+    txtAmostra.SetFocus
+End Sub
+
+Private Sub btnFechar_Click()
+    Me.Hide
+End Sub
+
+Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
+    If CloseMode = vbFormControlMenu Then
+        Cancel = True
+        Me.Hide
+    End If
+End Sub

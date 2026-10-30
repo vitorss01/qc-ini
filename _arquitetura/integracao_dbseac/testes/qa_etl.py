@@ -429,7 +429,7 @@ class Ctx:
                 p.Range('G4').Value = float(dia(ate))
             if lote is not None:
                 if lote == '':
-                    p.Range('H3').ClearContents()
+                    p.Range('H3').MergeArea.ClearContents()   # H3 e mesclada (como o Delete do usuario)
                 else:
                     p.Range('H3').Value = str(lote)
             if equip is not None and self.bio:

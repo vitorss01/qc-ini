@@ -88,6 +88,13 @@ End Function
 
 ' Lote em analise no Painel. Vazio cai no lote em uso -- a mesma regra do nome
 ' loteAnalise, para formula e VBA nunca discordarem.
+' ADR-086: Painel H3 vazio = TODOS os lotes no grafico (motor: cada ponto com o alvo do seu lote; Westgard lote a lote).
+' Edicao de Media/DP, LotesStore, eventos oficiais e estatistica por lote continuam no lote em uso (LotePainel).
+Public Function TodosOsLotes() As Boolean
+    On Error Resume Next
+    TodosOsLotes = (Len(Trim$(CStr(ThisWorkbook.Names("loteSel").RefersToRange.Value))) = 0)
+End Function
+
 Public Function LotePainel() As String
     Dim s As String
     On Error Resume Next
@@ -400,6 +407,13 @@ Public Sub TrocarLoteAnalise()
     End If
     On Error GoTo falha
     novo = LotePainel()
+    If TodosOsLotes() Then
+        ' ADR-086: H3 apagado = TODOS os lotes. Nada de canonizar (gravaria o lote em uso de volta em H3) nem de ajustar
+        ' o filtro ao lote (ADR-077): o periodo escolhido decide o que aparece, de todos os lotes. O filtro da rotina
+        ' guardado (ADR-078) fica: voltar ao lote em uso depois do TODOS ainda devolve o periodo da rotina.
+        DefinirAvisoPainel ""
+        GoTo carregar
+    End If
     If Len(novo) > 0 Then GravarLoteSel novo       ' canoniza o que o usuario escolheu
     dentro = mDentroTrocaLote
     If dentro Then
@@ -413,6 +427,7 @@ Public Sub TrocarLoteAnalise()
         eqMudou = AjustarPainelAoLote(novo, msgAj)
     End If
     DefinirAvisoPainel msgAj                         ' ADR-078: aviso no Painel (H4 e A39), nao na barra de status
+carregar:
     atual = LoteParamTela()
     CarregarParametrosView novo                      ' store -> tela, sempre (barato); nunca tela -> store
     InvalidarLotes
@@ -432,9 +447,8 @@ End Sub
 ' mesma historia antes do primeiro clique.
 Public Sub SincronizarLotesAoAbrir()
     On Error Resume Next
-    If Trim$(CStr(ThisWorkbook.Names("loteSel").RefersToRange.Value)) = "" Then
-        GravarLoteSel LoteCanonico(LoteAtivoCore())
-    End If
+    ' ADR-086: H3 vazio ao abrir NAO e mais preenchido com o lote em uso -- vazio = TODOS os lotes (escolha do usuario,
+    ' que fica salva com o arquivo)
     If LoteParamTela() <> LotePainel() Then CarregarParametrosView LotePainel()    ' ADR-078: so le a store
     InvalidarLotes
     mLotesBlocos.SincronizarBlocos          ' ADR-074: lote cadastrado sem bloco ganha o seu
@@ -611,6 +625,9 @@ Private Sub SalvarViewNoBloco(ByVal iBloco As Long)
     rb0 = 2 + (iBloco - 1) * NLB_LIBER
     Set srcL = ThisWorkbook.Names("libView").RefersToRange          ' C4:F203 (200 x 4)
     stL.Range(stL.Cells(rb0, 1), stL.Cells(rb0 + NLB_LIBER - 1, 4)).Value = srcL.Value
+    ' ADR-087: a aba Registros virou a tabela unica tblRegistros (todos os lotes) -- a RegistrosStore fica como arquivo
+    ' historico e nao e mais gravada
+    If Not mCalibracao.TabelaRegistros() Is Nothing Then Exit Sub
     Dim wsReg As Worksheet, rr0 As Long, srcR As Range
     Set wsReg = ThisWorkbook.Sheets("RegistrosStore")
     rr0 = 2 + (iBloco - 1) * NLB_LIBER
@@ -628,6 +645,8 @@ Private Sub CarregarBlocoNaView(ByVal iBloco As Long)
     rb0 = 2 + (iBloco - 1) * NLB_LIBER
     Set dstL = ThisWorkbook.Names("libView").RefersToRange
     dstL.Value = stL.Range(stL.Cells(rb0, 1), stL.Cells(rb0 + NLB_LIBER - 1, 4)).Value
+    ' ADR-087: tabela unica -- a vista so passa a filtrar o lote que entrou
+    If Not mCalibracao.TabelaRegistros() Is Nothing Then Exit Sub
     Dim wsReg As Worksheet, rr0 As Long, dstR As Range
     Set wsReg = ThisWorkbook.Sheets("RegistrosStore")
     rr0 = 2 + (iBloco - 1) * NLB_LIBER
@@ -658,7 +677,8 @@ Public Sub TrocarLote()
     If iAtual > 0 Then SalvarViewNoBloco iAtual           ' persiste o lote que estava em uso
     CarregarBlocoNaView iNovo
     mSeguranca.RedesenharAssinaturas          ' ADR-084: imagens de assinatura do lote que entrou (pelo login de cada linha)
-    mSeguranca.RedesenharAssinaturas ThisWorkbook.Worksheets("Registros")   ' ADR-085: assinaturas da aba Registros
+    mCalibracao.FiltrarRegistrosPorLote novo     ' ADR-087: a aba Registros (tabela unica) mostra o lote que entrou;
+                                                 ' o filtro redesenha as assinaturas das linhas visiveis (ADR-085)
     ThisWorkbook.Names("loteCarregado").RefersToRange.Value = novo
     SalvarViewNoBloco iNovo
     AtualizarListaLiberacao

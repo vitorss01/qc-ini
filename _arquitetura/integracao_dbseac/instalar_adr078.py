@@ -71,7 +71,10 @@ def norm(f):
 
 
 def setf(rng, f, oque):
-    """Escreve a formula so se difere (idempotente); conta a mudanca."""
+    """Escreve a formula so se difere (idempotente); conta a mudanca. ADR-086: a mesma formula embrulhada pelo modo
+    TODOS (=IF(engTodos,NA(),...)) vale como igual -- o adr086 e o dono do embrulho."""
+    if norm(rng.Formula) == norm('=IF(engTodos,NA(),' + str(f)[1:] + ')'):
+        return
     if norm(rng.Formula) != norm(f):
         rng.Formula = f
         MUDANCAS.append(oque)
@@ -372,6 +375,9 @@ def graficos(wb, m, nlv):
             if nm not in LIM:
                 continue
             f = str(s.Formula)
+            if ',(Calc!' in f:                  # ADR-086: corridas 3:182 + bordas 184:185 (linhas em degrau) -- dono e o adr086
+                achadas.add(nm)
+                continue
             mt = RX.match(f)
             if not mt:
                 raise SystemExit(f'grafico {i}, serie {nm}: formula fora do padrao: {f}')
@@ -407,6 +413,10 @@ def bordas_nivel(wb, i, xmin, xmax):
 
 def fumaca(wb, ex, m, nlv, leg0):
     c, p = wb.Worksheets('Calc'), wb.Worksheets('Painel')
+    if str(wb.Worksheets('Eng_Saida').Range('AD1').Value) in ('True', 'Verdadeiro', 'VERDADEIRO'):
+        print('   fumaca: Painel em TODOS os lotes (ADR-086, H3 vazio): as bordas 184:185 ficam NA -- conferencia pulada',
+              flush=True)
+        return
     xmin = c.Range(m['xrunmin']).Value
     xmax = c.Range(m['xrunmax']).Value
     if not (num(xmin) and num(xmax) and xmax > xmin):
@@ -422,6 +432,9 @@ def fumaca(wb, ex, m, nlv, leg0):
             if nm not in LIM:
                 continue
             xs, ys = list(s.XValues), list(s.Values)
+            if len(xs) != 2:                     # ADR-086: series com as linhas em degrau -- vale o par numerico (bordas)
+                pr = [(x, y) for x, y in zip(xs, ys) if num(x) and num(y)]
+                xs, ys = [x for x, _ in pr], [y for _, y in pr]
             k = KS[LIM.index(nm)]
             if len(xs) != 2 or len(ys) != 2:
                 ruins.append((i, nm, 'pontos', len(xs), len(ys)))

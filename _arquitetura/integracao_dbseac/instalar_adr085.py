@@ -100,6 +100,8 @@ def painel_sem_historico(wb, nlv):
 
 def registros(wb):
     ws = wb.Worksheets('Registros')
+    if 'tblRegistros' in [lo.Name for lo in ws.ListObjects]:
+        return                                       # ADR-087: a aba virou tabela -- o adr087 e o dono do layout
     v = str(ws.Range('I3').Value or '').strip()
     if v == CAB_ASSIN:
         return

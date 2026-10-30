@@ -555,7 +555,7 @@ End Sub
 Public Sub RedesenharAssinaturas(Optional ByVal ws As Worksheet = Nothing)
     Dim sh As Shape, r As Long, c As Variant, txt As String, lg As String, p As Long, q As Long, arq As String
     Dim cel As Range, prot As Boolean, nm As String, cg As String, pp As String, hs As String, asn As String
-    Dim cs As String, st As String, fig As Shape, escala As Double, pares As Variant
+    Dim cs As String, st As String, fig As Shape, escala As Double, pares As Variant, r0 As Long, r1 As Long
     On Error Resume Next
     If ws Is Nothing Then Set ws = ThisWorkbook.Worksheets("Liberação")
     If ws Is Nothing Then Exit Sub
@@ -565,7 +565,15 @@ Public Sub RedesenharAssinaturas(Optional ByVal ws As Worksheet = Nothing)
     Next sh
     ' ADR-085: na aba Registros a imagem fica em I (Assinatura) e o texto em H (Responsavel)
     If ws.Name = "Registros" Then pares = Array(Array(9, 8)) Else pares = Array(Array(3, 4), Array(5, 6))
-    For r = 4 To 203
+    r0 = 4: r1 = 203
+    If ws.Name = "Registros" And Not mCalibracao.TabelaRegistros() Is Nothing Then   ' ADR-087: a tabela cresce
+        r0 = mCalibracao.TabelaRegistros().HeaderRowRange.Row + 1
+        r1 = r0 + mCalibracao.TabelaRegistros().ListRows.Count - 1
+    End If
+    For r = r0 To r1
+        ' ADR-087: linha escondida pelo filtro da vista (altura 0) fica sem imagem -- a figura sairia do tamanho original
+        ' por cima da proxima linha visivel. O filtro redesenha a cada mudanca da vista (AplicarFiltrosRegistros)
+        If ws.Rows(r).Hidden Then GoTo proxima
         For Each c In pares                            ' Liberacao: C = INICIADO, E = FINALIZADO; texto em D / F
             txt = CStr(ws.Cells(r, c(1)).Value)
             p = InStrRev(txt, "login ")
@@ -591,6 +599,7 @@ Public Sub RedesenharAssinaturas(Optional ByVal ws As Worksheet = Nothing)
                 End If
             End If
         Next c
+proxima:
     Next r
     RestaurarProtecao ws, prot
 End Sub

@@ -649,21 +649,30 @@ Public Function DicaPonto(ByVal nivel As Long, ByVal serie As Long, ByVal ponto 
     Dim ch As Chart, eng As Worksheet, nm As String, r As Long, k As Long, slot As Long, col As Long
     Dim v As Variant, idv As Variant, dh As Variant, runv As Variant
     On Error GoTo sai
-    If nivel < 1 Or nivel > mEstatistica.NLV Or ponto < 1 Or ponto > 180 Then Exit Function
+    If nivel < 1 Or nivel > mEstatistica.NLV Or ponto < 1 Or ponto > 182 Then Exit Function
     Set ch = ThisWorkbook.Worksheets("Painel").ChartObjects(nivel).Chart
     If serie < 1 Or serie > ch.SeriesCollection.Count Then Exit Function
     nm = CStr(ch.SeriesCollection(serie).Name)
-    ' ADR-078: as 7 linhas de limite sao series de 2 pontos (bordas do eixo): o ponto nao e uma corrida
+    ' Linhas de limite (ADR-086): series de 182 pontos = as corridas 1..180 (degrau do modo TODOS, cada uma com o alvo do
+    ' lote do proprio ponto) + as 2 bordas do eixo do ADR-078 (181 e 182, o alvo do lote do Painel no modo normal)
     Select Case nm
         Case "-3s", "-2s", "-1s", "Média", "+1s", "+2s", "+3s"
-            If ponto > 2 Then Exit Function
             v = ch.SeriesCollection(serie).Values
             If IsArray(v) Then
-                If EhNumero(v(ponto)) Then DicaPonto = "Alvo do lote " & mLotes.LotePainel() & " " & ChrW$(183) & " " & _
-                                                       nm & " = " & CStr(CDbl(v(ponto)))
+                If ponto <= UBound(v) - LBound(v) + 1 Then
+                    If EhNumero(v(LBound(v) + ponto - 1)) Then
+                        If ponto > 180 Or UBound(v) - LBound(v) + 1 <= 2 Then
+                            DicaPonto = "Alvo do lote " & mLotes.LotePainel()
+                        Else
+                            DicaPonto = "Alvo do lote deste ponto"
+                        End If
+                        DicaPonto = DicaPonto & " " & ChrW$(183) & " " & nm & " = " & CStr(CDbl(v(LBound(v) + ponto - 1)))
+                    End If
+                End If
             End If
             Exit Function
     End Select
+    If ponto > 180 Then Exit Function
     Set eng = ThisWorkbook.Worksheets("Eng_Saida")
     If ponto > CLng(Val(CStr(eng.Range("I1").Value))) Then Exit Function      ' alem das corridas publicadas
     r = 2 + ponto

@@ -62,6 +62,8 @@ def nome(wb, nm, ref):
 
 def registros(wb):
     ws = wb.Worksheets('Registros')
+    if 'tblRegistros' in [lo.Name for lo in ws.ListObjects]:
+        return                                       # ADR-087: a aba virou tabela -- o adr087 e o dono do layout
     if str(ws.Range('J3').Value or '').strip() != 'Status':
         raise SystemExit(f'Registros!J3 inesperado ({ws.Range("J3").Value!r}): layout diferente -- nada foi feito')
     for cel, txt in (('K3', CAB_ID), ('L3', CAB_EQ)):

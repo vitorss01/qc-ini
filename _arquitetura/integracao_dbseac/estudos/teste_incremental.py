@@ -16,6 +16,7 @@ Cada passo cronometrado. Sai com 1 se algum falhar.
 import json
 import os
 import random
+import shutil
 import sys
 import time
 
@@ -87,7 +88,14 @@ def main(produto, arq, saida):
     q = QA(produto, arq)
     try:
         q.cfg('MOTOR_DADOS', 'VBA')
-        caminho = q.cfg('CAMINHO_DB_SEAC')
+        # o DB_SEAC de producao recebe resultados enquanto o teste roda (entrega 33: 2 novos no meio do S1); os passos
+        # comparam com a partida, entao a origem precisa ficar parada: copia congelada, so nesta copia de teste
+        foto = os.path.join(os.environ['TEMP'], 'qcw', f'db_seac_foto_{produto}')
+        os.makedirs(foto, exist_ok=True)
+        origem = q.cfg('CAMINHO_DB_SEAC')
+        caminho = os.path.join(foto, os.path.basename(str(origem)))
+        shutil.copyfile(str(origem), caminho)
+        q.cfg('CAMINHO_DB_SEAC', caminho)
         r, s = q.atualizar()                                    # estado de partida em dia
         rec0, cq0 = tabela(q, 'tblDB_Recebimento'), tabela(q, 'tblCQ_Final')
         n0 = len(rec0[1])
