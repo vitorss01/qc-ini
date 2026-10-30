@@ -168,7 +168,10 @@ def main(produto, arq, saida):
 
         # ---- S6 reserva PQ
         q.cfg('MOTOR_DADOS', 'PQ')
-        r, s = q.atualizar()
+        # o refresh do Power Query (motor reserva; a producao usa o VBA) varia muito na Hema: 170, 453, 345, 192, 1130,
+        # 214 e 907 s nas entregas de 21 a 30/10, com o motor em ~20 s. Na entrega 34 passou dos 1500 s comuns e barrou
+        # a Hema -- teto proprio, o que se mede aqui e o resultado (log PQ/OK e tblCQ_Final igual), nao o tempo
+        r, s = q.atualizar(teto=3600)
         lg = ultimo_log(q)
         cq6 = por_id(tabela(q, 'tblCQ_Final'), ('RECEBIDO_EM',))
         passo('S6_reserva_pq', lg.get('MOTOR_DADOS') == 'PQ' and lg.get('RESULTADO') == 'OK' and cq6 == ca,

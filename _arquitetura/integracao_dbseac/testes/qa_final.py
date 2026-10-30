@@ -92,11 +92,11 @@ class QA:
     def run(self, macro, *a, teto=1500):
         return self.ex.run("'" + self.wb.Name + "'!" + macro, *a, teto=teto)
 
-    def atualizar(self):
+    def atualizar(self, teto=1500):
         """O nucleo do botao ATUALIZAR DADOS pela entrada de automacao (sem dialogo).
         'ERRO|...' vira excecao aqui, para o teste que espera falha."""
         t0 = time.time()
-        r = str(self.run('mIntegracao.AtualizarDadosAutomatico'))
+        r = str(self.run('mIntegracao.AtualizarDadosAutomatico', teto=teto))
         if r.startswith('ERRO|'):
             raise RuntimeError(r[5:])
         return r[3:], time.time() - t0
