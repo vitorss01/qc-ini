@@ -27,6 +27,7 @@ público — decisão do gestor em `estudos/DECISAO_GESTOR_2026-10-06.md`). A ve
 | 29/10/2026 | QC_Hematologia.xlsm | 37688457 | `5e15de65044627c2b297f2930b4e8b6f4f441bda89722040ea81c031e97d3dec` | 67c7bf5 | 24 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — as mesmas duas correções |
 | 29/10/2026 | QC_Hematologia.xlsm | 37776961 | `044e968e13103b012a10f46302fe41e5b2be47ec9ca6e0ef893433d2a20ad01b` | 7be2448 | 25 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-085 (painel tela única: duplo clique só abre NC/INATIVAR/COMENTAR, comentário técnico em fonte única). A Bio foi barrada pelo qa_sync (dados chegaram ao DB_SEAC no meio do teste) |
 | 30/10/2026 | QC_Bioquimica.xlsm | 33508815 | `fe10dba1f1fdd06ec07dedb53ad950b1b43b69ecde1a7b520644cc472c6e6149` | 301f41f | 27 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-085, ADR-086 (H3 vazio = todos os lotes) e ADR-087 (Registros em tabela que cresce, filtros por lote, janela do CEQ, ajuste visual das telas). A Hema foi barrada pelo qa_sync (S6, motor PQ, passou de 1500 s) |
+| 31/10/2026 | QC_Hematologia.xlsm | 38018446 | `0b45fa270d2a7d91d21b40a168bb606149c7df70fe51b9eb2d1f975935088167` | 19db7ce | 27 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-086 e ADR-087 (idem Bio); S6 do qa_sync com teto próprio (passou em 310 s) |
 
 O hash muda a cada gravação no laboratório (uso normal). Para conferir a versão entregue, compare com o arquivo
 `_entrega_<data>/<produto>/<arquivo>.xlsm` da pasta de entrega (não versionada).
