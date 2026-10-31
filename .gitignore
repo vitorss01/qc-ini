@@ -35,8 +35,12 @@ _desenvolvimento/
 .DS_Store
 Thumbs.db
 
-# Ferramentas locais (Claude Code)
-.claude/
+# Ferramentas locais (Claude Code). Os agentes do QC_INI sao versionados (_arquitetura/agentes/README.md);
+# o resto de .claude (worktrees, settings locais) fica fora.
+/.claude/*
+!/.claude/agents/
+!/.claude/skills/
+!/.claude/workflows/
 
 # Backups locais do sistema QC (snapshots de seguranca, nao sao fonte)
 _backup_pre_fase*/
