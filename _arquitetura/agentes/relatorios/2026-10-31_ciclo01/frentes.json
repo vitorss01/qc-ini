@@ -1,0 +1,3813 @@
+[
+ {
+  "produto": "Bioquimica",
+  "frente": "F1",
+  "relatorio": "C:\\Users\\vitor.santos\\OneDrive - MSFT\\INI_DB_AJUSTES\\OneDrive - MSFT\\Desktop\\QC_INI_PRONTO\\qc-ini\\_arquitetura\\agentes\\relatorios\\2026-10-31_ciclo01\\Bioquimica_F1.md",
+  "sha_producao": "fe10dba1f1fd",
+  "testes": [
+   {
+    "id": "T01",
+    "descricao": "Tela Digitar Resultados: campos, validacao, protecao e instrucoes",
+    "estado": "APROVADO",
+    "evidencia": "17 colunas; validacoes lidas (DATA>01/01/2020, listas EQUIPAMENTO/MATRIZ/LOTE/ANALITO, NIVEL 1-2, RESULTADO decimal); HORA sem validacao; instrucoes nao citam EQUIPAMENTO (ressalvas OC-3/OC-6). f1r3/f1_A.json telas"
+   },
+   {
+    "id": "A01",
+    "descricao": "Recebimento DB_SEAC -> tblDB_Recebimento",
+    "estado": "APROVADO",
+    "evidencia": "Origem 31.386 linhas (janela movel desde 03/11/2025), 0 sem ID, 0 repetidos; recebimento 34.254->34.585 (+331, BIO-371188..372097); 0 nao recebidos; 0 das 31.055 ja recebidas na janela faltam na origem (sumidos.json)"
+   },
+   {
+    "id": "A02",
+    "descricao": "Preservacao do ID e associacao origem x recebimento x tblCQ_Final",
+    "estado": "APROVADO",
+    "evidencia": "0 divergencias em 10 campos para os 331 IDs; ID_REGISTRO=BIO-<ID_ORIGEM>; 331 ATIVO/INTERFACEAMENTO; de-para correto"
+   },
+   {
+    "id": "A03",
+    "descricao": "Sync_Log e QA do ATUALIZAR",
+    "estado": "APROVADO",
+    "evidencia": "Sync_Log OK, LIDOS 31.386, NOVOS 331, TOTAL=LINHAS_CQ=34.585, DATA_MAX 30/10 07:31:08; QA 4 E01 + 10 I01"
+   },
+   {
+    "id": "A04",
+    "descricao": "Historico intacto",
+    "estado": "APROVADO",
+    "evidencia": "0 linhas antigas alteradas; 0 RUN/STATUS antigos mudados; 34.585 IDs unicos"
+   },
+   {
+    "id": "A05",
+    "descricao": "Idempotencia (2o ATUALIZAR mesmo arquivo)",
+    "estado": "APROVADO",
+    "evidencia": "OK_SEM_MUDANCA, NOVOS 0, GRAVADAS 0, final identica"
+   },
+   {
+    "id": "A06",
+    "descricao": "Plausibilidade dos valores do automatico",
+    "estado": "REPROVADO",
+    "evidencia": "BIO-371183=-1 e BIO-371184=1 (Glicose N2 8977 DIM1) ATIVO; 56 ativos <=0 na producao (naopos.json). OC-1"
+   },
+   {
+    "id": "M01",
+    "descricao": "Manual valido N1/N2: ID, carimbo, gravacao e consulta",
+    "estado": "APROVADO",
+    "evidencia": "MAN_0001/0002 ATIVO RUN 26103005 corrida 5; DadosDoId correto; Audit RESULTADO_MANUAL_INCLUIDO; A06"
+   },
+   {
+    "id": "M02",
+    "descricao": "Media/DP/CV do Painel e Estatistica x calculo independente",
+    "estado": "APROVADO",
+    "evidencia": "n +1 por nivel; diferenca relativa max 1,3e-13 (secao 3)"
+   },
+   {
+    "id": "M03",
+    "descricao": "Levey-Jennings e Westgard atualizados",
+    "estado": "APROVADO",
+    "evidencia": "Eng_Saida slot 109 RUN 26103005 N1=77,111 N2=244,222; R-4s/2-2s no Painel"
+   },
+   {
+    "id": "V01",
+    "descricao": "Campos vazios",
+    "estado": "APROVADO",
+    "evidencia": "MANUAL_INCOMPLETO DATA,HORA,LOTE,NIVEL; E04"
+   },
+   {
+    "id": "V02",
+    "descricao": "Resultado texto abc",
+    "estado": "APROVADO",
+    "evidencia": "MANUAL_INCOMPLETO RESULTADO; E04"
+   },
+   {
+    "id": "V03",
+    "descricao": "Resultado com ponto 90.5",
+    "estado": "APROVADO",
+    "evidencia": "MANUAL_INCOMPLETO ambiguo (use virgula); E04"
+   },
+   {
+    "id": "V04",
+    "descricao": "Resultado 1.5 (risco de virar data)",
+    "estado": "APROVADO",
+    "evidencia": "nao virou data; MANUAL_INCOMPLETO"
+   },
+   {
+    "id": "V04b",
+    "descricao": "Resultado com virgula 77,111",
+    "estado": "APROVADO",
+    "evidencia": "gravado numero 77,111"
+   },
+   {
+    "id": "V05",
+    "descricao": "Data futura 02/11/2026",
+    "estado": "APROVADO",
+    "evidencia": "ATUALIZAR barra: MANUAL_INCOMPLETO DATA/HORA posterior ao lancamento"
+   },
+   {
+    "id": "V06",
+    "descricao": "Analito inexistente Glicoze (colado)",
+    "estado": "REPROVADO",
+    "evidencia": "ATIVO, ANALITO_CADASTRADO=NAO, fora do Painel, so I01 agregado. OC-4"
+   },
+   {
+    "id": "V07",
+    "descricao": "Nivel 3",
+    "estado": "APROVADO",
+    "evidencia": "MANUAL_INCOMPLETO NIVEL"
+   },
+   {
+    "id": "V08",
+    "descricao": "Lote inexistente 99999 (colado)",
+    "estado": "REPROVADO",
+    "evidencia": "ATIVO sem mensagem no QA. OC-4"
+   },
+   {
+    "id": "V09",
+    "descricao": "Duplicidade manual x manual",
+    "estado": "APROVADO",
+    "evidencia": "MAN_0011 CONFLITO_MANUAL, ID_RELACIONADO MAN_0001, A01"
+   },
+   {
+    "id": "V10",
+    "descricao": "Duplicidade manual x interfaceamento",
+    "estado": "APROVADO",
+    "evidencia": "MAN_0012 CONFLITO_MANUAL, ID_RELACIONADO BIO-372036, A01"
+   },
+   {
+    "id": "V11",
+    "descricao": "Equipamento inexistente DIMENSION 9 (colado)",
+    "estado": "REPROVADO",
+    "evidencia": "ATIVO com Westgard proprio, sem QA. OC-4"
+   },
+   {
+    "id": "V12",
+    "descricao": "Hora 25:99",
+    "estado": "APROVADO",
+    "evidencia": "MANUAL_INCOMPLETO HORA"
+   },
+   {
+    "id": "V13",
+    "descricao": "Data 31/02/2026 colada",
+    "estado": "REPROVADO",
+    "evidencia": "vira 03/03/2026 08:00 ATIVO RUN 26030301 sem aviso (mEtlCQ.ParaData DateSerial). OC-2"
+   },
+   {
+    "id": "V15",
+    "descricao": "EQUIPAMENTO vazio com Painel em DIMENSION 2",
+    "estado": "REPROVADO",
+    "evidencia": "MAN_0016 recebe DIMENSION 2 (selEquipamento) e entra ATIVO na serie errada. OC-3"
+   },
+   {
+    "id": "E01",
+    "descricao": "Equivalencia manual (A) x automatico sintetico (B, BIO-9000001/2)",
+    "estado": "APROVADO",
+    "evidencia": "mesmo RUN 26103005/corrida 5; engPainel, Estatistica e independente identicos bit a bit; Eng_Saida difere so no N1 ID"
+   },
+   {
+    "id": "S01",
+    "descricao": "SUBSTITUI_ID preenche a chave a partir do numero do ID",
+    "estado": "APROVADO",
+    "evidencia": "BIO-371184 normalizado; data/hora/equip/lote/nivel/analito preenchidos"
+   },
+   {
+    "id": "S02",
+    "descricao": "SUBSTITUI_ID inexistente",
+    "estado": "APROVADO",
+    "evidencia": "nada preenchido (caixa de aviso nao vista em automacao)"
+   },
+   {
+    "id": "S03",
+    "descricao": "Substituicao com MOTIVO",
+    "estado": "APROVADO",
+    "evidencia": "MAN_0001 ATIVO RUN 26102806; BIO-371184 SUBSTITUIDO_MANUAL; 0 outros RUN mudaram; I04"
+   },
+   {
+    "id": "S04",
+    "descricao": "SUBSTITUI_ID sem MOTIVO",
+    "estado": "APROVADO",
+    "evidencia": "MAN_0002 MANUAL_INCOMPLETO MOTIVO; E04; BIO-371183 segue ATIVO"
+   },
+   {
+    "id": "S05",
+    "descricao": "Estatistica apos substituicao x independente",
+    "estado": "APROVADO",
+    "evidencia": "N2 n 24 media 259,129625 CV 21,488; dif rel max 3,3e-15"
+   },
+   {
+    "id": "L01",
+    "descricao": "Equipamento em minusculas 'dimension 1' num manual N2 (29/10 23:36)",
+    "estado": "REPROVADO",
+    "evidencia": "RUN 26102901 (1a corrida real); Painel/LJ trocam BIO-371977 (277) por 244,222 (n 24, media 246,5509); Estatistica n 25; Westgard do RUN real OK->REJEITADO; QA vazio. f1r3/f1_E.json E2. OC-9"
+   },
+   {
+    "id": "L02",
+    "descricao": "Analito em minusculas 'glicose' num manual N2 (28/10 23:36)",
+    "estado": "REPROVADO",
+    "evidencia": "ANALITO_CADASTRADO=NAO mas entra na Glicose: RUN 26102801, Painel troca BIO-371038 (276) (n 24, media 245,2268); Estatistica n 26; QA vazio. f1r3/f1_E.json E3. OC-9"
+   }
+  ],
+  "ocorrencias": [
+   {
+    "titulo": "Equipamento ou analito em minusculas faz o manual substituir um resultado real no Painel/LJ/Westgard e a Estatistica o conta a mais",
+    "produto": "Bioquimica",
+    "modulo": "Digitar Resultados -> ATUALIZAR (mEtlCQ.CalcularCorridas Option Compare Binary x mEstatistica.GarantirIndice/EquipFiltro UCase)",
+    "tipo": "calculo",
+    "prioridade": "Critico",
+    "acao": "Colar/digitar 'dimension 1' no EQUIPAMENTO (L01) ou 'glicose' no ANALITO (L02) de um manual N2 valido e ATUALIZAR",
+    "esperado": "Normalizar para a grafia do cadastro, ou MANUAL_INCOMPLETO, ou ALERTA; nunca sumir resultado real nem divergir Painel x Estatistica",
+    "observado": "ETL da ao manual o RUN da 1a corrida real do dia (26102901 / 26102801); o motor junta em maiusculas e, no Eng_Saida (um valor por RUN e nivel), o manual 244,222 substitui o N2 real BIO-371977 (277) / BIO-371038 (276): Painel n 24 media 246,5509 / 245,2268; Estatistica conta os dois (n 25 media 247,7689 / n 26 media 247,6325); vereditos de Westgard do RUN real OK->REJEITADO; ET da linha de Sigma muda 53,69->52,65->51,67; nenhum QA. Mesmo defeito da OC-HF1-1 da Hema",
+    "consequencia": "Estatistica incorreta e divergente entre Painel e Estatistica, LJ com ponto trocado e data errada, Westgard avaliado sobre valor errado numa corrida real",
+    "sugestao": "Normalizar EQUIPAMENTO/ANALITO do manual para o cadastro (PrepararLinha ou mEtlCQ, VBA e PQ) ou mesma comparacao no ETL e no motor; motor nunca sobrescrever valor no mesmo RUN/nivel sem alerta. Uma correcao no codigo comum cobre OC-HF1-1 e esta",
+    "evidencia": "%TEMP%/qcw/auditoria/2026-10-31_ciclo01/f1r3/f1_E.json (E1/E2/E3: painel, estat, ind_exato, ind_maiusc, pop_maiusc, eng_run, final, qa=[]); copia de prod sha fe10dba1f1fd; reconstrucao bit a bit na secao 3 do relatorio"
+   },
+   {
+    "titulo": "Valores impossiveis (-1, 1, zero, negativos) do interfaceamento entram ATIVO na estatistica e no Westgard",
+    "produto": "Bioquimica",
+    "modulo": "ATUALIZAR -> tblCQ_Final -> Painel/Estatistica",
+    "tipo": "dados",
+    "prioridade": "Critico",
+    "acao": "ATUALIZAR com DB_SEAC congelado e conferir Glicose 8977 DIM1 outubro; varrer tblCQ_Final",
+    "esperado": "Valor fisicamente impossivel nao entra calado; no minimo ALERTA com o ID",
+    "observado": "BIO-371183=-1 e BIO-371184=1 ATIVO: N2 CV 30,88% (2,14% sem eles), ET 53,69%, REJEITADO; 56 ativos <=0 na producao (43 negativos, 13 zeros, 55 de analitos cadastrados, desde 12/2025)",
+    "consequencia": "Estatistica, ET, Sigma e Westgard incorretos ate alguem inativar",
+    "sugestao": "Triagem de plausibilidade no QA (ALERTA com ID); laboratorio revisar os 56 IDs; consultar SIPEC sobre -1/0/1 sem flag",
+    "evidencia": "f1r3/f1_A.json (A1_plausibilidade, A3_*_antes), f1r3/f1_C.json, f1r3/naopos.json"
+   },
+   {
+    "titulo": "Data invalida colada 31/02/2026 vira 03/03/2026 e o manual entra ATIVO",
+    "produto": "Bioquimica",
+    "modulo": "Digitar Resultados -> mEtlCQ.ParaData/ParaDataHora",
+    "tipo": "dados",
+    "prioridade": "Alto",
+    "acao": "Colar 31/02/2026 na DATA e ATUALIZAR",
+    "esperado": "MANUAL_INCOMPLETO DATA",
+    "observado": "MAN_0015 DATA_HORA 03/03/2026 08:00 ATIVO RUN 26030301, sem aviso; Westgard retroativo do lote muda",
+    "consequencia": "Resultado em data errada num mes fechado",
+    "sugestao": "Conferir dia/mes/ano apos DateSerial; MANUAL_INCOMPLETO se divergir (tambem no PQ)",
+    "evidencia": "f1r3/f1_A.json A4_validacoes.casos V13"
+   },
+   {
+    "titulo": "EQUIPAMENTO vazio recebe o equipamento do Painel sem aviso; instrucoes nao pedem equipamento",
+    "produto": "Bioquimica",
+    "modulo": "Digitar Resultados (mIntegracao.PrepararLinha/EquipPadrao=selEquipamento)",
+    "tipo": "funcional",
+    "prioridade": "Alto",
+    "acao": "Com Painel em DIMENSION 2, digitar manual sem EQUIPAMENTO",
+    "esperado": "Equipamento obrigatorio ou padrao avisado",
+    "observado": "MAN_0016 ganha DIMENSION 2 e entra ATIVO na serie errada; sem mensagem",
+    "consequencia": "Associacao errada entre equipamentos",
+    "sugestao": "Incluir EQUIPAMENTO nas instrucoes e GUIA; torna-lo obrigatorio na Bio ou destacar",
+    "evidencia": "f1r3/f1_A.json A4_validacoes.casos V15"
+   },
+   {
+    "titulo": "Manual com analito, lote ou equipamento inexistente fica ATIVO e invisivel",
+    "produto": "Bioquimica",
+    "modulo": "Digitar Resultados -> mEtlCQ/mEtlQA",
+    "tipo": "funcional",
+    "prioridade": "Medio",
+    "acao": "Colar Glicoze, lote 99999, DIMENSION 9",
+    "esperado": "MANUAL_INCOMPLETO ou ALERTA com ID",
+    "observado": "Os tres ATIVO/PARTICIPA=SIM, nenhum no Painel; so I01 agregado para o analito",
+    "consequencia": "Resultado perdido em silencio",
+    "sugestao": "Fora do cadastro -> MANUAL_INCOMPLETO ou ALERTA com o ID",
+    "evidencia": "f1r3/f1_A.json A4_validacoes.casos V06/V08/V11"
+   },
+   {
+    "titulo": "Quatro inativacoes sem motivo fazem toda atualizacao dizer ERRO DE GOVERNANCA",
+    "produto": "Bioquimica",
+    "modulo": "QA_INTEGRACAO (E01)",
+    "tipo": "dados",
+    "prioridade": "Medio",
+    "acao": "Qualquer ATUALIZAR",
+    "esperado": "Alarme so quando ha erro novo",
+    "observado": "E01 em BIO-366027/366033/366054/366164 (Lactato N2 13/10) em todas as atualizacoes",
+    "consequencia": "Alarme permanente vira ruido",
+    "sugestao": "Laboratorio preencher MOTIVO na aba Inativar",
+    "evidencia": "f1r3/f1_A.json A1_automatico.qa_codigos"
+   },
+   {
+    "titulo": "Colunas RUN e DETALHE da aba Digitar Resultados mostram 0",
+    "produto": "Bioquimica",
+    "modulo": "Digitar Resultados (XLOOKUP)",
+    "tipo": "usabilidade",
+    "prioridade": "Baixo",
+    "acao": "Ver linha apos ATUALIZAR",
+    "esperado": "Celula vazia",
+    "observado": "DETALHE=0 em ATIVO, RUN=0 em incompleto/conflito; textos sem acento",
+    "sugestao": "Retornar vazio; acentuar",
+    "evidencia": "f1r3/f1_A.json A3_manual.linhas_digitadas; f1r3/f1_E.json E2.linha"
+   },
+   {
+    "titulo": "I01 lista NA/K/CL/CRE2/PHOS sem dizer que sao da URINA",
+    "produto": "Bioquimica",
+    "modulo": "QA_INTEGRACAO (I01)",
+    "tipo": "usabilidade",
+    "prioridade": "Baixo",
+    "observado": "CL aparece como sem cadastro embora o Cloro de soro exista",
+    "sugestao": "Incluir matriz no texto: CL (URINA)",
+    "evidencia": "f1r3/f1_A.json A1_automatico.mapa_analito_origem_final"
+   },
+   {
+    "titulo": "Audit_Log grava RESULTADO_MANUAL_INCLUIDO para linhas incompletas e em conflito",
+    "produto": "Bioquimica",
+    "modulo": "Audit_Log (mIntegracao)",
+    "tipo": "funcional",
+    "prioridade": "Baixo",
+    "observado": "Chave 0|..|GLICOSE com RUN vazio (ex.: AUD-000514) para incompletos/conflitos",
+    "sugestao": "Acao propria (RECUSADO/EM_CONFLITO) ou status no detalhe",
+    "evidencia": "f1r3/f1_A.json A4_validacoes.audit; f1r3/f1_C.json C.audit"
+   }
+  ],
+  "calculos": [
+   {
+    "indicador": "n/media/DP/CV",
+    "analito": "Glicose",
+    "equipamento": "DIMENSION 1",
+    "lote": "8977",
+    "nivel": "N1",
+    "periodo": "01/10/2026-31/10/2026",
+    "entradas": "tblCQ_Final PARTICIPA=SIM + MAN_0001 77,111",
+    "formula": "fmean; stdev (n-1); CV=DP/media*100",
+    "independente": "n 26; media 77,35042307692308; DP 1,0921468096580027; CV 1,4119467822068532",
+    "qcini": "engPainel n 26; 77,35042307692308; 1,092146809658003; 1,4119467822068537 (Estatistica DP 1,0921468096578573)",
+    "diferenca": "rel max 1,3e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "n/media/DP/CV",
+    "analito": "Glicose",
+    "equipamento": "DIMENSION 1",
+    "lote": "8977",
+    "nivel": "N2",
+    "periodo": "01/10/2026-31/10/2026",
+    "entradas": "tblCQ_Final PARTICIPA=SIM + MAN_0002 244,222",
+    "formula": "fmean; stdev (n-1); CV",
+    "independente": "n 25; 247,76888; 74,94913215881823; 30,24961494713066",
+    "qcini": "engPainel n 25; 247,76888; 74,94913215881823; 30,249614947130663",
+    "diferenca": "<1e-14",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "n/media/DP/CV apos SUBSTITUI_ID",
+    "analito": "Glicose",
+    "equipamento": "DIMENSION 1",
+    "lote": "8977",
+    "nivel": "N2",
+    "periodo": "01/10/2026-31/10/2026",
+    "entradas": "BIO-371184 (1) substituido por MAN_0001 270,111",
+    "formula": "fmean; stdev; CV",
+    "independente": "n 24; 259,129625; 55,681958305777144; 21,488071194398227",
+    "qcini": "engPainel n 24; 259,129625; 55,68195830577715; 21,48807119439823",
+    "diferenca": "rel 3,3e-15",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "n/media/DP/CV com equipamento em minusculas (L01)",
+    "analito": "Glicose",
+    "equipamento": "DIMENSION 1",
+    "lote": "8977",
+    "nivel": "N2",
+    "periodo": "01/10/2026-31/10/2026",
+    "entradas": "manual 'dimension 1' 244,222 em 29/10 23:36",
+    "formula": "fmean; stdev; CV, populacao do filtro (equipamento exato)",
+    "independente": "exato: n 24; 247,91666666666666; CV 30,880297740178257. Sem diferenciar maiusculas: n 25; 247,76888",
+    "qcini": "engPainel n 24; 246,55091666666667 (troca do 277 de BIO-371977); Estatistica n 25; 247,76888",
+    "diferenca": "Painel x Estatistica divergem em n e media; Painel nao corresponde a nenhuma populacao valida",
+    "status": "REPROVADO"
+   },
+   {
+    "indicador": "n/media/DP/CV com analito em minusculas (L02)",
+    "analito": "Glicose",
+    "equipamento": "DIMENSION 1",
+    "lote": "8977",
+    "nivel": "N2",
+    "periodo": "01/10/2026-31/10/2026",
+    "entradas": "manual 'glicose' 244,222 em 28/10 23:36 (+ L01)",
+    "formula": "fmean; stdev; CV",
+    "independente": "exato: n 24; 247,91666666666666. Sem diferenciar maiusculas: n 26; 247,63246153846154",
+    "qcini": "engPainel n 24; 245,2268333333333 (troca tambem o 276 de BIO-371038); Estatistica n 26; 247,6324615384615",
+    "diferenca": "Painel x Estatistica divergem",
+    "status": "REPROVADO"
+   },
+   {
+    "indicador": "equivalencia manual x automatico",
+    "analito": "Glicose",
+    "equipamento": "DIMENSION 1",
+    "lote": "8977",
+    "nivel": "N1/N2",
+    "periodo": "outubro/2026",
+    "entradas": "77,111/244,222 via manual (A) e via DB_SEAC sintetico BIO-9000001/2 (B)",
+    "formula": "comparacao bit a bit engPainel, Estatistica, Eng_Saida",
+    "independente": "identico nas duas copias",
+    "qcini": "identico (Eng_Saida difere so no N1 ID)",
+    "diferenca": "0",
+    "status": "APROVADO"
+   }
+  ],
+  "duvidas": [
+   "Triagem de plausibilidade para valores do interfaceamento sem flag (-1, 0, 1, negativos; 56 ATIVO na producao): alerta, exclusao automatica ou so inativacao manual?",
+   "Pares no mesmo segundo, mesmo nivel, ITEM_ID diferente e valores diferentes (ex.: Glicose N2 277 x 267 em 22/10) contam como duas corridas (ADR-057 §6): o laboratorio confirma?",
+   "Na Bioquimica o EQUIPAMENTO do manual deve ser obrigatorio (OC-3)?",
+   "O resultado mais recente do DB_SEAC continua 30/10 07:31:08 em 01/11 01:44: o laboratorio confirma que nao houve controle depois disso?",
+   "O DB_SEAC e janela movel (perdeu outubro/2025 na virada do mes) e o QC_INI guarda o que ja recebeu; corolario: apagar um resultado errado no DB_SEAC nao o remove do QC (precisa Inativar/SUBSTITUI_ID) e o GUIA nao diz isso. Esta e a regra desejada?"
+  ],
+  "impressoes": "Entrada manual facil no caso comum (ID e carimbo automaticos, virgula decimal, listas, SUBSTITUI_ID muito amigavel) e mensagens de erro claras (DETALHE com o campo, A01, I04, E04). O automatico e confiavel na transferencia: nada perdido ou duplicado, ID preservado, associacao exata, idempotente, e o historico sobrevive a janela movel do DB_SEAC. Manual e automatico sao equivalentes bit a bit. O risco mais grave achado neste passe: equipamento ou analito em minusculas (aceitos pela lista do Excel) ficam ATIVO e fazem o manual tomar o lugar de um resultado real no Painel, no LJ e no Westgard, enquanto a Estatistica conta os dois (OC-9, o mesmo defeito da OC-HF1-1). Continuam valendo: valores impossiveis do interfaceamento entram ATIVO (OC-1, 56 na producao), data colada invalida rola para outro mes (OC-2), o equipamento implicito vem do Painel (OC-3), valores colados fora do cadastro ficam ATIVO e invisiveis (OC-4), o alarme permanente de governanca (OC-5) e os acabamentos (OC-6 a OC-8). O retorno ao usuario so vem depois do ATUALIZAR (15 a 25 s)."
+ },
+ {
+  "produto": "Bioquimica",
+  "frente": "F2",
+  "relatorio": "C:\\Users\\vitor.santos\\OneDrive - MSFT\\INI_DB_AJUSTES\\OneDrive - MSFT\\Desktop\\QC_INI_PRONTO\\qc-ini\\_arquitetura\\agentes\\relatorios\\2026-10-31_ciclo01\\Bioquimica_F2.md",
+  "sha_producao": "fe10dba1f1fd",
+  "testes": [
+   {
+    "id": "F2-T33",
+    "descricao": "[3º passe] Telas, listas e validações com a Proteína total (P0-P2)",
+    "estado": "APROVADO",
+    "evidencia": "f2r3\\C\\f2.json P0-P2: 12 validações recusadas com o campo certo; duplicidade de chave real (linha 122) recusada; tabela 545→545 idêntica; unidade g/dL vem do analito; OC-1/OC-8 reproduzidas"
+   },
+   {
+    "id": "F2-T34",
+    "descricao": "[3º passe] Inclusão de CEQ TESTE-AUDITORIA (110/100) na Proteína total: bias, ET e Sigma mudam só nesse analito",
+    "estado": "APROVADO",
+    "evidencia": "OK|547| em 17,1 s; G 3,3793→5,0345; ET N1 6,4486→8,1037, N2 7,0114→8,6666; Sigma N1 1,9907→1,4931, N2 1,1176→0,8382; diferença 0 em relação ao independente; 0 células mudaram nas outras 60 linhas; Painel B7:I8/J46:J47 acompanham; CVp inalterado"
+   },
+   {
+    "id": "F2-T35",
+    "descricao": "[3º passe] Correção 110→105 na Proteína total (fluxo do ANALISTA e efeito no bias)",
+    "estado": "REPROVADO",
+    "evidencia": "A janela recusa ('edite a linha existente'), mas a célula está Locked em aba protegida (OC-1). Edição sem Consolidar: 0 células mudam na Estatística (OC-2). Depois do Consolidar: G 3,7845, ET 6,8537/7,4166, Sigma 1,8689/1,0492 = independente (cálculo APROVADO). Z2 continua 22/08 enquanto o Z1 da EQA_Base mostra 01/11 02:11:45"
+   },
+   {
+    "id": "F2-T36",
+    "descricao": "[3º passe] Isolamento: Controllab, ano 2026, N4 2026/TODOS, equipamento, provedor no M4",
+    "estado": "REPROVADO",
+    "evidencia": "Isolamento APROVADO (0 células em Controllab e em 2026 com N4=2025; N4=TODOS G 9,0276 = independente; Albumina de controle = independente; L4 DIM1 G/T/AC/AD iguais). REPROVADO: Painel H7:H8 3,069/3,632 = 1,65×CV com bias SEM EP (OC-7); Controllab com Canônico vazio (OC-3)"
+   },
+   {
+    "id": "F2-T37",
+    "descricao": "[3º passe, novo] O CEQ depende do lote? Painel H3 8977→8974→vazio→8977",
+    "estado": "APROVADO",
+    "evidencia": "P5.I9: G/T/AC/AD e L iguais em todas as 62 linhas com H3=8974 e com H3 vazio; H=1,65·F+G com dif 0. Observações: período 'Out' perdido na volta (reproduz OC-F4-7); com H3 vazio, a Estatística mostra o lote em uso 8974 (OC-10)"
+   },
+   {
+    "id": "F2-T38",
+    "descricao": "[3º passe, novo] Primeiro CEQ de um analito sem CEQ e sem mapa (Hemoglobina glicada)",
+    "estado": "REPROVADO",
+    "evidencia": "'Hemoglobin A1c' → OK|551| e 'Hemoglobina glicada' → OK|552|, ambos com Canônico vazio; 'sem analito canonico' 22→23→24; MapearAnalito='' para os dois; HbA1c continua SEM EP, sem aviso (amplia a OC-3)"
+   },
+   {
+    "id": "F2-T39",
+    "descricao": "[3º passe] Registro sem valor-alvo",
+    "estado": "REPROVADO",
+    "evidencia": "OK|550| sem aviso; bias vazio; AC continua 16; S passa de 16 para 17 dentro dos limites (OC-4)"
+   },
+   {
+    "id": "F2-T40",
+    "descricao": "[3º passe] Permissão e trilha",
+    "estado": "REPROVADO",
+    "evidencia": "Depois do Logout: SalvarCEQ OK|553| (OC-6); edição, consolidação e M4 sem linha no Audit_Log (OC-5)"
+   },
+   {
+    "id": "F2-T41",
+    "descricao": "[3º passe] Calculadora independente 62×19 em S1 e S2",
+    "estado": "APROVADO",
+    "evidencia": "f2r3\\C\\calc_S1.txt e calc_S2.txt: 0 divergências em 1.178 comparações cada; n_eqa=546"
+   },
+   {
+    "id": "F2-T42",
+    "descricao": "[3º passe] Reversão das 8 linhas TESTE-AUDITORIA",
+    "estado": "APROVADO",
+    "evidencia": "EQA_Base com 545 linhas bit a bit = B0; K5 = B0. A Estatística difere só nas colunas do CIQ do período (C,D,E,F,H,N,O,P,Q,U), porque o período se perdeu no I9 (OC-F4-7)"
+   },
+   {
+    "id": "F2-T43",
+    "descricao": "[3º passe] Segurança do teste",
+    "estado": "APROVADO",
+    "evidencia": "Produção e cópia com fe10dba1f1fd antes e depois; só o PID 28540 foi criado e encerrado; Excel 15844 (tarefa agendada, 02:18) não tocado; cópia e retratos apagados; sem captura de tela"
+   },
+   {
+    "id": "F2-T01..T32",
+    "descricao": "Passes 1 e 2 (Glicose e Bilirrubina direta), mantidos no relatório",
+    "estado": "APROVADO",
+    "evidencia": "Ver o relatório, seções 2, 3 e 3b; os estados individuais (incluindo REPROVADOS T08, T09, T14, T15, T18, T19, T31 e NAO_EXECUTADO T22) seguem válidos"
+   }
+  ],
+  "calculos": [
+   {
+    "indicador": "Bias CEQ (G) B0",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1 e 2",
+    "periodo": "Ano EP 2025, rodadas TODAS",
+    "entradas": "15 amostras, 3 rodadas CAP",
+    "formula": "média das médias de |bias| por rodada (mCEQ.BiasEQ)",
+    "independente": "3.3793363600341007",
+    "qcini": "3.3793363600341007",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Bias CEQ (G) após inclusão",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1 e 2",
+    "periodo": "Ano EP 2025",
+    "entradas": "16 amostras, 4 rodadas (+TESTE-AUDITORIA R1 110/100)",
+    "formula": "(4,61503+2,35503+3,16794+10)/4",
+    "independente": "5.034502270025575",
+    "qcini": "5.034502270025575",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "ET (H) após inclusão",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1 / 2",
+    "periodo": "01-31/10/2026",
+    "entradas": "F N1 1,86015, N2 2,20128",
+    "formula": "1,65·CV + |bias|",
+    "independente": "8.103745678586874 / 8.666611564082336",
+    "qcini": "8.103745678586874 / 8.666611564082336",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma (L) após inclusão",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1 / 2",
+    "periodo": "CVp 29/04-28/10/2026",
+    "entradas": "ETp 10 (CLIA); CVp 3,32573 / 5,92399",
+    "formula": "(ETp − |bias|)/CVp",
+    "independente": "1.4930545183334316 / 0.8382017183904314",
+    "qcini": "1.4930545183334316 / 0.8382017183904314",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Bias CEQ (G) após correção + Consolidar",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1 e 2",
+    "periodo": "Ano EP 2025",
+    "entradas": "R1 105/100",
+    "formula": "média das médias de |bias|",
+    "independente": "3.7845022700255755",
+    "qcini": "3.7845022700255755",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "ET (H) após correção",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1 / 2",
+    "periodo": "01-31/10/2026",
+    "entradas": "idem",
+    "formula": "1,65·CV + |bias|",
+    "independente": "6.853745678586875 / 7.416611564082336",
+    "qcini": "6.853745678586875 / 7.416611564082336",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma (L) após correção",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1 / 2",
+    "periodo": "CVp 6 meses",
+    "entradas": "idem",
+    "formula": "(ETp − |bias|)/CVp",
+    "independente": "1.868911733341443 / 1.0492081884293243",
+    "qcini": "1.868911733341443 / 1.0492081884293243",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Bias CEQ (G) N4=TODOS",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1 e 2",
+    "periodo": "2025-2026",
+    "entradas": "17 amostras, 5 rodadas",
+    "formula": "média das médias de |bias|",
+    "independente": "9.02760181602046",
+    "qcini": "9.02760181602046",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma (L) N4=2026 (|bias| > ETp)",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1 / 2",
+    "periodo": "Ano EP 2026",
+    "entradas": "1 amostra, bias 30",
+    "formula": "(ETp − |bias|)/CVp",
+    "independente": "-6.0137154401281805 / -3.3761035206222867",
+    "qcini": "-6.0137154401281805 / -3.3761035206222867",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "ET (H) com H3=8974 e H3 vazio",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8974",
+    "nivel": "1",
+    "periodo": "Tudo (período perdido)",
+    "entradas": "F 94,9776; G 3,7845",
+    "formula": "1,65·F + G (G e L não mudam com o lote)",
+    "independente": "160.49753916758107",
+    "qcini": "160.49753916758107",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Bias CEQ (G) controle N4=TODOS",
+    "analito": "Albumina",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1 e 2",
+    "periodo": "2025-2026",
+    "entradas": "15 amostras, 3 rodadas",
+    "formula": "média das médias de |bias|",
+    "independente": "5.039521617989425",
+    "qcini": "5.039521617989425",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Estatística completa (19 colunas)",
+    "analito": "Todos (62 linhas)",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1 e 2",
+    "periodo": "01-31/10/2026",
+    "entradas": "tblCQ_Final + EQA_Base (S1 e S2)",
+    "formula": "calc_independente.py",
+    "independente": "0 divergências",
+    "qcini": "1.178 comparações por retrato",
+    "diferenca": "< 1e-9",
+    "status": "APROVADO"
+   }
+  ],
+  "ocorrencias": [
+   {
+    "titulo": "OC-1: ANALISTA não consegue corrigir nem excluir um CEQ; a janela manda 'edite a linha existente' numa aba toda bloqueada",
+    "produto": "Bioquimica",
+    "modulo": "frmCEQ / mCEQForm.SalvarCEQ / EQA.CAP_Dados",
+    "tipo": "funcional",
+    "prioridade": "Alto",
+    "observado": "Reproduzida no 3º passe (Proteína total): ERRO|5|... edite a linha existente; ProtectContents=Verdadeiro e célula F547 Locked",
+    "evidencia": "f2r3\\C\\f2.json P4.janela_mesma_chave, P4.protegida, P4.celula_bloqueada",
+    "esperado": "Caminho de correção para quem registra (ADR-087)",
+    "consequencia": "CEQ errado fica no bias/ET/Sigma até um ADM corrigir",
+    "sugestao": "Corrigir/Excluir na janela ou desbloquear as colunas digitáveis com consolidação automática",
+    "acao": "Registrar 110 e tentar corrigir para 105"
+   },
+   {
+    "titulo": "OC-2: Correção na tabela só chega ao bias/ET/Sigma depois do 'Consolidar na EQA_Base'; o indicador diz 'base em dia'",
+    "produto": "Bioquimica",
+    "modulo": "EQA.CAP_Dados Z1:Z3 / mEQA.AtualizarEQABase",
+    "tipo": "funcional",
+    "prioridade": "Alto",
+    "observado": "Reproduzida: O=5 na tabela, mas EQA_Base 110/10 e 0 células mudam na Estatística; o Z2 continua com o carimbo de 22/08 mesmo depois de consolidar, enquanto o Z1 da EQA_Base mostra 01/11 02:11:45",
+    "evidencia": "f2r3\\C\\f2.json P4.estat_mudou_sem_consolidar=[], estado_Z2_apos_consolidar",
+    "esperado": "Bias acompanha a correção ou a tela avisa que falta consolidar",
+    "consequencia": "ET e Sigma calculados com um CEQ já corrigido",
+    "sugestao": "Consolidar ao editar/ATUALIZAR; Z3 comparar conteúdo; Z2 volátil"
+   },
+   {
+    "titulo": "OC-3 (ampliada): CEQ com nome fora do mapa, do Controllab ou de analito novo é gravado OK e nunca entra no bias; analito sem CEQ não consegue ganhar o primeiro",
+    "produto": "Bioquimica",
+    "modulo": "frmCEQ / SalvarCEQ / mEQA mapa W:Y",
+    "tipo": "funcional",
+    "prioridade": "Alto",
+    "observado": "'Protein, total' e Controllab 'Proteína total' com Canônico vazio. Novo: HbA1c pelo nome do CAP ('Hemoglobin A1c') e pelo nome canônico ('Hemoglobina glicada') → OK|551| e OK|552|; MapearAnalito='' para os dois; HbA1c continua SEM EP sem aviso",
+    "evidencia": "f2r3\\C\\f2.json P5.I2_controllab, P5.I4_nome_fora_do_mapa, P5.I10_1_Hemoglobin A1c, P5.I10_2_Hemoglobina glicada, P5.I10_mapear",
+    "esperado": "Aviso de analito não mapeado e caminho para cadastrar o nome no mapa",
+    "consequencia": "Analito novo ou provedor Controllab fica sem bias/ET/Sigma em silêncio",
+    "sugestao": "Conferir MapearAnalito no SalvarCEQ e avisar; incluir o Controllab e uma tela de mapeamento (decisão do Orquestrador)",
+    "id_anterior": "OC-3"
+   },
+   {
+    "titulo": "OC-7: Com bias SEM EP, o Painel mostra ET = 1,65×CV (bias tratado como 0)",
+    "produto": "Bioquimica",
+    "modulo": "Painel H7:H8",
+    "tipo": "calculo",
+    "prioridade": "Alto",
+    "observado": "Reproduzida na Proteína total: M4=Controllab → Painel H7:H8 3,069/3,632 % com bias 'SEM EP'; Estatística H vazia; ET real com CAP 6,85/7,42 %",
+    "evidencia": "f2r3\\C\\f2.json P5.I8_provedor_controllab.painel; fórmula H7 = E7*1,65+ABS(IF(ISNUMBER(G7),G7,0))",
+    "esperado": "Sem bias, ET vazio ou rotulado 'só imprecisão'",
+    "consequencia": "ET subestimado aparenta desempenho ótimo",
+    "sugestao": "Deixar H7:H8 vazio quando G não for número"
+   },
+   {
+    "titulo": "OC-4: Registro sem valor-alvo aceito sem aviso; a amostra conta nos limites e não no bias",
+    "produto": "Bioquimica",
+    "modulo": "frmCEQ / SalvarCEQ",
+    "tipo": "funcional",
+    "prioridade": "Medio",
+    "observado": "OK|550|; bias vazio; AC 16; S 16→17 dentro dos limites",
+    "evidencia": "f2r3\\C\\f2.json P5.I5_sem_alvo",
+    "esperado": "Alvo obrigatório ou aviso",
+    "consequencia": "Bias com menos amostras sem o usuário saber",
+    "sugestao": "Marcar o Valor-alvo como obrigatório ou avisar"
+   },
+   {
+    "titulo": "OC-5: Edição, consolidação e troca de provedor do CEQ sem trilha no Audit_Log",
+    "produto": "Bioquimica",
+    "modulo": "EQA.CAP_Dados / mEQA / Painel M4",
+    "tipo": "funcional",
+    "prioridade": "Medio",
+    "observado": "trilha_da_edicao=[], trilha_consolidar=[], I8.trilha=[]; só a inclusão gera CEQ_REGISTRADO",
+    "evidencia": "f2r3\\C\\f2.json P4, P5.I8",
+    "esperado": "CEQ_ALTERADO/EXCLUIDO e PROVEDOR_ANALITO_ALTERADO com valor anterior e novo",
+    "consequencia": "Sem rastreabilidade da correção do CEQ",
+    "sugestao": "Registrar os eventos com valores antes/depois"
+   },
+   {
+    "titulo": "OC-6: SalvarCEQ grava sem sessão nem papel",
+    "produto": "Bioquimica",
+    "modulo": "mCEQForm.SalvarCEQ / AbrirCEQ",
+    "tipo": "funcional",
+    "prioridade": "Medio",
+    "observado": "Depois do Logout (SessaoAtiva=Falso): OK|553|",
+    "evidencia": "f2r3\\C\\f2.json P6",
+    "esperado": "Exigir sessão ativa e papel mínimo",
+    "consequencia": "CEQ que muda bias/ET/Sigma gravado sem identificação",
+    "sugestao": "Conferir SessaoAtiva e um papel mínimo configurável"
+   },
+   {
+    "titulo": "OC-10: Com H3 vazio (TODOS), a Estatística calcula o lote em uso (8974) e diz 'refletido do Painel'",
+    "produto": "Bioquimica",
+    "modulo": "Estatística H4 (=loteAnalise) × Painel H3/H4/B7:I8",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "Painel em TODOS com média/CV/ET vazios (n 134/131); Estatística H4 '8974 (refletido do Painel)' com Proteína total N1 n=178, CV 94,98 %, ET 160,50 %; bias e Sigma inalterados",
+    "evidencia": "f2r3\\C\\f2.json P5.I9_H3_vazio (cab_estat, conferencia_analito, painel); fórmula Estatística!H4",
+    "esperado": "Estatística segue o Painel (TODOS, C:F/H vazios) ou diz qual lote calcula e por quê",
+    "consequencia": "ET, margem e orçamento de um lote não escolhido lidos como se fossem da seleção",
+    "sugestao": "No H3 vazio, mostrar 'TODOS (ver Painel)' com C:F/H vazios, ou 'lote em uso 8974 (H3 vazio)'; mesma raiz da OC-HF4-1/OC-F4-4",
+    "acao": "Apagar o H3 do Painel com a Proteína total e atualizar a Estatística"
+   },
+   {
+    "titulo": "OC-F4-7 (reproduzida na F2): ao voltar de outro lote, o período escolhido não volta",
+    "produto": "Bioquimica",
+    "modulo": "Painel H3 / filtro da rotina (ADR-077/078)",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "H3 8977→8974 ajusta o período para 'Tudo' (B5/D5=0); na volta ao 8977 o 'Out' não volta, e a Estatística difere do estado inicial nas colunas do CIQ",
+    "evidencia": "f2r3\\C\\f2.json P5.I9_restaurado_identico=false, I9_restaurado_dif (C,D,E,F,H,N,O,P,Q,U)",
+    "id_anterior": "OC-F4-7"
+   },
+   {
+    "titulo": "OC-8: Listas da janela misturam a simulação (A, B, C; nomes em português) com o CAP real",
+    "produto": "Bioquimica",
+    "modulo": "frmCEQ / DistintosCEQ",
+    "tipo": "usabilidade",
+    "prioridade": "Baixo",
+    "observado": "Rodadas C-C, C-B, C-A 2025 + A, B, C; 37 analitos com os nomes da simulação",
+    "evidencia": "f2r3\\C\\f2.json P1"
+   },
+   {
+    "titulo": "OC-9: O GUIA §5-6 manda digitar nas abas de dados; não cita a janela, o Consolidar nem a correção",
+    "produto": "Bioquimica",
+    "modulo": "GUIA_DE_USO §5-6",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "GUIA sem alteração: linha 226 'digite cada rodada nas abas EQA.CAP_Dados / EQA.Controllab_Dados'",
+    "evidencia": "GUIA_DE_USO.md linhas 199-232"
+   }
+  ],
+  "duvidas": [
+   "Equipamento: o mesmo bias do CEQ entra no ET/Sigma do DIMENSION 1 e do DIMENSION 2 (ADR-087). Isso está confirmado pelo laboratório?",
+   "Período: o bias segue o Ano EP (N4), e não o período nem as exclusões da Estatística; corrigir o texto da linha 7?",
+   "Amostras Unacceptable/NAO AVALIADO entram no BiasEQ e não no ViesEQ. Está correto?",
+   "Papel mínimo para registrar e corrigir CEQ?",
+   "Sinal oposto entre rodadas reduz o |bias| médio; alertar?",
+   "[3º passe] Sigma negativo com ETp cadastrado (|bias| > ETp: Proteína total N4=2026 dá −6,01/−3,38): mostrar o número negativo ou 'ETp excedido pelo bias'?",
+   "[3º passe] Quem pode incluir um nome de analito no mapa W:Y da EQA_Base, e por qual tela, para que um analito novo ganhe o primeiro CEQ?"
+  ],
+  "impressoes": "3º passe (Proteína total, 2 lotes): a janela tem uma sequência boa e validações claras, e o que se acabou de registrar aparece na lista da rodada. Inclusão e correção mudaram bias, ET e Sigma só da Proteína total, com diferença 0 em relação ao independente. O bias e o Sigma não dependem do lote (8974, H3 vazio). Os problemas continuam nas bordas e são silenciosos: o analito novo não ganha o primeiro CEQ (OC-3 ampliada); a correção não é possível para o ANALISTA (OC-1) e só vale depois de consolidar (OC-2); o Painel mostra ET de imprecisão pura com bias SEM EP (OC-7); a Estatística no H3 vazio fala de um lote que ninguém escolheu (OC-10); e o período se perde na volta do lote (OC-F4-7). Cada gravação leva de 15 a 21 s, sem indicador de progresso."
+ },
+ {
+  "produto": "Bioquimica",
+  "frente": "F3",
+  "relatorio": "C:\\Users\\vitor.santos\\OneDrive - MSFT\\INI_DB_AJUSTES\\OneDrive - MSFT\\Desktop\\QC_INI_PRONTO\\qc-ini\\_arquitetura\\agentes\\relatorios\\2026-10-31_ciclo01\\Bioquimica_F3.md",
+  "sha_producao": "fe10dba1f1fd",
+  "testes": [
+   {
+    "id": "F3-T01",
+    "descricao": "Achar os dados brutos (tblCQ_Final, EQA_Base, Especificações e biblioteca, ano de referência do lote)",
+    "estado": "APROVADO",
+    "evidencia": "tblCQ_Final 34.254 linhas; EQA_Base 545 linhas (CAP 2025 C-A/C-B/C-C + 90 de simulação com Uso=NAO); Especificações A4:AR43 e biblioteca 46-89; anos de referência do lote 8977 = CLIA 2025 / VB 2025"
+   },
+   {
+    "id": "F3-T02",
+    "descricao": "Confirmar a definição no código e nos ADR",
+    "estado": "APROVADO",
+    "evidencia": "mCEQ.BiasEQ (duas etapas, linha 697), mEstatPeriodo, mIncerteza.IncertezaCIQ (MU_N_LOTE_MIN=20), ADR-035/064/068/069/071/072; src sem mudança desde 0a25f5a"
+   },
+   {
+    "id": "F3-T03",
+    "descricao": "n, Média, DP, CV por analito x nível (lote 8977, DIMENSION 2, out/2026)",
+    "estado": "APROVADO",
+    "evidencia": "62/62 linhas em C:F; maior dif. relativa 1,5e-12"
+   },
+   {
+    "id": "F3-T04",
+    "descricao": "Bias do CEQ (abs, com sinal, n amostras, n rodadas)",
+    "estado": "APROVADO",
+    "evidencia": "62/62 em G, T, AC, AD; maior dif. 9e-15; bias recalculado de Resultado/Valor_Alvo"
+   },
+   {
+    "id": "F3-T05",
+    "descricao": "ET %",
+    "estado": "APROVADO",
+    "evidencia": "62/62 em H (58 com valor, 4 vazios sem CEQ); maior dif. 6,7e-13"
+   },
+   {
+    "id": "F3-T06",
+    "descricao": "ETp e CVTp contra o cadastro (CLIA/VB)",
+    "estado": "APROVADO",
+    "evidencia": "62/62 em K e J; VB Lactato 15,2097 (ÓTI), Bilirrubina direta 39,9151 (MIN), Lipase 18,8455 (MIN)"
+   },
+   {
+    "id": "F3-T07",
+    "descricao": "CV pooled de 6 m e Sigma",
+    "estado": "APROVADO",
+    "evidencia": "Janela 29/04-28/10/2026 (MU_Fim 28/10) igual; L 62/62; maior dif. 4,2e-13"
+   },
+   {
+    "id": "F3-T08",
+    "descricao": "Margem, classe Sigma, DPM, rendimento",
+    "estado": "APROVADO",
+    "evidencia": "N, O, M, V, W 62/62; maior dif. 1,9e-11 (margem perto de zero, absoluto 3e-12)"
+   },
+   {
+    "id": "F3-T09",
+    "descricao": "u(Rw) 12 m e viés do CEQ com sinal",
+    "estado": "APROVADO",
+    "evidencia": "AF e AR 62/62; maior dif. 5,7e-13"
+   },
+   {
+    "id": "F3-T10",
+    "descricao": "Painel = Estatística = independente (Proteína total N1/N2)",
+    "estado": "APROVADO",
+    "evidencia": "Painel B7:I8, C46:C47, J46:J47, M46:M47 dentro de 4,3e-13; reconferido em 01/11: C46 3,3257310225463 x 3,3257310225449"
+   },
+   {
+    "id": "F3-T11",
+    "descricao": "Sinal e escala percentual do bias",
+    "estado": "APROVADO",
+    "evidencia": "bias=(X-alvo)/alvo*100; Proteína total C-A CHM-05 9,0 x 8,39 = +7,2706 %"
+   },
+   {
+    "id": "F3-T12",
+    "descricao": "Provedor, ano e rodada certos",
+    "estado": "APROVADO",
+    "evidencia": "Só CAP 2025; simulações Uso=NAO fora (AD=3); K5 '3 rodada(s), 435 linha(s)'. CAP x Controllab não exercitado com dado real (Controllab tem 0 linhas)"
+   },
+   {
+    "id": "F3-T13",
+    "descricao": "ETp ausente aparece como '-' (ADR-068)",
+    "estado": "NAO_EXECUTADO",
+    "evidencia": "Nenhum analito sem ETp no ano de referência 2025; provocar o caso exige Excel (F1/F2). Risco real na OC-7"
+   },
+   {
+    "id": "F3-T14",
+    "descricao": "O valor muda ao incluir ou corrigir CEQ/CIQ",
+    "estado": "NAO_EXECUTADO",
+    "evidencia": "Fica com F1/F2 por instrução do Orquestrador (Excel em uso por outra frente)"
+   },
+   {
+    "id": "F3-T15",
+    "descricao": "2 lotes no cálculo (Proteína total)",
+    "estado": "APROVADO",
+    "evidencia": "C:F só lote 8977; CVp junta 8974 (n=44/47) e 8977 (n=90/83), exclui lotes com n<20"
+   },
+   {
+    "id": "F3-T16",
+    "descricao": "Resumo Six Sigma (Estatística B98:B103)",
+    "estado": "REPROVADO",
+    "evidencia": "Classes batem; B103 'Sem EP' = 22, mas são 4 níveis sem CEQ (OC-5)"
+   },
+   {
+    "id": "F3-T17",
+    "descricao": "Coluna AT (RMS do viés / u(Cref))",
+    "estado": "REPROVADO",
+    "evidencia": "AT14 = '004 / 000' para RMS 3,6944; AT20 = '024 / 001' (OC-4)"
+   },
+   {
+    "id": "F3-T18",
+    "descricao": "ET % do Painel (H7:H8) sem CEQ",
+    "estado": "REPROVADO",
+    "evidencia": "Fórmula H7 =IF($E7=\"\",\"\",$E7*1.65+ABS(IF(ISNUMBER($G7),$G7,0))) trata SEM EP como bias 0 (OC-2); confirmação visual fica para a F4"
+   },
+   {
+    "id": "F3-T19",
+    "descricao": "Plausibilidade dos resultados que entram no CVp e na u(Rw)",
+    "estado": "REPROVADO",
+    "evidencia": "253/253 suspeitos de 13/10 ativos; BIO-319726 (Glicose N1=277) ativo derruba Sigma 4,32 -> 0,33 (OC-3)"
+   },
+   {
+    "id": "F3-T20",
+    "descricao": "Seleção das amostras do bias do ET/Sigma",
+    "estado": "APROVADO",
+    "evidencia": "Segue a definição; BiasEQ inclui resultado 0 (-100 %) que ViesEQ exclui: diferença de método (OC-1)"
+   },
+   {
+    "id": "F3-T21",
+    "descricao": "Bloco do lote na aba Analitos (AU:BD)",
+    "estado": "APROVADO",
+    "evidencia": "CV/ET/Sigma do bloco recalculados batem (lotes 8974 e 8977); diferença de definição na OC-6"
+   },
+   {
+    "id": "F3-T22",
+    "descricao": "Biblioteca anual coerente entre os anos",
+    "estado": "REPROVADO",
+    "evidencia": "2026-2029 sem CVi/CVg da Lipase e sem ETp CLIA da PCR, presentes em 2025 (OC-7)"
+   },
+   {
+    "id": "F3-T23",
+    "descricao": "Segunda opinião independente (4 analitos x 2 níveis, 31/10)",
+    "estado": "APROVADO",
+    "evidencia": "56/56 valores iguais, maior dif. 5,8e-13"
+   },
+   {
+    "id": "F3-T24",
+    "descricao": "Segunda opinião do zero com outros 6 analitos x 2 níveis (01/11)",
+    "estado": "APROVADO",
+    "evidencia": "Lactato, Lipase, Creatinina, Potássio, Bicarbonato, Colesterol total: n, média, DP, CV, bias, ET, ETp, Sigma = 96/96 dentro de 1e-9; maior dif. 8,9e-13; saída em %TEMP%\\qcw\\auditoria\\2026-10-31_ciclo01\\f3r3\\segunda_opiniao.txt"
+   },
+   {
+    "id": "F3-T25",
+    "descricao": "Reconferir na cópia nova a evidência de cada ocorrência (01/11)",
+    "estado": "APROVADO",
+    "evidencia": "Fórmulas H7/H8 e B103, AT14/AT20, G76:G93, G20/AR20, biblioteca 2026-2029, IDs da OC-3 ativos e 253/253 suspeitos ativos: tudo igual a 31/10"
+   }
+  ],
+  "calculos": [
+   {
+    "indicador": "CV %",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1",
+    "periodo": "01-31/10/2026",
+    "entradas": "n=14 (BIO-359368..370822)",
+    "formula": "DP(n-1)/média*100",
+    "independente": "1.860147520339105",
+    "qcini": "1.860147520339105",
+    "diferenca": "5.8e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Bias EQC abs %",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1",
+    "periodo": "CAP 2025, 3 rodadas",
+    "entradas": "15 amostras, C-A 4,615032 / C-B 2,355033 / C-C 3,167944",
+    "formula": "média das médias por rodada de |(X-alvo)/alvo*100|",
+    "independente": "3.3793363600341007",
+    "qcini": "3.3793363600341007",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "ET %",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1",
+    "periodo": "01-31/10/2026",
+    "entradas": "CV 1,860148; bias 3,379336",
+    "formula": "1,65*CV + |bias|",
+    "independente": "6.448579768593623",
+    "qcini": "6.448579768593623",
+    "diferenca": "2.8e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1",
+    "periodo": "CVp 29/04-28/10/2026",
+    "entradas": "ETp CLIA 10; CVp 3,325731 (8974 n=44, 8977 n=90)",
+    "formula": "(ETp-|bias|)/CVp",
+    "independente": "1.9907393577787527",
+    "qcini": "1.9907393577779087",
+    "diferenca": "4.2e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "Proteína total",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "2",
+    "periodo": "CVp 29/04-28/10/2026",
+    "entradas": "ETp 10; CVp 5,923989",
+    "formula": "(ETp-|bias|)/CVp",
+    "independente": "1.1176022911872259",
+    "qcini": "1.1176022911872419",
+    "diferenca": "1.4e-14",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Bias EQC abs %",
+    "analito": "Bilirrubina direta",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1",
+    "periodo": "CAP 2025",
+    "entradas": "C-A 44,8571 / C-B 21,6335 / C-C 25,8222 (inclui 2 amostras com resultado 0 = -100 %)",
+    "formula": "duas etapas",
+    "independente": "30.77093324845204",
+    "qcini": "30.77093324845204",
+    "diferenca": "1.2e-16",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "ETp %",
+    "analito": "Bilirrubina direta",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1",
+    "periodo": "biblioteca 2025",
+    "entradas": "VB MIN f=0,75; CVi 20,9; CVg 31,1",
+    "formula": "1,65*f*CVi + f/2*raiz(CVi^2+CVg^2)",
+    "independente": "39.91509557613611",
+    "qcini": "39.91509557613611",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "Bilirrubina direta",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1",
+    "periodo": "CVp 29/04-28/10/2026",
+    "entradas": "ETp 39,9151; bias 30,7709",
+    "formula": "(ETp-|bias|)/CVp",
+    "independente": "0.4348467994",
+    "qcini": "0.4348467994",
+    "diferenca": "7.0e-15",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "ET %",
+    "analito": "Ureia",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1",
+    "periodo": "01-31/10/2026",
+    "entradas": "CV 7,563602; bias 5,910451 (3 rodadas)",
+    "formula": "1,65*CV + |bias|",
+    "independente": "18.39039314",
+    "qcini": "18.39039314",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "Ureia",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "2",
+    "periodo": "CVp 29/04-28/10/2026",
+    "entradas": "ETp CLIA 9",
+    "formula": "(ETp-|bias|)/CVp",
+    "independente": "0.4004936761",
+    "qcini": "0.4004936761",
+    "diferenca": "3.5e-15",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "Glicose",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1",
+    "periodo": "CVp 29/04-28/10/2026",
+    "entradas": "ETp 10; bias 2,733294; CVp 22,03 (inclui BIO-319726 = 277)",
+    "formula": "(ETp-|bias|)/CVp",
+    "independente": "0.3297940308",
+    "qcini": "0.3297940308",
+    "diferenca": "1.2e-15",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Bias / ET / Sigma",
+    "analito": "Hemoglobina glicada",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1 e 2",
+    "periodo": "01-31/10/2026",
+    "entradas": "sem CEQ; n=0 no lote 8977",
+    "formula": "SEM EP -> sem ET/Sigma (ADR-068)",
+    "independente": "SEM EP / - / -",
+    "qcini": "SEM EP / - / -",
+    "diferenca": "igual",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "Lactato",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1",
+    "periodo": "CVp 29/04-28/10/2026",
+    "entradas": "ETp VB ÓTI 15,209694; CVp 7,314608",
+    "formula": "(ETp-|bias|)/CVp",
+    "independente": "1.7101053181939625",
+    "qcini": "1.7101053181939767",
+    "diferenca": "8.3e-15",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "Lipase",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "1",
+    "periodo": "CVp 29/04-28/10/2026",
+    "entradas": "ETp VB MIN 18,845471; CVp 4,533547",
+    "formula": "(ETp-|bias|)/CVp",
+    "independente": "2.47520034398127",
+    "qcini": "2.4752003439812365",
+    "diferenca": "1.4e-14",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "ET %",
+    "analito": "Potássio",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "2",
+    "periodo": "01-31/10/2026",
+    "entradas": "CV 1,632448; bias 2,579837",
+    "formula": "1,65*CV + |bias|",
+    "independente": "5.273376204921652",
+    "qcini": "5.273376204924055",
+    "diferenca": "4.6e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Global (19 colunas)",
+    "analito": "todos (31 analitos)",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "todos",
+    "periodo": "01-31/10/2026; CVp 29/04-28/10/2026",
+    "entradas": "62 linhas analito x nível",
+    "formula": "C,D,E,F,G,H,J,K,L,M,N,O,T,V,W,AC,AD,AF,AR",
+    "independente": "1178 comparações",
+    "qcini": "1178 comparações",
+    "diferenca": "0 divergências (máx 1,9e-11)",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Resumo Sem EP",
+    "analito": "todos",
+    "equipamento": "DIMENSION 2",
+    "lote": "8977",
+    "nivel": "todos",
+    "periodo": "-",
+    "entradas": "COUNTIF(G14:G93,\"SEM EP\")",
+    "formula": "contagem de níveis sem CEQ",
+    "independente": "4",
+    "qcini": "22",
+    "diferenca": "18 linhas vazias (A=0) contadas",
+    "status": "REPROVADO"
+   }
+  ],
+  "ocorrencias": [
+   {
+    "titulo": "Resultados de outro nível e valores <= 0 continuam ativos e derrubam o Sigma e a u(Rw)",
+    "produto": "Bioquimica",
+    "modulo": "tblCQ_Final -> CVp (Estatística L, Painel C46:C47/I7:I8), u(Rw) AF, plano de CQ",
+    "tipo": "dados",
+    "prioridade": "Critico",
+    "acao": "Varrer o que entra no CVp (valor <= 0 ou > 5 DP robustos da mediana do lote) e medir o impacto",
+    "esperado": "Só resultados do controle certo na estatística; GUIA §6 pede revisar e inativar os suspeitos de estudos/cv_suspeitos_bioquimica.csv",
+    "observado": "253/253 suspeitos de 13/10 continuam ativos (PARTICIPA=SIM); 287 na janela de 6 m. Ex.: Glicose N1 BIO-319726 = 277 (lote 8977) -> Sigma 0,33 em vez de 4,32; Proteína total BIO-232288 = 101,5 e BIO-268082 = -0,5 -> u(Rw) 12 m = 81,2 %; Amilase BIO-215815 = 496 em N1. 53 de 58 níveis 'Desempenho inadequado'",
+    "consequencia": "Plano de CQ recomendado sobre Sigma artificial em quase todos os analitos; incerteza superestimada",
+    "sugestao": "Laboratório revisar e inativar os IDs pela aba Inativar; com autorização, alerta no QA_INTEGRACAO para nível trocado ou valor <= 0",
+    "evidencia": "Cópia Bioquimica_F3.xlsm (sha fe10dba1f1fd), aba Principal - Resultados; IDs acima; CVp Glicose N1 por lote 8974 = 1,206 %, 8977 = 27,242 %; calc_independente.py cv_pooled"
+   },
+   {
+    "titulo": "ET % do Painel conta bias 0 quando o analito não tem CEQ",
+    "produto": "Bioquimica",
+    "modulo": "Painel, INDICADORES POR NÍVEL, H7:H8",
+    "tipo": "calculo",
+    "prioridade": "Alto",
+    "acao": "Ler a fórmula e simular com HbA1c lote 8590 e PCR lote 8353 (DIMENSION 2, out/2026)",
+    "esperado": "Sem bias não há ET (ADR-030/068), como na Estatística H e no bloco ERRO TOTAL do Painel",
+    "observado": "H7 =IF($E7=\"\",\"\",$E7*1.65+ABS(IF(ISNUMBER($G7),$G7,0))): com G7='SEM EP' o ET vira 1,65*CV (HbA1c 2,54 % / 2,78 %; PCR 2,37 % / 2,01 %), enquanto C63 fica vazio",
+    "consequencia": "ET subestimado exibido para analitos sem CEQ; dois ETs diferentes na mesma tela",
+    "sugestao": "ET do Painel seguir a Estatística (vazio/SEM EP quando G não for número)",
+    "evidencia": "Fórmula Painel!H7/H8 (openpyxl data_only=False), Estatística G40:G41 e G66:G67 = SEM EP; confirmação visual fica para F4"
+   },
+   {
+    "titulo": "Bias do ET/Sigma inclui amostras do CEQ com resultado 0 (-100 %) que o projeto exclui da incerteza",
+    "produto": "Bioquimica",
+    "modulo": "Estatística G/H/L (mCEQ.BiasEQ) x AR (mCEQ.ViesEQ)",
+    "tipo": "duvida_metodo",
+    "prioridade": "Alto",
+    "acao": "Recalcular o bias da Bilirrubina direta pelas duas regras",
+    "esperado": "Mesmo critério de amostra nos dois indicadores do CEQ (ADR-064 A-01 reconhece que ±100 % perto do LD não descreve o método)",
+    "observado": "CHM-04 (C-A) e CHM-13 (C-C) = 0,0 contra alvos 0,05/0,03. BiasEQ = 30,77 % (com elas); ViesEQ exclui (n=13). Sem elas o bias seria 19,99 %, ET N1 26,3 % em vez de 37,1 % e Sigma N1 0,95 em vez de 0,43",
+    "consequencia": "Bias, ET e Sigma distorcidos por critério que o próprio projeto considera inadequado em outra coluna",
+    "sugestao": "Especialista em CQ decidir se BiasEQ ABS aplica o filtro do ViesEQ e se deve haver regra de resolução/limite inferior",
+    "evidencia": "EQA_Base chaves CAP|2025|C-A 2025|...|CHM-04 e ...|C-C 2025|...|CHM-13; Estatística G20 = 30,77093324845204, AR20 = -20,12030759436774"
+   },
+   {
+    "titulo": "Coluna AT da Estatística mostra '004 / 000' em vez de '3,69 / 0,xx'",
+    "produto": "Bioquimica",
+    "modulo": "Estatística AT14:AT75 (RMS do viés / u(Cref))",
+    "tipo": "funcional",
+    "prioridade": "Medio",
+    "acao": "Comparar o texto exibido com o RMS recalculado",
+    "esperado": "'3,69 / 0,4x' ou similar",
+    "observado": "TEXT(...,\"0.00\") em Excel pt-BR usa ponto como milhar: AT14 = '004 / 000' (RMS 3,6944), AT20 = '024 / 001' (RMS 24,1859). Defeito já corrigido no K5 (mCEQ.ResumoFiltroEQ) mas não no AT",
+    "consequencia": "Memória de cálculo da incerteza ilegível e enganosa",
+    "sugestao": "Montar o texto no VBA (CStr/Format), como no K5",
+    "evidencia": "Estatística AT14 e AT20 (data_only=True); vies_nordtest da calculadora"
+   },
+   {
+    "titulo": "Resumo 'Sem EP (sem bias -> sem Sigma)' conta 22 níveis, mas são 4",
+    "produto": "Bioquimica",
+    "modulo": "Estatística B103",
+    "tipo": "calculo",
+    "prioridade": "Medio",
+    "acao": "Recontar os níveis sem CEQ",
+    "esperado": "4 (HbA1c e PCR, 2 níveis cada)",
+    "observado": "B103 = COUNTIF($G$14:$G$93,\"SEM EP\") = 22: as 18 linhas sem analito (A76:A93 = 0) chamam BiasEQ(\"0\") e devolvem SEM EP",
+    "consequencia": "Indicador de gestão errado (sugere um terço da rotina sem CEQ)",
+    "sugestao": "Contar só linhas com analito (COUNTIFS com A<>0)",
+    "evidencia": "Estatística G76:G93 = SEM EP com A = 0; B103 = 22"
+   },
+   {
+    "titulo": "Três/quatro Sigmas diferentes para o mesmo analito, e ET x Sigma com CVs diferentes",
+    "produto": "Bioquimica",
+    "modulo": "Estatística H/L, Analitos bloco do lote AU:BD, Eng_Saida 185:186 e 190:269",
+    "tipo": "duvida_metodo",
+    "prioridade": "Medio",
+    "acao": "Comparar os Sigmas de Proteína total N1",
+    "esperado": "Um Sigma oficial ou rótulos claros",
+    "observado": "Estatística/Painel 1,99 (CVp 6 m); bloco 8974 = 4,00; bloco 8977 = 2,50; Eng_Saida I185 = 5,03 (bias contra alvo do lote); engEstat sem leitor. ET usa CV do mês e Sigma usa CVp: 41 de 58 níveis 'Dentro do orçamento' e 'Desempenho inadequado' ao mesmo tempo",
+    "consequencia": "Risco de decisão contraditória (liberar pelo ET e intensificar pelo Sigma)",
+    "sugestao": "Especialista em CQ definir o CV do orçamento e o Sigma oficial; UX rotular 'Sigma do cadastro'; retirar/documentar bloco legado do Eng_Saida",
+    "evidencia": "Estatística L44 = 1,9907; Analitos AX21 = 3,9991 e AX885 = 2,4984; Eng_Saida I185 = 5,0257"
+   },
+   {
+    "titulo": "Biblioteca de especificações 2026-2029 sem a VB da Lipase e sem o ETp CLIA da PCR",
+    "produto": "Bioquimica",
+    "modulo": "Especificações, biblioteca anual (linhas 55-89)",
+    "tipo": "dados",
+    "prioridade": "Medio",
+    "acao": "Comparar os anos da biblioteca",
+    "esperado": "Anos copiados de 2025 com as mesmas especificações, ou decisão consciente do laboratório",
+    "observado": "2025: Lipase CVi 7,6 / CVg 24 e PCR CLIA 30. 2026, 2027, 2028 e 2029: células vazias (Y59/Y60, AB57 e equivalentes)",
+    "consequencia": "Perda silenciosa de ETp/Sigma/plano de Lipase e PCR quando um lote nascer com ano de referência 2026+",
+    "sugestao": "Completar a biblioteca 2026+ ou o QA avisar quando faltar a especificação da fonte do analito",
+    "evidencia": "Especificações Y50/Y51 e AB48 preenchidas; Y59/Y60, AB57, linhas 66-87 vazias (reconferido em 01/11)"
+   }
+  ],
+  "duvidas": [
+   "O bias do ET/Sigma (BiasEQ ABS) deve excluir amostras com resultado ou alvo = 0 e NAO AVALIADO, como o ViesEQ? Deve haver limite de resolução para o bias % em concentrações baixas? (OC-1)",
+   "O orçamento de erro (ET %) deve usar o CV do lote no período ou o mesmo CVp do Sigma? Hoje 41 níveis ficam 'dentro do orçamento' e 'inadequados' ao mesmo tempo. (OC-6)",
+   "Qual Sigma é o oficial para o plano de CQ? O do bloco do lote (CV do cadastro) é só informativo? (OC-6)",
+   "O CVp do Sigma junta todos os lotes do equipamento e ignora o lote em análise, e a janela termina no último resultado de qualquer equipamento (MU_Fim global). É a intenção?",
+   "HbA1c e PCR não têm CEQ cadastrado: o laboratório participa de outro programa (Controllab?) que deveria ser digitado?"
+  ],
+  "impressoes": "Reexecução completa em 01/11/2026 sobre uma cópia nova da produção, que não mudou (sha fe10dba1f1fd; src igual ao commit 0a25f5a). Excel não foi aberto. A matemática do QC_INI está certa: a calculadora deu 1.178 comparações e 0 divergências (62 linhas x 19 colunas), e a segunda opinião do zero com outros 6 analitos deu 96/96. O Painel repete a Estatística. O problema não é a conta, é o que entra nela. Os resultados implausíveis ativos (OC-3) fazem o CVp de 6 m ficar muitas vezes maior que o CV do mês (Colesterol N2 15,1 % contra 1,5 %; Lactato N2 24,1 % contra 7,6 %), e quase tudo aparece como 'Desempenho inadequado' sem a tela apontar o resultado causador. Também confunde: na mesma tela há ET 'dentro do orçamento' ao lado de Sigma 'inadequado', o bloco do lote mostra outro Sigma, e a coluna AT está ilegível. Ficam para as frentes F1/F2 os testes T13 (ETp ausente) e T14 (mudança ao incluir ou corrigir um CEQ/CIQ). A calculadora reutilizável continua em _arquitetura/agentes/ferramentas/calc_independente.py, documentada no cabeçalho. A cópia foi descartada ao fim."
+ },
+ {
+  "produto": "Bioquimica",
+  "frente": "F4",
+  "relatorio": "C:\\Users\\vitor.santos\\OneDrive - MSFT\\INI_DB_AJUSTES\\OneDrive - MSFT\\Desktop\\QC_INI_PRONTO\\qc-ini\\_arquitetura\\agentes\\relatorios\\2026-10-31_ciclo01\\Bioquimica_F4.md",
+  "sha_producao": "fe10dba1f1fd",
+  "testes": [
+   {
+    "id": "T00",
+    "descricao": "tblCQ_Final do COM = leitura openpyxl da mesma cópia (base do cálculo independente)",
+    "estado": "APROVADO",
+    "evidencia": "f4r3/f4.json: 34.254 linhas, IDs idênticos"
+   },
+   {
+    "id": "REPRO-r2",
+    "descricao": "Reprodução do 2º passe: 79 testes do roteiro principal e 5 do complemento numa cópia nova",
+    "estado": "APROVADO",
+    "evidencia": "Comparação campo a campo f4r2/f4.json × f4r3/f4.json: mesmos estados e evidência; só os tempos diferem"
+   },
+   {
+    "id": "P-M202510..P-M202610",
+    "descricao": "Glicose DIM 1, 13 meses pelo K3/K4 (lote do mês em H3): Painel = dados brutos do mês",
+    "estado": "APROVADO",
+    "evidencia": "f4.json; 0 divergências, máx. 4,4e-16; G3/G4 certos"
+   },
+   {
+    "id": "P-T/S/Ano",
+    "descricao": "Glicose DIM 1: T4/2025, T1–T4/2026, S1, Ano inteiro calculados dos dados brutos (não da média dos meses)",
+    "estado": "APROVADO",
+    "evidencia": "f4.json, f4b.json A-Ano/A-S1; máx. 9,8e-16; T1/2026 N1 87,8983 contra 87,8384 da média das médias"
+   },
+   {
+    "id": "P-LTudo / A-Tudo",
+    "descricao": "Período 'Tudo (sem filtro)', lote 8974 (>180 corridas): Painel = todos os dados do lote",
+    "estado": "REPROVADO",
+    "evidencia": "Painel N1 140; 89,15; 16,968 = só a janela de 180 corridas; todos os dados: 174; 92,2874; 30,3737 (OC-F4-1)"
+   },
+   {
+    "id": "Q-UR2 (20 testes)",
+    "descricao": "Ureia DIM 2: 13 meses, T4/2025–T4/2026, S1, S2",
+    "estado": "APROVADO",
+    "evidencia": "c/f4c.json; 0 divergências, máx. 5,6e-16; G3/G4 certos"
+   },
+   {
+    "id": "Q-HBA1 (22 testes)",
+    "descricao": "Hemoglobina glicada DIM 1 (8588→8589→8590), meses, trimestres, semestres, inclusive o lote minoritário dos meses de troca (dez/2025 8588, jun/2026 8590)",
+    "estado": "APROVADO",
+    "evidencia": "c/f4c.json; 0 divergências, máx. 4,4e-16"
+   },
+   {
+    "id": "E-MENS/E-TRIM",
+    "descricao": "Aba Estatística: MENSAL/TRIMESTRAL, 62 linhas × independente",
+    "estado": "APROVADO",
+    "evidencia": "f4.json: 936 comparações, máx. 1,2e-11 (UDF com cache)"
+   },
+   {
+    "id": "E2-USUARIO",
+    "descricao": "Visão da Estatística pelo caminho do usuário",
+    "estado": "REPROVADO",
+    "evidencia": "B4/D4/F4/H4 bloqueadas, 'Ano 0', MENSAL com janela vazia cai no histórico inteiro (OC-F4-5)"
+   },
+   {
+    "id": "L-8974/L-8977 (+MOTOR)",
+    "descricao": "Lote A → lote B: estatística e Eng_Saida só com o lote filtrado",
+    "estado": "APROVADO",
+    "evidencia": "f4.json: 0 pontos fora do escopo, 0 faltando; máx. 4,3e-16"
+   },
+   {
+    "id": "L-TODOS / L-TODOS-ALVO / B-TODOS-SETOUT",
+    "descricao": "H3 vazio: n = todos os lotes, cada ponto com o alvo do seu lote",
+    "estado": "APROVADO",
+    "evidencia": "f4.json, f4b.json; achados OC-F4-2/3/4"
+   },
+   {
+    "id": "L-AJUSTE",
+    "descricao": "Trocar para um lote sem ponto no filtro: ajuste do período com aviso",
+    "estado": "APROVADO",
+    "evidencia": "f4.json; o período escolhido não volta (OC-F4-7)"
+   },
+   {
+    "id": "C-* (10 testes)",
+    "descricao": "Combinações de analito × equipamento (Glicose DIM 2, Ureia DIM 2, Proteína total DIM 1, Creatinina DIM 1, Colesterol DIM 2) incluindo o motor",
+    "estado": "APROVADO",
+    "evidencia": "f4.json, 0 divergências"
+   },
+   {
+    "id": "C-HBA1C",
+    "descricao": "ET do Painel para analito 'SEM EP'",
+    "estado": "REPROVADO",
+    "evidencia": "H8 = 2,7740 % = 1,65×CV (confirma OC-7 F2 / OC-2 F3, sem ID novo)"
+   },
+   {
+    "id": "G-* (4 cenários, 36 testes)",
+    "descricao": "LJ: eixo, pontos, corrida do lote (ADR-080), 7 limites, tabela × gráfico, Westgard por ponto (ADR-083) e contagens M:Q",
+    "estado": "APROVADO",
+    "evidencia": "f4.json: 609 marcas de Westgard, 0 divergências"
+   },
+   {
+    "id": "W-GLI1-JUNAGO-*",
+    "descricao": "H3 vazio Glicose DIM 1 jun–ago/2026: escopo, pontos/X, degraus, Westgard lote a lote, visão do lote, contagens",
+    "estado": "APROVADO",
+    "evidencia": "c/f4c.json: 265 marcas, 749 conferências de degrau, 0 divergências"
+   },
+   {
+    "id": "W-HBA1-JUN-*",
+    "descricao": "H3 vazio Hemoglobina glicada jun/2026 (8589 e 8590 simultâneos)",
+    "estado": "APROVADO",
+    "evidencia": "c/f4c.json: 288 marcas, 0 divergências; achados OC-F4-13/14"
+   },
+   {
+    "id": "W-UR1-DEZ-*",
+    "descricao": "H3 vazio Ureia DIM 1 dez/2025 (com linhas do lote de urina 6353)",
+    "estado": "APROVADO",
+    "evidencia": "c/f4c.json: cálculo exato (125 marcas, 0 divergências), mas o eixo Y vai até 1.932 por causa da urina (OC-F4-11)"
+   },
+   {
+    "id": "H-LISTA",
+    "descricao": "Lista do H3 só com lotes do analito/equipamento",
+    "estado": "REPROVADO",
+    "evidencia": "lstLotes global com 22 lotes; 18 não são da Glicose DIM 1 (OC-F4-12)"
+   },
+   {
+    "id": "H-OUTRO",
+    "descricao": "Glicose + H3 = 8588 (lote de outra analito)",
+    "estado": "APROVADO",
+    "evidencia": "Avisa no A39, mas troca C3 para Hemoglobina glicada e K4 para Tudo sozinho (OC-F4-12)"
+   },
+   {
+    "id": "U-TEMPOS",
+    "descricao": "Tempo de resposta dos filtros",
+    "estado": "APROVADO",
+    "evidencia": "C3 0,14–0,21 s; H3 1,2–3,5 s; K4 0,4–0,85 s; L4 5,2–6,1 s; Estatística 2,3–2,8 s"
+   },
+   {
+    "id": "U-AUDIT-PAINEL",
+    "descricao": "Textos e formas do Painel",
+    "estado": "REPROVADO",
+    "evidencia": "J7/J8 'REJEITADO' cortado (OC-F4-9)"
+   },
+   {
+    "id": "U-IMG-LJ",
+    "descricao": "Inspeção das imagens do LJ exportadas pela cópia",
+    "estado": "REPROVADO",
+    "evidencia": "img/*.png, c/*.png: suavização, sem valores no eixo Y, ponto cortado (OC-F4-8, OC-F4-14)"
+   },
+   {
+    "id": "U-K4",
+    "descricao": "Rótulo do K4 depois de digitar De/Até",
+    "estado": "REPROVADO",
+    "evidencia": "K4 'Jun' com De/Até 01/06–31/08 (OC-F4-6)"
+   }
+  ],
+  "ocorrencias": [
+   {
+    "titulo": "OC-F4-1: 'Tudo (sem filtro)' num lote com mais de 180 corridas dá estatística só das 180 mais recentes, e o aviso fala só do gráfico",
+    "produto": "Bioquimica",
+    "modulo": "Painel / mEstatistica.AtualizarCalc (janela NK=180)",
+    "tipo": "calculo",
+    "prioridade": "Alto",
+    "observado": "Glicose DIM1 8974: Painel N1 140; 89,15; DP 16,968 contra todos os dados 174; 92,2874; 30,3737. A39: '39 corrida(s) ... fora do gráfico'",
+    "esperado": "Estatística do período inteiro, ou aviso de que a estatística também foi cortada",
+    "evidencia": "f4r3/f4.json P-LTudo; img/f4b.json A-Tudo",
+    "acao": "H3=8974, K4='Tudo (sem filtro)'",
+    "consequencia": "n/média/DP/CV de 'Tudo' não são do lote inteiro",
+    "sugestao": "Calcular sobre o período inteiro, ou dizer 'fora do gráfico e da estatística' com o n total"
+   },
+   {
+    "titulo": "OC-F4-2: Lote de urina 5659 entra como Glicose sérica e se mistura no H3 vazio",
+    "produto": "Bioquimica",
+    "modulo": "Recebimento, cadastro automático de lote, Painel H3 vazio",
+    "tipo": "dados",
+    "prioridade": "Alto",
+    "observado": "28 linhas GLUC MATRIZ=SORO ativas no lote 5659 (N1 55,9; N2 33,3), alvo com DP copiado do 8977; no H3 vazio junta com o 8977",
+    "esperado": "Controle de urina fora da Glicose sérica",
+    "evidencia": "img/f4b.json B-TODOS-SETOUT, B-5659; BIO-355958, BIO-369955/369956",
+    "acao": "Glicose DIM1 set–out/2026, H3 vazio e H3=5659",
+    "consequencia": "n e Westgard inflados no H3 vazio; gráfico ilegível",
+    "sugestao": "Laboratório inativar/corrigir; trava de plausibilidade por matriz/lote"
+   },
+   {
+    "titulo": "OC-F4-3: No H3 vazio o Painel mostra Bias e Sigma, contra a decisão 4 do ADR-086",
+    "produto": "Bioquimica",
+    "modulo": "Painel G7:I8 (lê a aba Estatística)",
+    "tipo": "duvida_metodo",
+    "prioridade": "Medio",
+    "observado": "Glicose jun–ago: Bias 2,73 %, Sigma 3,19/0,55; Ureia dez/2025: Bias 5,91 %, Sigma 0,25/0,19; ET vazio",
+    "esperado": "Média/DP/CV/Bias/ET/Sigma vazios (ADR-086)",
+    "evidencia": "c/f4c.json W-*-ESCOPO linha_painel; c/Painel_todos_UR1-DEZ.png",
+    "sugestao": "Especialista decide; alinhar ADR ou Painel"
+   },
+   {
+    "titulo": "OC-F4-4: 'Lançamentos no lote: 8974' e A39 com o alvo do 8974 em telas de outro lote",
+    "produto": "Bioquimica",
+    "modulo": "Painel C4, A39",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "Com H3=8977 aparece 'Lançamentos no lote: 8974'; no H3 vazio o A39 dá o alvo do 8974 (também na Hemoglobina glicada, que roda no 8590)",
+    "esperado": "Lote coerente com o que está na tela",
+    "evidencia": "img/Painel_out_8977.png; c/f4c.json W-HBA1-JUN-ESCOPO A39",
+    "sugestao": "Listar os lotes do período no A39; rotular 'Lote em uso (digitação)'"
+   },
+   {
+    "titulo": "OC-F4-5: Visões MENSAL/TRIMESTRAL da Estatística inalcançáveis e quebradas ('Ano 0', janela vazia = histórico inteiro)",
+    "produto": "Bioquimica",
+    "modulo": "Estatística B4:J5",
+    "tipo": "funcional",
+    "prioridade": "Medio",
+    "observado": "B4/D4/F4/H4 bloqueadas; D4=Painel!I3 vazio ('Ano 0'); MENSAL forçado mostra n=76 em vez de 23",
+    "esperado": "Visão escolhível ou campos removidos",
+    "evidencia": "img/f4b.json celulas_filtro, estatistica_caminho_usuario",
+    "sugestao": "Apontar D4 para Painel!K3 ou retirar os campos"
+   },
+   {
+    "titulo": "OC-F4-6: K4 mantém o rótulo antigo depois de digitar De/Até",
+    "produto": "Bioquimica",
+    "modulo": "Painel K3/K4 × G3/G4",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "K4 'S1' com 01/09–31/10; K4 'Jun' com 01/06–31/08",
+    "esperado": "K4 limpo ou 'Personalizado'",
+    "evidencia": "img/Painel_todos_setout.png; c/Painel_todos_GLI1-JUNAGO.png",
+    "sugestao": "Ao digitar G3/G4, limpar K4"
+   },
+   {
+    "titulo": "OC-F4-7: O período escolhido não volta ao retornar de outro lote quando o lote de partida não é o 'em uso'",
+    "produto": "Bioquimica",
+    "modulo": "Painel H3 (ADR-077/078)",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "8977 Out → 8974 (ajusta Tudo) → 8977: fica em Tudo",
+    "esperado": "Voltar a 'Out' (GUIA §4b)",
+    "evidencia": "f4r3/f4.json L-AJUSTE",
+    "sugestao": "Guardar o filtro sempre que o ajuste automático trocar"
+   },
+   {
+    "titulo": "OC-F4-8: LJ com linha suavizada que passa dos pontos, sem valores no eixo Y e sem rótulo nas linhas de DP",
+    "produto": "Bioquimica",
+    "modulo": "Gráficos do Painel",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "A suavização sobe acima dos pontos e passa por baixo do eixo; degraus viram ondas no H3 vazio",
+    "esperado": "Linha reta, eixo Y com valores, rótulos ±kDP",
+    "evidencia": "img/Painel_out_8977.png; c/Painel_todos_*.png",
+    "sugestao": "Desligar a suavização; rotular as linhas e o eixo Y"
+   },
+   {
+    "titulo": "OC-F4-9: 'REJEITADO' cortado em J7:J8",
+    "produto": "Bioquimica",
+    "modulo": "Painel J7:J8",
+    "tipo": "usabilidade",
+    "prioridade": "Baixo",
+    "observado": "48 pt de texto em 47 pt de coluna",
+    "evidencia": "img/f4b.json achados_painel",
+    "sugestao": "Alargar J ou reduzir para caber"
+   },
+   {
+    "titulo": "OC-F4-10: Nome do analito desalinhado na vertical na Estatística",
+    "produto": "Bioquimica",
+    "modulo": "Estatística",
+    "tipo": "usabilidade",
+    "prioridade": "Baixo",
+    "observado": "Nome no pé da célula, parece da linha de baixo",
+    "evidencia": "img/Estatística.png",
+    "sugestao": "Centralizar na vertical"
+   },
+   {
+    "titulo": "OC-F4-11: Lotes que não são do analito (urina 6353/6354, PCR 8353, 8177, 8794, 8974 na Hemoglobina glicada) ativos em analitos séricos, com alvo criado do próprio valor; no H3 vazio destroem o gráfico",
+    "produto": "Bioquimica",
+    "modulo": "Recebimento / cadastro automático de lote / Painel H3 vazio",
+    "tipo": "dados",
+    "prioridade": "Alto",
+    "observado": "Ureia DIM1 lote 6353: BIO-230952=871 e BIO-230958=1830 (MATRIZ=SORO, ativas), alvo 871±1,7094 / 1830±4,8; no H3 vazio dez/2025 eixo Y até 918 (N1) e 1.932 (N2). Creatinina 6354 N2 ~236; Na/K/Cl/P/Ca em 6353/6354; lote 8353 com Glicose −1, Ureia −1 em 24/08/2026; 14 linhas de Hemoglobina glicada no lote 8974",
+    "esperado": "O modo TODOS junta só lotes de controle do analito sérico",
+    "evidencia": "cq.pkl da cópia (sha fe10dba1f1fd); c/f4c.json W-UR1-DEZ-* e W-GLI1-JUNAGO-*; c/Painel_todos_UR1-DEZ.png",
+    "acao": "Ureia DIM1, K3=2025, K4=Dez, H3 apagado; varredura lote × analito",
+    "consequencia": "H3 vazio inutilizável nesses períodos; estatística/alvo falsos com nome de analito sérico. Com o lote escolhido em H3 não há efeito",
+    "sugestao": "Laboratório conferir e inativar; trava de plausibilidade (matriz, alvo com 1 ponto, distância ao alvo do analito); aviso no modo TODOS"
+   },
+   {
+    "titulo": "OC-F4-12: Lista do H3 com os 22 lotes de todos os analitos; escolher lote de outro analito troca o analito sozinho",
+    "produto": "Bioquimica",
+    "modulo": "Painel H3 (=lstLotes) e ajuste ADR-077/078",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "Glicose DIM1: só 4 dos 22 lotes têm resultado; H3=8588 troca C3 para Hemoglobina glicada e K4 para Tudo; aviso só no A39, abaixo dos gráficos",
+    "esperado": "Lista filtrada pelo analito/equipamento, ou confirmação antes de trocar o analito",
+    "evidencia": "c/f4c.json H-LISTA, H-OUTRO",
+    "acao": "Glicose DIM1 set/2026, escolher 8588 em H3",
+    "consequencia": "Risco de ler um analito achando que é outro; cliques extras",
+    "sugestao": "Filtrar H3 pelos lotes com resultado (Eng_Saida O1) ou mostrar lote·analito; perguntar antes de trocar o analito"
+   },
+   {
+    "titulo": "OC-F4-13: 'Últ. violação' e 'Classificação' na tabela 'violações no período' vêm do histórico inteiro do lote do Painel (no H3 vazio, do lote em uso), não do período",
+    "produto": "Bioquimica",
+    "modulo": "Painel S7:T8 = engPainel col 19/20 = AgregadoWestgard (Eventos_Westgard)",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "mar/2026 lote 8974 mostra RUN 26081201 (ago/2026); T3/2026 lote 8977 mostra RUN 26102802 (out); Hemoglobina glicada jun/2026 H3 vazio mostra N2 '1_3s · RUN 25102201' (22/10/2025, lote 8974), não a violação de junho BIO-300301",
+    "esperado": "A última violação do período, coerente com M:Q",
+    "evidencia": "f4r3/f4.json G-CONTAGEM-* ultima_violacao_S7_S8; c/f4c.json W-*-ESCOPO; c/Painel_todos_HBA1-JUN.png",
+    "acao": "Qualquer período que não seja o mais recente; H3 vazio",
+    "consequencia": "Investigação da corrida errada; classificação de outro momento/lote",
+    "sugestao": "Calcular sobre o período, ou rotular 'do lote (histórico)' e deixar vazio no modo TODOS"
+   },
+   {
+    "titulo": "OC-F4-14: Ponto de violação cortado na borda superior do LJ (y_max = valor do ponto)",
+    "produto": "Bioquimica",
+    "modulo": "Gráfico N2 do Painel, modo TODOS (moldura pelos degraus)",
+    "tipo": "usabilidade",
+    "prioridade": "Baixo",
+    "observado": "Hemoglobina glicada jun/2026 H3 vazio: y_max 10,53 = BIO-300301 (único 1_3s); marcador metade fora, sobre o texto 'Duplo clique...'",
+    "esperado": "Margem acima do maior ponto",
+    "evidencia": "c/f4c.json W-HBA1-JUN-PONTOS-N2 eixo.y_max; c/Painel_todos_HBA1-JUN.png",
+    "sugestao": "Margem de ~5 % da amplitude na moldura"
+   }
+  ],
+  "calculos": [
+   {
+    "indicador": "n/média/DP (período)",
+    "analito": "Glicose",
+    "equipamento": "DIMENSION 1",
+    "lote": "8974",
+    "nivel": "1",
+    "periodo": "T1/2026",
+    "entradas": "59 resultados ativos 01/01–31/03/2026",
+    "formula": "statistics.fmean / stdev (n−1) sobre os dados brutos do trimestre",
+    "independente": "59; 87,8983; 1,2275",
+    "qcini": "59; 87,8983; 1,2275 (engPainel)",
+    "diferenca": "≤1,7e-16 rel.",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "n/média/DP (período)",
+    "analito": "Glicose",
+    "equipamento": "DIMENSION 1",
+    "lote": "8974",
+    "nivel": "1",
+    "periodo": "Tudo (sem filtro)",
+    "entradas": "174 resultados ativos do lote",
+    "formula": "statistics sobre todo o histórico ativo do lote",
+    "independente": "174; 92,2874; 30,3737",
+    "qcini": "140; 89,1500; 16,9680 (= janela de 180 corridas)",
+    "diferenca": "DP 0,44 rel.",
+    "status": "REPROVADO"
+   },
+   {
+    "indicador": "n/média/DP (período)",
+    "analito": "Ureia",
+    "equipamento": "DIMENSION 2",
+    "lote": "8974",
+    "nivel": "2",
+    "periodo": "T1/2026",
+    "entradas": "63 resultados ativos",
+    "formula": "statistics sobre os dados brutos do trimestre",
+    "independente": "63; 94,0476; 12,4712",
+    "qcini": "63; 94,0476; 12,4712",
+    "diferenca": "≤1,4e-16 rel.",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "n/média/DP (período)",
+    "analito": "Hemoglobina glicada",
+    "equipamento": "DIMENSION 1",
+    "lote": "8588",
+    "nivel": "1",
+    "periodo": "dez/2025 (lote minoritário)",
+    "entradas": "8 resultados ativos do 8588 no mês",
+    "formula": "statistics, filtro por lote",
+    "independente": "8; 4,9525; 0,1427",
+    "qcini": "8; 4,9525; 0,1427",
+    "diferenca": "≤2,0e-16 rel.",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Westgard por ponto (H3 vazio, lote a lote)",
+    "analito": "Glicose",
+    "equipamento": "DIMENSION 1",
+    "lote": "8974+8977+8353",
+    "nivel": "1 e 2",
+    "periodo": "01/06–31/08/2026",
+    "entradas": "180 corridas RUN|LOTE, alvo do cadastro por lote",
+    "formula": "ADR-083/086: 1_3s, 2_2s within/across, R_4s, 4_1s, 8x por lote na janela",
+    "independente": "265 marcas; contagens N1 [10,26,0,5,2] N2 [2,8,0,5,2]",
+    "qcini": "idênticas (Eng_Saida e Painel M:Q)",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Linhas de limite em degrau",
+    "analito": "Ureia",
+    "equipamento": "DIMENSION 1",
+    "lote": "8974+6353",
+    "nivel": "1 e 2",
+    "periodo": "dez/2025",
+    "entradas": "Média/DP do lote de cada ponto",
+    "formula": "M_lote + k·DP_lote, k = −3..+3",
+    "independente": "266 valores",
+    "qcini": "idênticos nas 7 séries",
+    "diferenca": "0",
+    "status": "APROVADO"
+   }
+  ],
+  "duvidas": [
+   "Janela de 180 corridas: a estatística do Painel para 'Tudo'/'Ano inteiro' em lotes longos deve ser da janela ou do período inteiro (OC-F4-1)?",
+   "H3 vazio: Bias (CEQ) e Sigma (CV pooled), que são do analito, devem aparecer no modo TODOS (OC-F4-3)?",
+   "Lote em uso: é global (8974) ou por analito, e quem o atualiza? Vale para a Glicose (8977) e a Hemoglobina glicada (8590) (OC-F4-4/7)",
+   "Filtro de período por corrida (data da 1ª linha), e não por resultado: confirmar; nesta base nenhuma corrida atravessa dia ou mês (0 de 22.078)",
+   "O recebimento deve aceitar como ativo um resultado com lote de urina (6353, 6354, 5659) ou de outro analito (8353 da PCR, 8974 na Hemoglobina glicada) e criar alvo com um único ponto (OC-F4-2/11)?",
+   "'Últ. violação/Classificação' deve ser do período mostrado ou do histórico do lote? E no H3 vazio (OC-F4-13)?",
+   "A lista do H3 deve ser filtrada pelo analito/equipamento, e o ajuste automático pode trocar o analito sem confirmação (OC-F4-12)?"
+  ],
+  "impressoes": "Filtros rápidos e diretos: analito 0,1–0,2 s, período 0,4–0,8 s e lote 1–3,5 s. O mais lento é o equipamento, com 5–6 s. Em 3 analitos, 2 equipamentos, 66 períodos e 7 cenários de LJ, tudo o que o Painel calcula bate com os dados brutos, inclusive no H3 vazio, onde os degraus por lote e o Westgard lote a lote estão exatos. O que atrapalha:\n\n- dados de outro material ou lote dentro dos analitos séricos, que achatam o gráfico no H3 vazio;\n- a lista de 22 lotes sem dizer de qual analito é cada um, e um clique errado troca o analito, com o aviso abaixo dos gráficos;\n- a 'Últ. violação' de outro lote e de outra data, ao lado das contagens do período;\n- Bias e Sigma no modo TODOS;\n- o K4 com o rótulo antigo;\n- a linha suavizada e o eixo Y sem valores;\n- o ponto de violação cortado na borda;\n- os campos mortos da Estatística ('Ano 0')."
+ },
+ {
+  "produto": "Hematologia",
+  "frente": "F1",
+  "relatorio": "C:\\Users\\vitor.santos\\OneDrive - MSFT\\INI_DB_AJUSTES\\OneDrive - MSFT\\Desktop\\QC_INI_PRONTO\\qc-ini\\_arquitetura\\agentes\\relatorios\\2026-10-31_ciclo01\\Hematologia_F1.md",
+  "sha_producao": "0b45fa270d2a",
+  "testes": [
+   {
+    "id": "T01",
+    "descricao": "Tela Digitar Resultados: campos, validação, proteção e instruções",
+    "estado": "APROVADO",
+    "evidencia": "hema_f1_r2/f1_A.json telas: 17 colunas; EQUIPAMENTO por lista literal XN1000; LOTE =lstLotes (9); ANALITO =lstAnalitos (28); NIVEL 1-3; RESULTADO decimal >= -1E+307; MOTIVO com lista de 4 itens; HORA e SUBSTITUI_ID sem validação"
+   },
+   {
+    "id": "A01",
+    "descricao": "Recebimento DB_SEAC -> tblDB_Recebimento",
+    "estado": "APROVADO",
+    "evidencia": "origem 41.788 linhas/IDs válidos; recebimento 44.392 -> 46.779 (+2.387); 0 não recebidos, 0 duplicados; histórico fora da janela da origem preservado"
+   },
+   {
+    "id": "A02",
+    "descricao": "Preservação do ID HEM-<id> e associação origem x recebimento x tblCQ_Final",
+    "estado": "APROVADO",
+    "evidencia": "0 divergências em 10 campos nos 2.387 novos; todos ATIVO, XN1000"
+   },
+   {
+    "id": "A03",
+    "descricao": "Sync_Log e QA do automático",
+    "estado": "APROVADO",
+    "evidencia": "OK, NOVOS 2.387, TOTAL=LINHAS_CQ=46.779, DATA_MAX 30/10 08:06, 66,2 s; QA 0 erros, 589 A02"
+   },
+   {
+    "id": "A04",
+    "descricao": "Histórico intacto",
+    "estado": "APROVADO",
+    "evidencia": "0 IDs antigos com RUN/STATUS mudados; 46.779 IDs únicos"
+   },
+   {
+    "id": "A05",
+    "descricao": "Idempotência do 2º ATUALIZAR",
+    "estado": "APROVADO",
+    "evidencia": "OK_SEM_MUDANCA, final idêntica, 18,5 s"
+   },
+   {
+    "id": "A06",
+    "descricao": "Plausibilidade do automático (valor <= 0)",
+    "estado": "APROVADO",
+    "evidencia": "0 ATIVO com valor <= 0 na base inteira"
+   },
+   {
+    "id": "M01",
+    "descricao": "Manual válido N1/N2/N3 WBC 625311: ID, carimbo, gravação, consulta",
+    "estado": "APROVADO",
+    "evidencia": "MAN_0001-0003 ATIVO, RUN 26103002, corrida 2; Audit RESULTADO_MANUAL_INCLUIDO; QA 3 ALERTA A06"
+   },
+   {
+    "id": "M02",
+    "descricao": "n/média/DP/CV Painel x Estatística x independente após o manual",
+    "estado": "APROVADO",
+    "evidencia": "diferença relativa máxima 1,5e-16; n +1 por nível (seção 3.1)"
+   },
+   {
+    "id": "M03",
+    "descricao": "Levey-Jennings/Westgard atualizados",
+    "estado": "APROVADO",
+    "evidencia": "Eng_Saida slot 41 RUN 26103002: N1 3,111 N2 7,322 N3 17,433, OK x3, N1 ID MAN_0001"
+   },
+   {
+    "id": "V01",
+    "descricao": "Campos vazios",
+    "estado": "APROVADO",
+    "evidencia": "MANUAL_INCOMPLETO DATA, HORA, LOTE, NIVEL; E04"
+   },
+   {
+    "id": "V02",
+    "descricao": "Resultado abc",
+    "estado": "APROVADO",
+    "evidencia": "MANUAL_INCOMPLETO RESULTADO; E04; a validação recusa ao digitar"
+   },
+   {
+    "id": "V03",
+    "descricao": "Resultado 90.5",
+    "estado": "APROVADO",
+    "evidencia": "MANUAL_INCOMPLETO ambiguo; E04"
+   },
+   {
+    "id": "V04",
+    "descricao": "Resultado 1.5 (risco de data)",
+    "estado": "APROVADO",
+    "evidencia": "não virou data; ambiguo; E04"
+   },
+   {
+    "id": "V05",
+    "descricao": "Data futura",
+    "estado": "APROVADO",
+    "evidencia": "a validação aceita; o ATUALIZAR barra com DATA/HORA posterior ao lancamento, E04"
+   },
+   {
+    "id": "V06",
+    "descricao": "Analito inexistente Glicoze (colado)",
+    "estado": "REPROVADO",
+    "evidencia": "ATIVO, PARTICIPA=SIM, fora do Painel, só I01 agregado; digitado, a validação recusa (OC-HF1-3)"
+   },
+   {
+    "id": "V07",
+    "descricao": "Nível 4",
+    "estado": "APROVADO",
+    "evidencia": "MANUAL_INCOMPLETO NIVEL; E04"
+   },
+   {
+    "id": "V08",
+    "descricao": "Lote inexistente 99999 (colado)",
+    "estado": "REPROVADO",
+    "evidencia": "ATIVO, sem QA; digitado, a validação recusa (OC-HF1-3)"
+   },
+   {
+    "id": "V09",
+    "descricao": "Duplicidade manual x manual",
+    "estado": "APROVADO",
+    "evidencia": "CONFLITO_MANUAL, ID_RELACIONADO MAN_0001, A01"
+   },
+   {
+    "id": "V10",
+    "descricao": "Duplicidade manual x interfaceamento",
+    "estado": "APROVADO",
+    "evidencia": "CONFLITO_MANUAL, ID_RELACIONADO HEM-372173, A01"
+   },
+   {
+    "id": "V11",
+    "descricao": "Equipamento inexistente XN9999 (colado)",
+    "estado": "APROVADO",
+    "evidencia": "ATIVO com ALERTA A10; ressalva do STATUS na OC-HF1-3"
+   },
+   {
+    "id": "V12",
+    "descricao": "Hora 25:99",
+    "estado": "APROVADO",
+    "evidencia": "MANUAL_INCOMPLETO HORA; E04 (HORA sem validação de dados)"
+   },
+   {
+    "id": "V13",
+    "descricao": "Data 31/02/2026 (colada)",
+    "estado": "REPROVADO",
+    "evidencia": "vira 03/03/2026 ATIVO RUN 26030301; N1 n 22->23; digitada, a validação recusa (OC-HF1-2)"
+   },
+   {
+    "id": "V15",
+    "descricao": "Equipamento vazio",
+    "estado": "APROVADO",
+    "evidencia": "recebe XN1000, ATIVO RUN 26102904"
+   },
+   {
+    "id": "V16",
+    "descricao": "Equipamento xn1000 (colado)",
+    "estado": "REPROVADO",
+    "evidencia": "ATIVO RUN 26102901 sem QA; troca o N3 no Painel (OC-HF1-1); digitado, a validação recusa"
+   },
+   {
+    "id": "E01",
+    "descricao": "Equivalência manual (A) x automático (B, HEM-9000001..3)",
+    "estado": "APROVADO",
+    "evidencia": "mesmo RUN 26103002/corrida 2; engPainel, Estatística e independente idênticos; Eng_Saida difere só no N1 ID"
+   },
+   {
+    "id": "S01",
+    "descricao": "SUBSTITUI_ID preenche a chave",
+    "estado": "APROVADO",
+    "evidencia": "HEM-372173 normalizado; data, hora, equipamento, lote, nível e analito preenchidos"
+   },
+   {
+    "id": "S02",
+    "descricao": "SUBSTITUI_ID inexistente",
+    "estado": "APROVADO",
+    "evidencia": "nada preenchido"
+   },
+   {
+    "id": "S03",
+    "descricao": "Substituição com MOTIVO",
+    "estado": "APROVADO",
+    "evidencia": "MAN_0001 ATIVO RUN 26103001; HEM-372173 SUBSTITUIDO_MANUAL; 0 outros RUN mudaram; I04; Audit"
+   },
+   {
+    "id": "S04",
+    "descricao": "SUBSTITUI_ID sem MOTIVO",
+    "estado": "APROVADO",
+    "evidencia": "MANUAL_INCOMPLETO MOTIVO, E04; automático continua ATIVO; a mensagem final diz ERRO DE GOVERNANÇA (OC-HF1-8)"
+   },
+   {
+    "id": "S05",
+    "descricao": "Estatística depois da substituição x independente",
+    "estado": "APROVADO",
+    "evidencia": "N1 n 21 média 3,1205238095238097 nas três fontes"
+   },
+   {
+    "id": "D01",
+    "descricao": "Linha de base sessão D",
+    "estado": "APROVADO",
+    "evidencia": "N3 n 21 média 17,38333 DP 0,179062 CV 1,03008 nas três fontes"
+   },
+   {
+    "id": "D02",
+    "descricao": "Manual N3 com equipamento xn1000",
+    "estado": "REPROVADO",
+    "evidencia": "RUN 26102901; Painel troca 17,58 (HEM-371290) por 17,433 (n 21); Estatística n 22; sem QA (OC-HF1-1)"
+   },
+   {
+    "id": "D03",
+    "descricao": "Manual N3 com analito wbc",
+    "estado": "REPROVADO",
+    "evidencia": "RUN 26102801; Painel troca 17,14 (HEM-370716); Estatística n 23; wbc passa pela validação digitado (OC-HF1-1)"
+   },
+   {
+    "id": "F01",
+    "descricao": "Validação de dados x digitação (32 casos, Range.Validation.Value)",
+    "estado": "APROVADO",
+    "evidencia": "f1_F.json F1_validacao: equipamento literal diferencia maiúsculas; lstAnalitos não diferencia (wbc aceito); RESULTADO -1 aceito; MOTIVO só os 4 itens"
+   },
+   {
+    "id": "F02",
+    "descricao": "Espaço sobrando em ANALITO 'WBC ' e EQUIPAMENTO 'XN1000 '",
+    "estado": "APROVADO",
+    "evidencia": "o ETL apara os dois; corridas próprias RUN 26102703/26102603; RUN reais intactos; Painel = Estatística = independente n 23"
+   },
+   {
+    "id": "G01",
+    "descricao": "Manual implausível -1 (N1) e 0 (N2)",
+    "estado": "REPROVADO",
+    "evidencia": "f1_G.json: ATIVO sem QA; CV N1 1,736% -> 30,004%, N2 1,548% -> 16,292%; Westgard 1-3s REJEITADO (OC-HF1-7)"
+   }
+  ],
+  "calculos": [
+   {
+    "indicador": "media/DP/CV",
+    "analito": "WBC",
+    "equipamento": "XN1000",
+    "lote": "625311",
+    "nivel": "N1",
+    "periodo": "Tudo (Painel) / ano 2026 (Estatística)",
+    "entradas": "22 resultados PARTICIPA=SIM (21 + MAN_0001 3,111)",
+    "formula": "fmean; stdev n-1; CV=DP/média*100",
+    "independente": "n 22; 3,120045454545455; 0,05290645587821089; 1,6956950355044937",
+    "qcini": "engPainel = Estatística: n 22; 3,120045454545455; 0,05290645587821089; 1,6956950355044937",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "media/DP/CV",
+    "analito": "WBC",
+    "equipamento": "XN1000",
+    "lote": "625311",
+    "nivel": "N2",
+    "periodo": "Tudo / 2026",
+    "entradas": "40 resultados (39 + MAN_0002 7,322)",
+    "formula": "fmean; stdev n-1; CV",
+    "independente": "n 40; 7,336799999999999; 0,11213709558004521; 1,5284196867850457",
+    "qcini": "n 40; 7,336799999999999; 0,11213709558004521; 1,5284196867850455",
+    "diferenca": "1,5e-16 relativo no CV",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "media/DP/CV",
+    "analito": "WBC",
+    "equipamento": "XN1000",
+    "lote": "625311",
+    "nivel": "N3",
+    "periodo": "Tudo / 2026",
+    "entradas": "22 resultados (21 + MAN_0003 17,433)",
+    "formula": "fmean; stdev n-1; CV",
+    "independente": "n 22; 17,385590909090908; 0,1750675132602679; 1,0069690134531193",
+    "qcini": "idêntico",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "equivalência manual x automático",
+    "analito": "WBC",
+    "equipamento": "XN1000",
+    "lote": "625311",
+    "nivel": "N1-N3",
+    "periodo": "Tudo / 2026",
+    "entradas": "mesmo trio por MAN_0001-0003 (cópia A) e HEM-9000001-0003 (cópia B)",
+    "formula": "comparação bit a bit de engPainel, Estatística e independente",
+    "independente": "igual nos dois caminhos",
+    "qcini": "igual nos dois caminhos; Eng_Saida difere só no N1 ID",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "media após SUBSTITUI_ID",
+    "analito": "WBC",
+    "equipamento": "XN1000",
+    "lote": "625311",
+    "nivel": "N1",
+    "periodo": "Tudo / 2026",
+    "entradas": "21 resultados, 3,11 de HEM-372173 trocado por 3,111",
+    "formula": "(21*3,1204761904761904 - 3,11 + 3,111)/21",
+    "independente": "3,1205238095238097",
+    "qcini": "3,1205238095238097 (Painel = Estatística)",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "media/DP/CV com equipamento xn1000",
+    "analito": "WBC",
+    "equipamento": "XN1000",
+    "lote": "625311",
+    "nivel": "N3",
+    "periodo": "Tudo / 2026",
+    "entradas": "21 reais + MAN_0001 17,433 com equipamento xn1000 (RUN 26102901)",
+    "formula": "independente com equipamento exato: n 21; um valor por RUN reproduz o Painel; sem diferenciar maiúsculas reproduz a Estatística",
+    "independente": "exato n 21 média 17,383333333333333; troca n 21 média 17,376333333333335",
+    "qcini": "Painel n 21 média 17,37633333333333 DP 0,1737853081630701; Estatística n 22 média 17,385590909090908",
+    "diferenca": "Painel e Estatística divergem entre si (n 21 x 22) e do esperado",
+    "status": "REPROVADO"
+   },
+   {
+    "indicador": "media/DP/CV com analito wbc",
+    "analito": "WBC",
+    "equipamento": "XN1000",
+    "lote": "625311",
+    "nivel": "N3",
+    "periodo": "Tudo / 2026",
+    "entradas": "base do D02 + MAN_0002 17,433 com analito wbc (RUN 26102801)",
+    "formula": "364,903 - 17,14 + 17,433 = 365,196 / 21",
+    "independente": "17,390285714285714 (troca)",
+    "qcini": "Painel n 21 média 17,390285714285714; Estatística n 23 média 17,38765217391304",
+    "diferenca": "Painel x Estatística n 21 x 23",
+    "status": "REPROVADO"
+   },
+   {
+    "indicador": "media/DP/CV com espaço sobrando",
+    "analito": "WBC",
+    "equipamento": "XN1000",
+    "lote": "625311",
+    "nivel": "N3",
+    "periodo": "Tudo / 2026",
+    "entradas": "21 + 2 manuais 17,433 ('WBC ' e 'XN1000 ')",
+    "formula": "fmean; stdev; CV",
+    "independente": "n 23; 17,387652173913043; 0,17132786450005755; 0,9853421427253033",
+    "qcini": "n 23; 17,38765217391304; 0,17132786450005755; 0,9853421427253034",
+    "diferenca": "1e-16 relativo",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "media/DP/CV com manual implausível",
+    "analito": "WBC",
+    "equipamento": "XN1000",
+    "lote": "625311",
+    "nivel": "N1",
+    "periodo": "Tudo / 2026",
+    "entradas": "21 reais + manual -1",
+    "formula": "fmean; stdev; CV",
+    "independente": "n 22; 2,933181818181818; 0,8800778448449961; 30,004203605439194",
+    "qcini": "n 22; 2,933181818181818; 0,8800778448449961; 30,004203605439198",
+    "diferenca": "1,3e-16 relativo (cálculo correto; dado implausível aceito, OC-HF1-7)",
+    "status": "APROVADO"
+   }
+  ],
+  "ocorrencias": [
+   {
+    "titulo": "Equipamento ou analito em minúsculas faz o manual tomar o lugar de um resultado real no Painel/LJ, e a Estatística o conta a mais",
+    "produto": "Hematologia",
+    "modulo": "Digitar Resultados -> ATUALIZAR (mEtlCQ.CalcularCorridas x mEstatistica.GarantirIndice)",
+    "tipo": "calculo",
+    "prioridade": "Critico",
+    "acao": "digitar 'wbc' no ANALITO (aceito pela validação) ou colar 'xn1000' no EQUIPAMENTO de um manual N3 válido e clicar em ATUALIZAR",
+    "esperado": "normalizar para a grafia do cadastro, ou MANUAL_INCOMPLETO, ou ALERTA; nunca trocar um resultado real nem divergir Painel x Estatística",
+    "observado": "RUN da 1ª corrida real do dia; o Painel/LJ troca o N3 real (17,58 HEM-371290; 17,14 HEM-370716) pelo manual 17,433 (n 21); a Estatística conta os dois (n 22/23); sem QA. Reproduzido bit a bit no 2º passe; Range.Validation.Value confirma que 'wbc' passa digitado (lstAnalitos não diferencia maiúsculas) e 'xn1000' é recusado (lista literal)",
+    "consequencia": "estatística divergente, LJ com ponto trocado e data errada, Westgard sobre o valor errado",
+    "sugestao": "normalizar EQUIPAMENTO/ANALITO do manual no ETL (o ETL já apara espaços, F02) ou usar a mesma comparação no ETL e no motor; o motor não sobrescreve valor do mesmo RUN/nível sem alerta",
+    "evidencia": "hema_f1_r2/f1_D.json D1-D3; f1_F.json F1_validacao; src/comum/mEtlCQ.bas 21 e 1042-1046"
+   },
+   {
+    "titulo": "Manual com resultado implausível (-1, 0) entra ATIVO na estatística sem alerta",
+    "produto": "Hematologia",
+    "modulo": "Digitar Resultados (RESULTADO decimal >= -1E+307) -> ATUALIZAR/QA",
+    "tipo": "dados",
+    "prioridade": "Alto",
+    "acao": "digitar manual WBC N1 = -1 (25/10 23:36) e N2 = 0 (24/10 23:36), com o resto certo, e clicar em ATUALIZAR",
+    "esperado": "recusa ou ALERTA com o ID para WBC <= 0",
+    "observado": "a validação aceita; ATIVO, PARTICIPA=SIM, corrida própria, nenhum código de QA; CV N1 1,736% -> 30,004%, N2 1,548% -> 16,292%; só o Westgard 1-3s REJEITADO sinaliza",
+    "consequencia": "média/DP/CV (e ET/Sigma) errados até alguém inativar; mesma família da OC-1 da Bio",
+    "sugestao": "triagem de plausibilidade (<= 0 ou |z| extremo) com ALERTA/MANUAL_INCOMPLETO, e validação RESULTADO > 0 na tela; decisão do Especialista em CQ/RT",
+    "evidencia": "hema_f1_r2/f1_G.json (G_antes, G_depois, G_linhas, G_qa_codigos); f1_F.json RESULTADO -1 aceito"
+   },
+   {
+    "titulo": "Data inválida colada (31/02/2026) vira 03/03/2026 e entra ATIVO no lote",
+    "produto": "Hematologia",
+    "modulo": "Digitar Resultados -> mEtlCQ.ParaData",
+    "tipo": "dados",
+    "prioridade": "Alto",
+    "acao": "colar 31/02/2026 na DATA de um manual e clicar em ATUALIZAR",
+    "esperado": "MANUAL_INCOMPLETO DATA",
+    "observado": "MAN_0016 03/03/2026 08:00 ATIVO RUN 26030301, N1 n 22->23, sem aviso; digitada, a validação recusa (Validation.Value False)",
+    "consequencia": "resultado num mês errado da série do lote",
+    "sugestao": "conferir dia/mês/ano depois de converter, nos dois motores",
+    "evidencia": "f1_A.json A4_validacoes V13; f1_F.json DATA"
+   },
+   {
+    "titulo": "Manual com analito ou lote inexistente fica ATIVO sem aparecer no Painel (equipamento inexistente gera A10)",
+    "produto": "Hematologia",
+    "modulo": "Digitar Resultados -> ATUALIZAR/QA",
+    "tipo": "funcional",
+    "prioridade": "Medio",
+    "acao": "colar Glicoze / lote 99999 / XN9999 num manual e clicar em ATUALIZAR",
+    "esperado": "MANUAL_INCOMPLETO ou ALERTA com o ID",
+    "observado": "ATIVO, PARTICIPA=SIM, fora do Painel; analito só I01 agregado, lote nada, equipamento A10; digitados, os três são recusados pela validação",
+    "consequencia": "resultado perdido em silêncio enquanto a tela diz ATIVO = entrou na estatística",
+    "sugestao": "tratar como o A10 já trata o equipamento",
+    "evidencia": "f1_A.json A4_validacoes V06, V08, V11; f1_F.json"
+   },
+   {
+    "titulo": "Linha manual incompleta (E04) faz o ATUALIZAR dizer 'Há ERRO DE GOVERNANÇA'",
+    "produto": "Hematologia",
+    "modulo": "mIntegracao.ResumoQA (mensagem final do ATUALIZAR)",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "acao": "deixar um manual incompleto (por ex. SUBSTITUI_ID sem MOTIVO) e clicar em ATUALIZAR",
+    "esperado": "mensagem dizendo que há manual incompleto e onde ver",
+    "observado": "'Há ERRO DE GOVERNANÇA: veja a aba QA_INTEGRACAO (ex.: inativação sem motivo, ou ID que não é do analito...)' com só E04 como ERRO (cópia C: 1 E04; cópia A: 7 E04)",
+    "consequencia": "o usuário procura uma inativação inexistente e se alarma sem motivo",
+    "sugestao": "falar em governança só para códigos de governança; para o E04, apontar a aba Digitar Resultados (relaciona-se com a OC-5 da Bio)",
+    "evidencia": "f1_C.json C.resumo2/C.qa; f1_A.json A4_validacoes.resumo/qa_codigos; src/comum/mIntegracao.bas 370-375"
+   },
+   {
+    "titulo": "Status do Painel fica REJEITADO nos 3 níveis por regra 6x de 09/10 mesmo após corridas OK",
+    "produto": "Hematologia",
+    "modulo": "Painel J7:J9 (mEstatistica.AtualizarPainelEng)",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "acao": "lançar a corrida manual 26103002 (OK x3) e olhar o Status no Painel com Período Tudo",
+    "esperado": "ver o status da corrida lançada, ou um rótulo claro de pior do período",
+    "observado": "J7:J9 = REJEITADO '6x · RUN 26100902'",
+    "consequencia": "o usuário pode achar que a corrida nova foi rejeitada",
+    "sugestao": "rotular como pior do período ou mostrar a última corrida",
+    "evidencia": "f1_A.json A3_manual.painel_depois"
+   },
+   {
+    "titulo": "MOTIVO só aceita os 4 itens da lista; 'Outro' sem complemento",
+    "produto": "Hematologia",
+    "modulo": "Digitar Resultados, coluna MOTIVO",
+    "tipo": "usabilidade",
+    "prioridade": "Baixo",
+    "acao": "digitar 'Outro: <explicação>' no MOTIVO",
+    "esperado": "conseguir registrar o motivo quando for Outro",
+    "observado": "a validação recusa qualquer texto fora da lista; colado entra e aparece no I04; a tabela não tem coluna de observação",
+    "consequencia": "trilha da substituição (ADR-082) com motivo genérico 'Outro'",
+    "sugestao": "aceitar 'Outro: texto' ou criar coluna de observação",
+    "evidencia": "f1_F.json F1_validacao MOTIVO; f1_A.json telas.MOTIVO_validacao"
+   },
+   {
+    "titulo": "Audit_Log grava RESULTADO_MANUAL_INCLUIDO para linhas incompletas/em conflito",
+    "produto": "Hematologia",
+    "modulo": "mIntegracao (Audit_Log)",
+    "tipo": "funcional",
+    "prioridade": "Baixo",
+    "acao": "ATUALIZAR com manual sem MOTIVO e SUBSTITUI_ID",
+    "esperado": "não registrar inclusão de manual que não entrou",
+    "observado": "RESULTADO_MANUAL_INCLUIDO chave '0|2|WBC', RUN vazio",
+    "evidencia": "f1_C.json C.audit; f1_A.json A4_validacoes.audit"
+   },
+   {
+    "titulo": "Colunas RUN e DETALHE da aba Digitar Resultados mostram 0",
+    "produto": "Hematologia",
+    "modulo": "Digitar Resultados (fórmulas XLOOKUP RUN/DETALHE)",
+    "tipo": "usabilidade",
+    "prioridade": "Baixo",
+    "acao": "conferir a linha depois do ATUALIZAR",
+    "esperado": "vazio quando não há RUN/DETALHE",
+    "observado": "ATIVO com DETALHE 0; incompleto com RUN 0",
+    "evidencia": "f1_A.json A3_manual.linhas_digitadas; f1_C.json C.linha_sem_motivo"
+   }
+  ],
+  "duvidas": [
+   "Normalizar EQUIPAMENTO/ANALITO do manual para a grafia do cadastro, ou recusar? O motor do Painel pode guardar dois valores do mesmo nível num RUN? (OC-HF1-1)",
+   "Qual triagem de plausibilidade vale para o manual (<= 0? |z| acima de quanto?), e ela bloqueia ou só alerta? (OC-HF1-7)",
+   "Corrida REJEITADA pelo Westgard (1-3s com -1) continua no n/média/DP do Painel e da Estatística até o usuário inativar: é por projeto?",
+   "Status do Painel deve ser o pior do período ou o da última corrida? (OC-HF1-4)",
+   "O MOTIVO do manual precisa aceitar texto livre ou complemento para 'Outro'? (OC-HF1-9)",
+   "A produção (30/10 22:11) tem a base só até 01/10 e a Sync_Log vazia: o laboratório não atualizou desde a entrega, ou usa outro arquivo?",
+   "Em 01/11 02h42 o resultado mais recente do DB_SEAC da Hema ainda era de 30/10 08:06:36: não houve controle desde então ou o interfaceamento parou?"
+  ],
+  "impressoes": "Entrada manual fácil: equipamento e matriz vêm sozinhos, o ID nasce ao digitar, a vírgula funciona e o ponto é recusado com mensagem clara; o SUBSTITUI_ID preenche a chave inteira. O automático é confiável: nada perdido, nada duplicado, ID preservado, histórico mantido, idempotente. Manual e automático são equivalentes bit a bit para o mesmo dado. Riscos medidos pela própria validação do Excel: analito em minúsculas passa digitado e leva o resultado à corrida errada (Crítico); resultado -1/0 passa digitado e pelo ATUALIZAR, e contamina o CV (Alto); data inválida e analito/lote/equipamento inexistentes só entram colados; espaço sobrando é tratado corretamente. Mensagens em geral boas (DETALHE, A01/A06, I04, A10). Ressalvas: 'ERRO DE GOVERNANÇA' para manual incompleto, '0' nas colunas RUN/DETALHE, ATIVO para resultado invisível e 'Outro' sem complemento. O 2º passe reproduziu bit a bit todos os resultados do 1º."
+ },
+ {
+  "produto": "Hematologia",
+  "frente": "F2",
+  "relatorio": "C:\\Users\\vitor.santos\\OneDrive - MSFT\\INI_DB_AJUSTES\\OneDrive - MSFT\\Desktop\\QC_INI_PRONTO\\qc-ini\\_arquitetura\\agentes\\relatorios\\2026-10-31_ciclo01\\Hematologia_F2.md",
+  "sha_producao": "0b45fa270d2a",
+  "testes": [
+   {
+    "id": "HF2-T01",
+    "descricao": "Telas do CEQ: botoes, protecao, bloqueio",
+    "estado": "APROVADO",
+    "evidencia": "AbrirCEQ em A3 dos Resumos; Consolidar (AtualizarEQABase) em J1 das abas de dados; frmCEQ instalado; 24 colunas Locked para o ANALISTA (f2h.json P0)"
+   },
+   {
+    "id": "HF2-T02",
+    "descricao": "Preenchimento automatico e listas da janela",
+    "estado": "APROVADO",
+    "evidencia": "FH9-C 2025 -> 2025; Red Blood Cell Count -> x 10E12/L; lista da FH9-C 2025 = 125; ressalva OC-HF2-8 (P1)"
+   },
+   {
+    "id": "HF2-T03",
+    "descricao": "12 validacoes antes de gravar",
+    "estado": "APROVADO",
+    "evidencia": "Cada caso recusado com o campo certo; tabela identica 465/465 (P2, runs A e B)"
+   },
+   {
+    "id": "HF2-T04",
+    "descricao": "Duplicidade de chave real, tambem com caixa e espacos diferentes",
+    "estado": "APROVADO",
+    "evidencia": "ERRO|5 'Ja existe este registro ... linha 2' nos dois casos"
+   },
+   {
+    "id": "HF2-T05",
+    "descricao": "Inclusao: gravacao, consolidacao, trilha, lista da rodada",
+    "estado": "APROVADO",
+    "evidencia": "OK|467| em 23,9 s; EQA_Base Canonico RBC, Uso SIM, bias 10; CEQ_REGISTRADO AUD-000030; K5 3->4 rodadas"
+   },
+   {
+    "id": "HF2-T06",
+    "descricao": "Inclusao: bias, ET e Sigma do RBC mudam como deveriam",
+    "estado": "APROVADO",
+    "evidencia": "G 1,5336->3,6502; ET N1 3,612->5,728; Sigma N1 2,528->0,358; dif. max. 1,3e-15 contra o independente"
+   },
+   {
+    "id": "HF2-T07",
+    "descricao": "Inclusao: so o RBC muda",
+    "estado": "APROVADO",
+    "evidencia": "So as linhas RBC|1..3; WBC identico; nos outros analitos so a coluna U (ordenacao) +2 em 14 celulas; Painel acompanha"
+   },
+   {
+    "id": "HF2-T08",
+    "descricao": "Correcao pelo caminho do ANALISTA",
+    "estado": "REPROVADO",
+    "evidencia": "Janela manda editar a linha; F467 Locked em aba protegida (OC-HF2-1)"
+   },
+   {
+    "id": "HF2-T09",
+    "descricao": "Correcao chega ao bias sem consolidar?",
+    "estado": "REPROVADO",
+    "evidencia": "O467 = 5, mas EQA_Base 110/10 e 0 celulas na Estatistica; Z3 'base em dia'; Z2 com o carimbo de 24/08 (OC-HF2-2)"
+   },
+   {
+    "id": "HF2-T10",
+    "descricao": "Correcao depois do Consolidar",
+    "estado": "APROVADO",
+    "evidencia": "G 2,4002; ET N1 4,478; Sigma N1 1,640 = independente (max. 3,4e-16); so o RBC mudou"
+   },
+   {
+    "id": "HF2-T11",
+    "descricao": "Calculadora independente 84x27 + 45 do Painel em S1/S2 (A e B)",
+    "estado": "APROVADO",
+    "evidencia": "0 divergencias; unica DIF = Painel M47 (DPM com Sigma 9,75, 1,1e-10 vs 0), tolerancia absoluta justificada na F3 §4.1"
+   },
+   {
+    "id": "HF2-T12",
+    "descricao": "Isolamento: Controllab do mesmo analito com R4 = CAP",
+    "estado": "APROVADO",
+    "evidencia": "0 celulas mudaram; Canonico vazio (OC-HF2-3)"
+   },
+   {
+    "id": "HF2-T13",
+    "descricao": "Isolamento de ano; N4 = 2026 e TODOS",
+    "estado": "APROVADO",
+    "evidencia": "CAP 2026 com N4 2025: 0 celulas; N4 2026 G = 30 so no RBC; TODOS G = 7,9202 e WBC = 1,8648 = independente; restaurado identico"
+   },
+   {
+    "id": "HF2-T14",
+    "descricao": "Nome fora do mapa (Red Blood Cell)",
+    "estado": "REPROVADO",
+    "evidencia": "OK|469| sem aviso, Canonico vazio, bias inalterado (OC-HF2-3)"
+   },
+   {
+    "id": "HF2-T15",
+    "descricao": "Nome do vizinho (Lymphs no lugar de Lymphs Absolute)",
+    "estado": "REPROVADO",
+    "evidencia": "Entra no LYMPH%: G 3,63->15,22; Sigma N1 4,33->1,70; sem aviso (OC-HF2-4; run B P5.I4)"
+   },
+   {
+    "id": "HF2-T16",
+    "descricao": "Registro sem valor-alvo",
+    "estado": "REPROVADO",
+    "evidencia": "OK|470|; AC continua 16, S passa a 17 (OC-HF2-5)"
+   },
+   {
+    "id": "HF2-T17",
+    "descricao": "Bias do CEQ independente do periodo e do lote do CIQ",
+    "estado": "REPROVADO",
+    "evidencia": "G/T/AC/AD iguais com B3:D3 = 2026 e H3 = 619611 (aprovado no CEQ), mas a Estatistica ficou com B4 = 619611 e C:F/H do lote 522611 (OC-HF2-6)"
+   },
+   {
+    "id": "HF2-T18",
+    "descricao": "Provedor global R4 = Controllab",
+    "estado": "REPROVADO",
+    "evidencia": "28 analitos SEM EP (isolamento ok), mas Painel H7:H9 = 1,65 x CV com bias SEM EP (OC-HF2-7)"
+   },
+   {
+    "id": "HF2-T19",
+    "descricao": "Trilha de auditoria do CEQ",
+    "estado": "REPROVADO",
+    "evidencia": "Edicao, consolidacao e troca de R4 sem nenhuma linha no Audit_Log (OC-HF2-9)"
+   },
+   {
+    "id": "HF2-T20",
+    "descricao": "Permissao: gravar sem sessao",
+    "estado": "REPROVADO",
+    "evidencia": "SessaoAtiva = Falso e SalvarCEQ = OK|471| (OC-HF2-10)"
+   },
+   {
+    "id": "HF2-T21",
+    "descricao": "Reversao pelo caminho do usuario",
+    "estado": "APROVADO",
+    "evidencia": "Estatistica, K5, Painel e EQA_Base bit a bit iguais ao B0 nos dois runs"
+   },
+   {
+    "id": "HF2-T22",
+    "descricao": "Run B LYMPH# (ETp VB): inclusao, correcao, so o analito certo",
+    "estado": "APROVADO",
+    "evidencia": "G 3,2705->4,9529->3,7029; Sigma N1 3,906->3,569->3,820 = independente (max. 1,9e-16); LYMPH% identico"
+   },
+   {
+    "id": "HF2-T23",
+    "descricao": "Provedor na coluna A da tabela do CAP (dados de producao)",
+    "estado": "REPROVADO",
+    "evidencia": "90 linhas 'Controllab' na tblEQA_CAP_Dados gravadas como CAP na EQA_Base (OC-HF2-11)"
+   },
+   {
+    "id": "HF2-T24",
+    "descricao": "GUIA §5-6 x fluxo da tela",
+    "estado": "REPROVADO",
+    "evidencia": "Manda digitar nas abas bloqueadas; nao cita a janela, o Consolidar nem a correcao (OC-HF2-12)"
+   },
+   {
+    "id": "HF2-T25",
+    "descricao": "Janela frmCEQ aberta na tela",
+    "estado": "NAO_EXECUTADO",
+    "evidencia": "Janela modal travaria a automacao; captura de tela proibida; comportamento lido no codigo"
+   },
+   {
+    "id": "HF2-T26",
+    "descricao": "Seguranca do teste",
+    "estado": "APROVADO",
+    "evidencia": "Producao 0b45fa270d2a antes e depois; copias com o mesmo hash antes e depois; so os PIDs 28268 e 19392, um de cada vez; copias apagadas"
+   }
+  ],
+  "calculos": [
+   {
+    "indicador": "Bias abs (G)",
+    "analito": "RBC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1-3",
+    "periodo": "CEQ CAP 2025, S1 inclusao",
+    "entradas": "16 amostras / 4 rodadas (FH9-A/B/C + TESTE-AUDITORIA R1 110/100)",
+    "formula": "media das medias por rodada de |bias|",
+    "independente": "3.6502150939575695",
+    "qcini": "3.650215093957569",
+    "diferenca": "1.2e-16",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "ET (H)",
+    "analito": "RBC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "S1",
+    "entradas": "F 1,2595422808251646; G 3,6502",
+    "formula": "1,65*F + |G|",
+    "independente": "5.728459857319091",
+    "qcini": "5.72845985731909",
+    "diferenca": "1.6e-16",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma (L)",
+    "analito": "RBC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "S1, CVp 6 m",
+    "entradas": "ETp 4; CVp 0,9757600160893026",
+    "formula": "(ETp - |G|)/CVp",
+    "independente": "0.35847431773676797",
+    "qcini": "0.3584743177367684",
+    "diferenca": "1.2e-15",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Bias abs (G)",
+    "analito": "RBC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1-3",
+    "periodo": "S2 correcao (105)",
+    "entradas": "16 / 4",
+    "formula": "duas etapas",
+    "independente": "2.4002150939575695",
+    "qcini": "2.400215093957569",
+    "diferenca": "1.9e-16",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma (L)",
+    "analito": "RBC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "S2",
+    "entradas": "ETp 4; CVp 0,97576",
+    "formula": "(ETp - |G|)/CVp",
+    "independente": "1.6395270144949416",
+    "qcini": "1.639527014494942",
+    "diferenca": "2.7e-16",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Bias abs (G)",
+    "analito": "RBC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1-3",
+    "periodo": "N4 = TODOS",
+    "entradas": "17 / 5",
+    "formula": "duas etapas",
+    "independente": "7.920172075166056",
+    "qcini": "7.920172075166056",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Bias abs (G)",
+    "analito": "LYMPH#",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1-3",
+    "periodo": "S1 inclusao",
+    "entradas": "16 / 4",
+    "formula": "duas etapas",
+    "independente": "4.9528950092632815",
+    "qcini": "4.9528950092632815",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma (L)",
+    "analito": "LYMPH#",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "S1, ETp VB",
+    "entradas": "ETp 22,758; CVp 4,988470640249724",
+    "formula": "(ETp - |G|)/CVp",
+    "independente": "3.5692477770989917",
+    "qcini": "3.5692477770989917",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Bias abs (G)",
+    "analito": "LYMPH#",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1-3",
+    "periodo": "S2 correcao",
+    "entradas": "16 / 4",
+    "formula": "duas etapas",
+    "independente": "3.7028950092632815",
+    "qcini": "3.7028950092632815",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Bias abs (G)",
+    "analito": "LYMPH% (vizinho)",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1-3",
+    "periodo": "depois de 'Lymphs' (TA-03 150/100)",
+    "entradas": "16 / 4",
+    "formula": "duas etapas",
+    "independente": "15.222013284930423",
+    "qcini": "15.222013284930423",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Estatistica 84x27 + Painel 45",
+    "analito": "todos",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1-3",
+    "periodo": "S1 e S2, runs A e B",
+    "entradas": "tblCQ_Final + EQA_Base",
+    "formula": "calc_independente.py",
+    "independente": "-",
+    "qcini": "-",
+    "diferenca": "0 divergencias (Painel M47 B-S2 com a tolerancia absoluta da F3)",
+    "status": "APROVADO"
+   }
+  ],
+  "ocorrencias": [
+   {
+    "titulo": "ANALISTA nao consegue corrigir nem excluir um CEQ; a janela manda editar uma linha bloqueada",
+    "produto": "Hematologia",
+    "modulo": "frmCEQ / mCEQForm.SalvarCEQ / EQA.CAP_Dados",
+    "tipo": "funcional",
+    "prioridade": "Alto",
+    "observado": "ERRO|5 'edite a linha existente', mas a aba esta protegida e as 24 colunas Locked; a janela nao tem editar nem excluir",
+    "esperado": "Caminho de correcao para quem registra (ADR-087)",
+    "acao": "Registrar 110 por engano e tentar 105 na mesma chave",
+    "consequencia": "CEQ errado fica no bias/ET/Sigma ate um ADM corrigir, ou vira duplicata",
+    "sugestao": "Corrigir/Excluir na janela, ou desbloquear A..N/Q/R e consolidar ao sair",
+    "evidencia": "hema_f2/A/f2h.json P0.tabela_CAP.colunas, P4.janela_mesma_chave, P4.celula_bloqueada"
+   },
+   {
+    "titulo": "Correcao na tabela nao chega ao bias/ET/Sigma ate o Consolidar; Z3 diz 'base em dia' e Z2 fica parado",
+    "produto": "Hematologia",
+    "modulo": "EQA.CAP_Dados Z2:Z3 / mEQA.AtualizarEQABase",
+    "tipo": "funcional",
+    "prioridade": "Alto",
+    "observado": "O467 = 5, EQA_Base 110/10, 0 celulas na Estatistica (G 3,6502 em vez de 2,4002); Z3 'base em dia'; Z2 = carimbo de 24/08 depois de 7 consolidacoes",
+    "esperado": "Bias acompanha a correcao ou aviso de que falta consolidar",
+    "acao": "Editar 110 -> 105 na celula da tabela",
+    "consequencia": "ET e Sigma com um CEQ ja corrigido, sem sinal na tela",
+    "sugestao": "Consolidar ao editar ou no ATUALIZAR; Z3 por conteudo; Z2 volatil",
+    "evidencia": "f2h.json P4 (A e B)"
+   },
+   {
+    "titulo": "Nome fora do mapa e qualquer CEQ Controllab gravados OK sem aviso e fora do bias; R4 = Controllab zera os 28 analitos",
+    "produto": "Hematologia",
+    "modulo": "SalvarCEQ / mEQA.Consolidar (mapa W:Y)",
+    "tipo": "funcional",
+    "prioridade": "Alto",
+    "observado": "'Red Blood Cell' e Controllab 'RBC' com Canonico vazio; o mapa tem 31 entradas, todas do CAP; com R4 = Controllab todos os analitos ficam SEM EP",
+    "esperado": "Aviso de analito nao mapeado; mapa do Controllab",
+    "acao": "Registrar nome fora do mapa; registrar no Controllab; trocar R4",
+    "consequencia": "Bias, ET e Sigma somem em silencio (na Hema, o produto inteiro)",
+    "sugestao": "Conferir MapearAnalito no SalvarCEQ e avisar; cadastrar o mapa do Controllab",
+    "evidencia": "f2h.json P5.I2_controllab, P5.I4_nome_fora_do_mapa, P5.I8_provedor_controllab"
+   },
+   {
+    "titulo": "CEQ do LYMPH# registrado como 'Lymphs' entra calado no bias do LYMPH% e derruba o Sigma dele",
+    "produto": "Hematologia",
+    "modulo": "frmCEQ (Analito em texto livre) / mapa W:Y",
+    "tipo": "funcional",
+    "prioridade": "Alto",
+    "observado": "OK|469| sem aviso; Canonico = LYMPH%; G LYMPH% 3,63 -> 15,22; Sigma N1 4,33 -> 1,70 (Bom -> Desempenho inadequado); unidade x 10E9/L aceita para um analito em %",
+    "esperado": "Aviso, ou a janela mostra o analito canonico que vai receber o resultado e confere a unidade",
+    "acao": "Esquecer 'Absolute' no nome do analito (run B)",
+    "consequencia": "Associacao errada entre analitos no bias/ET/Sigma e no plano de CQ do vizinho (7 pares desse tipo no mapa)",
+    "sugestao": "Mostrar o canonico (MapearAnalito) ao lado do campo; avisar quando a unidade divergir da ja registrada; lista fechada opcional",
+    "evidencia": "hema_f2/B/f2h.json P5.I4_nome_fora_do_mapa (80 celulas, todas LYMPH%) e P5.I6_N4_TODOS.controle_independente"
+   },
+   {
+    "titulo": "Troca de lote no Painel deixa a Estatistica com B4 novo e n/media/DP/CV/ET do lote anterior",
+    "produto": "Hematologia",
+    "modulo": "Painel H3 / mLotes.TrocarLoteAnalise / Estatistica",
+    "tipo": "dados",
+    "prioridade": "Alto",
+    "observado": "H3 522611 -> 619611: B4 = 619611, mas 0 celulas mudaram (RBC N1 n 50, CV 1,2595, ET 4,478 do lote 522611), enquanto o Painel mostra o 619611 (n 54, CV 1,1344, ET 4,272). TrocarLoteAnalise chama RecalcularAnalitoAtual, nao AtualizarEstatisticaAba",
+    "esperado": "A Estatistica acompanha o lote de B4, ou avisa que esta desatualizada",
+    "acao": "Trocar o lote em analise no Painel",
+    "consequencia": "Tabela x Painel divergentes; numeros de um lote com o rotulo de outro",
+    "sugestao": "Atualizar a aba na troca de lote, ou aviso de desatualizada; confirmar na F4",
+    "evidencia": "hema_f2/A/f2h.json P5.I7b_lote; src/hema/mLotes.bas 398-444"
+   },
+   {
+    "titulo": "Com bias SEM EP, o Painel mostra ET = 1,65 x CV, enquanto a Estatistica deixa o ET vazio",
+    "produto": "Hematologia",
+    "modulo": "Painel H7:H9",
+    "tipo": "calculo",
+    "prioridade": "Alto",
+    "observado": "R4 = Controllab: Painel bias SEM EP e ET 2,078/1,576/1,519 % (RBC) e 7,205/6,990/5,638 % (LYMPH#), = 1,65 x CV; Estatistica H e L vazios",
+    "esperado": "Sem bias, sem ET (ou 'ET so de imprecisao')",
+    "acao": "Trocar R4 para Controllab",
+    "consequencia": "ET subestimado que esconde a falta de CEQ",
+    "sugestao": "Formula do Painel igual a da Estatistica",
+    "evidencia": "f2h.json P5.I8_provedor_controllab.painel.B7:J9 (A e B); confirma a OC-H2 da F3"
+   },
+   {
+    "titulo": "Registro sem valor-alvo aceito sem aviso; conta nos limites (S) e nao no bias (AC)",
+    "produto": "Hematologia",
+    "modulo": "frmCEQ / SalvarCEQ",
+    "tipo": "funcional",
+    "prioridade": "Medio",
+    "observado": "OK|470|; bias vazio; AC 16; S passa de 16 para 17 dentro dos limites",
+    "esperado": "Alvo obrigatorio ou aviso",
+    "acao": "Gravar resultado sem alvo",
+    "consequencia": "Bias com menos amostras do que o usuario acha",
+    "sugestao": "Marcar o Valor-alvo como obrigatorio ou avisar",
+    "evidencia": "f2h.json P5.I5_sem_alvo, P5.I5_linha_analito"
+   },
+   {
+    "titulo": "Correcao, consolidacao e troca do provedor global R4 sem rastro no Audit_Log",
+    "produto": "Hematologia",
+    "modulo": "EQA.CAP_Dados / AtualizarEQABase / Estatistica R4",
+    "tipo": "funcional",
+    "prioridade": "Medio",
+    "observado": "So a inclusao gera CEQ_REGISTRADO; a edicao, as consolidacoes, a limpeza e a troca de R4 nao geram linha",
+    "esperado": "CEQ_ALTERADO/EXCLUIDO e PROVEDOR_EQ_ALTERADO",
+    "acao": "Editar, consolidar, trocar R4",
+    "consequencia": "Sem rastreabilidade do valor anterior nem de quem trocou o provedor de 28 analitos",
+    "sugestao": "Registrar as acoes com o valor anterior e o novo",
+    "evidencia": "f2h.json P4.trilha_da_edicao = [], P4.trilha_consolidar = [], P5.I8.trilha = []"
+   },
+   {
+    "titulo": "SalvarCEQ grava sem sessao nem papel",
+    "produto": "Hematologia",
+    "modulo": "mCEQForm.SalvarCEQ / AbrirCEQ",
+    "tipo": "funcional",
+    "prioridade": "Medio",
+    "observado": "Depois do Logout (SessaoAtiva = Falso), OK|471| e a linha foi gravada",
+    "esperado": "Exigir sessao e papel minimo",
+    "acao": "Logout e chamar o nucleo da janela",
+    "consequencia": "CEQ que mexe no bias/ET/Sigma sem identificacao",
+    "sugestao": "SessaoAtiva() e papel configuravel no AbrirCEQ/SalvarCEQ",
+    "evidencia": "f2h.json P6 (A e B)"
+   },
+   {
+    "titulo": "90 linhas 'Controllab' (simulacao) na tabela do CAP sao gravadas como CAP na EQA_Base",
+    "produto": "Hematologia",
+    "modulo": "tblEQA_CAP_Dados coluna A / mEQA.Consolidar",
+    "tipo": "dados",
+    "prioridade": "Medio",
+    "observado": "375 linhas CAP e 90 Controllab na tabela do CAP; na EQA_Base, todas CAP (as 90 com Uso = NAO); a janela lista 'Controllab' como provedor da tabela do CAP",
+    "esperado": "Provedor coerente entre a coluna A e a EQA_Base",
+    "acao": "Ler os dados de producao e a consolidacao",
+    "consequencia": "Se alguem trocar o Uso para SIM (o que o mEQA permite), um Controllab entra no bias do CAP, contra o ADR-071",
+    "sugestao": "Mover para a tabela do Controllab ou corrigir a coluna A; avisar quando a coluna A divergir da aba",
+    "evidencia": "f2h.json P0.tabela_CAP.provedor_na_coluna_A, P0.EQA_Base.provedores, P1.provedor_col_A_CAP"
+   },
+   {
+    "titulo": "GUIA §5-6 manda digitar nas abas bloqueadas e nao cita a janela, o Consolidar nem a correcao",
+    "produto": "Hematologia",
+    "modulo": "GUIA_DE_USO §5-6",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "§6 'digite cada rodada nas abas EQA.CAP_Dados/Controllab_Dados'; sem a janela, o Consolidar, o mapa ou o alvo; o §5 nao diz que R4 vale para todos os analitos",
+    "esperado": "Manual com o fluxo da tela (ADR-087)",
+    "acao": "Seguir o manual para lancar e corrigir um CEQ",
+    "consequencia": "Reforca a OC-HF2-1/2",
+    "sugestao": "Atualizar depois das decisoes sobre a OC-HF2-1/2",
+    "evidencia": "GUIA_DE_USO.md linhas 199-232; f2h.json P0.telas"
+   },
+   {
+    "titulo": "Listas da janela misturam nomes da simulacao (RBC, rodadas 1/2/3, OK) com os do CAP real",
+    "produto": "Hematologia",
+    "modulo": "mCEQForm.DistintosCEQ",
+    "tipo": "usabilidade",
+    "prioridade": "Baixo",
+    "observado": "Rodadas 3/2/1, analitos RBC/WBC/HCT ao lado de Red Blood Cell Count etc., avaliacao 'OK' e 'See Note [26]'; o nome 'RBC' nao traz unidade",
+    "esperado": "Listas so com as linhas Uso = SIM",
+    "acao": "Abrir as listas da janela",
+    "consequencia": "Confusao na escolha do nome e da rodada",
+    "sugestao": "Filtrar as listas por Uso = SIM",
+    "evidencia": "f2h.json P1"
+   }
+  ],
+  "duvidas": [
+   "Provedor global na Hema (R4): o laboratorio pode ter analitos no CAP e outros no Controllab? Hoje R4 vale para os 28 de uma vez, e sem o mapa do Controllab zera o bias de todos.",
+   "Sigma negativo (bias > ETp, por exemplo L = -26,6 com N4 = 2026) deve aparecer como numero ou como '< 0' / 'ETp excedido'?",
+   "A amostra sem alvo deve contar na coluna S (limites) quando nao conta no bias (AC)?",
+   "Amostras NAO AVALIADO / 'See Note' entram no bias do ET/Sigma (o BiasEQ nao filtra, o ViesEQ filtra): esta correto? (mesma da Bio e da OC-H6 da F3)",
+   "Papel minimo para registrar e para corrigir um CEQ (hoje nao ha conferencia, e so o ADM corrige)."
+  ],
+  "impressoes": "A janela do CEQ e boa: segue a ordem do relatorio do CAP, as validacoes sao claras, acha a duplicidade mesmo com caixa e espacos diferentes, e traz o ano e a unidade sozinha. Pela janela e com o nome certo, o CEQ entra so no bias do analito certo, nos 3 niveis, respeitando provedor e ano; periodo e lote do CIQ nao mexem no bias; o Painel acompanha; e os numeros batem com o calculo independente ate 1e-15 nos dois runs (RBC CLIA e LYMPH# VB). O risco esta nas bordas, todas silenciosas. A mais grave desta frente: esquecer 'Absolute' no nome joga o resultado no analito vizinho e derrubou o Sigma do LYMPH% de 4,3 para 1,7 (OC-HF2-4). Tambem silenciosos: nome fora do mapa e Controllab sem mapa, registro sem alvo, e a correcao, que o ANALISTA nao consegue fazer e que, feita pelo ADM, so vale depois do Consolidar, com o indicador dizendo 'base em dia'. Cada gravacao leva de 18 a 24 s sem indicador de progresso. Fora do CEQ: a troca de lote no Painel deixa a Estatistica com o lote novo no rotulo e os numeros do anterior (encaminhar a F4)."
+ },
+ {
+  "produto": "Hematologia",
+  "frente": "F3",
+  "relatorio": "C:\\Users\\vitor.santos\\OneDrive - MSFT\\INI_DB_AJUSTES\\OneDrive - MSFT\\Desktop\\QC_INI_PRONTO\\qc-ini\\_arquitetura\\agentes\\relatorios\\2026-10-31_ciclo01\\Hematologia_F3.md",
+  "sha_producao": "0b45fa270d2a",
+  "testes": [
+   {
+    "id": "F3-T01",
+    "descricao": "Achar os dados brutos (tblCQ_Final, EQA_Base, Especificações/biblioteca, ano de referência do lote)",
+    "estado": "APROVADO",
+    "evidencia": "tblCQ_Final 44.392 linhas; EQA_Base A:U 465 linhas; Especificações A4:W43 + biblioteca 46-89 (só 2025 preenchida); Analitos, blocos dos 9 lotes"
+   },
+   {
+    "id": "F3-T02",
+    "descricao": "Confirmar a definição no código e nos ADR (reconfirmada em 01/11)",
+    "estado": "APROVADO",
+    "evidencia": "src/hema/mEstatistica.EstatBasica (Year(DATA) entre B3 e D3), mCEQ.BiasEQ/Casa/AnoVigente (duas etapas, ano exato ADR-072, Uso<>NAO), mIncerteza.IncertezaCIQ (n>=20, CVp por gl); src sem mudança desde 0a25f5a"
+   },
+   {
+    "id": "F3-T03",
+    "descricao": "n, Média, DP, CV por analito x nível (lote 522611, XN1000, ano 2025)",
+    "estado": "APROVADO",
+    "evidencia": "84/84 em C:F; maior dif. rel. 7,9e-16 (hema_f3r3/hema_f3_r3.txt)"
+   },
+   {
+    "id": "F3-T04",
+    "descricao": "Bias do CEQ (abs, sinal, amostras, rodadas)",
+    "estado": "APROVADO",
+    "evidencia": "84/84 em G, T, AC, AD; maior dif. 1,0e-15"
+   },
+   {
+    "id": "F3-T05",
+    "descricao": "ET %",
+    "estado": "APROVADO",
+    "evidencia": "84/84 (72 com valor, 12 vazios sem CEQ); maior dif. 5,4e-16"
+   },
+   {
+    "id": "F3-T06",
+    "descricao": "ETp, CVTp e fonte contra o cadastro (CLIA/VB, biblioteca 2025)",
+    "estado": "APROVADO",
+    "evidencia": "84/84 em I, J, K"
+   },
+   {
+    "id": "F3-T07",
+    "descricao": "CV pooled 6 m e Sigma",
+    "estado": "APROVADO",
+    "evidencia": "Janela 02/04/2026-01/10/2026 igual à gravada; L 84/84; maior dif. 9,4e-12"
+   },
+   {
+    "id": "F3-T08",
+    "descricao": "Classe, margem, DPM, rendimento",
+    "estado": "APROVADO",
+    "evidencia": "M, N, O, P, V, W 84/84 (V com tol. absoluta 1e-9 DPM em 3 linhas de Sigma > 6,8, justificada na seção 4.1)"
+   },
+   {
+    "id": "F3-T09",
+    "descricao": "Status CV (Q) e Status SDI (R)",
+    "estado": "APROVADO",
+    "evidencia": "84/84 nas duas colunas"
+   },
+   {
+    "id": "F3-T10",
+    "descricao": "u(Rw) 12 m, gl, lotes, dias, viés com sinal, amostras/rodadas",
+    "estado": "APROVADO",
+    "evidencia": "AF, AG, AH, AI, AR, AU 84/84; maior dif. 2,8e-12"
+   },
+   {
+    "id": "F3-T11",
+    "descricao": "Painel = Estatística = independente (RBC N1-N3)",
+    "estado": "APROVADO",
+    "evidencia": "45/45 células (B7:I9, C/J/M/O45:47, C/H61:63, E74:E76); maior dif. 2,4e-11"
+   },
+   {
+    "id": "F3-T12",
+    "descricao": "Sinal e escala percentual do bias",
+    "estado": "APROVADO",
+    "evidencia": "bias=(X-alvo)/alvo*100; RBC FH9-01 +1,0101 %; WBC T = -G"
+   },
+   {
+    "id": "F3-T13",
+    "descricao": "Provedor, ano e rodada certos",
+    "estado": "APROVADO",
+    "evidencia": "Só CAP 2025; 90 linhas de simulação fora (AC=15, AD=3); CAP x Controllab não exercitável (Controllab 0 linhas)"
+   },
+   {
+    "id": "F3-T14",
+    "descricao": "ETp ausente aparece como '-' (ADR-068)",
+    "estado": "APROVADO",
+    "evidencia": "21 linhas reais (IG%, IG#, NRBC%, NRBC#, RDW-CV, RET#, IRF): K, J, L..W = '-'"
+   },
+   {
+    "id": "F3-T15",
+    "descricao": "O valor muda ao incluir/corrigir CEQ ou CIQ",
+    "estado": "NAO_EXECUTADO",
+    "evidencia": "Fica com F1/F2 por instrução do Orquestrador (sem Excel nesta frente)"
+   },
+   {
+    "id": "F3-T16",
+    "descricao": "2 lotes no cálculo (CVp junta lotes n>=20)",
+    "estado": "APROVADO",
+    "evidencia": "RBC N1: 602911 (20), 608511 (57), 614011 (60), 619611 (54) -> gl 187, CVp 0,975760 %; 625311 (n=1) fora"
+   },
+   {
+    "id": "F3-T17",
+    "descricao": "Coluna AT (RMS do viés / u(Cref))",
+    "estado": "REPROVADO",
+    "evidencia": "AT14='002 / 000' para RMS 2,4915 (OC-H1)"
+   },
+   {
+    "id": "F3-T18",
+    "descricao": "ET % do Painel H7:H9 quando não há CEQ",
+    "estado": "REPROVADO",
+    "evidencia": "Fórmula trata SEM EP como bias 0 (OC-H2)"
+   },
+   {
+    "id": "F3-T19",
+    "descricao": "Plausibilidade dos resultados que entram no CVp/u(Rw)",
+    "estado": "APROVADO",
+    "evidencia": "Nenhum valor <=0 nem repetição; casos isolados 3-4 DP (OC-H7)"
+   },
+   {
+    "id": "F3-T20",
+    "descricao": "Seleção das amostras do bias (NAO AVALIADO)",
+    "estado": "APROVADO",
+    "evidencia": "Segue a definição; diferença de método com ViesEQ (OC-H6)"
+   },
+   {
+    "id": "F3-T21",
+    "descricao": "Conferência cruzada catálogo x CEQ",
+    "estado": "REPROVADO",
+    "evidencia": "RDW: CEQ no RDW-CV, ETp VB só no RDW-SD (OC-H3)"
+   },
+   {
+    "id": "F3-T22",
+    "descricao": "2ª implementação (conferencia_cruzada_hema.py) WBC, RBC, HCT, MCV, PLT",
+    "estado": "APROVADO",
+    "evidencia": "15 níveis, maior dif. 3,8e-12"
+   },
+   {
+    "id": "F3-T23",
+    "descricao": "Reprodutibilidade em cópia nova (2ª e 3ª passadas)",
+    "estado": "APROVADO",
+    "evidencia": "01/11: hema_f3r3/hema_f3_r3.txt 84/0 e Painel 45/0; JSON idêntico ao da 2ª passada"
+   },
+   {
+    "id": "F3-T24",
+    "descricao": "3ª implementação do zero (segunda_opiniao_hema.py) para outros 9 analitos x 3 níveis, ETp da biblioteca e DPM por erfc",
+    "estado": "APROVADO",
+    "evidencia": "HGB, MCH, MCHC, NEUT%, MONO%, LYMPH#, EO#, MPV, RDW-CV: 459/459 iguais; maior dif. rel. 1,6e-10 (DPM HGB N3, erfc x 1-Phi do Excel); tabela 4.3b"
+   },
+   {
+    "id": "F3-T25",
+    "descricao": "Reconferir na cópia nova a evidência de cada ocorrência",
+    "estado": "APROVADO",
+    "evidencia": "Painel!H7:H9, AT14/23/41/44/47, G68/AR68, G80/G89, biblioteca 55-89 vazia, X53:AA53, A98, Principal!A5, Eng_Saida I185/L190, Configuração C20"
+   },
+   {
+    "id": "F3-T26",
+    "descricao": "Contador de alertas de orçamento (Estatística U14:U133)",
+    "estado": "APROVADO",
+    "evidencia": "120/120; total 15 (11 ETp excedido + 4 margem crítica)"
+   },
+   {
+    "id": "F3-T27",
+    "descricao": "ET e Sigma do bloco do lote (Analitos AU:BD, 9 lotes)",
+    "estado": "APROVADO",
+    "evidencia": "2.268/2.268 iguais pela definição do bloco (CV do cadastro); definição difere da Estatística (OC-H14)"
+   },
+   {
+    "id": "F3-T28",
+    "descricao": "Plausibilidade do alvo cadastrado (Média/DP) contra os dados do lote",
+    "estado": "REPROVADO",
+    "evidencia": "Lote 522611: 12 pares a mais de 5 DP (IG# -29 DP, RDW-SD N2 +398 DP, RDW-CV N2 +25,7, HGB N2 -14,6...); outros 8 lotes 0 pares (OC-H13)"
+   }
+  ],
+  "calculos": [
+   {
+    "indicador": "CV %",
+    "analito": "RBC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "CIQ ano 2025",
+    "entradas": "n=50, média 2,4022, DP 0,030256724669982",
+    "formula": "DP(n-1)/média*100",
+    "independente": "1.259542280825165",
+    "qcini": "1.2595422808251646",
+    "diferenca": "3.5e-16",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Bias abs %",
+    "analito": "RBC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "CAP 2025, TODAS",
+    "entradas": "FH9-A 0,805702; FH9-B 1,481856; FH9-C 2,313302 (5 amostras cada)",
+    "formula": "média das médias por rodada de abs((X-alvo)/alvo*100)",
+    "independente": "1.533620125276759",
+    "qcini": "1.533620125276759",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "ET %",
+    "analito": "RBC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "CIQ 2025 + CAP 2025",
+    "entradas": "CV 1,259542; bias 1,533620",
+    "formula": "1,65*CV + abs(bias)",
+    "independente": "3.611864888638281",
+    "qcini": "3.61186488863828",
+    "diferenca": "2.5e-16",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "RBC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "ETp CLIA 4; bias 1,533620; CVp 0,975760 (gl 187)",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "2.52765007179079",
+    "qcini": "2.52765007179",
+    "diferenca": "1.8e-12",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "DPM",
+    "analito": "RBC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "Sigma 2,52765",
+    "formula": "(1-Phi(Sigma-1,5))*1e6",
+    "independente": "152057.2308",
+    "qcini": "152057.2308",
+    "diferenca": "7.2e-12",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "HGB",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "n=50; CV=1,091389; bias=1,443113; ETp=4 (CLIA); CVp6=0,894071 gl=187; L20",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "2.85982679462",
+    "qcini": "2.85982679462",
+    "diferenca": "1.1e-12",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "HGB",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "2",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=0,675070 gl=194; L21",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "3.78758856942",
+    "qcini": "3.78758856939",
+    "diferenca": "7.0e-12",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "HGB",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "3",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=0,529493 gl=171; L22",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "4.82893413352",
+    "qcini": "4.82893413356",
+    "diferenca": "9.4e-12",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "MCH",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "bias=1,330225; ETp=2,630170 (VB MIN); CVp6=1,175173; L29",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "1.10617279384",
+    "qcini": "1.10617279384",
+    "diferenca": "3.9e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "MCH",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "2",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=0,844022; L30",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "1.54017908677",
+    "qcini": "1.54017908677",
+    "diferenca": "2.0e-12",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "MCH",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "3",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=0,828970; L31",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "1.56814522097",
+    "qcini": "1.56814522097",
+    "diferenca": "1.6e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "MCHC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "bias=1,606529; ETp=1,737874 (VB MIN); CVp6=1,475015; L32",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "0.0890465264878",
+    "qcini": "0.0890465264876",
+    "diferenca": "1.5e-12",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "MCHC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "2",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=1,245132; L33",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "0.105486745022",
+    "qcini": "0.105486745022",
+    "diferenca": "1.3e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "MCHC",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "3",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=1,181613; L34",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "0.111157337079",
+    "qcini": "0.111157337079",
+    "diferenca": "1.1e-12",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "NEUT%",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "bias=2,465174; ETp=27,582810 (VB MIN); CVp6=2,632297; L38",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "9.54209706918",
+    "qcini": "9.54209706918",
+    "diferenca": "2.6e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "NEUT%",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "2",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=1,935995; L39",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "12.9740209644",
+    "qcini": "12.9740209644",
+    "diferenca": "4.4e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "NEUT%",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "3",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=1,686134; L40",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "14.8965847837",
+    "qcini": "14.8965847838",
+    "diferenca": "2.1e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "MONO%",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "bias=6,491155; ETp=26,163428 (VB MIN); CVp6=12,175156; L44",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "1.61577168492",
+    "qcini": "1.61577168492",
+    "diferenca": "1.7e-14",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "MONO%",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "2",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=6,415953; L45",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "3.06614959368",
+    "qcini": "3.06614959368",
+    "diferenca": "1.9e-15",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "MONO%",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "3",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=4,083639 gl=171; L46",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "4.81733867981",
+    "qcini": "4.81733867981",
+    "diferenca": "3.7e-15",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "LYMPH#",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "bias=3,270527; ETp=22,757983 (VB MIN); CVp6=4,988471; L56",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "3.90649910152",
+    "qcini": "3.90649910152",
+    "diferenca": "1.0e-14",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "LYMPH#",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "2",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=2,863348; L57",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "6.80582850679",
+    "qcini": "6.80582850679",
+    "diferenca": "3.6e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "LYMPH#",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "3",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=1,954109; L58",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "9.97255507035",
+    "qcini": "9.97255507035",
+    "diferenca": "2.5e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "EO#",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "bias=8,181631; ETp=43,555633 (VB MIN); CVp6=7,081119; L62",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "4.99553816283",
+    "qcini": "4.99553816283",
+    "diferenca": "3.1e-14",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "EO#",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "2",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=7,345442; L63",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "4.8157756701",
+    "qcini": "4.8157756701",
+    "diferenca": "1.8e-14",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "EO#",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "3",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=6,179441; L64",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "5.7244665354",
+    "qcini": "5.7244665354",
+    "diferenca": "3.1e-14",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "MPV",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "bias=2,883455; ETp=5,474090 (VB MIN); CVp6=3,053153; L86",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "0.848511570987",
+    "qcini": "0.848511570987",
+    "diferenca": "1.0e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "MPV",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "2",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=1,919028; L87",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "1.3499726048",
+    "qcini": "1.3499726048",
+    "diferenca": "3.0e-15",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "MPV",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "3",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "CVp6=1,508053; L88",
+    "formula": "(ETp - abs(bias))/CVp 6 m",
+    "independente": "1.71786781307",
+    "qcini": "1.71786781307",
+    "diferenca": "6.0e-13",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma",
+    "analito": "RDW-CV",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "1-3",
+    "periodo": "CVp 02/04-01/10/2026",
+    "entradas": "bias=1,023083; fonte CLIA sem ETp na biblioteca 2025",
+    "formula": "'-' quando ETp ausente (ADR-068)",
+    "independente": "-",
+    "qcini": "-",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "ET %",
+    "analito": "MONO%",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "3",
+    "periodo": "CIQ 2025 + CAP 2025",
+    "entradas": "CV 7,324166; bias 6,491155",
+    "formula": "1,65*CV + abs(bias)",
+    "independente": "18.5760299086878",
+    "qcini": "18.5760299086878",
+    "diferenca": "0",
+    "status": "APROVADO"
+   },
+   {
+    "indicador": "Sigma do bloco do lote (Analitos BD)",
+    "analito": "MONO%",
+    "equipamento": "XN1000",
+    "lote": "522611",
+    "nivel": "3",
+    "periodo": "cadastro do lote",
+    "entradas": "Média 10,650980; DP 1,170143 (TESTE = 1,5 x DP do lote); bias 6,491155; ETp 26,163428",
+    "formula": "(ETp - abs(bias))/(100*DP/Média do cadastro)",
+    "independente": "1.791",
+    "qcini": "1.791",
+    "diferenca": "<1e-15",
+    "status": "APROVADO"
+   }
+  ],
+  "ocorrencias": [
+   {
+    "titulo": "OC-H13: alvo (Média/DP) do lote 522611 incompatível com os dados em 12 pares (IG# com valores de IG%; RDW-SD N2 = 14,78 fL)",
+    "produto": "Hematologia",
+    "modulo": "Analitos, bloco do lote 522611 (E:J) -> LotesStore -> limites LJ/Westgard",
+    "tipo": "dados",
+    "prioridade": "Alto",
+    "acao": "Comparar a média medida do lote (PARTICIPA=SIM) com o alvo cadastrado, em DP do alvo, nos 9 lotes",
+    "esperado": "Alvo coerente com a grandeza e o nível; diferenças de dezenas/centenas de DP indicam valor de outro analito/nível",
+    "observado": "IG# N1-N3 alvo 10,29/11,05/11,88 vs médias 0,304/0,780/2,009 (z -28,6/-31,6/-29,5; alvo tem a ordem do IG%); RDW-SD N2 alvo 14,7793 vs 47,38 (z +398); RDW-CV N2 +25,7; HGB N2 -14,6; MCH N2 -12,4; MCV N2 -7,3; RDW-CV N3 -6,5; HCT N2 -5,7; RET# N1 +5,6; RET% N1 +5,2. Outros 8 lotes: 0 pares. O aviso de TESTE (ADR-076, 21 pares) não cobre esses 12",
+    "consequencia": "Limites do LJ e Westgard deslocados: Eventos_Westgard do lote 522611 (6.155 eventos) dominada pelos afetados (IG# 714 eventos, 152 de 1_3s; RDW-SD 661; RDW-CV 609; RET# 606; RET% 595; MCV 428; HGB 413; MCH 408; HCT 350). Estatística C:W não é afetada",
+    "sugestao": "Laboratório conferir a bula do lote 522611 e corrigir pela aba Analitos (com trilha); avaliar aviso de plausibilidade (média do lote a > k DP do alvo após n>=20). Confirmação visual no LJ com a F4",
+    "evidencia": "Cópia Hematologia_F3.xlsm (prod 0b45fa270d2a): Analitos E25:J25, G28:H28, G29:H29, G8:H8; médias recalculadas de tblCQ_Final; Eventos_Westgard por analito; scripts hema_f3r3/alvos.py e teste_pairs.py"
+   },
+   {
+    "titulo": "OC-H2: ET % do Painel (H7:H9) conta bias 0 quando o analito não tem CEQ (RET%, RDW-SD)",
+    "produto": "Hematologia",
+    "modulo": "Painel H7:H9",
+    "tipo": "calculo",
+    "prioridade": "Alto",
+    "acao": "Ler a fórmula e simular com analitos que têm ETp e não têm CEQ",
+    "esperado": "Sem bias não há ET (ADR-030/068), como na Estatística H e no Painel C61:C63",
+    "observado": "H7 = IF($E7=\"\",\"\",$E7*1.65+ABS(IF(ISNUMBER($G7),$G7,0))); RET% mostraria 5,60/6,50/7,68 % e RDW-SD 1,69/1,43/2,91 %",
+    "consequencia": "ET subestimado exibido em 6 níveis",
+    "sugestao": "ET do Painel seguir a Estatística (vazio/SEM EP quando G não é número)",
+    "evidencia": "Fórmula Painel!H7:H9 reconferida em 01/11; Estatística G80:G82 e G89:G91 = SEM EP"
+   },
+   {
+    "titulo": "OC-H14: bloco do lote (Analitos AU:BD) mostra outro ET e outro Sigma para o mesmo lote; em 21 pares com DP de TESTE",
+    "produto": "Hematologia",
+    "modulo": "Analitos AU:BD (todos os blocos de lote)",
+    "tipo": "duvida_metodo",
+    "prioridade": "Medio",
+    "acao": "Recalcular o bloco e comparar com a Estatística do mesmo lote",
+    "esperado": "Um só ET/Sigma por analito, nível e lote, ou rótulo claro de que o bloco usa o CV do cadastro",
+    "observado": "Cálculo do bloco correto pela própria definição (2.268/2.268), mas CV = DP/Média do cadastro: MONO% N3 Sigma 1,79 (bloco) x 4,82 (Estatística); MONO% N2 1,29 x 3,07; HCT N1 1,54 x 2,10; PLT N1 1,51 x 2,26; WBC N1 2,92 x 2,27. Nos 21 pares de TESTE o CV do cadastro é 1,5 x o CV medido",
+    "consequencia": "Dois Sigmas com classes diferentes para o mesmo lote; risco de decidir o plano de CQ sobre o número errado",
+    "sugestao": "Especialista decidir se o bloco mostra ET/Sigma e com qual CV; UX rotular; ocultar nos pares de TESTE",
+    "evidencia": "Fórmulas Analitos AV6:AX6; hema_f3r3/blocos.py e blocos2.py; teste_pairs.py"
+   },
+   {
+    "titulo": "OC-H1: coluna AT da Estatística mostra '002 / 000' em vez de '2,49 / 0,xx'",
+    "produto": "Hematologia",
+    "modulo": "Estatística AT14:AT97",
+    "tipo": "funcional",
+    "prioridade": "Medio",
+    "acao": "Comparar o texto com o RMS recalculado",
+    "esperado": "'2,49 / 0,xx' (WBC)",
+    "observado": "TEXT(...,\"0.00\") no Excel pt-BR: AT14='002 / 000', AT23='001 / 000', AT41='005 / 000', AT44=AT47='008 / 000'",
+    "consequencia": "Memória de cálculo da incerteza ilegível",
+    "sugestao": "Montar o texto no VBA (como no K5)",
+    "evidencia": "Estatística AT14/AT23/AT41/AT44/AT47 reconferidas em 01/11; RMS independente 2,4915 (WBC), 1,2958 (HCT)"
+   },
+   {
+    "titulo": "OC-H3: RDW avaliado no CAP como RDW-CV, mas a especificação VB está só no RDW-SD; nenhum dos dois tem Sigma",
+    "produto": "Hematologia",
+    "modulo": "Especificações x EQA_Base (de/para) x Estatística",
+    "tipo": "duvida_metodo",
+    "prioridade": "Medio",
+    "acao": "Cruzar por analito quem tem ETp e quem tem CEQ",
+    "esperado": "Especificação no analito avaliado ou decisão registrada",
+    "observado": "RDW-CV: CEQ 15 amostras, ETp '-'; RDW-SD: ETp VB 3,665 %, sem CEQ (SEM EP)",
+    "consequencia": "Plano de CQ do RDW não calculado",
+    "sugestao": "Especialista confirmar a que medida se referem CVi/CVg",
+    "evidencia": "Especificações X50:X51, Y50:Y51 vazios; EQA_Base W:Y; Estatística G80 = SEM EP"
+   },
+   {
+    "titulo": "OC-H4: ETp 'CLIA' 2025 de WBC (7 %) e PLT (15 %) diferente dos limites CLIA publicados",
+    "produto": "Hematologia",
+    "modulo": "Especificações, biblioteca 2025 linha 48",
+    "tipo": "duvida_metodo",
+    "prioridade": "Medio",
+    "acao": "Conferir o ETp cadastrado com a fonte do rótulo",
+    "esperado": "CLIA = limite vigente (WBC 10 %, PLT 25 %, pelo conhecimento do agente) ou rótulo de meta própria",
+    "observado": "WBC 7, RBC/HGB/HCT 4, PLT 15; o QC_INI usa corretamente o cadastrado",
+    "consequencia": "Sigma de WBC/PLT conservador se for meta interna; plano mais pesado se for engano",
+    "sugestao": "Especialista confirmar na fonte oficial",
+    "evidencia": "Especificações B48, C48:E48, I48; Estatística K14:K16, K35:K37"
+   },
+   {
+    "titulo": "OC-H5: filtro Ano De/Até da Estatística não acompanha o lote e corta lotes que atravessam o ano",
+    "produto": "Hematologia",
+    "modulo": "Estatística B3/D3 x B4 -> C:F, H, N:Q",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "acao": "Recalcular C:F para outros lotes com Ano 2025",
+    "esperado": "Estatística do lote inteira ou aviso",
+    "observado": "619611/625311 com Ano 2025: n=0; 533811: n=8 (CV 0,65 %) contra 76 (CV 1,37 %) no lote inteiro; lote em análise 522611 vencido (31/03/2026)",
+    "consequencia": "Orçamento de erro sobre período errado ou em branco",
+    "sugestao": "UX avisar/propor o ano do lote; Especialista decidir o CV do ET",
+    "evidencia": "CalculadoraHema.ciq_ano; Configuração C20 = 522611"
+   },
+   {
+    "titulo": "OC-H9: biblioteca de especificações 2026-2029 vazia na Hematologia",
+    "produto": "Hematologia",
+    "modulo": "Especificações linhas 55-89",
+    "tipo": "dados",
+    "prioridade": "Medio",
+    "acao": "Ler a biblioteca anual",
+    "esperado": "Anos futuros preenchidos ou aviso quando faltar",
+    "observado": "Só 2025 preenchida; lote novo com ano 2026 perde todos os ETp e Sigmas sem aviso",
+    "consequencia": "Sigma some em massa na virada de referência",
+    "sugestao": "Laboratório preencher 2026 ou QA avisar",
+    "evidencia": "Especificações 55-89 sem valores (reconferido em 01/11)"
+   },
+   {
+    "titulo": "OC-H6: bias do ET inclui amostras NAO AVALIADO que a incerteza exclui (IG%, IG#, NRBC%, NRBC#)",
+    "produto": "Hematologia",
+    "modulo": "Estatística G/H (BiasEQ) x AR/AU (ViesEQ)",
+    "tipo": "duvida_metodo",
+    "prioridade": "Baixo",
+    "acao": "Recalcular o bias de IG% pelas duas regras",
+    "esperado": "Mesmo critério de seleção",
+    "observado": "G68 = 3,0094 % com 15 amostras NAO AVALIADO; AR68 = SEM EP",
+    "consequencia": "ET exibido com amostras não avaliadas (sem Sigma afetado)",
+    "sugestao": "Mesma decisão da OC-1 da Bioquímica",
+    "evidencia": "Estatística G68, AR68, AU68"
+   },
+   {
+    "titulo": "OC-H7: resultados isolados de 3-4 DP ativos pesam na u(Rw) da HGB N3 (+20 %)",
+    "produto": "Hematologia",
+    "modulo": "tblCQ_Final -> AF e L",
+    "tipo": "dados",
+    "prioridade": "Baixo",
+    "acao": "Varrer ativos por valores atípicos",
+    "esperado": "Não conformes inativados com motivo",
+    "observado": "HEM-241016 (HGB N3 13,6): u(Rw) 1,0025 % x 0,8341 % sem ele; HEM-309465/309466, HEM-314337/314338 (LYMPH%/MONO% N1)",
+    "consequencia": "Pequena",
+    "sugestao": "Laboratório revisar os IDs",
+    "evidencia": "IDs citados; cv_pooled_ext com e sem"
+   },
+   {
+    "titulo": "OC-H8: Sigma legado com bias contra o alvo do lote continua gravado no Eng_Saida",
+    "produto": "Hematologia",
+    "modulo": "Eng_Saida I185:I187 e L190:L309",
+    "tipo": "duvida_metodo",
+    "prioridade": "Baixo",
+    "acao": "Ler colunas do Eng_Saida",
+    "esperado": "Um Sigma oficial",
+    "observado": "I185 = -0,1148 (RBC N1); L190 = 3,127 'Marginal' x 2,272 oficial (WBC N1)",
+    "consequencia": "Nenhuma na tela hoje; risco de leitura errada (BI)",
+    "sugestao": "Retirar ou documentar as colunas legadas",
+    "evidencia": "Eng_Saida G185, I185, L190, M190 (reconferidas)"
+   },
+   {
+    "titulo": "OC-H10: 'FAB CVTp' 2025 com valores que não parecem CV % (RDW-SD 48,1; RDW-CV 15,1; MPV 9,4; RET% 1,2)",
+    "produto": "Hematologia",
+    "modulo": "Especificações linha 53",
+    "tipo": "dados",
+    "prioridade": "Baixo",
+    "acao": "Ler a biblioteca FAB",
+    "esperado": "CV % plausível",
+    "observado": "X53:AA53 = 48,1/15,1/9,4/1,2; FAB ETp (linha 52) vazio",
+    "consequencia": "Nenhuma hoje (nenhum analito usa FAB)",
+    "sugestao": "Laboratório revisar antes de usar FAB",
+    "evidencia": "Especificações X53:AA53, B52:AC52"
+   },
+   {
+    "titulo": "OC-H11: linhas vazias da Estatística mostram '0' e 'SEM EP'",
+    "produto": "Hematologia",
+    "modulo": "Estatística A98:T133",
+    "tipo": "usabilidade",
+    "prioridade": "Baixo",
+    "acao": "Ler as linhas sem analito",
+    "esperado": "Linhas em branco",
+    "observado": "A98 = 0 e G/R/T = SEM EP; fórmula testa só $A=\"\"",
+    "consequencia": "Ruído visual (sem contador afetado na Hema)",
+    "sugestao": "OR($A=\"\",$A=0)",
+    "evidencia": "Estatística A98, G98, R98, T98"
+   },
+   {
+    "titulo": "OC-H12: cabeçalho da tblCQ_Final mostra contagens com decimal",
+    "produto": "Hematologia",
+    "modulo": "Principal - Resultados A5",
+    "tipo": "usabilidade",
+    "prioridade": "Baixo",
+    "acao": "Ler o cabeçalho",
+    "esperado": "Total: 44392",
+    "observado": "'Total: 44392,0 · participam: 43710,0'",
+    "consequencia": "Acabamento",
+    "sugestao": "Formatar sem decimais",
+    "evidencia": "Principal - Resultados!A5"
+   }
+  ],
+  "duvidas": [
+   "BiasEQ ABS deve excluir amostras NAO AVALIADO (e resultado/alvo 0), como o ViesEQ? (OC-H6 / OC-1 Bio)",
+   "Qual CV deve entrar no ET da Hematologia: CV do lote no ano B3:D3 (hoje lote 522611 de out/2025) ou o CVp de 6 m do Sigma? O filtro por ano civil é desejado se corta lotes que atravessam o ano? (OC-H5)",
+   "ETp 'CLIA' de WBC (7 %) e PLT (15 %) são metas internas ou deveriam ser 10 % e 25 %? (OC-H4)",
+   "A especificação VB do RDW é do RDW-CV ou do RDW-SD? (OC-H3)",
+   "IG%, IG#, NRBC%, NRBC#, RET# e IRF ficam sem ETp por decisão consciente?",
+   "A base da Hematologia termina em 01/10/2026 (carga única, Sync_Log vazia): é o estado esperado até a virada do MODO_FONTE?",
+   "O bloco do lote na aba Analitos deve mostrar ET e Sigma? Com qual CV (cadastro, medido ou CVp)? (OC-H14)",
+   "O alvo do lote 522611 (IG#, RDW-SD/RDW-CV N2, série vermelha N2, RET N1) é o da bula? O sistema deve avisar quando a média do lote se afasta muitos DP do alvo? (OC-H13)"
+  ],
+  "impressoes": "Terceira passada em 01/11 na mesma produção (sha 0b45fa270d2a, src sem mudança desde 0a25f5a), sem Excel. Os números da Estatística continuam certos: a calculadora deu 84x27 e 45 células do Painel sem divergência, com JSON idêntico ao da passada anterior. Uma terceira implementação escrita do zero (segunda_opiniao_hema.py) conferiu outros 9 analitos x 3 níveis, com o ETp recalculado da biblioteca e o DPM por erfc: 459/459 iguais. Somando as passadas, 14 dos 28 analitos foram conferidos por código que não importa a calculadora. Também batem o contador U (120/120) e o bloco do lote na aba Analitos (2.268/2.268, pela definição do próprio bloco). O que confunde o usuário não é a conta: é o período (o ano B3:D3 não acompanha o lote, e o lote 522611 já venceu), são os dois Sigmas para o mesmo lote (Analitos x Estatística, OC-H14) e, a novidade desta passada, o alvo cadastrado do lote 522611. O IG# está com números de IG%, e o RDW-SD N2 aparece como 14,8 fL. Isso gera centenas de rejeições de Westgard que vêm do cadastro, e não do analisador, e o aviso de TESTE não cobre esses pares (OC-H13). A verificação de que o valor muda ao incluir ou corrigir um CEQ/CIQ ficou com a F1/F2. A cópia foi descartada e a produção não foi tocada. Ferramentas: _arquitetura/agentes/ferramentas/calc_independente.py (cabeçalho atualizado), conferencia_cruzada_hema.py e segunda_opiniao_hema.py (nova)."
+ },
+ {
+  "produto": "Hematologia",
+  "frente": "F4",
+  "relatorio": "C:\\Users\\vitor.santos\\OneDrive - MSFT\\INI_DB_AJUSTES\\OneDrive - MSFT\\Desktop\\QC_INI_PRONTO\\qc-ini\\_arquitetura\\agentes\\relatorios\\2026-10-31_ciclo01\\Hematologia_F4.md",
+  "sha_producao": "0b45fa270d2a",
+  "testes": [
+   {
+    "id": "T00",
+    "descricao": "tblCQ_Final do COM = leitura openpyxl da mesma cópia",
+    "estado": "APROVADO",
+    "evidencia": "44.392 linhas, IDs idênticos (f4h.json)"
+   },
+   {
+    "id": "P-MESES",
+    "descricao": "WBC: 20 combinações mês × lote (out/2025 a out/2026, os dois lotes nos meses de troca): Painel = dados brutos",
+    "estado": "APROVADO",
+    "evidencia": "0 divergências, maior diferença relativa 4,5e-16; G3/G4 corretos em todos os meses"
+   },
+   {
+    "id": "P-TRIMESTRES",
+    "descricao": "T4/2025 a T4/2026: trimestre = dados brutos do trimestre, não a média dos meses",
+    "estado": "APROVADO",
+    "evidencia": "maior diferença 4,9e-16; T4/2025 N1: Painel 2,9920 / CV 1,925 contra média dos meses 2,9987 / 1,369"
+   },
+   {
+    "id": "P-LONGOS",
+    "descricao": "S1, S2, Ano inteiro 2025/2026 e Tudo com lote em H3",
+    "estado": "APROVADO",
+    "evidencia": "maior diferença 4,4e-16; nenhum lote passa de 180 corridas"
+   },
+   {
+    "id": "P-TODOS-Ano",
+    "descricao": "H3 vazio + Ano inteiro 2026: n = todos os resultados do período",
+    "estado": "REPROVADO",
+    "evidencia": "n 141/155/130 contra 337/340/308; igual à janela de 180 corridas; A39 fala só do gráfico"
+   },
+   {
+    "id": "P-TODOS-Tudo",
+    "descricao": "H3 vazio + Tudo",
+    "estado": "REPROVADO",
+    "evidencia": "n 141/155/130 contra 478/485/447; 366 corridas cortadas"
+   },
+   {
+    "id": "E-BASE-522611",
+    "descricao": "Estatística no estado de abertura (522611, 2025)",
+    "estado": "APROVADO",
+    "evidencia": "336 comparações, 0 divergências (a linha de catálogo vazio fica de fora), máx. 7,9e-16"
+   },
+   {
+    "id": "E-LOTE-619611",
+    "descricao": "Troca de lote no Painel: a Estatística acompanha?",
+    "estado": "REPROVADO",
+    "evidencia": "B4 = 619611, mas WBC N1 continua 50; 3,0446; 0,054929 (números do 522611)"
+   },
+   {
+    "id": "E-ANO-2026-619611",
+    "descricao": "Mudar Ano De/Até (B3/D3) para 2026",
+    "estado": "REPROVADO",
+    "evidencia": "339/339 divergem; a aba não recalcula"
+   },
+   {
+    "id": "E-NAV",
+    "descricao": "Entrar na Estatística pelo botão de navegação",
+    "estado": "REPROVADO",
+    "evidencia": "f4h_conf.json: números inalterados; o módulo da Planilha10 (Estatística) tem 0 linhas"
+   },
+   {
+    "id": "E-INTERNO-619611",
+    "descricao": "Depois de mEstatistica.AtualizarEstatistica (passo interno)",
+    "estado": "APROVADO",
+    "evidencia": "336 comparações, 0 divergências, máx. 1,1e-15"
+   },
+   {
+    "id": "E-ANO-INVERTIDO",
+    "descricao": "Ano Até < Ano De",
+    "estado": "APROVADO",
+    "evidencia": "vale só o Ano De; a tela não avisa (OC-HF4-9)"
+   },
+   {
+    "id": "L-536411/602911",
+    "descricao": "Lote A → lote B (fev–mar/2026, 3 lotes): estatística e motor só do lote",
+    "estado": "APROVADO",
+    "evidencia": "máx. 4,3e-16; motor com 0 pontos fora e 0 faltando"
+   },
+   {
+    "id": "L-TODOS",
+    "descricao": "H3 vazio: motor com todos os lotes, n igual, média/DP/CV vazios no motor",
+    "estado": "APROVADO",
+    "evidencia": "n 91/95/89; pontos 533811=50, 536411=170, 602911=55; mas a tela mostra Bias e Sigma (OC-HF4-3)"
+   },
+   {
+    "id": "L-TODOS-ALVO",
+    "descricao": "Cada ponto com a Média/DP do seu lote",
+    "estado": "APROVADO",
+    "evidencia": "0 divergências"
+   },
+   {
+    "id": "L-SOBREPOSTOS",
+    "descricao": "Lotes paralelos 528211/533811: o mesmo RUN vira 2 corridas RUN|LOTE",
+    "estado": "APROVADO",
+    "evidencia": "RUN 25122201/25122301/25122302 com 2 slots cada; n 22/22/21 iguais"
+   },
+   {
+    "id": "L-SOBREPOSTOS-X",
+    "descricao": "Eixo X do modo TODOS atravessando os lotes",
+    "estado": "APROVADO",
+    "evidencia": "0 divergências"
+   },
+   {
+    "id": "L-AJUSTE-1",
+    "descricao": "619611 Set → lote em uso → volta",
+    "estado": "APROVADO",
+    "evidencia": "ajusta para Tudo com aviso; o Set não volta (OC-HF4-6)"
+   },
+   {
+    "id": "L-AJUSTE-2",
+    "descricao": "Lote em uso Out/2025 → 619611 → volta: o filtro da rotina é restaurado",
+    "estado": "APROVADO",
+    "evidencia": "Out/2025 restaurado, A39 'Filtro da rotina restaurado'"
+   },
+   {
+    "id": "C-ANALITOS",
+    "descricao": "RBC, HGB, PLT, MCV, NEUT%, IG%, RET% e RDW-SD (619611, set/2026): Painel e motor",
+    "estado": "APROVADO",
+    "evidencia": "máx. 7,2e-16; 0 fora e 0 faltando; RET%/RDW-SD com H = 1,65×CV e bias SEM EP (confirma a OC-H2 da F3)"
+   },
+   {
+    "id": "C-EQUIP",
+    "descricao": "Outros equipamentos",
+    "estado": "NAO_EXECUTADO",
+    "evidencia": "não se aplica: a Hematologia tem equipamento único (XN1000), sem seletor L4"
+   },
+   {
+    "id": "G-LJ-5CEN",
+    "descricao": "LJ N1–N3 em 5 cenários (WBC Set e T3, PLT Mai, HGB Jan, RBC Tudo): eixo, pontos, corrida do lote, limites, tabela × gráfico",
+    "estado": "APROVADO",
+    "evidencia": "todos os G-EIXO/PONTOS/LIMITES/TABxGRAF aprovados"
+   },
+   {
+    "id": "G-WESTGARD-5CEN",
+    "descricao": "Westgard N=3 por ponto (5 regras, 1_2s e veredito) e contagens M7:Q9",
+    "estado": "APROVADO",
+    "evidencia": "776 pontos, 0 divergências; contagens e status iguais"
+   },
+   {
+    "id": "G-TODOS",
+    "descricao": "Modo TODOS: eixo RUN|LOTE, Westgard lote a lote, contagens, pontos e degraus de limite",
+    "estado": "APROVADO",
+    "evidencia": "180 chaves iguais; 485 pontos, 0 divergências; degraus 0 divergências"
+   },
+   {
+    "id": "U-AUDIT",
+    "descricao": "auditar_aba no Painel e na Estatística",
+    "estado": "APROVADO",
+    "evidencia": "0 achados"
+   },
+   {
+    "id": "U-K4",
+    "descricao": "K3/K4 depois de digitar De/Até",
+    "estado": "REPROVADO",
+    "evidencia": "K3 2025 e K4 'Tudo (sem filtro)' com De/Até fev–mar/2026"
+   },
+   {
+    "id": "U-ULTVIOL",
+    "descricao": "Últ. violação sob o título 'violações no período'",
+    "estado": "REPROVADO",
+    "evidencia": "0 violações e '6x RUN 26081801 Erro Sistemático' (fora do período)"
+   },
+   {
+    "id": "U-IMG-LJ",
+    "descricao": "Leitura visual do LJ",
+    "estado": "REPROVADO",
+    "evidencia": "linha suavizada, sem valores no eixo Y; degraus viram curvas (imagens em hema_f4/saida)"
+   },
+   {
+    "id": "U-TEMPOS",
+    "descricao": "Tempo de resposta dos filtros",
+    "estado": "APROVADO",
+    "evidencia": "H3 1,3–3,0 s; K3/K4/G3/G4 ≤ 0,3 s"
+   }
+  ],
+  "ocorrencias": [
+   {
+    "titulo": "Estatística não recalcula ao trocar o lote no Painel nem ao mudar Ano De/Até; B4 mostra o lote novo com os números do anterior",
+    "produto": "Hematologia",
+    "modulo": "Estatística / mEstatistica.AtualizarEstatisticaAba / mLotes.TrocarLoteAnalise",
+    "tipo": "funcional",
+    "prioridade": "Critico",
+    "observado": "H3 = 619611: B4 = 619611 (refletido do Painel), mas WBC N1 = 50; 3,0446; DP 0,054929; CV 1,8041 %, idênticos ao 522611/2025 (o 619611 não tem nenhum resultado em 2025). Mudar B3/D3 para 2026 e entrar pelo botão não mudam nada. O módulo da planilha Estatística está vazio; só o ATUALIZAR (AtualizarEstatistica) recalcula. Depois do recálculo interno, 0 divergências",
+    "esperado": "n/média/DP/CV do lote de B4 nos anos B3:D3, ou um aviso de desatualizado",
+    "acao": "Painel H3 522611 → 619611; botão Estatística; B3/D3 = 2026",
+    "consequencia": "Estatística mostrada sob o lote errado; o ET %, a margem e o Status CV da aba usam o CV de outro lote; relatório errado. O Painel não é afetado",
+    "sugestao": "Recalcular no TrocarLoteAnalise e num Worksheet_Change de B3:D3, ou mostrar DESATUALIZADO quando lote/anos diferirem do último cálculo",
+    "evidencia": "f4h.json E-LOTE-619611, E-ANO-2026-619611, E-INTERNO-619611; f4h_conf.json (apos_H3, apos_IrEstatistica, apos_B3D3, vbcomp Planilha10 = 0 linhas)"
+   },
+   {
+    "titulo": "H3 vazio com período longo: n e contagens de Westgard só das 180 corridas mais recentes; o aviso fala só do gráfico",
+    "produto": "Hematologia",
+    "modulo": "Painel B7:B9 e M7:R9 / AtualizarCalc (NK = 180, modo TODOS)",
+    "tipo": "calculo",
+    "prioridade": "Medio",
+    "observado": "Ano inteiro 2026: n 141/155/130 contra 337/340/308; Tudo: 141/155/130 contra 478/485/447. A39: 'fora do gráfico (máx. 180)'",
+    "esperado": "n e contagens do período, ou um aviso que diga que as contagens também foram cortadas",
+    "acao": "WBC, H3 vazio, K4 = Ano inteiro / Tudo",
+    "consequencia": "n e violações 'do período' cobrem só ~5 meses",
+    "sugestao": "Aviso 'fora do gráfico e das contagens' com o n total, ou contagem sobre o período inteiro (ADR-086 dec. 6)",
+    "evidencia": "f4h.json P-TODOS-Ano, P-TODOS-Tudo"
+   },
+   {
+    "titulo": "No H3 vazio, o Painel mostra Bias % e Sigma (e o SIGMA DO PLANO), contra o ADR-086 dec. 4",
+    "produto": "Hematologia",
+    "modulo": "Painel G7:I9",
+    "tipo": "duvida_metodo",
+    "prioridade": "Medio",
+    "observado": "C:E e H vazios, mas G = 1,86 % e I = 2,27/3,58/5,68, lidos da Estatística (lote em uso)",
+    "esperado": "Média/DP/CV/Bias/ET/Sigma vazios no modo TODOS",
+    "acao": "Apagar H3, WBC fev–mar/2026",
+    "consequencia": "Linha incoerente: Sigma sem ET; ADR e tela divergem",
+    "sugestao": "O Especialista decide; depois alinhar o ADR ou o Painel (igual à OC-F4-3 da Bio)",
+    "evidencia": "f4h.json L-TODOS; Painel_todos_fevmar.png"
+   },
+   {
+    "titulo": "Lote em uso 522611 (validade 31/03/2026) em C4 e no A39 do H3 vazio; o lote corrente é o 625311",
+    "produto": "Hematologia",
+    "modulo": "Painel C4/A39; Configuração C20",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "C4 'Lançamentos no lote: 522611'; A39 no H3 vazio dá o alvo do 522611, sem nenhum ponto no período; Estatística B4 = 522611",
+    "esperado": "Lotes do período no A39; lote em uso atualizado",
+    "acao": "H3 vazio, fev–mar/2026",
+    "consequencia": "O usuário não sabe qual lote vê nem para onde vão os manuais",
+    "sugestao": "Listar no A39 os lotes do período (Eng_Saida O1); o laboratório atualiza o lote em uso",
+    "evidencia": "f4h.json L-TODOS (A39, C4, O1), lote_em_uso"
+   },
+   {
+    "titulo": "'Últ. violação/Classificação' sob 'violações no período' mostra uma violação fora do período, com total 0 ao lado",
+    "produto": "Hematologia",
+    "modulo": "Painel S7:T9 (AgregadoWestgard)",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "WBC 619611 Set/2026: 0 violações, S = '6x RUN 26081801', T = 'Erro Sistemático' (agosto); HGB Jan/2026: RUN 26020604 (fevereiro); H3 vazio: R_4s RUN 25102801",
+    "esperado": "Última violação do período, ou rótulo de histórico",
+    "acao": "Filtrar por mês",
+    "consequencia": "O usuário entende que houve erro sistemático no período",
+    "sugestao": "Filtrar pelo período ou renomear para 'do lote (histórico)'",
+    "evidencia": "f4h.json G-CONTAGEM-* ultima_violacao_S; Painel_set_619611.png"
+   },
+   {
+    "titulo": "Voltar de outro lote não devolve o período quando o lote de partida não é o lote em uso",
+    "produto": "Hematologia",
+    "modulo": "Painel H3 (ADR-077/078)",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "619611 Set → 522611 (ajusta para Tudo) → 619611 fica em Tudo; partindo do lote em uso, o filtro volta",
+    "esperado": "Voltar a Set",
+    "acao": "Trocar de lote e voltar",
+    "consequencia": "Quem trabalha no lote corrente perde a escolha",
+    "sugestao": "Guardar o filtro sempre que o ajuste automático o troca",
+    "evidencia": "f4h.json L-AJUSTE-1, L-AJUSTE-2"
+   },
+   {
+    "titulo": "Depois de digitar De/Até, Ano (K3) e Período (K4) mantêm o rótulo antigo",
+    "produto": "Hematologia",
+    "modulo": "Painel K3/K4 × G3/G4",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "G3:G4 01/02–31/03/2026 com K3 2025 e K4 'Tudo (sem filtro)'",
+    "esperado": "K4 limpo ou 'Personalizado'",
+    "acao": "Digitar G3/G4",
+    "consequencia": "Leitura ou impressão do período errado",
+    "sugestao": "Limpar K3/K4 ao digitar G3/G4",
+    "evidencia": "f4h.json K4_apos_digitar_G3G4; Painel_todos_fevmar.png"
+   },
+   {
+    "titulo": "LJ com linha suavizada, sem valores no eixo Y e sem rótulo de ±k DP; no H3 vazio, os degraus viram curvas",
+    "produto": "Hematologia",
+    "modulo": "Gráficos do Painel",
+    "tipo": "usabilidade",
+    "prioridade": "Medio",
+    "observado": "Linha curva passa acima dos pontos (N1, corridas 47–50); eixo Y sem números; degraus ondulados entre os lotes",
+    "esperado": "Linha reta, eixo legível",
+    "acao": "Ver o Painel",
+    "consequencia": "Não dá para ler a quantos DP está o ponto",
+    "sugestao": "Sem suavização; rótulos ±k DP; valores no eixo Y",
+    "evidencia": "saida/Painel_set_619611.png, Painel_todos_fevmar.png (os números estão certos: G-PONTOS/LIMITES aprovados)"
+   },
+   {
+    "titulo": "Ano Até menor que Ano De aceito sem aviso; a aba usa só o Ano De",
+    "produto": "Hematologia",
+    "modulo": "Estatística B3/D3",
+    "tipo": "usabilidade",
+    "prioridade": "Baixo",
+    "observado": "B3 2026, D3 2025: cálculo só de 2026, tela 'Ano Até 2025'",
+    "esperado": "Validação ou aviso",
+    "acao": "Digitar D3 < B3",
+    "consequencia": "Confusão sobre o intervalo",
+    "sugestao": "Validação D3 ≥ B3 ou o texto 'usando só 2026'",
+    "evidencia": "f4h.json E-ANO-INVERTIDO"
+   }
+  ],
+  "duvidas": [
+   "A Estatística da Hema deve recalcular na hora ao trocar o lote ou o ano, ou só no ATUALIZAR, com aviso de desatualizada (OC-HF4-1)?",
+   "No H3 vazio, Bias e Sigma do analito devem aparecer? O n e as contagens são do período ou da janela de 180 corridas (OC-HF4-2/3)?",
+   "'Últ. violação' deve ser do período filtrado ou do histórico do lote (OC-HF4-5)?",
+   "O lote em uso da Hema (Configuração C20 = 522611, validade 31/03/2026) deve acompanhar o lote corrente 625311? Quem atualiza (OC-HF4-4)?",
+   "Dados para o laboratório: o alvo do RBC 522611 N1 (2,3066 ± 0,0219) fica ~4,4 DP abaixo da média real (40/50 pontos com 1_3s); os DP de WBC são idênticos nos lotes 614011 e 619611 (possível TESTE não substituído); os lotes 528211 e 533811 rodaram em paralelo em 22–23/12/2025, contra a premissa do ADR-080"
+  ],
+  "impressoes": "Painel confiável e rápido (até 3 s por filtro): 31 períodos, 8 analitos e 6 cenários de LJ/Westgard N=3 (1.261 pontos) batem com o recálculo independente; o H3 vazio separa lotes paralelos corretamente; o trimestre vem dos dados brutos. O que confunde: a aba Estatística parece seguir o lote e o ano, mas os números ficam parados até o ATUALIZAR; 'Últ. violação · Erro Sistemático' aparece ao lado de 0 violações no período; o lote em uso antigo (522611) aparece em C4 e no A39; K3/K4 não refletem as datas digitadas; o LJ suavizado e sem eixo Y dificulta a leitura."
+ }
+]

@@ -47,6 +47,21 @@ O workflow devolve:
 Se uma frente voltar sem resultado, registre-a como `NAO_EXECUTADO` e rode só ela de novo
 (`frentes=[...]`, `produtos=[...]`).
 
+### Se o ciclo for interrompido (limite de uso, queda)
+
+**Não use `resumeFromRunId`** quando a interrupção acontecer na fase Testar ou depois dela. O cache do workflow
+depende da ordem das chamadas, e as frentes rodam em paralelo com o plano B do `rodar`, então a ordem muda. Em
+31/10/2026 isso refez seis frentes prontas e esgotou o limite semanal.
+
+Faça assim:
+
+1. Extraia o último resultado de cada `(produto, frente)` do `journal.jsonl` do run para
+   `relatorios/<ciclo>/frentes.json`.
+2. Monte `rota_cq.json`, `rota_ux.json` e `rota_tester.json` com o mesmo critério do workflow.
+3. Chame os agentes que faltam diretamente, em paralelo, apontando para esses arquivos: o parecer consolidado, o
+   especialista-cq, o ux-ui e o tester-qa. Só o Tester abre Excel.
+4. Uma frente que não terminou é rodada sozinha, de novo, com `frentes=[...]` e `produtos=[...]`.
+
 ## Passo 5: planejar (você)
 
 1. **Registre cada ocorrência** em `OCORRENCIAS.md` com ID definitivo `OC-0001`, `OC-0002`... Cruze o que cada um
