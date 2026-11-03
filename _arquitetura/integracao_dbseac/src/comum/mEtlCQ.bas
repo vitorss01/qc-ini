@@ -16,6 +16,8 @@ Attribute VB_Name = "mEtlCQ"
 '  ADR-082: SUBSTITUI_ID da tblResultados_Manuais -- o manual valido substitui o resultado do interfaceamento
 '  indicado (SUBSTITUIDO_MANUAL; inativado pelo usuario continua INATIVADO). O indicado nunca forma corrida; o que
 '  continua com status de corrida real fica com a CORRIDA_NO_DIA/RUN do manual. Mesmas regras e textos do PQ.
+'  ADR-088: data/hora em texto que nao existe (31/02, 25:00) nao "rola" para outro dia -- e invalida (MANUAL_INCOMPLETO);
+'  resultado <= 0 que seria ATIVO vira IMPLAUSIVEL (nao participa, nao plota; QA A11). Mesmas regras no PQ.
 ' ============================================================================
 Option Explicit
 Option Compare Binary
@@ -40,6 +42,8 @@ Private Const F_SUBDIG As Long = 45, F_SUBR As Long = 46, F_SUBOK As Long = 47, 
 Private Const F_SUBPOR As Long = 49, F_SUBMOT As Long = 50, F_NOTA As Long = 51, F_SUBIDX As Long = 52
 Private Const NF As Long = 52
 Private Const SUF_SUB As String = " (este manual nao substitui nada)"
+' ADR-088 (OC-0004, autorizado pelo usuario em 03/11/2026): resultado de CIQ <= 0 nao participa (mesmo texto do PQ)
+Private Const TXT_IMPLAUSIVEL As String = "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)"
 
 Private mPrefixo As String
 Private mRx As Object
@@ -213,29 +217,50 @@ Private Function ParaData(ByVal v As Variant) As Variant
     If VarType(v) = vbDate Then ParaData = CDate(Int(CDbl(v))): Exit Function
     If EhNum(v) Then ParaData = CDate(Int(CDbl(v))): Exit Function
     If VarType(v) = vbString Then
-        Dim p() As String
-        p = Split(TrimU(CStr(v)), "/")
-        If UBound(p) <> 2 Then Err.Raise 13
-        ParaData = DateSerial(CInt(p(2)), CInt(p(1)), CInt(p(0)))
+        ParaData = DataTexto(TrimU(CStr(v)))
         Exit Function
     End If
     Err.Raise 13
+End Function
+
+' ADR-088 (OC-0005): "dd/mm/aaaa" -> data, conferindo dia, mes e ano DEPOIS do DateSerial. O DateSerial "rola" o dia
+' que nao existe (31/02/2026 -> 03/03/2026; 00/01 -> 31/12; 15/13 -> 15/01 do ano seguinte) e o resultado entrava ativo
+' num dia e num RUN que nao sao dele. Data que nao existe = erro 13 (o manual vira MANUAL_INCOMPLETO "DATA"), como o
+' Date.From do Power Query. Ano de 2 digitos: o DateSerial completa o seculo, e so os 2 ultimos digitos sao conferidos.
+Private Function DataTexto(ByVal s As String) As Date
+    Dim p() As String, dd As Long, mm As Long, aa As Long
+    p = Split(s, "/")
+    If UBound(p) <> 2 Then Err.Raise 13
+    dd = CInt(p(0)): mm = CInt(p(1)): aa = CInt(p(2))
+    DataTexto = DateSerial(aa, mm, dd)
+    If Day(DataTexto) <> dd Or Month(DataTexto) <> mm Then Err.Raise 13
+    If Year(DataTexto) <> aa Then
+        If aa < 0 Or aa > 99 Or (Year(DataTexto) Mod 100) <> aa Then Err.Raise 13
+    End If
+End Function
+
+' ADR-088 (OC-0005): hora, minuto e segundo dentro da faixa (TimeSerial(25, 0, 0) somava um dia: "25:00" ia para as
+' 01:00 do dia seguinte). Fora da faixa = erro 13, como o Time.From do Power Query.
+Private Function HoraTexto(ByRef h() As String) As Double
+    Dim hh As Long, mi As Long, ss As Long
+    hh = CInt(h(0)): mi = CInt(h(1))
+    If UBound(h) >= 2 Then ss = CInt(h(2))
+    If hh < 0 Or hh > 23 Or mi < 0 Or mi > 59 Or ss < 0 Or ss > 59 Then Err.Raise 13
+    HoraTexto = (CDbl(hh) * 3600# + mi * 60# + ss) * 1000#
 End Function
 
 Private Function ParaDataHora(ByVal v As Variant) As Variant
     If EhVazio(v) Then ParaDataHora = Empty: Exit Function
     If VarType(v) = vbDate Or EhNum(v) Then ParaDataHora = DeMs(Ms(CDbl(v))): Exit Function
     If VarType(v) = vbString Then
-        Dim s As String, dpart As String, hpart As String, p() As String, h() As String
+        Dim s As String, dpart As String, hpart As String, h() As String
         s = TrimU(CStr(v))
         If InStr(s, " ") > 0 Then dpart = Left$(s, InStr(s, " ") - 1): hpart = Mid$(s, InStr(s, " ") + 1) Else dpart = s
-        p = Split(dpart, "/")
-        If UBound(p) <> 2 Then Err.Raise 13
-        ParaDataHora = DateSerial(CInt(p(2)), CInt(p(1)), CInt(p(0)))
+        ParaDataHora = DataTexto(dpart)
         If Len(hpart) > 0 Then
             h = Split(hpart, ":")
-            If UBound(h) < 1 Then Err.Raise 13
-            ParaDataHora = ParaDataHora + TimeSerial(CInt(h(0)), CInt(h(1)), IIf(UBound(h) >= 2, CInt(h(2)), 0))
+            If UBound(h) < 1 Or UBound(h) > 2 Then Err.Raise 13
+            ParaDataHora = DeMs(Ms(CDbl(ParaDataHora)) + HoraTexto(h))
         End If
         Exit Function
     End If
@@ -258,7 +283,7 @@ Private Function ParaHoraMs(ByVal v As Variant) As Variant
         Dim h() As String
         h = Split(TrimU(CStr(v)), ":")
         If UBound(h) < 1 Or UBound(h) > 2 Then Err.Raise 13
-        ParaHoraMs = (CDbl(CInt(h(0))) * 3600# + CInt(h(1)) * 60# + IIf(UBound(h) = 2, CInt(h(2)), 0)) * 1000#
+        ParaHoraMs = HoraTexto(h)                      ' ADR-088: 0-23 h, 0-59 min, 0-59 s
         Exit Function
     End If
     Err.Raise 13
@@ -635,6 +660,8 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
             st = "SEM_VALOR"
         ElseIf inatOk Then
             st = "INATIVADO"
+        ElseIf U(i, F_VL) <= 0 Then
+            st = "IMPLAUSIVEL"                       ' ADR-088 (OC-0004): CIQ <= 0 fora da estatistica (QA A11)
         Else
             st = "ATIVO"
         End If
@@ -653,6 +680,7 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
             Case "SUBSTITUIDO_MANUAL": out(i, 32) = TextoSubstituido(U, i)
             Case "SEM_DATA_HORA": out(i, 32) = "resultado do interfaceamento sem DATA_HORA (fora da corrida)"
             Case "SEM_VALOR": out(i, 32) = "resultado sem valor numerico (flag " & IIf(IsEmpty(U(i, F_FL)), "vazia", U(i, F_FL)) & ")"
+            Case "IMPLAUSIVEL": out(i, 32) = TXT_IMPLAUSIVEL
             Case Else
                 ' ADR-082: inativado pelo usuario e substituido continua INATIVADO, com o vinculo; manual: a nota
                 If Not IsEmpty(U(i, F_SUBPOR)) Then out(i, 32) = TextoSubstituido(U, i) Else out(i, 32) = U(i, F_NOTA)
@@ -1121,7 +1149,7 @@ Private Sub HerdarCorrida(ByRef U() As Variant, ByVal nU As Long)
     Dim i As Long, m As Long
     For i = 1 To nU
         If Not IsEmpty(U(i, F_SUBPOR)) Then
-            If U(i, F_ST) = "ATIVO" Or U(i, F_ST) = "INATIVADO" Or U(i, F_ST) = "SEM_VALOR" Then
+            If U(i, F_ST) = "ATIVO" Or U(i, F_ST) = "INATIVADO" Or U(i, F_ST) = "SEM_VALOR" Or U(i, F_ST) = "IMPLAUSIVEL" Then
                 m = U(i, F_SUBIDX)
                 If m > 0 Then U(i, F_COR) = U(m, F_COR): U(i, F_RUN) = U(m, F_RUN)
             End If

@@ -103,8 +103,8 @@ def main(produto, arq, saida, fix=False):
         if fix:
             fixtures(q)                                   # ja refaz a tblCQ_Final pelo PQ
         else:
-            q.run('mIntegracao.Refrescar', 'tblCQ_Final', teto=900)
-        q.run('mIntegracao.Refrescar', 'tblQA_Integracao', teto=900)
+            q.run('mIntegracao.Refrescar', 'tblCQ_Final', teto=3600)
+        q.run('mIntegracao.Refrescar', 'tblQA_Integracao', teto=3600)
         r = str(q.run('mTesteQA.TesteQA', caminho, tabela, historico, teto=900))
         print('VBA:', r, flush=True)
         if not r.startswith('OK|'):
@@ -136,6 +136,15 @@ def main(produto, arq, saida, fix=False):
                                            for c in cods)
                                    and not res['adr082']['textos'])
             print('ADR-082', json.dumps(res['adr082'], ensure_ascii=False, default=str), flush=True)
+            # ADR-088: A11 (um por IMPLAUSIVEL) e A12 (o manual em minusculas e o resultado real do mesmo RUN) nos DOIS motores
+            import equivalencia_cq as _eq
+            a12 = lambda lst: sorted({str(x[3]) for x in lst if x[1] == 'A12'})       # noqa: E731
+            res['adr088'] = {'A11_pq': res['por_codigo_pq'].get('A11', 0), 'A11_vba': res['por_codigo_vba'].get('A11', 0),
+                             'A12_pq': a12(pq), 'A12_vba': a12(vba), 'A12_esperado': sorted(_eq.ESPERADO_A12)}
+            res['adr088']['ok'] = (res['adr088']['A11_pq'] == res['adr088']['A11_vba'] and res['adr088']['A11_pq'] >= 2
+                                   and bool(_eq.ESPERADO_A12) and set(_eq.ESPERADO_A12) <= set(a12(pq))
+                                   and a12(pq) == a12(vba))
+            print('ADR-088', json.dumps(res['adr088'], ensure_ascii=False, default=str), flush=True)
         print(json.dumps({k: res[k] for k in ('linhas', 'por_codigo_pq', 'por_codigo_vba', 'ordem_das_partes_igual',
                                               'tempo_qa_vba_s')}, ensure_ascii=False), flush=True)
         for k in ('so_no_pq', 'so_no_vba'):

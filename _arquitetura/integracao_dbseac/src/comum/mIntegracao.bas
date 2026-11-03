@@ -714,6 +714,13 @@ Private Sub PrepararLinha(ByVal lo As ListObject, ByVal r As Long)
             If Len(Trim$(CStr(Celula(lo, r, "MATRIZ").Value))) = 0 Then
                 Celula(lo, r, "MATRIZ").Value = Cfg("MATRIZ_PADRAO")
             End If
+            ' ADR-088 (OC-0001): EQUIPAMENTO, MATRIZ e ANALITO na grafia do cadastro ("dimension 1" -> "DIMENSION 1",
+            ' "glicose" -> "Glicose"). O ETL compara texto exato e o motor junta em maiusculas: com a grafia diferente o
+            ' manual ganhava a corrida de um resultado real e tomava o lugar dele no grafico. Os dois motores de dados
+            ' (VBA e PQ) leem esta tabela ja normalizada. Sem correspondencia no cadastro, fica como foi digitado.
+            NormalizarCadastro lo, r, "EQUIPAMENTO"
+            NormalizarCadastro lo, r, "MATRIZ"
+            NormalizarCadastro lo, r, "ANALITO"
             ' ADR-082: SUBSTITUI_ID normalizado como o ID da aba Inativar ("54565" -> "HEM-54565"). Tabela ainda sem a
             ' coluna (antes do instalar_adr082): nada
             If TemColuna(lo, COL_SUBST) Then
@@ -725,6 +732,105 @@ Private Sub PrepararLinha(ByVal lo As ListObject, ByVal r As Long)
             End If
             Carimbar Celula(lo, r, "REGISTRADO_EM"), Celula(lo, r, "USUARIO")
     End Select
+End Sub
+
+' ADR-088 (OC-0001): troca o texto da celula pela grafia do cadastro quando ele so difere em maiusculas/minusculas ou em
+' espacos nas pontas. Nao inventa nada: sem correspondencia unica no cadastro, a celula fica como esta.
+Private Sub NormalizarCadastro(ByVal lo As ListObject, ByVal r As Long, ByVal coluna As String)
+    Dim c As Range, v As Variant, k As String, d As Object
+    On Error GoTo fim                          ' a normalizacao nunca derruba o preparo das entradas
+    Set c = Celula(lo, r, coluna)
+    v = c.Value
+    If VarType(v) <> vbString Then Exit Sub
+    k = ChaveCadastro(v)
+    If Len(k) = 0 Then Exit Sub
+    Set d = CadastroManual()(coluna)
+    If d.Exists(k) Then
+        If CStr(d(k)) <> CStr(v) Then c.Value = d(k)
+    End If
+fim:
+End Sub
+
+Private Function ChaveCadastro(ByVal v As Variant) As String
+    ChaveCadastro = UCase$(Trim$(Replace(CStr(v), ChrW$(160), " ")))
+End Function
+
+' ADR-088: o cadastro de cada campo -- MAIUSCULAS -> grafia. EQUIPAMENTO: CFG EQUIPAMENTO_PADRAO e as listas de
+' validacao do campo (aba Digitar Resultados) e do seletor do Painel; MATRIZ: CFG MATRIZ_PADRAO, de/para e a lista do
+' campo; ANALITO: de/para (ANALITO_QCINI, o que o ETL chama de cadastrado) e o catalogo do motor (lstAnalitos). Guardado
+' por 5 s: a passada do ATUALIZAR e a colagem de muitas linhas montam uma vez so.
+Private Function CadastroManual() As Object
+    Static cache As Object, t0 As Double
+    Dim d As Object, eq As Object, mz As Object, an As Object, lo As ListObject, loM As ListObject
+    If Not cache Is Nothing Then
+        If Abs(Timer - t0) < 5 Then Set CadastroManual = cache: Exit Function
+    End If
+    Set eq = CreateObject("Scripting.Dictionary")
+    Set mz = CreateObject("Scripting.Dictionary")
+    Set an = CreateObject("Scripting.Dictionary")
+    On Error Resume Next
+    Set lo = AcharTabela("tblDeParaAnalitos")
+    If Not lo Is Nothing Then
+        GuardarCadastroRng an, lo.ListColumns("ANALITO_QCINI").DataBodyRange
+        GuardarCadastroRng mz, lo.ListColumns("MATRIZ").DataBodyRange
+    End If
+    GuardarCadastroRng an, ThisWorkbook.Names("lstAnalitos").RefersToRange
+    GuardarCadastro eq, Cfg("EQUIPAMENTO_PADRAO")
+    GuardarCadastro mz, Cfg("MATRIZ_PADRAO")
+    Set loM = AcharTabela(TB_MANUAL)
+    If Not loM Is Nothing Then
+        GuardarValidacao eq, loM.ListColumns("EQUIPAMENTO").DataBodyRange.Cells(1, 1)
+        GuardarValidacao mz, loM.ListColumns("MATRIZ").DataBodyRange.Cells(1, 1)
+        GuardarValidacao an, loM.ListColumns("ANALITO").DataBodyRange.Cells(1, 1)
+    End If
+    GuardarValidacao eq, ThisWorkbook.Names("selEquipamento").RefersToRange
+    On Error GoTo 0
+    Set d = CreateObject("Scripting.Dictionary")
+    d.Add "EQUIPAMENTO", eq
+    d.Add "MATRIZ", mz
+    d.Add "ANALITO", an
+    Set cache = d
+    t0 = Timer
+    Set CadastroManual = d
+End Function
+
+' a 1a grafia vale (de/para antes do catalogo); a mesma chave com outra grafia nao substitui
+Private Sub GuardarCadastro(ByVal d As Object, ByVal v As Variant)
+    Dim t As String
+    If IsError(v) Or IsEmpty(v) Or IsNull(v) Or IsObject(v) Or IsArray(v) Then Exit Sub
+    t = Trim$(Replace(CStr(v), ChrW$(160), " "))
+    If Len(t) = 0 Then Exit Sub
+    If Not d.Exists(UCase$(t)) Then d.Add UCase$(t), t
+End Sub
+
+Private Sub GuardarCadastroRng(ByVal d As Object, ByVal rng As Range)
+    Dim v As Variant, i As Long, j As Long
+    If rng Is Nothing Then Exit Sub
+    v = rng.Value
+    If Not IsArray(v) Then GuardarCadastro d, v: Exit Sub
+    For i = 1 To UBound(v, 1)
+        For j = 1 To UBound(v, 2)
+            GuardarCadastro d, v(i, j)
+        Next j
+    Next i
+End Sub
+
+' lista de validacao da celula: literal ("DIMENSION 1,DIMENSION 2") ou intervalo/nome ("=lstAnalitos")
+Private Sub GuardarValidacao(ByVal d As Object, ByVal cel As Range)
+    Dim f As String, p As Variant, rng As Range
+    On Error GoTo fim
+    If cel Is Nothing Then Exit Sub
+    If cel.Validation.Type <> 3 Then Exit Sub                    ' xlValidateList
+    f = CStr(cel.Validation.Formula1)
+    If Left$(f, 1) = "=" Then
+        Set rng = cel.Worksheet.Range(Mid$(f, 2))
+        GuardarCadastroRng d, rng
+    Else
+        For Each p In Split(Replace(f, ";", ","), ",")
+            GuardarCadastro d, p
+        Next p
+    End If
+fim:
 End Sub
 
 ' A tabela tem a coluna? (ADR-082: SUBSTITUI_ID so existe depois do instalar_adr082)

@@ -702,8 +702,11 @@ def cabecalho(ws, produto, nlv, ult, param, rotulos_regras, falta_media, alvo):
             'E': f'=IF(INDEX(engPainel,{n},5)="","",INDEX(engPainel,{n},5))',
             'F': f'=IF(INDEX(engPainel,{n},6)="","",INDEX(engPainel,{n},6))',
             'G': _est('G', ult, n),
-            'H': f'=IF($E{r}="","",$E{r}*1.65+ABS(IF(ISNUMBER($G{r}),$G{r},0)))',
-            'I': f'=IF(OR($E{r}="",$E{r}=0,$F{r}=""),"",($F{r}-ABS(IF(ISNUMBER($G{r}),$G{r},0)))/$E{r})',
+            # ADR-088 (OC-0002): ET e Sigma so com bias numerico (ADR-030; ADR-033: SEM EP nao vira zero). O guarda
+            # ABS(IF(ISNUMBER(G),G,0)) tinha voltado por aqui e mostrava ET = 1,65*CV sem CEQ. O I7 do arquivo e o
+            # INDEX/MATCH da Estatistica L (ADR-071 D2); aqui fica so a regra
+            'H': f'=IF(OR($E{r}="",NOT(ISNUMBER($G{r}))),"",$E{r}*1.65+ABS($G{r}))',
+            'I': f'=IF(OR($E{r}="",$E{r}=0,$F{r}="",NOT(ISNUMBER($G{r}))),"",($F{r}-ABS($G{r}))/$E{r})',
             'J': (f'=IF(Calc!${param[n - 1]}$1="","SEM MÉDIA/DP",'
                   f'IF(INDEX(engPainel,{n},10)="","",INDEX(engPainel,{n},10)))'),
             'L': f'N{n}',

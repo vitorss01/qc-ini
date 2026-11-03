@@ -88,7 +88,13 @@ sozinho), marque ou não **Registrar-LJ** (X vermelho), escreva o **motivo** e c
    - **CONFLITO_MANUAL** = o mesmo resultado já veio pelo interfaceamento (mesma chave, até 30 min) e vale o
      automático. O manual fica guardado, fora do cálculo. Para o manual valer no lugar dele, use o SUBSTITUI_ID
      (abaixo);
-   - **MANUAL_INCOMPLETO** = falta campo (o DETALHE diz qual).
+   - **MANUAL_INCOMPLETO** = falta campo (o DETALHE diz qual). Data ou hora que não existe (31/02, 25:00), mesmo
+     colada, também cai aqui (ADR-088);
+   - **IMPLAUSIVEL** = resultado ≤ 0 (manual ou do interfaceamento): fica fora da estatística, do gráfico, do
+     Westgard, do Sigma e da incerteza, e o QA lista o ID (A11). Confira no equipamento; se for erro, registre o
+     motivo na aba Inativar (ADR-088).
+   - Equipamento, matriz e analito digitados em minúsculas (ou com espaço nas pontas) passam sozinhos para a grafia do
+     cadastro ("glicose" → "Glicose").
 
 **Substituir um resultado do interfaceamento pelo manual (ADR-082 — por escolha, nunca sozinho):**
 

@@ -131,9 +131,9 @@ def fixtures(q):
         dict(base, ID_REGISTRO='MAN_0006', DATA=_dt.datetime(2027, 1, 1), HORA='08:00', RESULTADO=1.0),  # futuro
         dict(base, ID_REGISTRO='MAN_0007', DATA=dia, HORA=hm(80), NIVEL=9, RESULTADO=1.0),   # nivel invalido
         dict(base, ID_REGISTRO='MAN_0008', DATA=dia, HORA=hm(90), RESULTADO='abc'),          # resultado invalido
-    ] + fixture_fim_do_dia(cab, d) + subs)
+    ] + fixture_fim_do_dia(cab, d) + subs + fixture_adr088(cab, a, d))
     q.ex.xl.EnableEvents = True
-    q.run('mIntegracao.Refrescar', 'tblCQ_Final', teto=900)
+    q.run('mIntegracao.Refrescar', 'tblCQ_Final', teto=3600)   # ADR-088: o refresh do PQ na Hema passa de 900 s (medido de 170 a 1130 s; o S6 do qa_sync tem teto proprio)
 
 
 def fixture_fim_do_dia(cab, d):
@@ -154,6 +154,86 @@ def fixture_fim_do_dia(cab, d):
                     'NIVEL': 1, 'ANALITO': col(u, 'ANALITO'), 'DATA': _dt.datetime(dh.year, dh.month, dh.day),
                     'HORA': '23:50', 'RESULTADO': 999.5, 'MOTIVO': 'QA fim do dia', 'USUARIO': 'QA'})
     return out
+
+
+# ADR-088: {MAN_00nn: (STATUS esperado, trecho do MOTIVO_EXCLUSAO_AUTOMATICA)} -- conferido em conferir_adr088
+ESPERADO_ADR088 = {
+    'MAN_0041': ('MANUAL_INCOMPLETO', 'DATA'),          # 31/02/2026 (nao existe)
+    'MAN_0042': ('MANUAL_INCOMPLETO', 'DATA'),          # 29/02/2026 (2026 nao e bissexto)
+    'MAN_0043': ('MANUAL_INCOMPLETO', 'DATA'),          # 00/01/2026
+    'MAN_0044': ('MANUAL_INCOMPLETO', 'DATA'),          # 32/01/2026
+    'MAN_0045': ('MANUAL_INCOMPLETO', 'DATA'),          # 15/13/2026
+    'MAN_0046': ('MANUAL_INCOMPLETO', 'HORA'),          # 25:00
+    'MAN_0047': (None, None),                           # 28/02/2026 em texto: valida (nao e MANUAL_INCOMPLETO)
+    'MAN_0048': (None, None),                           # 29/02/2028 em texto: valida
+    'MAN_0049': ('IMPLAUSIVEL', 'resultado <= 0'),      # -1
+    'MAN_0050': ('IMPLAUSIVEL', 'resultado <= 0'),      # 0
+    'MAN_0051': ('MANUAL_INCOMPLETO', 'HORA'),          # 10:60
+}
+
+
+def fixture_adr088(cab, a, d):
+    """ADR-088 (OC-0005/OC-0004): DATA/HORA em TEXTO (como colado, apostrofo = texto) que nao existe, datas validas em
+    texto e resultado <= 0, na chave do resultado a. REGISTRADO_EM em 2030: nenhum "posterior ao lancamento"."""
+    import datetime as _dt
+    col = lambda r, n: r[cab.index(n)]                                          # noqa: E731
+    dh = col(a, 'DATA_HORA').replace(tzinfo=None)
+    dia = _dt.datetime(dh.year, dh.month, dh.day)
+    b = {'EQUIPAMENTO': col(a, 'EQUIPAMENTO'), 'LOTE': col(a, 'LOTE'), 'NIVEL': col(a, 'NIVEL'),
+         'ANALITO': col(a, 'ANALITO'), 'MOTIVO': 'QA adr088', 'USUARIO': 'QA', 'REGISTRADO_EM': _dt.datetime(2030, 1, 1, 12)}
+    hm = lambda m: (dh + _dt.timedelta(minutes=m)).strftime('%H:%M')            # noqa: E731
+    return [dict(b, ID_REGISTRO='MAN_0041', DATA="'31/02/2026", HORA='08:00', RESULTADO=1.5),
+            dict(b, ID_REGISTRO='MAN_0042', DATA="'29/02/2026", HORA='08:00', RESULTADO=1.5),
+            dict(b, ID_REGISTRO='MAN_0043', DATA="'00/01/2026", HORA='08:00', RESULTADO=1.5),
+            dict(b, ID_REGISTRO='MAN_0044', DATA="'32/01/2026", HORA='08:00', RESULTADO=1.5),
+            dict(b, ID_REGISTRO='MAN_0045', DATA="'15/13/2026", HORA='08:00', RESULTADO=1.5),
+            dict(b, ID_REGISTRO='MAN_0046', DATA="'10/10/2026", HORA="'25:00", RESULTADO=1.5),
+            dict(b, ID_REGISTRO='MAN_0047', DATA="'28/02/2026", HORA="'08:01", RESULTADO=1.5),
+            dict(b, ID_REGISTRO='MAN_0048', DATA="'29/02/2028", HORA="'08:02", RESULTADO=1.5),
+            dict(b, ID_REGISTRO='MAN_0049', DATA=dia, HORA=hm(120), RESULTADO=-1),
+            dict(b, ID_REGISTRO='MAN_0050', DATA=dia, HORA=hm(180), RESULTADO=0),
+            dict(b, ID_REGISTRO='MAN_0051', DATA="'11/10/2026", HORA="'10:60", RESULTADO=1.5)] + _fixture_a12(cab, d)
+
+
+def _fixture_a12(cab, d):
+    """ADR-088 (A12): o defeito da G1 montado de proposito -- manual com EQUIPAMENTO e ANALITO em MINUSCULAS no instante
+    (+1 min) de um resultado ATIVO da 1a corrida do dia. Sem o preparo das entradas (aqui os motores leem a tabela crua), o
+    manual forma a corrida 1 da sua chave "minuscula" e ganha o MESMO RUN: os dois motores tem de dar o A12 nos dois IDs."""
+    import datetime as _dt
+    col = lambda r, n: r[cab.index(n)]                                          # noqa: E731
+    cand = [r for r in d[800:] if col(r, 'STATUS_ANALITICO') == 'ATIVO' and col(r, 'CORRIDA_NO_DIA') == 1
+            and col(r, 'ORIGEM_RESULTADO') == 'INTERFACEAMENTO' and hasattr(col(r, 'DATA_HORA'), 'year')]
+    if not cand:
+        return []
+    r = cand[0]
+    dh = col(r, 'DATA_HORA').replace(tzinfo=None) + _dt.timedelta(minutes=1)
+    ESPERADO_A12.clear()
+    ESPERADO_A12.extend(['MAN_0052', str(col(r, 'ID_REGISTRO'))])
+    return [{'ID_REGISTRO': 'MAN_0052', 'EQUIPAMENTO': str(col(r, 'EQUIPAMENTO')).lower(), 'LOTE': col(r, 'LOTE'),
+             'NIVEL': col(r, 'NIVEL'), 'ANALITO': str(col(r, 'ANALITO')).lower(), 'MATRIZ': col(r, 'MATRIZ'),
+             'DATA': _dt.datetime(dh.year, dh.month, dh.day), 'HORA': dh.strftime('%H:%M:%S'), 'RESULTADO': 1.5,
+             'MOTIVO': 'QA adr088 A12', 'USUARIO': 'QA', 'REGISTRADO_EM': _dt.datetime(2030, 1, 1, 12)}]
+
+
+ESPERADO_A12 = []
+
+
+def conferir_adr088(cab, dados):
+    ix = {c: cab.index(c) for c in ('ID_REGISTRO', 'STATUS_ANALITICO', 'MOTIVO_EXCLUSAO_AUTOMATICA', 'PARTICIPA_ESTATISTICA')}
+    por_id = {str(r[ix['ID_REGISTRO']]): r for r in dados}
+    falhas = []
+    for man, (st, trecho) in sorted(ESPERADO_ADR088.items()):
+        r = por_id.get(man)
+        if r is None:
+            falhas.append(f'{man}: ausente')
+            continue
+        st_r, mot = str(r[ix['STATUS_ANALITICO']]), str(r[ix['MOTIVO_EXCLUSAO_AUTOMATICA']] or '')
+        ok = (st_r == st and trecho in mot) if st else st_r != 'MANUAL_INCOMPLETO'
+        if st == 'IMPLAUSIVEL':
+            ok = ok and r[ix['PARTICIPA_ESTATISTICA']] != 'SIM'
+        if not ok:
+            falhas.append(f'{man}: {st_r} {mot[:100]!r} (esperado {st} {trecho!r})')
+    return not falhas, falhas
 
 
 # ADR-082: o que cada manual da fixture_substitui deve dar -- {MAN_00nn: (caso, ID do alvo)}; conferido em conferir_adr082
@@ -372,6 +452,8 @@ def main(produto, arq, saida, n=3, fix=False):
                   'OK' if res['adr082_ok'] else 'FALHOU', flush=True)
             for x in res['adr082_falhas']:
                 print('  ADR-082', x, flush=True)
+            res['adr088_ok'], res['adr088_falhas'] = conferir_adr088(cab_pq, dados_pq)
+            print('ADR-088 (datas em texto, <= 0) no PQ:', 'OK' if res['adr088_ok'] else 'FALHOU', res['adr088_falhas'], flush=True)
         res['exemplos'] = ex
         print(json.dumps({k: res[k] for k in ('linhas', 'colunas_so_vba', 'colunas_pq_nao_comparadas', 'divergencias')}, ensure_ascii=False), flush=True)
         for c, e in ex.items():

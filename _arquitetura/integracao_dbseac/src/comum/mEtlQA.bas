@@ -2,7 +2,8 @@ Attribute VB_Name = "mEtlQA"
 ' ============================================================================
 '  mEtlQA -- conferencia da integracao (tblQA_Integracao) em VBA (ADR-079)
 '
-'  Porte de pq/QA_INTEGRACAO.m (26 codigos: E01-E12, A01-A10, I01-I04), com as mesmas regras e os mesmos textos.
+'  Porte de pq/QA_INTEGRACAO.m (28 codigos: E01-E12, A01-A12, I01-I04), com as mesmas regras e os mesmos textos.
+'  ADR-088: A11 (resultado <= 0, IMPLAUSIVEL) e A12 (mais de um participante na mesma corrida e nivel, sem caixa).
 '  ADR-082: E12 (SUBSTITUI_ID invalido) e I04 (resultado do interfaceamento substituido por manual); textos do A01, A06,
 '  A09, E09 e I04 que nao mandam desfazer uma substituicao valida nem acusam o que ela ja resolveu.
 '  Le a tblCQ_Final JA CALCULADA em memoria (o PQ gastava 17-52 s so copiando 1,33 milhao de celulas da planilha
@@ -664,6 +665,42 @@ proxR:
                 "do equipamento padrao (CFG EQUIPAMENTO_PADRAO = " & eqPad & "). Se for o mesmo aparelho com outro nome, corrija o lancamento."
         Next k
     End If
+
+    ' ---- A11 (ADR-088, OC-0004): resultado <= 0 fora da estatistica (STATUS_ANALITICO = IMPLAUSIVEL), um achado por ID
+    For i = 1 To nF
+        If F(i, Q_ST) = "IMPLAUSIVEL" Then
+            Achado "ALERTA", "A11", "Resultado <= 0 fora da estatistica (implausivel)", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), _
+                "resultado " & NumTxt(F(i, Q_RES)) & " <= 0: implausivel para material de controle; fica fora da estatistica, " & _
+                "do LJ, do Westgard, do Sigma e da u(Rw). Confira no equipamento; se for erro de transmissao ou de digitacao, " & _
+                "registre o motivo na aba Inativar."
+        End If
+    Next i
+
+    ' ---- A12 (ADR-088, OC-0001; defesa do ADR-057 dec. 6): mais de um resultado PARTICIPANDO da mesma corrida e nivel
+    ' (equipamento, lote, nivel, analito, RUN; equipamento e analito sem diferenciar maiusculas -- o motor junta assim e
+    ' o grafico guarda um valor por corrida e nivel: um tomaria o lugar do outro). Um achado por ID.
+    Dim kp As Object, kpi() As String, nKp As Long
+    Set kp = CreateObject("Scripting.Dictionary")
+    ReDim kpi(1 To IIf(nF > 0, nF, 1))
+    For i = 1 To nF
+        If F(i, Q_PART) = SIM And Not Vazio(F(i, Q_RUN)) Then
+            kpi(i) = UCase$(TxtOu(F(i, Q_EQ), "")) & "|" & TxtOu(F(i, Q_LT), "") & "|" & TxtOu(F(i, Q_NV), "") & "|" & _
+                     UCase$(TxtOu(F(i, Q_AN), "")) & "|" & TxtOu(F(i, Q_RUN), "")
+            kp(kpi(i)) = kp(kpi(i)) + 1
+        End If
+    Next i
+    For i = 1 To nF
+        If Len(kpi(i)) > 0 Then
+            nKp = kp(kpi(i))
+            If nKp > 1 Then
+                Achado "ALERTA", "A12", "Mais de um resultado na mesma corrida e nivel (participando)", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), _
+                    nKp & " resultados participam da corrida " & TxtOu(F(i, Q_RUN), "?") & " (nivel " & TxtOu(F(i, Q_NV), "?") & _
+                    ", lote " & TxtOu(F(i, Q_LT), "?") & ", equipamento '" & TxtOu(F(i, Q_EQ), "?") & "', analito '" & _
+                    TxtOu(F(i, Q_AN), "?") & "'; equipamento e analito comparados sem diferenciar maiusculas). O grafico mostra " & _
+                    "um so por corrida e nivel: corrija a grafia do lancamento manual ou inative o repetido."
+            End If
+        End If
+    Next i
 
     MarcaQ "resto"
     CalcularQA = Ordenar()

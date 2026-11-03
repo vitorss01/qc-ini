@@ -50,6 +50,9 @@
 //                          a inativacao NAO vale e o QA acusa E10/E11)
 //                            REGISTRAR - LJ marcado (padrao) ...... X_VERMELHO
 //                            REGISTRAR - LJ desmarcado ............ NAO_PLOTAR
+//    IMPLAUSIVEL ......... (ADR-088, autorizado em 03/11/2026)      -> nao participa, nao plota (QA A11)
+//                          resultado <= 0 que seria ATIVO: CIQ
+//                          nao tem valor <= 0 plausivel
 //    ATIVO ............... todo o resto (interface ou manual)       -> participa, ponto NORMAL
 //
 //  JUSTIFICATIVA (ADR-070): o MOTIVO escrito na propria linha da aba Inativar OU um
@@ -448,6 +451,7 @@ let
                  else if [DATA_HORA] = null then "SEM_DATA_HORA"            // D16: fora da corrida e do calculo; QA E09
                  else if [VALOR] = null then "SEM_VALOR"
                  else if inat then "INATIVADO"
+                 else if [VALOR] <= 0 then "IMPLAUSIVEL"                // ADR-088 (OC-0004): CIQ <= 0; QA A11
                  else "ATIVO",
             lj = st = "ATIVO" or (st = "INATIVADO" and [_LJ]),
             txtSubst = "substituido pelo manual " & ([_S_MAN] ?? "?") & " (motivo: " & ([_S_MOT] ?? "?") & ")",
@@ -457,6 +461,7 @@ let
                      else if st = "SUBSTITUIDO_MANUAL" then txtSubst
                      else if st = "SEM_DATA_HORA" then "resultado do interfaceamento sem DATA_HORA (fora da corrida)"
                      else if st = "SEM_VALOR" then "resultado sem valor numerico (flag " & ([FLAG] ?? "vazia") & ")"
+                     else if st = "IMPLAUSIVEL" then "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)"
                      else if subst then txtSubst              // inativado pelo usuario: continua INATIVADO, com o vinculo
                      else [_NOTA]                            // manual ATIVO/INATIVADO: nota do SUBSTITUI_ID (ou nada)
         in [
@@ -469,7 +474,7 @@ let
             ID_RELACIONADO = if st = "DUPLICIDADE_ORIGEM" then [_ID_DUP_DE] else if st = "CONFLITO_MANUAL" then [_conf][id]
                              else if subst then [_S_MAN] else if [_SUBOK] = true then [_SUBST_DIG] else null,
             INATIVACAO_REGISTRADA = if inat then SIM else NAO,
-            CORRIDA_REAL = List.Contains({"ATIVO", "INATIVADO", "SEM_VALOR"}, st)
+            CORRIDA_REAL = List.Contains({"ATIVO", "INATIVADO", "SEM_VALOR", "IMPLAUSIVEL"}, st)   // ADR-088: evento real
         ]),
     Exp = Table.ExpandRecordColumn(Classif, "_cls", {"STATUS_ANALITICO", "PARTICIPA_ESTATISTICA",
             "REGISTRAR_RESULTADO_NO_LJ", "TIPO_PLOTAGEM_LJ", "MOTIVO_EXCLUSAO_AUTOMATICA", "ID_RELACIONADO",

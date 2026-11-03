@@ -32,7 +32,8 @@ NOVOS = ['mIncerteza',                        # ADR-064
 CLASSES = ['clsCht']
 # modulos de aba: (nome da aba, arquivo-fonte)
 ABAS = [('Painel', 'Painel.cls'), ('Configuração', 'Configuracao.cls'),
-        ('Registros', 'Registros.cls')]                  # ADR-084: ID do resultado -> calibracao
+        ('Registros', 'Registros.cls'),                  # ADR-084: ID do resultado -> calibracao
+        ('Estatística', 'Estatistica.cls')]              # ADR-088: Hema Ano De/Ate refaz C:F; Bio versionado (src/<produto>)
 ESPEC = 'Especificações'
 
 

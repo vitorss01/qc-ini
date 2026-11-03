@@ -9,7 +9,8 @@
 //  Le as tabelas JA carregadas (tblCQ_Final e as de entrada) -- roda depois do
 //  DB_CQ_FINAL e nao refaz nenhuma regra: so CONFERE o que ele decidiu.
 //  Unica releitura da origem: A03, que compara o recebido com o DB_SEAC atual.
-//  26 codigos: E01-E12, A01-A10, I01-I04 (ADR-082: E12 SUBSTITUI_ID invalido; I04 substituido por manual).
+//  28 codigos: E01-E12, A01-A12, I01-I04 (ADR-082: E12 SUBSTITUI_ID invalido; I04 substituido por manual;
+//  ADR-088: A11 resultado <= 0 fora da estatistica; A12 mais de um participante na mesma corrida e nivel).
 // =====================================================================
 let
     C = CFG_INTEGRACAO,
@@ -348,8 +349,31 @@ let
                  "Westgard da Hematologia sao do equipamento padrao (CFG EQUIPAMENTO_PADRAO = " & EqPad & "). Se for o mesmo " &
                  "aparelho com outro nome, corrija o lancamento."),
 
+    // A11 (ADR-088, OC-0004) -- resultado <= 0 fora da estatistica (STATUS_ANALITICO = IMPLAUSIVEL); um achado por ID
+    A11 = Achado("ALERTA", "A11", "Resultado <= 0 fora da estatistica (implausivel)",
+            Table.SelectRows(F, each [STATUS_ANALITICO] = "IMPLAUSIVEL"),
+            each "resultado " & NumTxt(_[RESULTADO]) & " <= 0: implausivel para material de controle; fica fora da estatistica, " &
+                 "do LJ, do Westgard, do Sigma e da u(Rw). Confira no equipamento; se for erro de transmissao ou de digitacao, " &
+                 "registre o motivo na aba Inativar."),
+
+    // A12 (ADR-088, OC-0001; defesa do ADR-057 dec. 6) -- mais de um resultado PARTICIPANDO da mesma corrida e nivel
+    //        (equipamento, lote, nivel, analito, RUN; equipamento e analito sem diferenciar maiusculas -- o motor junta
+    //        assim e o grafico guarda um valor por corrida e nivel: um tomaria o lugar do outro). Um achado por ID.
+    KPart = (r as record) as text => Text.Upper(Txt(r[EQUIPAMENTO]) ?? "") & "|" & (Txt(r[LOTE]) ?? "") & "|" &
+                (Txt(r[NIVEL]) ?? "") & "|" & Text.Upper(Txt(r[ANALITO]) ?? "") & "|" & (Txt(r[RUN]) ?? ""),
+    Part = Table.Buffer(Table.AddColumn(Table.SelectRows(F, each [PARTICIPA_ESTATISTICA] = SIM and [RUN] <> null),
+                "_KP", each KPart(_), type text)),
+    PartRep = Table.RenameColumns(Table.SelectRows(Table.Group(Part, {"_KP"}, {{"_n", each Table.RowCount(_), Int64.Type}}),
+                each [_n] > 1), {{"_KP", "_KP2"}}),
+    A12 = Achado("ALERTA", "A12", "Mais de um resultado na mesma corrida e nivel (participando)",
+            Table.Join(Part, {"_KP"}, PartRep, {"_KP2"}, JoinKind.Inner),
+            each Text.From(_[_n]) & " resultados participam da corrida " & (Txt(_[RUN]) ?? "?") & " (nivel " & (Txt(_[NIVEL]) ?? "?") &
+                 ", lote " & (Txt(_[LOTE]) ?? "?") & ", equipamento '" & (Txt(_[EQUIPAMENTO]) ?? "?") & "', analito '" &
+                 (Txt(_[ANALITO]) ?? "?") & "'; equipamento e analito comparados sem diferenciar maiusculas). O grafico mostra " &
+                 "um so por corrida e nivel: corrija a grafia do lancamento manual ou inative o repetido."),
+
     Tudo = Table.Combine({E01, E02, E03, E04, E05, E06, E07, E08, E09, E10, E11, E12, A01, A02, A03, A04, A05, A06, A07, A08, A09, A10,
-                          I01, I02, I03, I04}),
+                          A11, A12, I01, I02, I03, I04}),
     Peso = (s as text) as number => if s = "ERRO" then 1 else if s = "ALERTA" then 2 else 3,
     Ordenado = Table.Sort(Tudo, {{each Peso([SEVERIDADE]), Order.Ascending}, {"CODIGO", Order.Ascending}, {"DATA_HORA", Order.Ascending}}),
     Tipos = Table.TransformColumnTypes(Ordenado, {{"SEVERIDADE", type text}, {"CODIGO", type text}, {"TESTE", type text},

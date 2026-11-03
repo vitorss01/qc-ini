@@ -433,6 +433,10 @@ carregar:
     InvalidarLotes
     mEstatistica.InvalidarParametros      ' ADR-050: o banco nao mudou; o indice fica
     mEstatistica.RecalcularAnalitoAtual
+    ' ADR-088 (OC-0003): a aba Estatistica acompanha o lote novo. Na Hematologia n/Media/DP/CV (C:F) sao gravados pelo VBA
+    ' a partir de B4 (= lote em analise): sem isto o B4 mudava e os numeros continuavam os do lote anterior (associacao
+    ' errada entre lotes) ate o proximo ATUALIZAR. Na Bioquimica refaz o mesmo bloco do Eng_Saida (engEstat).
+    If Not eqMudou Then mEstatistica.AtualizarEstatisticaAba     ' com o equipamento mudado o EquipMudou refaz tudo
     mApp.fim
     If eqMudou Then mEstatistica.EquipMudou                ' ADR-077: a Estatistica e a incerteza do outro equipamento
     Exit Sub

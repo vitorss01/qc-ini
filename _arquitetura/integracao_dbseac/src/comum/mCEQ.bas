@@ -685,6 +685,25 @@ Private Function ModoNovo(ByVal rodada As Variant) As Boolean
     ModoNovo = (ModoRodada(rodada) >= MR_CONJUNTO)
 End Function
 
+' ADR-088 (OC-0006, autorizado pelo usuario em 03/11/2026; ADR-064 A-01): a amostra entra no bias do ET/Sigma
+' (BiasEQ, BiasEQMemoria) pelo MESMO criterio do ViesEQ -- avaliada pelo provedor (Status_Padronizado <> NAO AVALIADO),
+' resultado e alvo numericos e diferentes de zero (perto do limite de deteccao o bias relativo vira +-100% e descreve a
+' resolucao do laudo, nao o metodo) e cada CHAVE uma vez (a linha digitada em dobro conta uma vez). Antes so o ViesEQ
+' filtrava: o mesmo CEQ tinha duas selecoes, e a mais fragil alimentava ET, Sigma e plano. As duas etapas e a media de
+' |bias| (ADR-035, D-01/ADR-072) nao mudam. vistos = chaves ja contadas nesta chamada.
+Private Function AmostraDoVies(ByRef d As Variant, ByVal i As Long, ByVal vistos As Object) As Boolean
+    Dim ch As String
+    If Igual(d(i, EQ_C_STATUS), "NAO AVALIADO") Then Exit Function
+    If Not NumOk(d(i, EQ_C_XLAB)) Or Not NumOk(d(i, EQ_C_XREF)) Then Exit Function
+    If CDbl(d(i, EQ_C_XLAB)) = 0 Or CDbl(d(i, EQ_C_XREF)) = 0 Then Exit Function
+    ch = UCase$(Trim$(TxtEQ(d(i, EQ_C_CHAVE))))
+    If Len(ch) > 0 Then
+        If vistos.Exists(ch) Then Exit Function
+        vistos(ch) = 1
+    End If
+    AmostraDoVies = True
+End Function
+
 ' ---------------------------------------------------------------------------
 ' Bias do ensaio de proficiencia, consolidado.
 '
@@ -737,6 +756,7 @@ Public Function BiasEQ(ByVal analito As String, ByVal anoRef As Variant, _
     Dim cnt() As Long
     Dim nRod As Long, nAmostras As Long
     Dim acc As Double, mr As Double, det As String, novo As Boolean
+    Dim vistos As Object
 
     BiasEQ = SEM_EP
     If Len(Trim$(analito)) = 0 Then Exit Function
@@ -756,6 +776,7 @@ Public Function BiasEQ(ByVal analito As String, ByVal anoRef As Variant, _
     If md = "ANO" Then BiasEQ = anoVig: Exit Function
     novo = ModoNovo(rodada)
     Set idx = CreateObject("Scripting.Dictionary")
+    Set vistos = CreateObject("Scripting.Dictionary")
     cap = 8
     ReDim rot(1 To cap)
     ReDim somaAbs(1 To cap)
@@ -768,6 +789,7 @@ Public Function BiasEQ(ByVal analito As String, ByVal anoRef As Variant, _
         If Not NumOk(d(i, EQ_C_ANO)) Then GoTo prox
         If Not AnoEntra(CLng(Val(CStr(d(i, EQ_C_ANO)))), anoVig, novo) Then GoTo prox
         If Not NumOk(d(i, col)) Then GoTo prox
+        If Not AmostraDoVies(d, i, vistos) Then GoTo prox     ' ADR-088 (OC-0006): o mesmo filtro do ViesEQ
 
         ' ADR-071: a rodada e ANO|ROTULO (como no ViesEQ) -- rotulos repetidos em anos diferentes
         ' ('A', '1') nao viram uma rodada so. No modo TODAS so ha um ano: nada muda.
@@ -956,7 +978,7 @@ Public Function BiasEQMemoria(ByVal analito As String, ByVal anoRef As Variant, 
                               Optional ByVal rodada As Variant = "") As String
     rodada = RodadaEfetiva(rodada, anoRef)            ' ADR-072: Ano EP = TODOS
     Dim d As Variant, i As Long, anoVig As Long, s As String, n As Long
-    Dim somaAbs As Double, somaSig As Double, novo As Boolean
+    Dim somaAbs As Double, somaSig As Double, novo As Boolean, vistos As Object
 
     On Error GoTo falhou
     d = LerBanco(analito)
@@ -967,12 +989,14 @@ Public Function BiasEQMemoria(ByVal analito As String, ByVal anoRef As Variant, 
     anoVig = AnoVigente(d, analito, anoRef, provedor, rodada, EQ_C_BIASABS)
     If anoVig = -32768 Then BiasEQMemoria = "sem rodada utilizavel": Exit Function
     novo = ModoNovo(rodada)
+    Set vistos = CreateObject("Scripting.Dictionary")
 
     For i = 1 To UBound(d, 1)
         If Not Casa(d, i, analito, provedor, rodada, anoRef) Then GoTo prox
         If Not NumOk(d(i, EQ_C_ANO)) Then GoTo prox
         If Not AnoEntra(CLng(Val(CStr(d(i, EQ_C_ANO)))), anoVig, novo) Then GoTo prox
         If Not NumOk(d(i, EQ_C_BIAS)) Or Not NumOk(d(i, EQ_C_BIASABS)) Then GoTo prox
+        If Not AmostraDoVies(d, i, vistos) Then GoTo prox     ' ADR-088 (OC-0006): o mesmo filtro do BiasEQ
         n = n + 1
         somaSig = somaSig + CDbl(d(i, EQ_C_BIAS))
         somaAbs = somaAbs + CDbl(d(i, EQ_C_BIASABS))
