@@ -31,3 +31,5 @@ público — decisão do gestor em `estudos/DECISAO_GESTOR_2026-10-06.md`). A ve
 
 O hash muda a cada gravação no laboratório (uso normal). Para conferir a versão entregue, compare com o arquivo
 `_entrega_<data>/<produto>/<arquivo>.xlsm` da pasta de entrega (não versionada).
+| 04/11/2026 | QC_Bioquimica.xlsm | 33617593 | `06bdd4ec53b79f67aab47c08aa2cff2f2b6873e50692d53602d535809befdb44` | aec2c43 | 28 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-088 (lote 1 da auditoria ciclo 01: OC-0001..0006, 0009, 0013) |
+| 04/11/2026 | QC_Hematologia.xlsm | 38114662 | `4c0b41f0c0a682a313664d9097c3c178020a1f589ccb32143e939c35a9445344` | aec2c43 | 28 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-088 (lote 1 da auditoria ciclo 01: OC-0001..0006, 0009, 0013) |
