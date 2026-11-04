@@ -76,6 +76,17 @@ no relatório do ciclo indicado.
 Produção intacta (hashes iguais no fim). Achados fora da rota para o próximo ciclo: validação do EQUIPAMENTO da Bio
 recusa "DIMENSION 1" lida por automação (conferir digitando); Amilase N1 do lote 8974 a 7 DP do alvo (n 373).
 
+## Validação do Tester (reteste 01, 04/11/2026)
+
+`relatorios/2026-11-04_reteste01/tester_validar.md`: OC-0001, 0002, 0003, 0004, 0005, 0006, 0009, 0013 VALIDADAS
+(Tester), sobre cópias da produção entregue. Ressalvas:
+- Glicose N2 só volta a 2,08 % depois de o laboratório inativar o BIO-371184 (valor 1, positivo, fora da regra ≤ 0);
+- o critério "Controllab = 62" da OC-0009 não foi executado;
+- o R00 do qa_rodadas_cv reprova numa cópia já ATUALIZADA (é o efeito esperado da OC-0004, transitório até a produção
+  ser ATUALIZADA);
+- o resumo Sigma "6/1/3/7/41" que o ADR-088 previa não se confirmou (fica 0/0/3/2/53). O texto do ADR foi corrigido;
+- a Estatística da Hema que não acompanha o lote é a OC-0048 (Ano De/Até), já registrada.
+
 ## Histórico dos ciclos
 
 | Ciclo | Modo | Produtos | Frentes | Ocorrências novas | Resultado |
