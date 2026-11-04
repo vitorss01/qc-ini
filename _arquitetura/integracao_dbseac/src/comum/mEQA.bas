@@ -112,6 +112,11 @@ Public Const USO_NAO As String = "NAO"
 ' onde AtualizarEQABase deixa o carimbo da ultima consolidacao
 Public Const CARIMBO_LIN As Long = 1
 Public Const CARIMBO_COL As Long = 26     ' Z1
+' ADR-089 (OC-0028): instante NUMERICO da ultima consolidacao (EQA_Base!AA1, formato oculto) e a marca de edicao
+' direta de cada aba de digitacao (Z4, formato oculto, gravada pelo Worksheet_Change da aba). Marca mais nova que a
+' consolidacao = ha edicao na tabela que ainda nao chegou a EQA_Base (o Z3 da aba avisa; o ATUALIZAR consolida).
+Public Const CARIMBO_NUM_COL As Long = 27 ' AA1
+Public Const MARCA_EDICAO As String = "Z4"
 
 ' ADR-064: n de laboratorios do grupo por chave (NLabsPorChave)
 Private mNLabs As Object
@@ -215,11 +220,89 @@ End Function
 ' por um dado que so muda quando alguem digita uma rodada nova.
 ' ---------------------------------------------------------------------------
 Public Sub AtualizarEQABase()
-    Dim wb As Worksheet
+    ConsolidarBase True, "botão Consolidar / chamada direta"
+End Sub
+
+' ADR-089: a janela do CEQ consolida dizendo de onde veio (trilha EQA_BASE_CONSOLIDADA).
+Public Sub ConsolidarEQABaseDe(ByVal origem As String)
+    ConsolidarBase True, origem
+End Sub
+
+' ADR-089 (OC-0028): o ATUALIZAR DADOS consolida so quando ha pendencia (edicao direta na tabela depois da ultima
+' consolidacao, ou quantidade de linhas diferente). Sem as listas e a incerteza: o ATUALIZAR as refaz logo depois.
+Public Function ConsolidarSePendente() As Boolean
+    If Not ConsolidacaoPendente() Then Exit Function
+    ConsolidarBase False, "ATUALIZAR DADOS (edição pendente)"
+    ConsolidarSePendente = True
+End Function
+
+' Instante com fracao de segundo (Now so tem segundos: editar e consolidar no mesmo segundo empatariam).
+Public Function InstanteCEQ() As Double
+    InstanteCEQ = CDbl(Date) + Timer / 86400#
+End Function
+
+Private Function NumCel(ByVal v As Variant) As Double
+    If IsError(v) Or IsEmpty(v) Then Exit Function
+    If IsNumeric(v) Then NumCel = CDbl(v)
+End Function
+
+' Ha edicao das abas de digitacao que a EQA_Base ainda nao recebeu? (a mesma pergunta do Z3 das abas)
+Public Function ConsolidacaoPendente() As Boolean
+    Dim b As Worksheet, ws As Worksheet, t As Double, p As Variant, prov As String
+    On Error GoTo sai
+    Set b = AbaPorNome(EQA_BASE)
+    If b Is Nothing Then Exit Function
+    t = NumCel(b.Cells(CARIMBO_LIN, CARIMBO_NUM_COL).Value)
+    For Each p In Array(ABA_CAP, ABA_CTL)
+        Set ws = AbaPorNome(CStr(p))
+        If Not ws Is Nothing Then
+            If CStr(p) = ABA_CAP Then prov = "CAP" Else prov = "Controllab"
+            If NumCel(ws.Range(MARCA_EDICAO).Value) > t Then ConsolidacaoPendente = True: Exit Function
+            If Application.WorksheetFunction.CountA(ws.Range("D2:D5000")) <> _
+               Application.WorksheetFunction.CountIf(b.Range("A2:A5001"), prov) Then ConsolidacaoPendente = True: Exit Function
+        End If
+    Next p
+sai:
+End Function
+
+' Marca de edicao direta numa aba de digitacao (Worksheet_Change da aba): o Z3 passa a avisar.
+Public Sub MarcarEdicaoCEQ(ByVal ws As Worksheet)
+    Dim prot As Boolean, ev As Boolean
+    On Error Resume Next
+    ev = Application.EnableEvents
+    Application.EnableEvents = False
+    prot = mSeguranca.LiberarEscritaRapida(ws)
+    ws.Range(MARCA_EDICAO).Value = InstanteCEQ()
+    mSeguranca.RestaurarProtecao ws, prot
+    Application.EnableEvents = ev
+End Sub
+
+' Retrato das linhas da base: chave -> conteudo das 21 colunas (chave repetida ganha o numero da linha).
+Private Function RetratoBase(ByVal v As Variant, ByVal n As Long) As Object
+    Dim d As Object, i As Long, c As Long, s As String, k As String
+    Set d = CreateObject("Scripting.Dictionary")
+    d.CompareMode = 1
+    For i = 1 To n
+        k = Txt(v(i, B_CHAVE))
+        If k <> "" Then
+            s = ""
+            For c = 1 To BASE_NCOL
+                s = s & Chr$(31) & Txt(v(i, c))
+            Next c
+            If d.Exists(k) Then k = k & "#" & i
+            d(k) = s
+        End If
+    Next i
+    Set RetratoBase = d
+End Function
+
+Private Sub ConsolidarBase(ByVal recalcular As Boolean, ByVal origem As String)
+    Dim wb As Worksheet, protB As Boolean, carAntes As String
     Set wb = AbaPorNome(EQA_BASE)
     If wb Is Nothing Then
         Err.Raise vbObjectError + 3401, "mEQA", "Aba " & EQA_BASE & " nao existe."
     End If
+    carAntes = Txt(wb.Cells(CARIMBO_LIN, CARIMBO_COL).Value)
 
     Dim mapa As Object
     Set mapa = CarregarMapa()
@@ -260,6 +343,10 @@ Public Sub AtualizarEQABase()
 
     ' limpa o corpo inteiro antes de escrever: sobra de consolidacao anterior
     ' seria linha fantasma, e o mCEQ nao tem como saber que ela e resto.
+    ' ADR-089: a EQA_Base e protegida; sem o UserInterfaceOnly da sessao (automacao, arquivo recem-aberto) a escrita
+    ' dava erro 1004 (ADR-046: cada rotina que escreve trata a propria janela)
+    protB = mSeguranca.LiberarEscritaRapida(wb)
+    On Error GoTo devolve
     wb.Range(wb.Cells(BASE_R0, 1), wb.Cells(BASE_RN, BASE_NCOL)).ClearContents
 
     If k > 0 Then
@@ -279,17 +366,52 @@ Public Sub AtualizarEQABase()
         " | CAP " & nCAP & " | Controllab " & nCTL & _
         " | total " & k & " | sem analito canonico " & semCanon & _
         " | chaves repetidas " & dup & " | uso manual mantido " & nMan
+    wb.Cells(CARIMBO_LIN, CARIMBO_NUM_COL).Value = InstanteCEQ()      ' ADR-089: o Z3 das abas compara com este
+    mSeguranca.RestaurarProtecao wb, protB
+    protB = False
+    On Error GoTo 0
+
+    ' ADR-089 (OC-0032): trilha da consolidacao, com o antes e o depois
+    Dim rA As Object, rD As Object, kk As Variant, nInc As Long, nAlt As Long, nRem As Long
+    On Error Resume Next
+    Set rA = RetratoBase(antigo, UBound(antigo, 1))
+    Set rD = RetratoBase(saida, k)
+    For Each kk In rD.Keys
+        If Not rA.Exists(kk) Then
+            nInc = nInc + 1
+        ElseIf rA(kk) <> rD(kk) Then
+            nAlt = nAlt + 1
+        End If
+    Next kk
+    For Each kk In rA.Keys
+        If Not rD.Exists(kk) Then nRem = nRem + 1
+    Next kk
+    mAuditoria.RegistrarLog "EQA_BASE_CONSOLIDADA", "origem: " & origem & " | linhas " & k & " (CAP " & nCAP & _
+        ", Controllab " & nCTL & ", sem analito canônico " & semCanon & ") | incluídas " & nInc & " · alteradas " & _
+        nAlt & " · removidas " & nRem & " | antes: " & IIf(carAntes = "", "(sem consolidação)", carAntes) & _
+        " | depois: " & Txt(wb.Cells(CARIMBO_LIN, CARIMBO_COL).Value)
+    Err.Clear
+    On Error GoTo 0
 
     ' As formulas do vies/incerteza (Estatistica AR:AU) leem a EQA_Base pelo VBA: o Excel nao sabe
     ' que dependem dela e mostrariam o CEQ antigo ate o proximo ATUALIZAR DADOS (auditoria 04/10/2026).
     On Error Resume Next
     mCEQ.InvalidarEQ
     ' ADR-071: rodada/ano novos entram nas listas de selecao (Estatistica!N4/P4) sem reabrir o arquivo
-    mDados.AtualizarListasAno
+    ' (ADR-089: no ATUALIZAR, recalcular = False -- ele mesmo refaz as listas e a incerteza logo depois)
+    If recalcular Then mDados.AtualizarListasAno
     ' ADR-071 (revisao): G/R/S/T/AC/AD e K5 leem a EQA_Base pelo VBA e nao dependem de celula que mudou:
     ' marca-os sujos para o Calculate do RecalcularIncerteza (senao ficavam com o conjunto antigo)
     mCEQ.MarcarCEQSujo
-    mIncerteza.RecalcularIncerteza
+    If recalcular Then mIncerteza.RecalcularIncerteza
+    Exit Sub
+devolve:
+    Dim nE As Long, sE As String
+    nE = Err.Number: sE = Err.Description
+    On Error Resume Next
+    If protB Then mSeguranca.RestaurarProtecao wb, protB
+    On Error GoTo 0
+    Err.Raise nE, "mEQA.AtualizarEQABase", sE
 End Sub
 
 ' O n de laboratorios e digitado depois da consolidacao (nao vai para a EQA_Base): o cache e
@@ -392,6 +514,26 @@ End Function
 
 
 ' Texto do carimbo da ultima consolidacao, para exibir nas abas de digitacao.
+' ADR-089 (OC-0029/0030): o mapa de UM provedor, para a janela do CEQ mostrar o canonico e os pares %/#.
+' Matriz (n x 2) nome do provedor | canonico; Empty sem nenhuma entrada.
+Public Function MapaDoProvedor(ByVal provedor As String) As Variant
+    Dim ws As Worksheet, m As Variant, i As Long, n As Long, out() As Variant, idx() As Long
+    Set ws = AbaPorNome(EQA_BASE)
+    If ws Is Nothing Then Exit Function
+    m = ws.Range(ws.Cells(MAPA_R0, MAPA_C0), ws.Cells(MAPA_RN, MAPA_C0 + 2)).Value
+    ReDim idx(1 To UBound(m, 1))
+    For i = 1 To UBound(m, 1)
+        If Txt(m(i, 2)) <> "" And StrComp(Txt(m(i, 1)), Trim$(provedor), vbTextCompare) = 0 Then n = n + 1: idx(n) = i
+    Next i
+    If n = 0 Then Exit Function
+    ReDim out(1 To n, 1 To 2)
+    For i = 1 To n
+        out(i, 1) = Txt(m(idx(i), 2))
+        out(i, 2) = Txt(m(idx(i), 3))
+    Next i
+    MapaDoProvedor = out
+End Function
+
 Public Function CarimboEQA() As String
     Dim ws As Worksheet
     Set ws = AbaPorNome(EQA_BASE)

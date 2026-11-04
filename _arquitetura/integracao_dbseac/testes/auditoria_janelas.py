@@ -51,10 +51,19 @@ DINAMICOS = {
         'lblAcao': ['O que fazer com este resultado? (escolha uma opção)'],
     },
     'frmCEQ': {
+        # ADR-089: a duplicidade aponta o botao Corrigir; aviso azul (canonico + par %/#) e ambar (fora do mapa)
         'lblMsg': ['Já existe este registro (Controllab Rodada 3 2026 · Hemoglobina glicada (HbA1c) · CHM-05) na linha '
-                   '2345 da aba EQA.Controllab_Dados. Para corrigir, edite a linha existente.',
-                   '✓ Gravado: Hemoglobina glicada (HbA1c) · amostra CHM-05 (linha 2345).'],
+                   '2345. Para corrigir, selecione-o em “Registros desta rodada” e clique em Corrigir selecionado.',
+                   '✓ Gravado: Hemoglobina glicada (HbA1c) · amostra CHM-05 (linha 2345).',
+                   '⚠ “Hemoglobina glicada (HbA1c)” não está no mapa do Controllab: este resultado NÃO entra no bias, '
+                   'no ET nem no Sigma. Use o nome da lista (como no relatório) ou peça ao administrador para mapear.',
+                   'No QC_INI: NEUT%. Este resultado entra no bias deste analito. Atenção: existe também '
+                   '“Neutrophils Absolute” (NEUT#).',
+                   'Corrigindo o registro da linha 2345. Altere os campos e clique em Salvar correção.',
+                   '✓ Excluído: Controllab Rodada 3 2026 · Hemoglobina glicada (HbA1c) · CHM-05 (resultado 1234,5).'],
         'lblQtd': ['Escolha a rodada para ver o que já foi registrado.'],
+        'btnCorrigir': ['Cancelar correção'],
+        'btnSalvar': ['Salvar correção'],
     },
 }
 

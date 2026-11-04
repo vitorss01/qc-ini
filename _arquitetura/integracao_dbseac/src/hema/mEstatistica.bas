@@ -3697,12 +3697,17 @@ End Sub
 ' analito especifico, na aba Analitos (coluna AR). Fonte unica: a Estatistica
 ' LE essa coluna por formula (INDEX/MATCH), nunca guarda copia propria.
 Public Sub GravarProvedorAnalito(ByVal nomeAnalito As String, ByVal provedor As String)
-    Dim wa As Worksheet, i As Long
+    Dim wa As Worksheet, i As Long, antes As String
     If Trim$(nomeAnalito) = "" Then Exit Sub
     Set wa = ThisWorkbook.Sheets(mLotes.AbaEspec())
     For i = 4 To 43
         If UCase$(Trim$(CStr(wa.Cells(i, 1).Value))) = UCase$(Trim$(nomeAnalito)) Then
+            If Not IsError(wa.Cells(i, 44).Value) Then antes = Trim$(CStr(wa.Cells(i, 44).Value))
             wa.Cells(i, 44).Value = provedor
+            ' ADR-089 (OC-0032): quem trocou o provedor do CEQ deste analito, e de qual para qual
+            If StrComp(antes, Trim$(provedor), vbTextCompare) <> 0 Then
+                mCEQForm.ProvedorEQAlterado antes, provedor, "Painel M4 · analito " & Trim$(nomeAnalito)
+            End If
             Exit For
         End If
     Next i

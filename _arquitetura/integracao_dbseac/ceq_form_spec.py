@@ -4,6 +4,8 @@
 Medidas em multiplos de 3 pt. Duas colunas de grupos (1 Rodada | 2 Analito e amostra; 3 Resultado | 4 Avaliacao e
 fonte), a faixa de mensagem (lblMsg) entre os campos e a lista, a lista dos registros da rodada e os botoes no fim.
 Nenhum controle se sobrepoe a outro (conferido pelo testes/qa_adr087.py: retangulos e texto medido com a fonte real).
+ADR-089 (OC-0027): "Corrigir selecionado" e "Excluir selecionado" na linha dos botoes, a esquerda; a lista ganha a 5a
+coluna (oculta, largura 0) com a linha da aba de cada registro.
 """
 import os
 
@@ -86,11 +88,18 @@ CONTROLES = [
     # IntegralHeight antes da altura (com ele ligado o MSForms arredonda a altura para linhas inteiras); a lista e so
     # de consulta: fica fora da ordem de tabulacao (o ultimo TabIndex e reordenado pelo MSForms)
     ('Forms.ListBox.1', 'lstRegs', {'Left': 12, 'Top': 318, 'Width': 576, 'IntegralHeight': False, 'Height': 93,
-                                    'ColumnCount': 4, 'ColumnWidths': '200 pt;110 pt;110 pt;140 pt', 'Font.Name': UI,
+                                    'ColumnCount': 5, 'ColumnWidths': '200 pt;110 pt;110 pt;140 pt;0 pt', 'Font.Name': UI,
                                     'Font.Size': 9, 'TabStop': False}),
     ('Forms.CommandButton.1', 'btnSalvar', {'Left': 318, 'Top': 420, 'Width': 168, 'Height': 27,
                                             'Caption': 'Salvar e próximo', 'Default': True, 'Font.Name': UI,
                                             'Font.Size': 9, 'Font.Bold': True, 'TabIndex': 16}),
     ('Forms.CommandButton.1', 'btnFechar', {'Left': 492, 'Top': 420, 'Width': 96, 'Height': 27, 'Caption': 'Fechar',
                                             'Cancel': True, 'Font.Name': UI, 'Font.Size': 9, 'TabIndex': 17}),
+    # ADR-089: habilitados pela janela so com um registro escolhido na lista (TabIndex depois dos de antes: estavel)
+    ('Forms.CommandButton.1', 'btnCorrigir', {'Left': 12, 'Top': 420, 'Width': 120, 'Height': 27,
+                                              'Caption': 'Corrigir selecionado', 'Font.Name': UI, 'Font.Size': 9,
+                                              'TabIndex': 18}),
+    ('Forms.CommandButton.1', 'btnExcluir', {'Left': 138, 'Top': 420, 'Width': 120, 'Height': 27,
+                                             'Caption': 'Excluir selecionado', 'Font.Name': UI, 'Font.Size': 9,
+                                             'TabIndex': 19}),
 ]

@@ -26,7 +26,7 @@ Para cada produto:
      qa_seguranca, qa_casos_extremos, qa_troca_lote, qa_lotes_auto, qa_graficos (Excel VISIVEL),
      qa_incerteza (recalculo independente), qa_desempenho, qa_final, qa_etl_recebimento, qa_etl, qa_rodadas_cv,
      qa_inativar, qa_migracao_adr070, qa_lotes_limites, qa_blocos_lote, qa_varredura_lotes, qa_linhas_alvo, qa_sync, qa_corrida_lote,
-     qa_inativar_ux, qa_manual_substitui, qa_westgard_sequencia, qa_adr084..qa_adr088. A producao ORIGINAL (copiada para <produto>/producao_original/ antes de
+     qa_inativar_ux, qa_manual_substitui, qa_westgard_sequencia, qa_adr084..qa_adr089. A producao ORIGINAL (copiada para <produto>/producao_original/ antes de
      instalar, conferida por SHA-256) vai para as suites pela variavel QC_PROD_ORIGINAL: o R00 do qa_rodadas_cv
      compara a copia instalada com ela (regressao do gate) e o qa_migracao_adr070 testa a migracao sobre ela e
      confere que as inativacoes reais sobrevivem (M06) -- nenhum caminho de rede no codigo;
@@ -69,7 +69,8 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_adr085.py',                                # ADR-085: painel tela unica (acoes no ponto, comentario, Westgard)
           'qa_adr086.py',                                # ADR-086: H3 vazio = todos os lotes do periodo
           'qa_adr087.py',                                # ADR-087: tabela de registros, filtros, CEQ, janelas
-          'qa_adr088.py']                                # ADR-088: lote 1 da auditoria (manual, ET, troca de lote, <= 0...)
+          'qa_adr088.py',                                # ADR-088: lote 1 da auditoria (manual, ET, troca de lote, <= 0...)
+          'qa_adr089.py']                                # ADR-089: lote 2 da auditoria (CEQ corrigir/excluir, mapa, trilha; OC-0051)
 
 
 def sha(p):
@@ -135,6 +136,7 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('adr086', ['instalar_adr086.py', produto, alvo]),         # ADR-086: H3 vazio = todos os lotes
               ('adr087', ['instalar_adr087.py', produto, alvo]),         # ADR-087: modernizacao das telas
               ('adr088', ['instalar_adr088.py', produto, alvo]),         # ADR-088: lote 1 de correcoes da auditoria
+              ('adr089', ['instalar_adr089.py', produto, alvo]),         # ADR-089: lote 2 (CEQ) + OC-0051
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:
         ok, fim = rodar(os.path.join(trab, f'{nome}.log'), AQUI, *args)

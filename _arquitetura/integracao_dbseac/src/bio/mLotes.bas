@@ -347,6 +347,7 @@ End Function
 Public Sub CarregarParametrosView(ByVal lote As String)
     Dim wa As Worksheet, nomes As Variant, outp() As Variant
     Dim i As Long, j As Long, r As Long, nm As String, k As String, prot As Boolean, ev As Boolean
+    Dim wc As Worksheet, protC As Boolean
     lote = Trim$(lote)
     Set wa = ThisWorkbook.Sheets(AbaEspec())
     ev = Application.EnableEvents
@@ -371,8 +372,14 @@ Public Sub CarregarParametrosView(ByVal lote As String)
     Next i
     On Error GoTo restaura
     ' ADR-078: o lote da tela PRIMEIRO, conferido. Tela de um lote rotulada com outro nao acontece mais.
+    ' ADR-089 (OC-0051): a Configuracao e protegida -- sem o UserInterfaceOnly da sessao (automacao, arquivo recem-aberto)
+    ' o NumberFormat dava erro 1004 e a troca de lote do Painel (H3) parava calada, com o motor do lote anterior.
+    Set wc = ThisWorkbook.Names("loteParam").RefersToRange.Worksheet
+    protC = LiberarEscritaRapida(wc)
     ThisWorkbook.Names("loteParam").RefersToRange.NumberFormat = "@"
     ThisWorkbook.Names("loteParam").RefersToRange.Value = lote
+    RestaurarProtecao wc, protC
+    protC = False
     If LoteParamTela() <> lote Then Err.Raise vbObjectError + 492, "mLotes.CarregarParametrosView", _
         "nao foi possivel registrar o lote " & lote & " como lote em tela (Configuracao, loteParam)"
     prot = LiberarEscrita(wa)
@@ -386,6 +393,7 @@ restaura:
     nE = Err.Number: sE = Err.Description
     Application.EnableEvents = ev
     RestaurarProtecao wa, prot
+    If protC Then RestaurarProtecao wc, protC
     If nE <> 0 Then Err.Raise nE, "mLotes.CarregarParametrosView", sE
 End Sub
 

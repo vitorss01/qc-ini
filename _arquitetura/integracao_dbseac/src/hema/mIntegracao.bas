@@ -139,6 +139,14 @@ Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False,
     mCarregando.Etapa "Atualizando Levey-Jennings, Westgard e Estatística"
     Application.StatusBar = "Atualizando Levey-Jennings, Westgard e Estatistica..."
     t0 = Timer
+    ' ADR-089 (OC-0028): CEQ editado direto na tabela e ainda nao consolidado chega a EQA_Base antes do motor (so com
+    ' pendencia -- marca de edicao mais nova que a consolidacao, ou quantidade diferente --, sem custo nos outros casos)
+    If Not soEntradas Then
+        On Error Resume Next
+        mEQA.ConsolidarSePendente
+        Err.Clear
+        On Error GoTo falha
+    End If
     mDados.IniciarSnapshot                         ' ADR-079: uma leitura da tblCQ_Final para o motor inteiro
     mEstatistica.InvalidarCache
     RodarSeExistir "InvalidarCacheEstat"           ' Estatistica por periodo (so Bioquimica)

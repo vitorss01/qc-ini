@@ -33,7 +33,9 @@ CLASSES = ['clsCht']
 # modulos de aba: (nome da aba, arquivo-fonte)
 ABAS = [('Painel', 'Painel.cls'), ('Configuração', 'Configuracao.cls'),
         ('Registros', 'Registros.cls'),                  # ADR-084: ID do resultado -> calibracao
-        ('Estatística', 'Estatistica.cls')]              # ADR-088: Hema Ano De/Ate refaz C:F; Bio versionado (src/<produto>)
+        ('Estatística', 'Estatistica.cls'),              # ADR-088: Hema Ano De/Ate refaz C:F; Bio versionado (src/<produto>)
+        ('EQA.CAP_Dados', 'EQADados.cls'),               # ADR-089: edicao direta = marca pendente + CEQ_ALTERADO
+        ('EQA.Controllab_Dados', 'EQADados.cls')]
 ESPEC = 'Especificações'
 
 

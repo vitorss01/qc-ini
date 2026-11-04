@@ -10,8 +10,13 @@ Option Explicit
 '  "Salvar e proximo" mantem a rodada, o analito e a unidade e limpa a amostra e os
 '  numeros: o proximo resultado da mesma rodada sai sem redigitar o contexto.
 '  Criada pelo instalador (instalar_adr087.py: controles e propriedades).
+'  ADR-089: "Corrigir selecionado" carrega o registro escolhido na lista nos campos (o botao Salvar vira "Salvar
+'  correcao"); "Excluir selecionado" pede confirmacao (padrao Nao). Antes de gravar, o analito fora do mapa do
+'  provedor ou a unidade diferente da ja registrada para o canonico pedem confirmacao (padrao Nao).
 ' ============================================================================
 Private mCarregando As Boolean
+' ADR-089: linha da aba em correcao (0 = registro novo)
+Private mLinhaCorr As Long
 ' Ano e unidade preenchidos pela janela (do registro anterior) podem ser trocados por ela; o que o usuario digitou, nao.
 Private mAnoAuto As Boolean
 Private mUnidAuto As Boolean
@@ -26,6 +31,98 @@ Private Sub UserForm_Initialize()
     mCarregando = False
     ProvedorMudou
     Mensagem "Preencha os campos com * e clique em Salvar e próximo.", False
+End Sub
+
+' ADR-089: azul = informacao (o canonico), ambar = atencao (fora do bias)
+Private Sub MensagemCor(ByVal s As String, ByVal cor As Long)
+    lblMsg.Caption = s
+    lblMsg.ForeColor = cor
+End Sub
+
+Private Sub MostrarAvisoAnalito()
+    Dim a As String
+    If mCarregando Then Exit Sub
+    a = mCEQForm.AvisoAnalitoCEQ(CStr(cboProvedor.Value), CStr(cboAnalito.Text))
+    If Left$(a, 5) = "AZUL|" Then
+        MensagemCor Mid$(a, 6), RGB(31, 72, 121)
+    ElseIf Left$(a, 6) = "AMBAR|" Then
+        MensagemCor Mid$(a, 7), RGB(156, 87, 0)
+    End If
+End Sub
+
+Private Sub BotoesSelecao()
+    Dim tem As Boolean
+    tem = (lstRegs.ListIndex >= 0)
+    btnExcluir.Enabled = tem And mLinhaCorr = 0
+    btnCorrigir.Enabled = tem Or mLinhaCorr > 0
+End Sub
+
+Private Function LinhaSelecionada() As Long
+    If lstRegs.ListIndex < 0 Then Exit Function
+    LinhaSelecionada = CLng(Val(lstRegs.List(lstRegs.ListIndex, 4)))
+End Function
+
+Private Sub SairDaCorrecao()
+    mLinhaCorr = 0
+    btnSalvar.Caption = "Salvar e próximo"
+    btnCorrigir.Caption = "Corrigir selecionado"
+    cboProvedor.Enabled = True
+    txtAmostra.Value = "": txtResultado.Value = "": txtAlvo.Value = "": txtSD.Value = "": txtSDI.Value = ""
+    txtLimInf.Value = "": txtLimSup.Value = "": txtNLabs.Value = "": cboAvaliacao.Text = ""
+End Sub
+
+Private Sub lstRegs_Click()
+    BotoesSelecao
+End Sub
+
+Private Sub lstRegs_Change()
+    BotoesSelecao
+End Sub
+
+Private Sub btnCorrigir_Click()
+    Dim v As Variant, ln As Long
+    If mLinhaCorr > 0 Then                       ' "Cancelar correcao"
+        SairDaCorrecao
+        AtualizarLista
+        Mensagem "Correção cancelada. Nada foi alterado.", False
+        Exit Sub
+    End If
+    ln = LinhaSelecionada()
+    If ln = 0 Then Mensagem "Selecione o registro em " & ChrW$(8220) & "Registros desta rodada" & ChrW$(8221) & ".", True: Exit Sub
+    v = mCEQForm.LinhaCEQ(CStr(cboProvedor.Value), ln)
+    If Not IsArray(v) Then Mensagem "O registro da linha " & ln & " não foi encontrado. Feche e abra a janela.", True: Exit Sub
+    mCarregando = True
+    cboRodada.Text = v(1): txtAno.Value = v(2): cboAnalito.Text = v(3): txtAmostra.Value = v(4)
+    txtResultado.Value = v(5): txtAlvo.Value = v(6): txtSD.Value = v(7): txtSDI.Value = v(8)
+    txtLimInf.Value = v(9): txtLimSup.Value = v(10): cboAvaliacao.Text = v(11): txtNLabs.Value = v(12)
+    txtUnidade.Value = v(13): txtPagina.Value = v(14): txtArquivo.Value = v(15)
+    mCarregando = False
+    mAnoAuto = False: mUnidAuto = False
+    mLinhaCorr = ln
+    cboProvedor.Enabled = False                  ' o registro fica na tabela do provedor dele
+    btnSalvar.Caption = "Salvar correção"
+    btnCorrigir.Caption = "Cancelar correção"
+    BotoesSelecao
+    MensagemCor "Corrigindo o registro da linha " & ln & ". Altere os campos e clique em Salvar correção.", RGB(31, 72, 121)
+    txtResultado.SetFocus
+End Sub
+
+Private Sub btnExcluir_Click()
+    Dim ln As Long, d As String, r As String, p As Variant
+    ln = LinhaSelecionada()
+    If ln = 0 Then Exit Sub
+    d = mCEQForm.DescricaoCEQ(CStr(cboProvedor.Value), ln)
+    If Len(d) = 0 Then Mensagem "O registro da linha " & ln & " não foi encontrado. Feche e abra a janela.", True: Exit Sub
+    If MsgBox("Excluir o registro " & d & "? Ele sai do bias, do ET e do Sigma. A exclusão fica no Audit_Log.", _
+              vbYesNo + vbQuestion + vbDefaultButton2, "Excluir registro do CEQ") <> vbYes Then
+        Mensagem "Nada foi excluído.", False
+        Exit Sub
+    End If
+    r = mCEQForm.ExcluirCEQ(CStr(cboProvedor.Value), ln)
+    p = Split(r, "|")
+    If p(0) <> "OK" Then Mensagem Mid$(r, InStr(InStr(r, "|") + 1, r, "|") + 1), True: Exit Sub
+    Mensagem ChrW$(10003) & " Excluído: " & d & "." & IIf(Len(p(2)) > 0, " " & p(2), ""), Len(p(2)) > 0, Len(p(2)) = 0
+    AtualizarLista
 End Sub
 
 Private Sub Mensagem(ByVal s As String, ByVal erro As Boolean, Optional ByVal sucesso As Boolean = False)
@@ -54,6 +151,7 @@ End Sub
 Private Sub ProvedorMudou()
     Dim p As String
     p = CStr(cboProvedor.Value)
+    If mLinhaCorr > 0 Then SairDaCorrecao
     PreencherCombo cboRodada, mCEQForm.DistintosCEQ(p, mCEQForm.CQ_RODADA, True)
     PreencherCombo cboAnalito, mCEQForm.DistintosCEQ(p, mCEQForm.CQ_ANALITO)
     PreencherCombo cboAvaliacao, mCEQForm.DistintosCEQ(p, mCEQForm.CQ_AVAL)
@@ -98,6 +196,12 @@ Private Sub cboAnalito_Change()
         mPreenchendo = False
         mUnidAuto = (Len(u) > 0)
     End If
+    ' ADR-089 (OC-0029/0030): nome da lista -> o canonico na hora; texto livre, ao sair do campo
+    If cboAnalito.ListIndex >= 0 Then MostrarAvisoAnalito
+End Sub
+
+Private Sub cboAnalito_AfterUpdate()
+    MostrarAvisoAnalito
 End Sub
 
 Private Sub txtUnidade_Change()
@@ -116,8 +220,10 @@ Private Sub AtualizarLista()
             lstRegs.List(lstRegs.ListCount - 1, 1) = CStr(v(i, 2))
             lstRegs.List(lstRegs.ListCount - 1, 2) = CStr(v(i, 3))
             lstRegs.List(lstRegs.ListCount - 1, 3) = CStr(v(i, 4))
+            lstRegs.List(lstRegs.ListCount - 1, 4) = CStr(v(i, 5))
         Next i
     End If
+    BotoesSelecao
     If Len(Trim$(CStr(cboRodada.Text))) = 0 Then
         lblQtd.Caption = "Escolha a rodada para ver o que já foi registrado."
     ElseIf n = 0 Then
@@ -151,9 +257,23 @@ Private Sub LimparMarcas()
 End Sub
 
 Private Sub btnSalvar_Click()
-    Dim r As String, p As Variant, c As Object
+    Dim r As String, p As Variant, c As Object, conf As String, corr As Long
     LimparMarcas
-    r = mCEQForm.SalvarCEQ(Campos())
+    ' ADR-089 (OC-0029/0030): fora do mapa ou unidade diferente do canonico -> confirmacao (padrao Nao)
+    conf = mCEQForm.ConfirmacoesCEQ(Campos(), mLinhaCorr)
+    If Len(conf) > 0 Then
+        If MsgBox(conf & vbLf & vbLf & "Gravar mesmo assim?", vbYesNo + vbExclamation + vbDefaultButton2, _
+                  "Controle Externo — confirmar") <> vbYes Then
+            Mensagem "Nada foi gravado. Confira o analito e a unidade.", True
+            Exit Sub
+        End If
+    End If
+    corr = mLinhaCorr
+    If corr > 0 Then
+        r = mCEQForm.CorrigirCEQ(corr, Campos())
+    Else
+        r = mCEQForm.SalvarCEQ(Campos())
+    End If
     p = Split(r, "|")
     If p(0) <> "OK" Then
         Set c = ControleDoCampo(CLng(Val(p(1))))
@@ -164,8 +284,9 @@ Private Sub btnSalvar_Click()
         Mensagem Mid$(r, InStr(InStr(r, "|") + 1, r, "|") + 1), True
         Exit Sub
     End If
-    Mensagem ChrW$(10003) & " Gravado: " & cboAnalito.Text & " · amostra " & txtAmostra.Value & " (linha " & p(1) & ")." & _
-             IIf(Len(p(2)) > 0, " " & p(2), ""), Len(p(2)) > 0, Len(p(2)) = 0
+    Mensagem ChrW$(10003) & IIf(corr > 0, " Corrigido: ", " Gravado: ") & cboAnalito.Text & " · amostra " & txtAmostra.Value & _
+             " (linha " & p(1) & ")." & IIf(Len(p(2)) > 0, " " & p(2), ""), Len(p(2)) > 0, Len(p(2)) = 0
+    If corr > 0 Then SairDaCorrecao
     ' proximo resultado da mesma rodada: o contexto fica, a amostra e os numeros saem
     txtAmostra.Value = "": txtResultado.Value = "": txtAlvo.Value = "": txtSD.Value = "": txtSDI.Value = ""
     txtLimInf.Value = "": txtLimSup.Value = "": txtNLabs.Value = "": cboAvaliacao.Text = ""
