@@ -374,12 +374,15 @@ Public Sub CarregarParametrosView(ByVal lote As String)
     ' ADR-078: o lote da tela PRIMEIRO, conferido. Tela de um lote rotulada com outro nao acontece mais.
     ' ADR-089 (OC-0051): a Configuracao e protegida -- sem o UserInterfaceOnly da sessao (automacao, arquivo recem-aberto)
     ' o NumberFormat dava erro 1004 e a troca de lote do Painel (H3) parava calada, com o motor do lote anterior.
-    Set wc = ThisWorkbook.Names("loteParam").RefersToRange.Worksheet
-    protC = LiberarEscritaRapida(wc)
-    ThisWorkbook.Names("loteParam").RefersToRange.NumberFormat = "@"
-    ThisWorkbook.Names("loteParam").RefersToRange.Value = lote
-    RestaurarProtecao wc, protC
-    protC = False
+    ' So libera e grava quando muda: Unprotect/Protect a cada troca de analito custava ~50 ms (qa_desempenho P02).
+    If LoteParamTela() <> lote Or CStr(ThisWorkbook.Names("loteParam").RefersToRange.NumberFormat) <> "@" Then
+        Set wc = ThisWorkbook.Names("loteParam").RefersToRange.Worksheet
+        protC = LiberarEscritaRapida(wc)
+        ThisWorkbook.Names("loteParam").RefersToRange.NumberFormat = "@"
+        ThisWorkbook.Names("loteParam").RefersToRange.Value = lote
+        RestaurarProtecao wc, protC
+        protC = False
+    End If
     If LoteParamTela() <> lote Then Err.Raise vbObjectError + 492, "mLotes.CarregarParametrosView", _
         "nao foi possivel registrar o lote " & lote & " como lote em tela (Configuracao, loteParam)"
     prot = LiberarEscrita(wa)
