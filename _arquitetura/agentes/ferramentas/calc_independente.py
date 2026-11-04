@@ -88,6 +88,7 @@ import argparse
 import datetime as dt
 import json
 import math
+import os
 import statistics
 import sys
 from collections import OrderedDict, defaultdict
@@ -102,6 +103,8 @@ ABA_PAINEL = "Painel"
 ABA_ANALITOS = "Analitos"
 FATOR_VB = {"ÓTI": 0.25, "OTI": 0.25, "DES": 0.50, "MIN": 0.75}
 SEM_EP = "SEM EP"
+# Reteste01 (04/11/2026): o bias do ET/Sigma segue o ADR-088 dec. 6. CALC_BIAS_PRE_ADR088=1 refaz a regra antiga.
+BIAS_PRE_ADR088 = os.environ.get("CALC_BIAS_PRE_ADR088") == "1"
 
 
 # --------------------------------------------------------------------------- utilidades
@@ -478,6 +481,21 @@ class Calculadora:
             sel = [x for x in lin if f'{x["ano"]}|{x["rodada"]}' in itens]
         if not sel:
             return None
+        if not BIAS_PRE_ADR088:
+            # ADR-088 dec. 6 (OC-0006), conferido em mCEQ.AmostraDoVies (04/11/2026): depois da escolha do ano
+            # vigente, fora NAO AVALIADO, resultado ou alvo = 0, e cada CHAVE uma vez (ordem fisica da EQA_Base).
+            vistos = set(); filtrada = []
+            for x in sel:
+                if x["status"] == "NAO AVALIADO" or x["x"] in (None, 0) or x["h"] in (None, 0):
+                    continue
+                if x["chave"]:
+                    if x["chave"] in vistos:
+                        continue
+                    vistos.add(x["chave"])
+                filtrada.append(x)
+            sel = filtrada
+            if not sel:
+                return None
         por = OrderedDict()
         for x in sel:
             por.setdefault(f'{x["ano"]}|{x["rodada"]}', []).append(x)
@@ -1037,8 +1055,9 @@ def auditar_hema(caminho, tol=1e-9):
         if ind is None:
             continue
         cp = c.cv_pooled_ext(an, t, si, sf)
-        et_painel = (1.65 * st["cv"] + (abs(ind["bias_abs"]) if isinstance(ind["bias_abs"], float) else 0.0)) \
-            if st["cv"] is not None else None
+        # ADR-088 dec. 2 (OC-0002): ET do Painel so com bias numerico; SEM EP -> vazio
+        et_painel = (1.65 * st["cv"] + abs(ind["bias_abs"])) \
+            if (st["cv"] is not None and isinstance(ind["bias_abs"], float)) else None
         row7 = P[6 + t]; row45 = P[44 + t]; row61 = P[60 + t]
         itens = [("B%d" % (6 + t), row7[1], st["n"]), ("C%d" % (6 + t), row7[2], st["media"]),
                  ("D%d" % (6 + t), row7[3], st["dp"]), ("E%d" % (6 + t), row7[4], st["cv"]),
