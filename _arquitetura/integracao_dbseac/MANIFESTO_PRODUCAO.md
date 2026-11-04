@@ -33,3 +33,5 @@ O hash muda a cada gravação no laboratório (uso normal). Para conferir a vers
 `_entrega_<data>/<produto>/<arquivo>.xlsm` da pasta de entrega (não versionada).
 | 04/11/2026 | QC_Bioquimica.xlsm | 33617593 | `06bdd4ec53b79f67aab47c08aa2cff2f2b6873e50692d53602d535809befdb44` | aec2c43 | 28 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-088 (lote 1 da auditoria ciclo 01: OC-0001..0006, 0009, 0013) |
 | 04/11/2026 | QC_Hematologia.xlsm | 38114662 | `4c0b41f0c0a682a313664d9097c3c178020a1f589ccb32143e939c35a9445344` | aec2c43 | 28 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-088 (lote 1 da auditoria ciclo 01: OC-0001..0006, 0009, 0013) |
+| 04/11/2026 | QC_Bioquimica.xlsm | 33746408 | `161134b2f49d2517309f7c156c9bab5fcb754a1b2e8fa0e4281ae244de14daad` | 2facec9 | 29 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-089 (lote 2 da auditoria: CEQ corrigir/excluir, mapa, trilha; OC-0051) |
+| 04/11/2026 | QC_Hematologia.xlsm | 38238243 | `f3f2257767017380ac8bf371ce3bb80927260f082df665776c49c64cc7dbf59b` | 2facec9 | 29 suítes PASS, MODO_FONTE=SEAC, MOTOR_DADOS=VBA — ADR-089 (lote 2 da auditoria: CEQ corrigir/excluir, mapa, trilha; OC-0051) |
