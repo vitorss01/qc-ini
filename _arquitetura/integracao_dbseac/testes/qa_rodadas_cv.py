@@ -213,10 +213,28 @@ def existentes(rows, prov, analito=None):
 
 
 class Oraculo:
-    def __init__(self, rows, vazio_conta=False):
+    def __init__(self, rows, vazio_conta=False, filtro_vies=True):
+        """filtro_vies=False reproduz o bias de ANTES do ADR-088 (OC-0006), so para o R00 saber quais celulas mudam
+        por essa correcao."""
         self.rows = rows
         self.vazio = vazio_conta
+        self.filtro_vies = filtro_vies
         self._ult = {}
+
+    @staticmethod
+    def amostra_do_vies(r, vistos):
+        """ADR-088 (OC-0006): mesma selecao do ViesEQ -- avaliada (Status_Padronizado), resultado (col 7) e alvo
+        (col 8) numericos e diferentes de zero, cada CHAVE (col 21) uma vez. Escrita de novo a partir do ADR."""
+        if U(r[13]) == 'NAO AVALIADO':
+            return False
+        if not (isnum_vba(r[6]) and isnum_vba(r[7])) or val(r[6]) == 0 or val(r[7]) == 0:
+            return False
+        ch = txt(r[20]).strip().upper()
+        if ch:
+            if ch in vistos:
+                return False
+            vistos.add(ch)
+        return True
 
     def num(self, v):
         return isnum_vba(v, self.vazio)
@@ -291,6 +309,9 @@ class Oraculo:
     def bias(self, analito, ano, prov, rodada, metrica, legado=False):
         col = 15 if metrica == 'SIGNED' else 16
         linhas = self.selecao(analito, ano, prov, rodada, 16, col)
+        if self.filtro_vies and linhas:
+            vistos = set()
+            linhas = [r for r in linhas if self.amostra_do_vies(r, vistos)]
         if not linhas:
             return SEM_EP
         grupos = {}
@@ -542,7 +563,7 @@ def r00_foto(q, e, ult, foto_antes, orc, prov_de, motivo_sem=None):
         if cab0 is not None and str(cab0[ci(c)] or '') != str(cab_agora[ci(c)] or ''):
             fora[c] = f'cabeçalho mudou: {str(cab0[ci(c)])[:30]!r} -> {str(cab_agora[ci(c)])[:30]!r}'
     # celulas cujo valor muda pela regra "valor numerico de verdade" (|bias|/limite vazio): antiga x nova
-    velho = Oraculo(orc.rows, vazio_conta=True)
+    velho = Oraculo(orc.rows, vazio_conta=True, filtro_vies=False)
     ano = q.wb.Names('eqAnoEP').RefersToRange.Value
     documentada = set()
     for i, v in enumerate(agora):
