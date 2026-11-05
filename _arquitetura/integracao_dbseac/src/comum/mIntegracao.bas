@@ -375,12 +375,44 @@ Private Function ResumoLotes(ByVal r As String) As String
     End If
 End Function
 
-Private Function ResumoQA() As String
-    Dim e As Long, a As Long
+' ADR-090 (OC-0024): uma linha por GRUPO de erro presente -- manual incompleto (E04), SUBSTITUI_ID invalido (E12),
+' governanca (E01, E02, E03, E10, E11), dados recebidos (E05 a E09) e outros. Antes qualquer ERRO virava "Ha ERRO DE
+' GOVERNANCA" e o usuario procurava uma inativacao que nao existia.
+Public Function ResumoQA() As String
+    Dim e As Long, a As Long, n04 As Long, n12 As Long, nGov As Long, nDad As Long, nOut As Long, c As Variant
+    Dim b As String, s As String
     e = ContarQA("ERRO"): a = ContarQA("ALERTA")
-    ResumoQA = "QA da integração: " & e & " erro(s), " & a & " alerta(s), " & ContarQA("INFO") & " informativo(s)."
-    If e > 0 Then ResumoQA = ResumoQA & vbCrLf & "Há ERRO DE GOVERNANÇA: veja a aba QA_INTEGRACAO (ex.: inativação sem motivo, " & _
-                             "ou ID que não é do analito informado -- essa não foi aplicada)."
+    s = "QA da integração: " & e & " erro(s), " & a & " alerta(s), " & ContarQA("INFO") & " informativo(s)."
+    If e > 0 Then
+        b = vbCrLf & ChrW$(8226) & " "
+        n04 = ContarQACodigo("E04"): n12 = ContarQACodigo("E12")
+        For Each c In Array("E01", "E02", "E03", "E10", "E11")
+            nGov = nGov + ContarQACodigo(CStr(c))
+        Next c
+        For Each c In Array("E05", "E06", "E07", "E08", "E09")
+            nDad = nDad + ContarQACodigo(CStr(c))
+        Next c
+        nOut = e - n04 - n12 - nGov - nDad
+        If n04 > 0 Then s = s & b & n04 & " resultado(s) manual(is) incompleto(s): veja o DETALHE na aba Digitar " & _
+                            "Resultados " & ChrW$(8212) & " não entraram na estatística."
+        If n12 > 0 Then s = s & b & n12 & " manual(is) com SUBSTITUI_ID inválido: nada foi substituído " & ChrW$(8212) & _
+                            " veja o DETALHE na aba Digitar Resultados."
+        If nGov > 0 Then s = s & b & nGov & " erro(s) de governança: veja a aba QA_INTEGRACAO (ex.: inativação sem " & _
+                             "motivo, ou ID que não é do analito informado " & ChrW$(8212) & " essa não foi aplicada)."
+        If nDad > 0 Then s = s & b & nDad & " erro(s) nos dados recebidos: veja a aba QA_INTEGRACAO."
+        If nOut > 0 Then s = s & b & nOut & " outro(s) erro(s): veja a aba QA_INTEGRACAO."
+    End If
+    ResumoQA = s
+End Function
+
+Private Function ContarQACodigo(ByVal codigo As String) As Long
+    Dim lo As ListObject
+    On Error Resume Next
+    Set lo = AcharTabela("tblQA_Integracao")
+    If lo Is Nothing Then Exit Function
+    If lo.ListRows.Count = 0 Then Exit Function
+    ContarQACodigo = Application.WorksheetFunction.CountIfs(lo.ListColumns("SEVERIDADE").DataBodyRange, "ERRO", _
+                                                             lo.ListColumns("CODIGO").DataBodyRange, codigo)
 End Function
 
 ' ============================================================================
@@ -521,6 +553,15 @@ Private Function StatusEstado(ByVal est As String) As String
     If p = 0 Then StatusEstado = est Else StatusEstado = Left$(est, p - 1)
 End Function
 
+' ADR-090 (OC-0023): a acao da trilha para um manual que aparece com este STATUS_ANALITICO
+Private Function AcaoManualNovo(ByVal st As String) As String
+    Select Case st
+        Case "MANUAL_INCOMPLETO": AcaoManualNovo = "RESULTADO_MANUAL_RECUSADO"
+        Case "CONFLITO_MANUAL": AcaoManualNovo = "RESULTADO_MANUAL_EM_CONFLITO"
+        Case Else: AcaoManualNovo = "RESULTADO_MANUAL_INCLUIDO"
+    End Select
+End Function
+
 Private Sub JuntarAcao(ByRef acao As String, ByVal nova As String)
     acao = acao & IIf(Len(acao) > 0, "+", "") & nova
 End Sub
@@ -578,13 +619,25 @@ Private Sub Registrar(ByVal id As String, ByVal a As String, ByVal b As String, 
         nota = "era substituido pelo manual " & sA & "; agora pelo manual " & sB
         If Len(quem) > 0 Then nota = nota & " (" & quem & ")"
     End If
+    ' ADR-090 (OC-0023): a acao do manual novo segue o STATUS -- MANUAL_INCOMPLETO = RECUSADO (o detalhe diz o campo que
+    ' falta), CONFLITO_MANUAL = EM_CONFLITO (o detalhe diz o automatico que vale), o resto = INCLUIDO. O manual que
+    ' depois passa a ATIVO ganha o INCLUIDO nessa hora (antes: RESULTADO_MANUAL_STATUS).
     If manB And Not manA Then
-        JuntarAcao acao, "RESULTADO_MANUAL_INCLUIDO"
+        JuntarAcao acao, AcaoManualNovo(ParteEstado(b, "MANUAL:"))
+        If AcaoManualNovo(ParteEstado(b, "MANUAL:")) <> "RESULTADO_MANUAL_INCLUIDO" And Len(CStr(x(10))) > 0 Then _
+            nota = nota & IIf(Len(nota) > 0, " | ", "") & CStr(x(10))
         If Len(quem) > 0 Then nota = nota & IIf(Len(nota) > 0, " | ", "") & quem
     End If
     If manA And Not manB Then JuntarAcao acao, "RESULTADO_MANUAL_RETIRADO"
     If manA And manB Then
-        If ParteEstado(a, "MANUAL:") <> ParteEstado(b, "MANUAL:") And Not (inA Or inB) Then JuntarAcao acao, "RESULTADO_MANUAL_STATUS"
+        If ParteEstado(a, "MANUAL:") <> ParteEstado(b, "MANUAL:") And Not (inA Or inB) Then
+            If ParteEstado(b, "MANUAL:") = "ATIVO" And AcaoManualNovo(ParteEstado(a, "MANUAL:")) <> "RESULTADO_MANUAL_INCLUIDO" Then
+                JuntarAcao acao, "RESULTADO_MANUAL_INCLUIDO"
+                If Len(quem) > 0 Then nota = nota & IIf(Len(nota) > 0, " | ", "") & quem
+            Else
+                JuntarAcao acao, "RESULTADO_MANUAL_STATUS"
+            End If
+        End If
         ' ADR-082: valor ou data/hora do manual editados (o numero que vale no lugar do dado do equipamento)
         If ParteEstado(a, "VAL:") <> ParteEstado(b, "VAL:") Or ParteEstado(a, "DH:") <> ParteEstado(b, "DH:") Then
             JuntarAcao acao, "RESULTADO_MANUAL_ALTERADO"
@@ -718,6 +771,7 @@ Private Sub PrepararLinha(ByVal lo As ListObject, ByVal r As Long)
             End If
             If Len(Trim$(CStr(Celula(lo, r, "EQUIPAMENTO").Value))) = 0 Then
                 Celula(lo, r, "EQUIPAMENTO").Value = EquipPadrao()
+                MarcarEquipAutomatico Celula(lo, r, "EQUIPAMENTO")       ' ADR-090 (OC-0019)
             End If
             If Len(Trim$(CStr(Celula(lo, r, "MATRIZ").Value))) = 0 Then
                 Celula(lo, r, "MATRIZ").Value = Cfg("MATRIZ_PADRAO")
@@ -1622,6 +1676,42 @@ Private Sub Carimbar(ByVal cData As Range, ByVal cUsuario As Range)
     If Len(Trim$(CStr(cUsuario.Value))) = 0 Then cUsuario.Value = mAuditoria.UsuarioSistema()
 End Sub
 
+' ADR-090 (OC-0019): o EQUIPAMENTO que o PrepararLinha preencheu sozinho (o do Painel) fica em ambar, com a nota
+' "Preenchido pelo Painel com <equip>: confira antes de ATUALIZAR DADOS." -- so onde o Painel escolhe o equipamento
+' (Bioquimica: dois DIMENSION). Digitar no EQUIPAMENTO tira a cor e a nota. Nada muda no valor nem na regra.
+Private Function EquipDoPainel() As Boolean
+    On Error Resume Next
+    EquipDoPainel = (ThisWorkbook.Names("selEquipamento").RefersToRange.Worksheet.Name = "Painel")
+End Function
+
+Private Function NotaEquip() As String
+    NotaEquip = "Preenchido pelo Painel com "
+End Function
+
+Private Sub MarcarEquipAutomatico(ByVal c As Range)
+    On Error Resume Next
+    If Not EquipDoPainel() Then Exit Sub
+    If Len(Trim$(CStr(c.Value))) = 0 Then Exit Sub
+    c.Interior.Color = RGB(255, 235, 156)
+    c.Font.Color = RGB(156, 87, 0)
+    If Not c.Comment Is Nothing Then c.Comment.Delete
+    c.AddComment NotaEquip() & Trim$(CStr(c.Value)) & ": confira antes de ATUALIZAR DADOS."
+End Sub
+
+Public Function EquipAutomatico(ByVal c As Range) As Boolean
+    On Error Resume Next
+    If c.Comment Is Nothing Then Exit Function
+    EquipAutomatico = (Left$(c.Comment.Text, Len(NotaEquip())) = NotaEquip())
+End Function
+
+Private Sub DesmarcarEquipAutomatico(ByVal c As Range)
+    On Error Resume Next
+    If Not EquipAutomatico(c) Then Exit Sub
+    c.Comment.Delete
+    c.Interior.Pattern = xlNone
+    c.Font.ColorIndex = xlAutomatic
+End Sub
+
 Private Function EquipPadrao() As String
     Dim eq As String
     On Error Resume Next
@@ -1761,6 +1851,9 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
                 End If
             End If
         ElseIf ws.Name = ABA_MANUAL Then
+            ' ADR-090 (OC-0019): o usuario digitou o EQUIPAMENTO -> sai o ambar do preenchimento pelo Painel (vazio: o
+            ' PrepararLinha abaixo preenche e marca de novo)
+            If Not Intersect(Target, Celula(lo, r, "EQUIPAMENTO")) Is Nothing Then DesmarcarEquipAutomatico Celula(lo, r, "EQUIPAMENTO")
             ' ADR-082: digitou o SUBSTITUI_ID -> a linha se preenche com os dados do resultado indicado (so o vazio)
             If TemColuna(lo, COL_SUBST) Then
                 If Not Intersect(Target, Celula(lo, r, COL_SUBST)) Is Nothing Then

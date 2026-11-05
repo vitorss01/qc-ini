@@ -81,8 +81,10 @@ sozinho), marque ou não **Registrar-LJ** (X vermelho), escreva o **motivo** e c
 
 ## 3. Digitar um resultado (falha do interfaceamento)
 
-1. Na aba **Digitar Resultados**, preencha data, hora, lote, nível, analito, resultado e motivo. O ID (MAN_0001…) é
-   gerado sozinho.
+1. Na aba **Digitar Resultados**, preencha data, hora, **equipamento**, lote, nível, analito, resultado e motivo. O ID
+   (MAN_0001…) é gerado sozinho. Equipamento vazio recebe o do Painel e fica em **âmbar**, com a nota "Preenchido pelo
+   Painel com …: confira": na Bioquímica há dois DIMENSION, então confira (ou digite o certo) antes de atualizar
+   (ADR-090).
 2. Atualize e confira o STATUS (e a coluna DETALHE):
    - **ATIVO** = entrou na estatística;
    - **CONFLITO_MANUAL** = o mesmo resultado já veio pelo interfaceamento (mesma chave, até 30 min) e vale o
@@ -213,7 +215,24 @@ Controllab nunca se misturam. As opções:
 | um ano (ex. 2025) | TODAS | as rodadas daquele ano juntas (sem dado no ano = SEM EP) |
 | TODOS | TODAS | as rodadas de todos os anos juntas |
 
-A célula K5 diz o que entrou: rodadas e linhas.
+A célula K5 diz o que entrou: rodadas e linhas. Na Hematologia, o R4 vale para **todos os analitos** ao mesmo tempo.
+
+**Registrar o CEQ (janela).** No resumo do CAP ou do Controllab, clique em **Registrar resultado do CEQ** (é preciso
+estar com o login feito). Preencha na ordem do relatório: rodada → analito e amostra → seu resultado, **valor-alvo**, SD
+e nº de laboratórios → avaliação. Use o nome do analito da lista: a janela mostra para qual analito do QC_INI o
+resultado vai e avisa (em âmbar) quando ele não entra no bias. Sem valor-alvo, a amostra é gravada, mas **não entra no
+bias** (a janela pede confirmação); sem SD e nº de laboratórios, a incerteza não sai. **Salvar e próximo** grava e
+consolida a EQA_Base (15 a 25 s).
+
+**Corrigir ou excluir um CEQ.** Selecione o registro em "Registros desta rodada" e clique em **Corrigir selecionado**
+(o registro volta aos campos; "Salvar correção" grava na mesma linha) ou **Excluir selecionado** (pede confirmação). As
+duas ações ficam no Audit_Log e consolidam a EQA_Base sozinhas. As abas EQA.CAP_Dados e EQA.Controllab_Dados são
+protegidas: não digite nelas.
+
+**Edição direta (só administrador, com a aba liberada).** A célula **Z3** da aba avisa "HÁ EDIÇÃO NÃO CONSOLIDADA"
+até o botão **Consolidar** da EQA_Base ou o **⟳ ATUALIZAR DADOS** (os dois levam a edição ao bias). As colunas de
+fórmula (Bias, |Bias| e as de apoio) recusam digitação; se uma delas for sobrescrita mesmo assim (colando), o Z3 avisa
+"FÓRMULA SOBRESCRITA" e o Audit_Log registra: restaure a fórmula copiando de outra linha da coluna (ADR-090).
 
 **CV do Sigma.**
 - É o **CV pooled** do CIQ: lotes com n ≥ 20, combinados pelos graus de liberdade.
@@ -229,8 +248,9 @@ ficou sem Sigma.
 
 ## 6. O que o laboratório mantém
 
-- **CEQ:** digite cada rodada nas abas EQA.CAP_Dados / EQA.Controllab_Dados, com o **DP do grupo e o nº de
-  laboratórios** de cada amostra. Sem esses dois campos, a incerteza não sai.
+- **CEQ:** registre cada rodada pela janela **Registrar resultado do CEQ** (seção 5), com o **valor-alvo, o DP do
+  grupo e o nº de laboratórios** de cada amostra. Sem o alvo, a amostra não entra no bias; sem os outros dois, a
+  incerteza não sai. Correção e exclusão: **Corrigir selecionado** / **Excluir selecionado** na mesma janela.
 - **Cadastro:** ETp, CVI e CVG de analito novo e da biblioteca de cada ano (Bioquímica: aba Especificações);
   **Média/DP e anos de referência de cada lote novo** (seção 4b).
 - **Investigação do CV:** revisar os IDs de `estudos/cv_suspeitos_<produto>.csv` (relatório

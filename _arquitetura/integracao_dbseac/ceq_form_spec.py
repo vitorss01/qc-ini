@@ -44,8 +44,9 @@ def _cbo(nome, left, top, width, tab, lista_fixa=False):
 # colunas: esquerda 12..285 (rotulo 90 + campo 180); pares do resultado; direita 306..588 (rotulo 90 + campo 189)
 CONTROLES = [
     _lbl('lblTitulo', 'Registrar resultado do Controle Externo (CEQ)', 12, 9, 576, 21, bold=True, size=11, cor=AZUL),
-    _lbl('lblSub', 'Campos com * são obrigatórios. O resultado vai para a aba do provedor e a EQA_Base é '
-                   'consolidada em seguida.', 12, 30, 576, 15, size=8, cor=CINZA),
+    # ADR-090 (OC-0031): a nota do valor-alvo (sem ele a amostra nao entra no bias)
+    _lbl('lblSub', 'Campos com * são obrigatórios. ¹ Sem o valor-alvo, a amostra não entra no bias. O resultado vai '
+                   'para a aba do provedor e a EQA_Base é consolidada.', 12, 30, 576, 15, size=8, cor=CINZA),
     _lbl('lblG1', '1 · RODADA', 12, 51, 273, 15, bold=True, cor=AZUL),
     _lbl('lblG2', '2 · ANALITO E AMOSTRA', 306, 51, 282, 15, bold=True, cor=AZUL),
     _lbl('lblProvedor', 'Provedor *', 12, 72, 90),
@@ -64,7 +65,7 @@ CONTROLES = [
     _lbl('lblG4', '4 · AVALIAÇÃO E FONTE', 306, 147, 282, 15, bold=True, cor=AZUL),
     _lbl('lblResultado', 'Seu resultado *', 12, 168, 78),
     _txt('txtResultado', 93, 165, 54, 6),
-    _lbl('lblAlvo', 'Valor-alvo', 153, 168, 69),
+    _lbl('lblAlvo', 'Valor-alvo ¹', 153, 168, 69),
     _txt('txtAlvo', 225, 165, 60, 7),
     _lbl('lblSD', 'SD', 12, 192, 78),
     _txt('txtSD', 93, 189, 54, 8),

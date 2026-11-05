@@ -216,7 +216,7 @@ def bloco_estatistica(wb, ult, exc, prov, cvi):
         ('Alertas', '=IF(OR($A{r}="",$A{r}=0),"",mIncerteza.AlertasIncerteza($A{r},$B{r},MU_Ini,MU_Fim,$AF{r},' + cvim + ',$AJ{r}' + exc + '))', None),
         ('Viés CEQ médio %\n(com sinal)', '=IF(OR($A{r}="",$A{r}=0),"",' + (vies % 'MEDIA') + ')', '0.00'),
         ('Viés do CEQ\n(triagem)', '=IF(OR($A{r}="",$A{r}=0),"",mCEQ.ViesEQ($A{r},eqAnoEP,"TRIAGEM",' + prov + ',eqRodada,' + bperm + '))', None),
-        ('RMS viés % / u(Cref) %\n(CEQ)', '=IF(OR($A{r}="",$A{r}=0),"",IFERROR(TEXT(' + (vies % 'RMS') + ',"0.00")&" / "&IFERROR(TEXT(' + (vies % 'UCREF') + ',"0.00"),"—"),""))', None),
+        ('RMS viés % / u(Cref) %\n(CEQ)', '=IF(OR($A{r}="",$A{r}=0),"",IFERROR(IFERROR(FIXED(' + (vies % 'RMS') + ',2,TRUE),' + (vies % 'RMS') + ')&" / "&IFERROR(IFERROR(FIXED(' + (vies % 'UCREF') + ',2,TRUE),' + (vies % 'UCREF') + '),"—"),""))', None),   # ADR-090 (OC-0036): FIXED, nao TEXT "0.00"
         ('CEQ amostras\n/ rodadas', '=IF(OR($A{r}="",$A{r}=0),"",' + (vies % 'N') + '&" / "&' + (vies % 'NRODADAS') + ')', None),
     ]
     assert col(C0) == 'AF' and col(C0 + 4) == 'AJ' and col(C0 + 14) == 'AT', 'colunas fora do lugar'

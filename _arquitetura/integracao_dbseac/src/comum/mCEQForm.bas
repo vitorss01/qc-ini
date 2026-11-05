@@ -41,9 +41,16 @@ Private mSelEnd As String
 Private mSelVal As Variant
 
 
+' ADR-090 (OC-0033): registrar CEQ exige a sessao de login (mSeguranca.SessaoAtiva), como inativar. Sem papel minimo
+' novo: qualquer usuario logado registra (o papel minimo depende de autorizacao).
+Public Function TextoSemSessaoCEQ() As String
+    TextoSemSessaoCEQ = "Faça o login para registrar resultados do CEQ."
+End Function
+
 Public Sub AbrirCEQ()
     On Error Resume Next
     Dim f As Object
+    If Not mSeguranca.SessaoAtiva() Then MsgBox TextoSemSessaoCEQ(), vbExclamation, "Controle externo (CEQ)": Exit Sub
     Set f = VBA.UserForms.Add("frmCEQ")
     If f Is Nothing Then MsgBox "A janela de registro do CEQ nao esta instalada.", vbExclamation: Exit Sub
     f.Show
@@ -94,7 +101,8 @@ Public Function DistintosCEQ(ByVal provedor As String, ByVal coluna As Long, Opt
     d.CompareMode = 1
     For i = 1 To UBound(v, 1)
         s = Txt(v(i, coluna))
-        If Len(s) > 0 And Len(Txt(v(i, CQ_ANALITO))) > 0 Then
+        ' ADR-090 (OC-0034): as linhas com Uso = NAO (simulacao: mEQA.UsoAnalitico do Arquivo fonte) nao entram nas listas
+        If Len(s) > 0 And Len(Txt(v(i, CQ_ANALITO))) > 0 And mEQA.UsoAnalitico(v(i, CQ_ARQ)) <> mEQA.USO_NAO Then
             If filtroCol = 0 Or StrComp(Txt(v(i, IIf(filtroCol > 0, filtroCol, 1))), filtroVal, vbTextCompare) = 0 Then
                 If Not d.Exists(s) Then d.Add s, True
             End If
@@ -213,7 +221,19 @@ Public Function DescricaoCEQ(ByVal provedor As String, ByVal linha As Long) As S
     Dim v As Variant
     v = LinhaCEQ(provedor, linha)
     If Not IsArray(v) Then Exit Function
-    DescricaoCEQ = v(0) & " " & v(1) & " " & v(2) & " · " & v(3) & " · " & v(4) & " (resultado " & v(5) & ")"
+    DescricaoCEQ = v(0) & " " & RodadaAno(v(1), v(2)) & " · " & v(3) & " · " & v(4) & " (resultado " & v(5) & ")"
+End Function
+
+' ADR-090 (OC-0055): "C-A 2025" + ano 2025 = "C-A 2025" (o ano so entra quando a rodada nao o traz)
+Public Function RodadaAno(ByVal rodada As String, ByVal ano As String) As String
+    rodada = Trim$(rodada): ano = Trim$(ano)
+    If Len(ano) = 0 Then
+        RodadaAno = rodada
+    ElseIf InStr(1, rodada, ano, vbTextCompare) > 0 Then
+        RodadaAno = rodada
+    Else
+        RodadaAno = Trim$(rodada & " " & ano)
+    End If
 End Function
 
 Private Function ContextoCEQ(ByVal v As Variant) As String
@@ -252,15 +272,19 @@ End Function
 
 ' Outro nome do mapa que comeca pelo digitado e vai para OUTRO canonico ("Lymphs" -> "Lymphs Absolute" = LYMPH#).
 ' Devolve o nome e o canonico do primeiro par, ou "" quando nao ha par.
+' ADR-090 (OC-0052): primeiro o prefixo de palavra ("Lymphs" + espaco); se nao houver, o prefixo literal ("MCH" de "MCHC").
 Private Function ParDoMapa(ByVal mapa As Object, ByVal analito As String, ByVal canon As String, ByRef canonPar As String) As String
-    Dim k As Variant, u As String
-    u = UCase$(Trim$(analito)) & " "
-    For Each k In mapa.Keys
-        If Left$(UCase$(CStr(k)), Len(u)) = u And StrComp(CStr(mapa(k)), canon, vbTextCompare) <> 0 Then
-            ParDoMapa = CStr(k): canonPar = CStr(mapa(k))
-            Exit Function
-        End If
-    Next k
+    Dim k As Variant, u As String, passada As Long
+    For passada = 1 To 2
+        u = UCase$(Trim$(analito)) & IIf(passada = 1, " ", "")
+        For Each k In mapa.Keys
+            If Len(CStr(k)) > Len(u) And Left$(UCase$(CStr(k)), Len(u)) = u And _
+               StrComp(CStr(mapa(k)), canon, vbTextCompare) <> 0 Then
+                ParDoMapa = CStr(k): canonPar = CStr(mapa(k))
+                Exit Function
+            End If
+        Next k
+    Next passada
 End Function
 
 ' Aviso da janela para o analito digitado: "AZUL|No QC_INI: ..." (entra no bias), "AMBAR|..." (fora do mapa) ou "".
@@ -337,8 +361,17 @@ Public Function ConfirmacoesCEQ(ByVal campos As Variant, Optional ByVal linhaAlv
             If Len(par) > 0 Then s = s & " Se o resultado é do " & cp & ", use o nome " & ChrW$(8220) & par & ChrW$(8221) & "."
         End If
     End If
+    ' ADR-090 (OC-0031): sem o valor-alvo a amostra e gravada, mas nao entra no bias (so na verificacao dos limites)
+    If Len(Trim$(CStr(campos(6)))) = 0 Then
+        s = s & IIf(Len(s) > 0, vbLf & vbLf, "") & TextoSemAlvoCEQ()
+    End If
     ConfirmacoesCEQ = s
 sai:
+End Function
+
+Public Function TextoSemAlvoCEQ() As String
+    TextoSemAlvoCEQ = "Sem o valor-alvo, esta amostra NÃO entra no bias (nem no ET e no Sigma). Ela conta só na " & _
+                      "verificação dos limites."
 End Function
 
 ' Aviso devolvido no OK (terceiro campo): fora do bias ou unidade diferente.
@@ -366,6 +399,7 @@ End Function
 ' EQA_Base. Devolve "OK|<linha da aba>|<aviso>" ou "ERRO|<campo>|<mensagem>" (nada gravado no ERRO).
 ' ADR-089: o aviso diz quando o analito fica fora do bias (nao mapeado) ou a unidade diverge do canonico.
 Public Function SalvarCEQ(ByVal campos As Variant) As String
+    If Not mSeguranca.SessaoAtiva() Then SalvarCEQ = "ERRO|0|Sessão encerrada: faça o login de novo. Nada foi gravado.": Exit Function   ' ADR-090 (OC-0033)
     SalvarCEQ = GravarCEQ(campos, 0)
 End Function
 
@@ -425,7 +459,7 @@ Private Function GravarCEQ(ByVal campos As Variant, ByVal linhaAlvo As Long) As 
                        StrComp(Txt(v(r, CQ_ANALITO)), an, vbTextCompare) = 0 And _
                        StrComp(Txt(v(r, CQ_AMOSTRA)), am, vbTextCompare) = 0 Then
                         ' ADR-089 (OC-0027): a aba e bloqueada para o ANALISTA -- o caminho e o botao Corrigir da janela
-                        GravarCEQ = "ERRO|5|Já existe este registro (" & prov & " " & rod & " " & ano & " · " & an & " · " & _
+                        GravarCEQ = "ERRO|5|Já existe este registro (" & prov & " " & RodadaAno(rod, ano) & " · " & an & " · " & _
                                     am & ") na linha " & (lo.DataBodyRange.Row + r - 1) & ". Para corrigir, selecione-o em " & _
                                     ChrW$(8220) & "Registros desta rodada" & ChrW$(8221) & " e clique em Corrigir selecionado."
                         Exit Function
@@ -486,6 +520,7 @@ Private Function GravarCEQ(ByVal campos As Variant, ByVal linhaAlvo As Long) As 
     End If
     Err.Clear
     aviso = AvisoGravado(prov, an, Trim$(CStr(campos(13))), r)
+    If IsEmpty(nums(7)) Then aviso = Trim$(aviso & " Gravado fora do bias (sem valor-alvo).")      ' ADR-090 (OC-0031)
     Err.Clear
     mEQA.ConsolidarEQABaseDe IIf(linhaAlvo > 0, "janela do CEQ (correção)", "janela do CEQ (registro)")
     If Err.Number <> 0 Then aviso = Trim$(aviso & " Gravado, mas a consolidação da EQA_Base falhou (" & Err.Description & "). " & _
@@ -574,9 +609,47 @@ Private Function ValorAntes(ByVal c As Range) As String
 sai:
 End Function
 
+' ADR-090 (OC-0054): o valor do campo na EQA_Base para o registro da linha (chave provedor|ano|rodada|analito|amostra,
+' a mesma da consolidacao). Sem o registro na base (registro novo ou campo da chave editado) ou sem coluna na base
+' (No de laboratorios): devolve "padrao" (o "?" de antes).
+Private Function ValorConsolidado(ByVal prov As String, ByVal lo As ListObject, ByVal c As Range, ByVal col As Long, _
+                                  ByVal padrao As String) As String
+    Dim b As Worksheet, ch As String, m As Variant, bc As Long, ws As Worksheet
+    ValorConsolidado = padrao
+    On Error GoTo sai
+    Select Case col
+        Case CQ_PROV: bc = mEQA.B_PROVEDOR
+        Case CQ_RODADA: bc = mEQA.B_RODADA
+        Case CQ_ANO: bc = mEQA.B_ANO
+        Case CQ_ANALITO: bc = mEQA.B_ANALITO
+        Case CQ_AMOSTRA: bc = mEQA.B_AMOSTRA
+        Case CQ_RES: bc = mEQA.B_RESULTADO
+        Case CQ_ALVO: bc = mEQA.B_ALVO
+        Case CQ_SD: bc = mEQA.B_SD
+        Case CQ_SDI: bc = mEQA.B_SDI
+        Case CQ_LINF: bc = mEQA.B_LIMINF
+        Case CQ_LSUP: bc = mEQA.B_LIMSUP
+        Case CQ_AVAL: bc = mEQA.B_AVAL_ORIG
+        Case CQ_UNID: bc = mEQA.B_UNIDADE
+        Case CQ_PAG: bc = mEQA.B_PAGINA
+        Case CQ_ARQ: bc = mEQA.B_ARQUIVO
+        Case Else: Exit Function
+    End Select
+    Set ws = c.Worksheet
+    ch = prov & "|" & Txt(ws.Cells(c.Row, lo.Range.Column + CQ_ANO - 1).Value) & "|" & _
+         Txt(ws.Cells(c.Row, lo.Range.Column + CQ_RODADA - 1).Value) & "|" & _
+         Txt(ws.Cells(c.Row, lo.Range.Column + CQ_ANALITO - 1).Value) & "|" & _
+         Txt(ws.Cells(c.Row, lo.Range.Column + CQ_AMOSTRA - 1).Value)
+    Set b = ThisWorkbook.Worksheets(mEQA.EQA_BASE)
+    m = Application.Match(ch, b.Range(b.Cells(mEQA.BASE_R0, mEQA.B_CHAVE), b.Cells(mEQA.BASE_RN, mEQA.B_CHAVE)), 0)
+    If IsError(m) Then Exit Function
+    ValorConsolidado = TxtCel(b.Cells(mEQA.BASE_R0 + CLng(m) - 1, bc).Value)
+sai:
+End Function
+
 Public Sub EdicaoDiretaCEQ(ByVal alvo As Range)
     Dim ws As Worksheet, lo As ListObject, zona As Range, c As Range, prov As String, n As Long, det As String
-    Dim col As Long, a As String, d As String, cab As String, ctx As Variant, resto As Long
+    Dim col As Long, a As String, d As String, cab As String, ctx As Variant, resto As Long, nF As Long, detF As String
     On Error GoTo sai
     Set ws = alvo.Worksheet
     If ws.Name = mEQA.ABA_CAP Then prov = "CAP" Else prov = "Controllab"
@@ -587,8 +660,17 @@ Public Sub EdicaoDiretaCEQ(ByVal alvo As Range)
     If zona Is Nothing Then GoTo sai
     For Each c In zona.Cells
         col = c.Column - lo.Range.Column + 1
+        ' ADR-090 (OC-0053): coluna de FORMULA (O Bias, P |Bias| e as de apoio S..X) sobrescrita -- a consolidacao copia o
+        ' valor digitado para a EQA_Base e o bias do ET/Sigma o usaria. O Z3 avisa (FORMULA SOBRESCRITA) e fica a trilha.
+        If col > CQ_UNID And col <> CQ_PAG And col <> CQ_ARQ And Not c.HasFormula Then
+            nF = nF + 1
+            If nF <= 30 Then detF = detF & IIf(Len(detF) > 0, ", ", "") & c.Address(False, False) & " (" & _
+                TxtCel(lo.HeaderRowRange.Cells(1, col).Value) & ") = " & IIf(Len(TxtCel(c.Value)) = 0, "(vazio)", TxtCel(c.Value))
+        End If
         If (col >= CQ_PROV And col <= CQ_UNID) Or col = CQ_PAG Or col = CQ_ARQ Then
             a = ValorAntes(c): d = TxtCel(c.Value)
+            ' ADR-090 (OC-0054): sem o "antes" da selecao, vale o que esta consolidado na EQA_Base para o registro
+            If a = "?" Then a = ValorConsolidado(prov, lo, c, col, a)
             If a <> d Then
                 n = n + 1
                 If n <= 30 Then
@@ -608,6 +690,11 @@ Public Sub EdicaoDiretaCEQ(ByVal alvo As Range)
         If resto > 0 Then det = det & " || e mais " & resto & " célula(s)"
         mAuditoria.RegistrarLog "CEQ_ALTERADO", "edição direta na tabela | aba " & ws.Name & " | " & det & _
                                 " | falta consolidar (Consolidar na EQA_Base ou ATUALIZAR DADOS)"
+    End If
+    If nF > 0 Then
+        mAuditoria.RegistrarLog "CEQ_FORMULA_SOBRESCRITA", "edição direta numa coluna de fórmula | aba " & ws.Name & " | " & _
+                                detF & IIf(nF > 30, " e mais " & (nF - 30) & " célula(s)", "") & _
+                                " | o bias usaria o valor digitado: restaure a fórmula (copie de outra linha da coluna)"
     End If
 sai:
     GuardarSelecaoCEQ alvo               ' o "antes" da proxima edicao e o valor de agora

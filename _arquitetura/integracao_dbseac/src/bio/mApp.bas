@@ -363,6 +363,39 @@ End Sub
 ' regra de ano de dois digitos do VBA le 0 como 2000. O Painel filtrava um
 ' periodo sem dado e ficava vazio sem dizer por que. Numero plausivel e errado
 ' e pior que erro visivel: ninguem confere o que parece certo.
+' ADR-090 (OC-0040): o usuario digitou De/Ate (G3/G4) -- o rotulo do Periodo (K4) passa a "Personalizado" e o
+' Ano (K3) ao ano das datas (De e Ate no mesmo ano; so uma delas: o ano dela; anos diferentes: K3 vazio). De e Ate
+' vazios = "Tudo (sem filtro)". So rotulo: o motor continua lendo G3/G4. K3/K4 sao celulas livres da aba (sem
+' Unprotect: fica fora do caminho da troca de analito).
+Public Function RotuloPersonalizado() As String
+    RotuloPersonalizado = "Personalizado"     ' o K4 tem 74 pt: "(De/Até)" nao cabe
+End Function
+
+Public Sub PeriodoPersonalizado()
+    Dim ev As Boolean, de As Variant, ate As Variant, a As Long, b As Long
+    ev = Application.EnableEvents
+    On Error GoTo fim
+    Application.EnableEvents = False
+    de = ThisWorkbook.Names("filtroDe").RefersToRange.Value
+    ate = ThisWorkbook.Names("filtroAte").RefersToRange.Value
+    If IsDate(de) Then a = Year(CDate(de))
+    If IsDate(ate) Then b = Year(CDate(ate))
+    If a = 0 And b = 0 Then
+        If IsEmpty(de) And IsEmpty(ate) Then ThisWorkbook.Names("filtroPeriodo").RefersToRange.Value = "Tudo (sem filtro)"
+        GoTo fim
+    End If
+    ThisWorkbook.Names("filtroPeriodo").RefersToRange.Value = RotuloPersonalizado()
+    If a = 0 Then a = b
+    If b = 0 Then b = a
+    If a = b Then
+        ThisWorkbook.Names("filtroAno").RefersToRange.Value = a
+    Else
+        ThisWorkbook.Names("filtroAno").RefersToRange.ClearContents
+    End If
+fim:
+    Application.EnableEvents = ev
+End Sub
+
 Public Function AplicarFiltroAnoMes() As String
     Dim a As Long, s As String, ev As Boolean, v As Variant
     Dim visao As String, parte As Long
@@ -371,6 +404,8 @@ Public Function AplicarFiltroAnoMes() As String
     Application.EnableEvents = False
     v = ThisWorkbook.Names("filtroAno").RefersToRange.Value
     s = Trim$(CStr(ThisWorkbook.Names("filtroPeriodo").RefersToRange.Value))
+    ' ADR-090 (OC-0040): "Personalizado" = o De/Ate digitado vale como esta (nada e reescrito, nem o ano)
+    If UCase$(Left$(s, 13)) = "PERSONALIZADO" Then AplicarFiltroAnoMes = "OK|0|PERSONALIZADO|0": GoTo fim
     ' IsNumeric(Empty) e VERDADEIRO em VBA: celula vazia passava por "ano valido",
     ' virava 0 e a rotina saia calada -- o usuario escolhia T1 e nada acontecia.
     a = 0

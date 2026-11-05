@@ -1338,6 +1338,8 @@ Public Sub AtualizarCalc()
     mUI.LimparDicas
     ws.Range("K1").Value = 0
     ws.Range("M1").Value = 0
+    ws.Range("AE1").Value = "n do período:"     ' ADR-090 (OC-0012): so com corridas fora da janela
+    ws.Range("AF1").Value = ""
     ws.Range("O1").Value = ""
     ws.Range("Q1").Value = ""
     ws.Range("R1").Value = "equip:"
@@ -1493,6 +1495,7 @@ Public Sub AtualizarCalc()
         If PassaFiltro(dtsT(i)) Then nCort = nCort + 1
     Next i
     ws.Range("M1").Value = nCort + pularX
+    If nCort + pularX > 0 Then ws.Range("AF1").Value = NPeriodoPorNivel(linhas, keyT, dtsT, fimJan)
     ReDim runs(1 To NK): ReDim dts(1 To NK): ReDim keys(1 To NK)
     nRun = 0
     j = 0
@@ -1796,6 +1799,36 @@ restaura:
 End Sub
 
 ' Filtro de data/trimestre do Painel.
+' ADR-090 (OC-0012): n do PERIODO inteiro por nivel, sem a janela de NK corridas -- os resultados elegiveis
+' numericos das corridas ate o fim do periodo que passam no filtro De/Ate (a mesma regra da contagem das
+' cortadas). So o texto do aviso A39 ("N1 174 · N2 170"): n, media, DP, CV e Westgard do Painel continuam os
+' da janela (ADR-049 dec. 5, ADR-066 D10).
+Private Function NPeriodoPorNivel(ByVal linhas As Collection, keyT() As String, dtsT() As Double, _
+                                  ByVal fimJan As Long) As String
+    Dim cnt() As Long, pos As Object, x As Variant, i As Long, t As Long, k As Long, s As String
+    ReDim cnt(0 To NLV - 1)
+    Set pos = CreateObject("Scripting.Dictionary")
+    For i = 1 To fimJan
+        pos(keyT(i)) = i
+    Next i
+    For Each x In linhas
+        i = x
+        If IsNumeric(mDB(i, COL_RESULT)) Then
+            t = CLng(Val(mDB(i, COL_NIVEL))) - 1
+            If t >= 0 And t <= NLV - 1 Then
+                If pos.Exists(KR(i)) Then
+                    k = pos(KR(i))
+                    If PassaFiltro(dtsT(k)) Then cnt(t) = cnt(t) + 1
+                End If
+            End If
+        End If
+    Next x
+    For t = 0 To NLV - 1
+        s = s & IIf(t > 0, " " & ChrW$(183) & " ", "") & "N" & (t + 1) & " " & cnt(t)
+    Next t
+    NPeriodoPorNivel = s
+End Function
+
 Private Function PassaFiltro(ByVal dserial As Double) As Boolean
     PassaFiltro = True
     If dserial <= 0 Then Exit Function

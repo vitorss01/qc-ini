@@ -299,7 +299,9 @@ def a39(m, nlv):
             'IF(N(engNTotal)=0,"O lote não tem resultado de "&selAnalito&" no "&engEquip&". ",'
             'IF(COUNTIF(Calc!$D$3:$D$182,1)=0,"Nenhuma corrida deste lote no período"&IF(engLotesPer<>""," (com dados: "&engLotesPer&")","")&". ","")))))'
             '&IF(engAviso<>"","FILTRO: "&engAviso&" ","")'
-            '&IF(N(engCortadas)>0,"⚠ "&engCortadas&" corrida(s) antigas do período fora do gráfico (máx. 180). ","")'
+            # ADR-090 (OC-0012): o corte vale tambem para os indicadores do Painel; n do periodo inteiro em Eng_Saida!AF1
+            '&IF(N(engCortadas)>0,"⚠ "&engCortadas&" corrida(s) antigas do período fora do gráfico e dos indicadores do '
+            'Painel (máx. 180). Período inteiro: "&Eng_Saida!$AF$1&" — veja a aba Estatística. ","")'
             '&IF(OR($G$3<>"",$G$4<>""),"Filtro "&IF($G$3<>"",TEXT($G$3,"dd/mm/aa"),"início")&" a "&IF($G$4<>"",TEXT($G$4,"dd/mm/aa"),"hoje"),"Sem filtro de data")')
 
 

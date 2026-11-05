@@ -45,8 +45,8 @@ ABAS = [
     ('Digitar Resultados',
      'DIGITAR RESULTADOS — continuidade quando o interfaceamento falha',
      'Entrada paralela (staging) · entra na DB_CQ_FINAL pelo mesmo caminho dos resultados automáticos',
-     ['1) Preencha DATA, HORA, LOTE, NÍVEL, ANALITO, RESULTADO e MOTIVO na próxima linha livre — o ID (MAN_0001…) '
-      'é gerado sozinho. Para SUBSTITUIR um resultado do interfaceamento, digite primeiro o ID dele em SUBSTITUI_ID '
+     ['1) Preencha DATA, HORA, EQUIPAMENTO, LOTE, NÍVEL, ANALITO, RESULTADO e MOTIVO na próxima linha livre — o ID '
+      '(MAN_0001…) é gerado sozinho. EQUIPAMENTO vazio recebe o do Painel (fica em âmbar): confira. Para SUBSTITUIR um resultado do interfaceamento, digite primeiro o ID dele em SUBSTITUI_ID '
       '(o resto se preenche) e o MOTIVO.  2) Clique ⟳ ATUALIZAR DADOS.',
       '3) Confira STATUS e DETALHE: ATIVO = entrou na estatística (com SUBSTITUI_ID, no lugar do automático) · '
       'CONFLITO_MANUAL = o mesmo resultado já veio pelo interfaceamento e vale o automático (para o manual valer, '
@@ -97,6 +97,23 @@ CONSULTAS = ['CFG_INTEGRACAO', 'SEAC_ORIGEM'] + ORDEM_CARGA
 # Coluna de FORMULA nunca tem formato '@' (texto): com '@' o Excel guarda a formula como TEXTO literal e a
 # celula mostra "=IF(..." em vez do valor (defeito achado em 06/10/2026 nas tres abas de entrada; ADR-070).
 LOOKUP = '=IF([@ID_REGISTRO]="","",IFERROR(XLOOKUP([@ID_REGISTRO],tblCQ_Final[ID_REGISTRO],tblCQ_Final[{c}]),"—"))'
+# ADR-090 (OC-0021): RUN e DETALHE sem o "0" que o XLOOKUP devolve para a celula vazia (RUN: so formato; DETALHE: &""). O DETALHE ganha os acentos so na TELA: o MOTIVO_EXCLUSAO_AUTOMATICA da tblCQ_Final continua sem acento,
+# igual nos dois motores (VBA e a reserva PQ, comparados pelo qa_sync S6).
+FMT_RUN = '0;-0;;@'
+FMT_DETALHE = 'General'          # o DETALHE e sempre texto (XLOOKUP(...)&""): o "0" some pela formula
+ACENTOS_DETALHE = [('obrigatorio', 'obrigatório'), ('invalido', 'inválido'), ('lancamento', 'lançamento'),
+                   ('ambiguo', 'ambíguo'), ('virgula', 'vírgula'), ('padrao', 'padrão'), ('numerico', 'numérico'),
+                   ('retransmissao', 'retransmissão')]
+
+
+def _formula_detalhe():
+    x = 'XLOOKUP([@ID_REGISTRO],tblCQ_Final[ID_REGISTRO],tblCQ_Final[MOTIVO_EXCLUSAO_AUTOMATICA])&""'
+    for a, b in ACENTOS_DETALHE:
+        x = f'SUBSTITUTE({x},"{a}","{b}")'
+    return '=IF([@ID_REGISTRO]="","",IFERROR(' + x + ',"atualize os dados"))'
+
+
+FORMULA_DETALHE = _formula_detalhe()
 ENTRADAS = {
     'tblResultados_Manuais': ('Digitar Resultados', [
         ('ID_REGISTRO', 13, '@', 'auto'),
@@ -112,10 +129,9 @@ ENTRADAS = {
         ('MOTIVO', 28, '@', 'in'),
         ('USUARIO', 14, '@', 'auto'),
         ('REGISTRADO_EM', 16, 'dd/mm/yyyy hh:mm', 'auto'),
-        ('RUN', 11, '0', LOOKUP.format(c='RUN')),
+        ('RUN', 11, FMT_RUN, LOOKUP.format(c='RUN')),               # ADR-090 (OC-0021): sem o "0" do XLOOKUP vazio
         ('STATUS', 20, 'General', LOOKUP.format(c='STATUS_ANALITICO')),
-        ('DETALHE', 50, 'General', '=IF([@ID_REGISTRO]="","",IFERROR(XLOOKUP([@ID_REGISTRO],tblCQ_Final[ID_REGISTRO],'
-                                   'tblCQ_Final[MOTIVO_EXCLUSAO_AUTOMATICA]),"atualize os dados"))'),
+        ('DETALHE', 50, FMT_DETALHE, FORMULA_DETALHE),             # ADR-090 (OC-0021): sem "0" e com acentos
         # ADR-082: opcional, NO FIM (tabela existente ganha a coluna sem mexer nas outras). ID do resultado do
         # interfaceamento que este manual substitui; exige MOTIVO. O DETALHE mostra "substitui ..." ou por que nao vale
         ('SUBSTITUI_ID', 14, '@', 'in'),
@@ -595,8 +611,9 @@ def formulas_resumo():
               'TEXT(MAX(tblDB_Recebimento[RECEBIDO_EM]),"dd/mm/")&YEAR(MAX(tblDB_Recebimento[RECEBIDO_EM]))&'
               'TEXT(MAX(tblDB_Recebimento[RECEBIDO_EM])," hh:mm")',
         'DB_ORGANIZADO': '="Linhas (instante × nível): "&TEXT(ROWS(tblDB_Organizado),"#,##0")',
-        'Principal - Resultados': '="Total: "&TEXT(ROWS(tblCQ_Final),"#,##0")&"  ·  participam: "&'
-                       'TEXT(COUNTIFS(tblCQ_Final[PARTICIPA_ESTATISTICA],"SIM"),"#,##0")&"  ·  X vermelho: "&'
+        # ADR-090 (OC-0050): FIXED, nao TEXT(...,"#,##0") -- o codigo do TEXT e lido no idioma do Excel (pt-BR: "44392,0")
+        'Principal - Resultados': '="Total: "&FIXED(ROWS(tblCQ_Final),0)&"  ·  participam: "&'
+                       'FIXED(COUNTIFS(tblCQ_Final[PARTICIPA_ESTATISTICA],"SIM"),0)&"  ·  X vermelho: "&'
                        'COUNTIFS(tblCQ_Final[TIPO_PLOTAGEM_LJ],"X_VERMELHO")&"  ·  inativados: "&'
                        'COUNTIFS(tblCQ_Final[STATUS_ANALITICO],"INATIVADO")&"  ·  manuais: "&'
                        'COUNTIFS(tblCQ_Final[ORIGEM_RESULTADO],"MANUAL")&"  ·  substituídos por manual: "&'

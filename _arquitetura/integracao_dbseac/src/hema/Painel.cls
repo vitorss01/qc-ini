@@ -27,6 +27,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         mEstatistica.PainelMudou
     End If
     If Not Intersect(Target, Me.Range("G3,G4")) Is Nothing Then
+        ' ADR-090 (OC-0040): De/Ate digitados -> K4 "Personalizado" e K3 = o ano das datas
+        mApp.PeriodoPersonalizado
         ' periodo: a janela de corridas do motor depende do fim do periodo
         mEstatistica.FiltroMudou
     End If

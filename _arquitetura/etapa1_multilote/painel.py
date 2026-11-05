@@ -57,8 +57,11 @@ G_NOTA = ('A', 'O')
 # inteiro? A lista agora diz qual e qual (ADR-054).
 TUDO = 'Tudo (sem filtro)'
 ANO_INTEIRO = 'Ano inteiro'
+# ADR-090 (OC-0040): "Personalizado" = o De/Ate digitado em G3/G4 (o Painel escreve sozinho ao digitar). O texto
+# "Personalizado (De/Até)" do parecer UX precisa de 108 pt e o K4 tem 74 pt (cortado mesmo reduzindo 30%)
+PERSONALIZADO = 'Personalizado'
 PERIODOS = (TUDO + ';' + ANO_INTEIRO + ';T1;T2;T3;T4;S1;S2;'
-            'Jan;Fev;Mar;Abr;Mai;Jun;Jul;Ago;Set;Out;Nov;Dez')
+            'Jan;Fev;Mar;Abr;Mai;Jun;Jul;Ago;Set;Out;Nov;Dez;' + PERSONALIZADO)
 
 LINKS = [
     ('Westgard et al., 2018 — Sigma metrics e tabela Sigma × DPM ↗',
