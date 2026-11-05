@@ -73,7 +73,9 @@ def abas_ceq(wb):
             ws.Range('Z2').Formula = Z2
             MUDANCAS.append(f'{aba} Z2 (carimbo por formula)')
         z3 = str(ws.Range('Z3').Formula)
-        if norm(z3) != norm(z3_novo(prov)):
+        # ADR-090 (OC-0053) envolve esta formula: "=IF(<formula sobrescrita>,aviso," + Z3 do 089 + ")". Ja instalado.
+        ja_090 = 'SOBRESCRITA' in z3 and norm(z3).endswith(norm(z3_novo(prov)[1:] + ')'))
+        if not ja_090 and norm(z3) != norm(z3_novo(prov)):
             if norm(z3) != norm(z3_antigo(prov)):
                 raise SystemExit(f'{aba}!Z3 inesperada: {z3[:160]!r} -- nada foi salvo')
             ws.Range('Z3').Formula = z3_novo(prov)
