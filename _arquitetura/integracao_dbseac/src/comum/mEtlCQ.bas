@@ -18,6 +18,9 @@ Attribute VB_Name = "mEtlCQ"
 '  continua com status de corrida real fica com a CORRIDA_NO_DIA/RUN do manual. Mesmas regras e textos do PQ.
 '  ADR-088: data/hora em texto que nao existe (31/02, 25:00) nao "rola" para outro dia -- e invalida (MANUAL_INCOMPLETO);
 '  resultado <= 0 que seria ATIVO vira IMPLAUSIVEL (nao participa, nao plota; QA A11). Mesmas regras no PQ.
+'  ADR-091: regras de material por LOTE (tblLotesMaterial, opcional): MATRIZ troca a matriz do resultado do lote ANTES
+'  do de/para; SO_ANALITOS -> LOTE_OUTRO_MATERIAL nos outros analitos; FORA_DO_CQ -> LOTE_FORA_DO_CQ no lote inteiro
+'  (nao participam, nao plotam; QA A13; linha ignorada ou suspeita: QA A14). Mesmas regras e textos no PQ.
 ' ============================================================================
 Option Explicit
 Option Compare Binary
@@ -44,6 +47,9 @@ Private Const NF As Long = 52
 Private Const SUF_SUB As String = " (este manual nao substitui nada)"
 ' ADR-088 (OC-0004, autorizado pelo usuario em 03/11/2026): resultado de CIQ <= 0 nao participa (mesmo texto do PQ)
 Private Const TXT_IMPLAUSIVEL As String = "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)"
+' ADR-091 (autorizado pelo usuario em 05/11/2026): regras de material por LOTE (mesmos textos do PQ)
+Private Const TXT_LOTE_FORA As String = "lote fora do CQ (regra FORA_DO_CQ da tblLotesMaterial; fora da estatistica e do grafico)"
+Private Const TXT_LOTE_OUTRO As String = "lote de outro material neste analito (regra SO_ANALITOS da tblLotesMaterial; fora da estatistica e do grafico)"
 
 Private mPrefixo As String
 Private mRx As Object
@@ -493,6 +499,13 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
         End If
     Next i
 
+    ' ---- ADR-091: regras de material por LOTE (tblLotesMaterial; ausente = nenhuma regra)
+    Dim mzLote As Object, loteFora As Object, loteSo As Object
+    Set mzLote = CreateObject("Scripting.Dictionary")
+    Set loteFora = CreateObject("Scripting.Dictionary")
+    Set loteSo = CreateObject("Scripting.Dictionary")
+    LerLotesMaterial mzLote, loteFora, loteSo
+
     ' ---- interfaceamento (R1): 1 linha por ID, na ordem da tabela
     Dim cR As Object, dR As Variant, nR As Long, U() As Variant, nU As Long, vistos As Object, idr As Variant, mz As Variant
     Dim nMan As Long, cM As Object, dM As Variant
@@ -525,6 +538,7 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
                 vistos.Add idr, 1
                 nU = nU + 1
                 mz = Cel(dR, i, cMz): If IsEmpty(mz) Then mz = MATRIZ_PADRAO
+                If mzLote.Count > 0 Then mz = MatrizDoLote(mzLote, Cel(dR, i, cLt), mz)   ' ADR-091: antes do de/para
                 U(nU, F_ID) = idr
                 U(nU, F_IDO) = Int64(Cel(dR, i, cIdo))
                 U(nU, F_EQ) = TextFrom(Cel(dR, i, cEq))
@@ -594,7 +608,7 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
     Next i
     Marca "duplicidade"
     ' ---- manuais
-    CalcularManuais U, nU, dM, cM, nMan, DP, nD, cadastrados, nivelDesc, C, NIVEIS, TOL, agora, nInterface
+    CalcularManuais U, nU, dM, cM, nMan, DP, nD, cadastrados, nivelDesc, C, NIVEIS, TOL, agora, nInterface, mzLote
 
     Marca "manuais"
     ' ---- inativacao e comentarios
@@ -631,7 +645,8 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
     Next i
 
     ' ---- status
-    Dim st As String, inatOk As Boolean, lj As Boolean, out() As Variant
+    Dim st As String, inatOk As Boolean, lj As Boolean, out() As Variant, stLote As String, temRegraLote As Boolean
+    temRegraLote = (loteFora.Count + loteSo.Count > 0)
     ReDim out(1 To IIf(nU > 0, nU, 1), 1 To NC)
     For i = 1 To nU
         inatOk = False
@@ -646,6 +661,7 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
             End If
         End If
         If coment.Exists(U(i, F_ID)) Then U(i, F_COMENT) = coment(U(i, F_ID)) Else U(i, F_COMENT) = Empty
+        If temRegraLote Then stLote = StatusDoLote(loteFora, loteSo, U(i, F_LT), U(i, F_AN)) Else stLote = ""
         If U(i, F_FALTA) <> "" Then
             st = "MANUAL_INCOMPLETO"
         ElseIf U(i, F_DUP) Then
@@ -660,6 +676,8 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
             st = "SEM_VALOR"
         ElseIf inatOk Then
             st = "INATIVADO"
+        ElseIf Len(stLote) > 0 Then
+            st = stLote                              ' ADR-091: LOTE_FORA_DO_CQ / LOTE_OUTRO_MATERIAL (QA A13)
         ElseIf U(i, F_VL) <= 0 Then
             st = "IMPLAUSIVEL"                       ' ADR-088 (OC-0004): CIQ <= 0 fora da estatistica (QA A11)
         Else
@@ -681,6 +699,8 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
             Case "SEM_DATA_HORA": out(i, 32) = "resultado do interfaceamento sem DATA_HORA (fora da corrida)"
             Case "SEM_VALOR": out(i, 32) = "resultado sem valor numerico (flag " & IIf(IsEmpty(U(i, F_FL)), "vazia", U(i, F_FL)) & ")"
             Case "IMPLAUSIVEL": out(i, 32) = TXT_IMPLAUSIVEL
+            Case "LOTE_FORA_DO_CQ": out(i, 32) = TXT_LOTE_FORA
+            Case "LOTE_OUTRO_MATERIAL": out(i, 32) = TXT_LOTE_OUTRO
             Case Else
                 ' ADR-082: inativado pelo usuario e substituido continua INATIVADO, com o vinculo; manual: a nota
                 If Not IsEmpty(U(i, F_SUBPOR)) Then out(i, 32) = TextoSubstituido(U, i) Else out(i, 32) = U(i, F_NOTA)
@@ -802,6 +822,127 @@ Private Function AnKey(ByVal x As Variant) As Variant
     If IsEmpty(t) Then AnKey = Empty Else AnKey = UCase$(t)
 End Function
 
+' ---------------------------------------------------------------- ADR-091: regras de material por LOTE
+' tblLotesMaterial (LOTE, REGRA, MATRIZ, ANALITOS, NOTA), opcional: ausente = nenhuma regra. Lote, regra, matriz e
+' analito comparados sem caixa e sem espacos nas pontas (AnKey). Por linha, na ordem da tabela:
+'   MATRIZ ....... mzLote(lote) = MATRIZ (vale a 1a do lote);  FORA_DO_CQ ... loteFora(lote);
+'   SO_ANALITOS .. loteSo(lote) = os analitos (separados por ";"), somados se o lote tiver mais de uma linha.
+' Ignorada: LOTE vazio, REGRA desconhecida, MATRIZ sem a matriz ou repetida no lote, SO_ANALITOS sem analito. Devolve
+' as linhas ignoradas ou suspeitas (analito fora do de/para) como Array(detalhe) -- o QA A14 (mEtlQA), mesmo texto do PQ.
+Public Function LerLotesMaterial(Optional ByVal mzLote As Object, Optional ByVal loteFora As Object, _
+                                 Optional ByVal loteSo As Object) As Collection
+    Dim c As Object, d As Variant, n As Long, L As Long, lt As Variant, rg As Variant, mzv As Variant, anT As Variant
+    Dim msg As String, p As Variant, k As Variant, fora As String, lista As Object, cad As Object, nAn As Long
+    Dim cD As Object, dD As Variant, nDd As Long, i As Long, doLote As Object
+    Set LerLotesMaterial = New Collection
+    If mzLote Is Nothing Then Set mzLote = CreateObject("Scripting.Dictionary")
+    If loteFora Is Nothing Then Set loteFora = CreateObject("Scripting.Dictionary")
+    If loteSo Is Nothing Then Set loteSo = CreateObject("Scripting.Dictionary")
+    d = LerTabela("tblLotesMaterial", c, n, False)
+    For L = 1 To n
+        lt = AnKey(Campo(d, c, L, "LOTE")): rg = AnKey(Campo(d, c, L, "REGRA"))
+        mzv = AnKey(Campo(d, c, L, "MATRIZ")): anT = Txt(Campo(d, c, L, "ANALITOS"))
+        msg = ""
+        If IsEmpty(lt) And IsEmpty(rg) And IsEmpty(mzv) And IsEmpty(anT) Then
+            ' linha em branco
+        ElseIf IsEmpty(lt) Then
+            msg = "LOTE vazio; a linha foi ignorada"
+        ElseIf rg <> "MATRIZ" And rg <> "SO_ANALITOS" And rg <> "FORA_DO_CQ" Then          ' vazia tambem
+            msg = "REGRA '" & IIf(IsEmpty(rg), "", rg) & "' desconhecida (use MATRIZ, SO_ANALITOS ou FORA_DO_CQ); a linha foi ignorada"
+        ElseIf rg = "MATRIZ" Then
+            If IsEmpty(mzv) Then
+                msg = "regra MATRIZ sem a MATRIZ; a linha foi ignorada"
+            ElseIf mzLote.Exists(lt) Then
+                msg = "o lote ja tem uma regra MATRIZ antes desta (" & mzLote(lt) & "); esta linha foi ignorada"
+            Else
+                mzLote.Add lt, mzv
+            End If
+        ElseIf rg = "FORA_DO_CQ" Then
+            loteFora(lt) = 1
+        Else                                                         ' SO_ANALITOS
+            If cad Is Nothing Then
+                Set cad = CreateObject("Scripting.Dictionary")
+                dD = LerTabela("tblDeParaAnalitos", cD, nDd, False)
+                For i = 1 To nDd
+                    k = AnKey(Campo(dD, cD, i, "ANALITO_QCINI"))
+                    If Not IsEmpty(k) Then cad(k) = 1
+                Next i
+            End If
+            Set lista = CreateObject("Scripting.Dictionary"): fora = "": nAn = 0
+            If Not IsEmpty(anT) Then
+                For Each p In Split(anT, ";")
+                    k = AnKey(p)
+                    If Not IsEmpty(k) Then
+                        nAn = nAn + 1
+                        lista(k) = 1
+                        If Not cad.Exists(k) Then fora = fora & IIf(Len(fora) > 0, ", ", "") & Txt(p)
+                    End If
+                Next p
+            End If
+            If nAn = 0 Then
+                msg = "regra SO_ANALITOS sem ANALITOS; a linha foi ignorada"
+            Else
+                If Not loteSo.Exists(lt) Then loteSo.Add lt, CreateObject("Scripting.Dictionary")
+                Set doLote = loteSo(lt)
+                For Each k In lista.Keys
+                    doLote(k) = 1
+                Next k
+                If Len(fora) > 0 Then msg = "analito(s) fora do de/para do QC_INI: " & fora & _
+                                            " (nenhum resultado tem esse nome; confira a grafia)"
+            End If
+        End If
+        If Len(msg) > 0 Then
+            LerLotesMaterial.Add "linha " & L & " (lote " & IIf(IsEmpty(Txt(Campo(d, c, L, "LOTE"))), "?", Txt(Campo(d, c, L, "LOTE"))) & _
+                                 ", regra " & IIf(IsEmpty(rg), "?", rg) & "): " & msg
+        End If
+    Next L
+End Function
+
+' resumo para o instalador e as suites (Application.Run nao devolve Collection): "MATRIZ=n;FORA_DO_CQ=n;SO_ANALITOS=n" e,
+' depois de "|", os avisos do A14 separados por " || "
+Public Function LotesMaterialResumo() As String
+    Dim mz As Object, fo As Object, so As Object, av As Collection, x As Variant, s As String
+    Set mz = CreateObject("Scripting.Dictionary"): Set fo = CreateObject("Scripting.Dictionary")
+    Set so = CreateObject("Scripting.Dictionary")
+    Set av = LerLotesMaterial(mz, fo, so)
+    For Each x In av
+        s = s & IIf(Len(s) > 0, " || ", "") & x
+    Next x
+    LotesMaterialResumo = "MATRIZ=" & mz.Count & ";FORA_DO_CQ=" & fo.Count & ";SO_ANALITOS=" & so.Count & "|" & s
+End Function
+
+' a MATRIZ que a regra do lote manda usar (sem regra: a de antes)
+Private Function MatrizDoLote(ByVal mzLote As Object, ByVal lote As Variant, ByVal mz As Variant) As Variant
+    Dim k As Variant
+    MatrizDoLote = mz
+    k = AnKey(lote)
+    If Not IsEmpty(k) Then If mzLote.Exists(k) Then MatrizDoLote = mzLote(k)
+End Function
+
+' "" = o lote nao tira o resultado do CQ; senao LOTE_FORA_DO_CQ ou LOTE_OUTRO_MATERIAL (= o StatusLote do PQ)
+Private Function StatusDoLote(ByVal loteFora As Object, ByVal loteSo As Object, ByVal lote As Variant, ByVal an As Variant) As String
+    Dim k As Variant, ka As Variant
+    k = AnKey(lote)
+    If IsEmpty(k) Then Exit Function
+    If loteFora.Exists(k) Then
+        StatusDoLote = "LOTE_FORA_DO_CQ"
+    ElseIf loteSo.Exists(k) Then
+        ka = AnKey(an)
+        If IsEmpty(ka) Then
+            StatusDoLote = "LOTE_OUTRO_MATERIAL"
+        ElseIf Not loteSo(k).Exists(ka) Then
+            StatusDoLote = "LOTE_OUTRO_MATERIAL"
+        End If
+    End If
+End Function
+
+' status de corrida real (= CORRIDA_REAL do PQ): conta na formacao do RUN e herda o RUN do manual que o substitui
+Private Function EhCorridaReal(ByVal st As String) As Boolean
+    Select Case st
+        Case "ATIVO", "INATIVADO", "SEM_VALOR", "IMPLAUSIVEL", "LOTE_FORA_DO_CQ", "LOTE_OUTRO_MATERIAL": EhCorridaReal = True
+    End Select
+End Function
+
 Private Function ParaQcini(ByRef DP() As Variant, ByVal nD As Long, ByVal mz As Variant, ByVal ao As Variant) As Variant
     Dim i As Long
     ParaQcini = Empty
@@ -827,7 +968,7 @@ End Function
 Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As Variant, ByVal cM As Object, ByVal nMan As Long, _
                             ByRef DP() As Variant, ByVal nD As Long, ByVal cadastrados As Object, ByVal nivelDesc As Object, _
                             ByVal C As Object, ByVal NIVEIS As Double, ByVal TOL As Double, ByVal agora As Variant, _
-                            ByVal nInterface As Long)
+                            ByVal nInterface As Long, ByVal mzLote As Object)
     Dim i As Long, L As Long, conta As Long, cc As Variant, idn As Variant, dtv As Variant, hr As Variant
     Dim eq As Variant, mz As Variant, v As Variant, lt As Variant, nv As Variant, an As Variant, res As Variant
     Dim isnum As Boolean, rtx As Variant, amb As Boolean, vl As Variant, orig As Long, ndesc As Variant, dh As Variant
@@ -861,6 +1002,7 @@ Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As 
             Else
                 lt = Txt(v)
             End If
+            If mzLote.Count > 0 Then mz = MatrizDoLote(mzLote, lt, mz)       ' ADR-091: antes do de/para (ParaOrigem)
             an = Txt(Campo(dM, cM, L, "ANALITO"))
             res = Campo(dM, cM, L, "RESULTADO")
             isnum = EhNum(res)
@@ -1149,7 +1291,7 @@ Private Sub HerdarCorrida(ByRef U() As Variant, ByVal nU As Long)
     Dim i As Long, m As Long
     For i = 1 To nU
         If Not IsEmpty(U(i, F_SUBPOR)) Then
-            If U(i, F_ST) = "ATIVO" Or U(i, F_ST) = "INATIVADO" Or U(i, F_ST) = "SEM_VALOR" Or U(i, F_ST) = "IMPLAUSIVEL" Then
+            If EhCorridaReal(CStr(U(i, F_ST))) Then
                 m = U(i, F_SUBIDX)
                 If m > 0 Then U(i, F_COR) = U(m, F_COR): U(i, F_RUN) = U(m, F_RUN)
             End If

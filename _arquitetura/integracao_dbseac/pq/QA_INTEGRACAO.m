@@ -9,8 +9,9 @@
 //  Le as tabelas JA carregadas (tblCQ_Final e as de entrada) -- roda depois do
 //  DB_CQ_FINAL e nao refaz nenhuma regra: so CONFERE o que ele decidiu.
 //  Unica releitura da origem: A03, que compara o recebido com o DB_SEAC atual.
-//  28 codigos: E01-E12, A01-A12, I01-I04 (ADR-082: E12 SUBSTITUI_ID invalido; I04 substituido por manual;
-//  ADR-088: A11 resultado <= 0 fora da estatistica; A12 mais de um participante na mesma corrida e nivel).
+//  30 codigos: E01-E12, A01-A14, I01-I04 (ADR-082: E12 SUBSTITUI_ID invalido; I04 substituido por manual;
+//  ADR-088: A11 resultado <= 0 fora da estatistica; A12 mais de um participante na mesma corrida e nivel;
+//  ADR-091: A13 resultado fora do CQ pela regra do lote; A14 linha da tblLotesMaterial ignorada ou suspeita).
 // =====================================================================
 let
     C = CFG_INTEGRACAO,
@@ -372,8 +373,49 @@ let
                  (Txt(_[ANALITO]) ?? "?") & "'; equipamento e analito comparados sem diferenciar maiusculas). O grafico mostra " &
                  "um so por corrida e nivel: corrija a grafia do lancamento manual ou inative o repetido."),
 
+    // A13 (ADR-091) -- resultado fora do CQ pela regra do lote (tblLotesMaterial); um achado por ID
+    A13 = Achado("ALERTA", "A13", "Resultado fora do CQ pela regra do lote (tblLotesMaterial)",
+            Table.SelectRows(F, each [STATUS_ANALITICO] = "LOTE_FORA_DO_CQ" or [STATUS_ANALITICO] = "LOTE_OUTRO_MATERIAL"),
+            each "lote " & (Txt(_[LOTE]) ?? "?") &
+                 (if _[STATUS_ANALITICO] = "LOTE_FORA_DO_CQ" then " fora do CQ (regra FORA_DO_CQ)"
+                  else " so participa nos analitos da regra SO_ANALITOS; '" & (Txt(_[ANALITO]) ?? "?") & "' e outro material") &
+                 ": o resultado fica guardado, fora da estatistica, do LJ, do Westgard, do Sigma e da u(Rw). Se a regra nao " &
+                 "vale mais, corrija a tblLotesMaterial (aba Cfg_Integracao) e atualize."),
+
+    // A14 (ADR-091) -- linha da tblLotesMaterial ignorada (LOTE vazio, REGRA desconhecida, MATRIZ sem a matriz ou repetida
+    //        no lote, SO_ANALITOS sem analito) ou suspeita (analito fora do de/para); um achado por linha. Mesmas regras do
+    //        DB_CQ_FINAL e textos do mEtlCQ.LerLotesMaterial.
+    LMq = Table.AddIndexColumn(Table.SelectColumns(
+            (try Excel.CurrentWorkbook(){[Name = "tblLotesMaterial"]}[Content] otherwise #table({"LOTE"}, {})),
+            {"LOTE", "REGRA", "MATRIZ", "ANALITOS"}, MissingField.UseNull), "_linha", 1, 1, Int64.Type),
+    LMk = Table.Buffer(Table.AddColumn(Table.AddColumn(Table.AddColumn(LMq,
+            "_L", each AnKey([LOTE]), type nullable text), "_R", each AnKey([REGRA]), type nullable text),
+            "_MZ", each AnKey([MATRIZ]), type nullable text)),
+    MzPrim = Table.Buffer(Table.Distinct(Table.SelectRows(LMk, each [_L] <> null and [_R] = "MATRIZ" and [_MZ] <> null), {"_L"})),
+    CadQ = List.Buffer(List.Distinct(List.RemoveNulls(List.Transform(
+            (try Excel.CurrentWorkbook(){[Name = "tblDeParaAnalitos"]}[Content][ANALITO_QCINI] otherwise {}), AnKey)))),
+    LMv = Table.SelectRows(Table.AddColumn(LMk, "_msg", each
+            let anT = Txt([ANALITOS]),
+                partes = List.RemoveNulls(List.Transform(Text.Split(anT ?? "", ";"), Txt)),
+                fora = List.Select(partes, each not List.Contains(CadQ, Text.Upper(_))),
+                p = List.PositionOf(MzPrim[_L], [_L])
+            in if [_L] = null and [_R] = null and [_MZ] = null and anT = null then null
+               else if [_L] = null then "LOTE vazio; a linha foi ignorada"
+               else if not List.Contains({"MATRIZ", "SO_ANALITOS", "FORA_DO_CQ"}, [_R]) then
+                   "REGRA '" & ([_R] ?? "") & "' desconhecida (use MATRIZ, SO_ANALITOS ou FORA_DO_CQ); a linha foi ignorada"
+               else if [_R] = "MATRIZ" and [_MZ] = null then "regra MATRIZ sem a MATRIZ; a linha foi ignorada"
+               else if [_R] = "MATRIZ" and p >= 0 and MzPrim{p}[_linha] < [_linha] then
+                   "o lote ja tem uma regra MATRIZ antes desta (" & MzPrim{p}[_MZ] & "); esta linha foi ignorada"
+               else if [_R] = "SO_ANALITOS" and List.IsEmpty(partes) then "regra SO_ANALITOS sem ANALITOS; a linha foi ignorada"
+               else if [_R] = "SO_ANALITOS" and not List.IsEmpty(fora) then
+                   "analito(s) fora do de/para do QC_INI: " & Text.Combine(fora, ", ") & " (nenhum resultado tem esse nome; confira a grafia)"
+               else null), each [_msg] <> null),
+    A14 = Achado("ALERTA", "A14", "Regra de lote da tblLotesMaterial ignorada ou suspeita",
+            Table.SelectColumns(LMv, {"_linha", "LOTE", "_R", "_msg"}),
+            each "linha " & Text.From(_[_linha]) & " (lote " & (Txt(_[LOTE]) ?? "?") & ", regra " & (_[_R] ?? "?") & "): " & _[_msg]),
+
     Tudo = Table.Combine({E01, E02, E03, E04, E05, E06, E07, E08, E09, E10, E11, E12, A01, A02, A03, A04, A05, A06, A07, A08, A09, A10,
-                          A11, A12, I01, I02, I03, I04}),
+                          A11, A12, A13, A14, I01, I02, I03, I04}),
     Peso = (s as text) as number => if s = "ERRO" then 1 else if s = "ALERTA" then 2 else 3,
     Ordenado = Table.Sort(Tudo, {{each Peso([SEVERIDADE]), Order.Ascending}, {"CODIGO", Order.Ascending}, {"DATA_HORA", Order.Ascending}}),
     Tipos = Table.TransformColumnTypes(Ordenado, {{"SEVERIDADE", type text}, {"CODIGO", type text}, {"TESTE", type text},

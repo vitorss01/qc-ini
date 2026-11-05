@@ -8,6 +8,9 @@ Uso: python equivalencia_cq.py <Bioquimica|Hematologia> <copia.xlsm> <saida.json
 diferente, ID inexistente, ID de manual, dois manuais para o mesmo ID -- o 1o INATIVADO, que continua substituindo --,
 interfaceamento INATIVADO (sem corrida propria: o RUN do manual), SEM_VALOR, SEM_DATA_HORA e retransmissao indicados,
 manual sem MOTIVO). A copia precisa da coluna SUBSTITUI_ID (instalar_adr082.py).
+ADR-091: a tblLotesMaterial ganha (depois das regras reais da copia) uma regra de cada tipo em lotes que as outras
+fixtures nao usam e linhas invalidas (A14), mais uma inativacao no lote FORA_DO_CQ e os manuais MAN_0061..65;
+'adr091_ok' confere o PQ contra as regras (varredura independente). A copia precisa da tabela (instalar_adr091.py).
 Com elas, 'adr082_ok' confere o que o PQ decidiu contra o ESPERADO de cada caso (nao so PQ = VBA: se os dois motores
 errassem igual, a equivalencia passaria) -- 'adr082_falhas' lista o que nao bateu.
 """
@@ -100,6 +103,8 @@ def fixtures(q):
     q.ex.xl.EnableEvents = False
     subs = fixture_substitui(cab, d, a)
     m25 = next(x for x in subs if x['ID_REGISTRO'] == 'MAN_0025')
+    fim, a88 = fixture_fim_do_dia(cab, d), fixture_adr088(cab, a, d)
+    a91 = fixture_adr091(q, cab, d, [a, b, c], subs + fim + a88)        # ADR-091: grava a tblLotesMaterial
     escrever(q, 'tblInativacao_NaoConformes', [
         {'ID_REGISTRO': col(a, 'ID_REGISTRO'), 'ANALITO': col(a, 'ANALITO'), 'REGISTRAR - LJ': True, 'MOTIVO': 'QA motivo 1',
          'DATA_INATIVACAO': _dt.datetime(2026, 10, 20, 9, 0, 0), 'USUARIO': 'QA'},
@@ -110,7 +115,7 @@ def fixtures(q):
         # ADR-082 (revisao): o 1o manual de dois para o mesmo ID, inativado, continua substituindo (E12 do 2o diz isso)
         {'ID_REGISTRO': 'MAN_0025', 'ANALITO': m25['ANALITO'], 'REGISTRAR - LJ': True, 'MOTIVO': 'QA manual substituto inativado',
          'USUARIO': 'QA'},
-    ])
+    ] + a91['inat'])
     escrever(q, 'tblComentariosTecnicos', [
         {'ID_REGISTRO': col(b, 'ID_REGISTRO'), 'COMENTARIO_TECNICO': 'coment 1'},
         {'ID_REGISTRO': num(b), 'COMENTARIO_TECNICO': 'coment 2'},
@@ -131,7 +136,7 @@ def fixtures(q):
         dict(base, ID_REGISTRO='MAN_0006', DATA=_dt.datetime(2027, 1, 1), HORA='08:00', RESULTADO=1.0),  # futuro
         dict(base, ID_REGISTRO='MAN_0007', DATA=dia, HORA=hm(80), NIVEL=9, RESULTADO=1.0),   # nivel invalido
         dict(base, ID_REGISTRO='MAN_0008', DATA=dia, HORA=hm(90), RESULTADO='abc'),          # resultado invalido
-    ] + fixture_fim_do_dia(cab, d) + subs + fixture_adr088(cab, a, d))
+    ] + fim + subs + a88 + a91['manuais'])
     q.ex.xl.EnableEvents = True
     q.run('mIntegracao.Refrescar', 'tblCQ_Final', teto=3600)   # ADR-088: o refresh do PQ na Hema passa de 900 s (medido de 170 a 1130 s; o S6 do qa_sync tem teto proprio)
 
@@ -234,6 +239,172 @@ def conferir_adr088(cab, dados):
         if not ok:
             falhas.append(f'{man}: {st_r} {mot[:100]!r} (esperado {st} {trecho!r})')
     return not falhas, falhas
+
+
+# ADR-091: regras gravadas pela fixture (todas as linhas da tblLotesMaterial), o inativado do lote FORA_DO_CQ, o que cada
+# manual deve dar e os textos do A14 -- conferidos em conferir_adr091 e no equivalencia_qa
+ADR091 = {'regras': [], 'inat': None, 'manuais': {}, 'a14': []}
+MZ_TESTE_091 = 'TESTE-ADR091'
+LOTE_ST = ('LOTE_FORA_DO_CQ', 'LOTE_OUTRO_MATERIAL')
+PRECEDE_091 = ('MANUAL_INCOMPLETO', 'DUPLICIDADE_ORIGEM', 'CONFLITO_MANUAL', 'SUBSTITUIDO_MANUAL', 'SEM_DATA_HORA',
+               'SEM_VALOR', 'INATIVADO')
+
+
+def _up(v):
+    if isinstance(v, float) and v == int(v):
+        v = int(v)
+    return str(v if v is not None else '').strip().upper() or None
+
+
+def regras_091(linhas):
+    """(mz, fora, so) das linhas validas da tblLotesMaterial (ADR-091; a 1a MATRIZ do lote vale)."""
+    mz, fora, so = {}, set(), {}
+    for l in linhas:
+        lt, rg = _up(l[0]), _up(l[1])
+        if not lt:
+            continue
+        if rg == 'MATRIZ' and _up(l[2]) and lt not in mz:
+            mz[lt] = _up(l[2])
+        elif rg == 'FORA_DO_CQ':
+            fora.add(lt)
+        elif rg == 'SO_ANALITOS':
+            ans = {x for x in (_up(p) for p in str(l[3] or '').split(';')) if x}
+            if ans:
+                so.setdefault(lt, set()).update(ans)
+    return mz, fora, so
+
+
+def fixture_adr091(q, cab, d, reais_usados, manuais_usados):
+    """ADR-091: a tblLotesMaterial passa a ter as regras reais da copia + uma regra de teste de cada tipo em lotes que as
+    outras fixtures nao usam (SO_ANALITOS em minusculas, FORA_DO_CQ com uma inativacao nova, MATRIZ sintetica) + linhas
+    invalidas (A14). Devolve {'inat': [linha da tblInativacao], 'manuais': [manuais MAN_0061..65]}."""
+    import datetime as _dt
+    col = lambda r, n: r[cab.index(n)]                                          # noqa: E731
+    lo = next(ws.ListObjects('tblLotesMaterial') for ws in q.wb.Worksheets
+              if any(t.Name == 'tblLotesMaterial' for t in ws.ListObjects))
+    hc = [str(c.Name) for c in lo.ListColumns]
+    corpo = lo.DataBodyRange.Value if lo.ListRows.Count else ()
+    reais = [[r[hc.index(c)] for c in ('LOTE', 'REGRA', 'MATRIZ', 'ANALITOS', 'NOTA')] for r in corpo
+             if any(r[hc.index(c)] not in (None, '') for c in ('LOTE', 'REGRA', 'MATRIZ', 'ANALITOS'))]
+    mz0, fora0, so0 = regras_091(reais)
+    usados = set(mz0) | fora0 | set(so0) | {_up(col(r, 'LOTE')) for r in reais_usados} | \
+        {_up(m.get('LOTE')) for m in manuais_usados}
+    intf = [r for r in d if col(r, 'ORIGEM_RESULTADO') == 'INTERFACEAMENTO' and col(r, 'STATUS_ANALITICO') == 'ATIVO'
+            and hasattr(col(r, 'DATA_HORA'), 'year') and _up(col(r, 'LOTE')) and _up(col(r, 'LOTE')) not in usados]
+    import collections as _c
+    cont = _c.Counter(_up(col(r, 'LOTE')) for r in intf)
+    ans = _c.defaultdict(list)
+    for r in intf:
+        if col(r, 'ANALITO') not in ans[_up(col(r, 'LOTE'))]:
+            ans[_up(col(r, 'LOTE'))].append(col(r, 'ANALITO'))
+    lotes = [lt for lt, _ in cont.most_common()]
+    if len(lotes) < 3:
+        raise SystemExit(f'ADR-091: so {len(lotes)} lote(s) livre(s) das outras fixtures; preciso de 3')
+    # lote com 2+ analitos: a lista fica com o 1o (A) e o 2o (B) sai; senao (os lotes grandes ja estao nas outras
+    # fixtures) a lista tem um analito do catalogo que o lote nao tem (A) e o unico dele (B) sai
+    L_so = next((lt for lt in lotes if len(ans[lt]) >= 2), lotes[0])
+    L_fora = next(lt for lt in lotes if lt != L_so)
+    L_mz = next(lt for lt in lotes if lt not in (L_so, L_fora))
+    if len(ans[L_so]) >= 2:
+        A, B = sorted(ans[L_so])[:2]
+    else:
+        B = ans[L_so][0]
+        A = sorted({col(r, 'ANALITO') for r in d if col(r, 'ANALITO_CADASTRADO') == 'SIM' and col(r, 'ANALITO') != B})[0]
+    teste = [[' ' + L_so.lower() + ' ', 'so_analitos', None, '  ' + A.lower() + ' ', 'QA adr091'],
+             [int(L_fora) if L_fora.isdigit() else L_fora, 'FORA_DO_CQ', None, None, 'QA adr091 (lote como numero)'],
+             [L_mz, 'Matriz', MZ_TESTE_091.lower(), None, 'QA adr091']]
+    inval = [(['', 'FORA_DO_CQ', None, None, 'QA'], None, 'FORA_DO_CQ', 'LOTE vazio; a linha foi ignorada'),
+             ([L_mz, 'XYZ', None, None, 'QA'], L_mz, 'XYZ',
+              "REGRA 'XYZ' desconhecida (use MATRIZ, SO_ANALITOS ou FORA_DO_CQ); a linha foi ignorada"),
+             ([L_so, 'MATRIZ', None, None, 'QA'], L_so, 'MATRIZ', 'regra MATRIZ sem a MATRIZ; a linha foi ignorada'),
+             ([L_mz, 'MATRIZ', 'OUTRA', None, 'QA'], L_mz, 'MATRIZ',
+              f'o lote ja tem uma regra MATRIZ antes desta ({MZ_TESTE_091}); esta linha foi ignorada'),
+             ([L_fora, 'SO_ANALITOS', None, ' ; ', 'QA'], L_fora, 'SO_ANALITOS', 'regra SO_ANALITOS sem ANALITOS; a linha foi ignorada'),
+             ([L_so, 'SO_ANALITOS', None, f'{A}; Analito Inexistente ADR091', 'QA'], L_so, 'SO_ANALITOS',
+              'analito(s) fora do de/para do QC_INI: Analito Inexistente ADR091 (nenhum resultado tem esse nome; confira a grafia)')]
+    todas = reais + teste + [x[0] for x in inval]
+    n0 = len(reais) + len(teste)
+    # grava (eventos desligados pelo chamador); o LOTE de texto fica texto, o numerico do teste fica numero
+    ws = lo.Parent
+    ws.Unprotect(ii.SENHA)
+    if lo.ListRows.Count:
+        lo.DataBodyRange.ClearContents()
+    r0, c0 = lo.HeaderRowRange.Row, lo.HeaderRowRange.Column
+    lo.Resize(ws.Range(ws.Cells(r0, c0), ws.Cells(r0 + len(todas), c0 + lo.ListColumns.Count - 1)))
+    for i, l in enumerate(todas, 1):
+        for nome, v in zip(('LOTE', 'REGRA', 'MATRIZ', 'ANALITOS', 'NOTA'), l):
+            cel = ws.Cells(r0 + i, c0 + hc.index(nome))
+            if isinstance(v, int):
+                try:
+                    cel.NumberFormatLocal = 'Geral'          # 'General' e recusado via COM no Excel pt-BR
+                except Exception:                             # noqa: BLE001
+                    cel.ClearFormats()
+            else:
+                cel.NumberFormat = '@'
+            if v is not None:
+                cel.Value = v
+    # inativacao nova num ATIVO do lote FORA_DO_CQ: continua INATIVADO
+    x_in = next(r for r in intf if _up(col(r, 'LOTE')) == L_fora)
+    reg_em = _dt.datetime(2030, 1, 1, 12)
+
+    def man(k, r, **extra):
+        dh = col(r, 'DATA_HORA').replace(tzinfo=None)
+        base = {'ID_REGISTRO': f'MAN_{k:04d}', 'EQUIPAMENTO': col(r, 'EQUIPAMENTO'), 'MATRIZ': col(r, 'MATRIZ'),
+                'LOTE': col(r, 'LOTE'), 'NIVEL': col(r, 'NIVEL'), 'ANALITO': col(r, 'ANALITO'),
+                'DATA': _dt.datetime(dh.year, dh.month, dh.day), 'HORA': f'23:{40 + k % 10}', 'RESULTADO': 2.5,
+                'MOTIVO': 'QA adr091', 'USUARIO': 'QA', 'REGISTRADO_EM': reg_em}
+        base.update(extra)
+        return base
+
+    r_b = next(r for r in intf if _up(col(r, 'LOTE')) == L_so and col(r, 'ANALITO') == B)
+    r_mz = next(r for r in intf if _up(col(r, 'LOTE')) == L_mz)
+    manuais = [man(61, x_in), man(62, r_b), man(63, r_b, ANALITO=A), man(64, r_mz), man(65, x_in, RESULTADO=-1)]
+    ADR091.update(regras=todas, inat=col(x_in, 'ID_REGISTRO'), lotes={'SO_ANALITOS': L_so, 'FORA_DO_CQ': L_fora, 'MATRIZ': L_mz},
+                  manuais={'MAN_0061': 'LOTE_FORA_DO_CQ', 'MAN_0062': 'LOTE_OUTRO_MATERIAL', 'MAN_0063': 'nao_lote',
+                           'MAN_0064': 'matriz', 'MAN_0065': 'LOTE_FORA_DO_CQ'},
+                  a14=sorted(f'linha {n0 + k} (lote {lt or "?"}, regra {rg}): {m}' for k, (_, lt, rg, m) in enumerate(inval, 1)))
+    return {'inat': [{'ID_REGISTRO': col(x_in, 'ID_REGISTRO'), 'ANALITO': col(x_in, 'ANALITO'), 'REGISTRAR - LJ': True,
+                      'MOTIVO': 'QA adr091 inativado num lote FORA_DO_CQ', 'USUARIO': 'QA'}],
+            'manuais': manuais}
+
+
+def conferir_adr091(cab, dados):
+    """ADR-091: o que o PQ decidiu contra as regras gravadas pela fixture_adr091 (varredura independente)."""
+    if not ADR091['regras']:
+        return False, ['fixture_adr091 nao rodou']
+    mz, fora, so = regras_091(ADR091['regras'])
+    ix = {c: cab.index(c) for c in ('ID_REGISTRO', 'STATUS_ANALITICO', 'LOTE', 'ANALITO', 'MATRIZ', 'PARTICIPA_ESTATISTICA',
+                                    'TIPO_PLOTAGEM_LJ')}
+    v = lambda r, c: r[ix[c]]                                                   # noqa: E731
+    falhas = []
+    for r in dados:
+        st, lt = v(r, 'STATUS_ANALITICO'), _up(v(r, 'LOTE'))
+        esp = None
+        if st not in PRECEDE_091:
+            if lt in fora:
+                esp = 'LOTE_FORA_DO_CQ'
+            elif lt in so and _up(v(r, 'ANALITO')) not in so[lt]:
+                esp = 'LOTE_OUTRO_MATERIAL'
+        if (st in LOTE_ST or esp) and st != esp:
+            falhas.append(f'{v(r, "ID_REGISTRO")}: {st} (esperado {esp})')
+        if st in LOTE_ST and (v(r, 'PARTICIPA_ESTATISTICA') == 'SIM' or v(r, 'TIPO_PLOTAGEM_LJ') != 'NAO_PLOTAR'):
+            falhas.append(f'{v(r, "ID_REGISTRO")}: {st} participa ou plota')
+        if lt in mz and _up(v(r, 'MATRIZ')) != mz[lt]:
+            falhas.append(f'{v(r, "ID_REGISTRO")}: MATRIZ {v(r, "MATRIZ")} (regra {mz[lt]})')
+    por_id = {str(v(r, 'ID_REGISTRO')): r for r in dados}
+    if v(por_id.get(str(ADR091['inat'])) or [None] * len(cab), 'STATUS_ANALITICO') != 'INATIVADO':
+        falhas.append(f'{ADR091["inat"]}: inativado num lote FORA_DO_CQ nao ficou INATIVADO')
+    for m, e in ADR091['manuais'].items():
+        r = por_id.get(m)
+        st = None if r is None else v(r, 'STATUS_ANALITICO')
+        ok = r is not None and (st == e if e in LOTE_ST else st not in LOTE_ST if e == 'nao_lote'
+                                else _up(v(r, 'MATRIZ')) == MZ_TESTE_091)
+        if not ok:
+            falhas.append(f'{m}: {st} {None if r is None else v(r, "MATRIZ")} (esperado {e})')
+    n = sum(1 for r in dados if v(r, 'STATUS_ANALITICO') in LOTE_ST)
+    if not n:
+        falhas.append('nenhum LOTE_* na tabela')
+    return not falhas, falhas[:20]
 
 
 # ADR-082: o que cada manual da fixture_substitui deve dar -- {MAN_00nn: (caso, ID do alvo)}; conferido em conferir_adr082
@@ -454,6 +625,11 @@ def main(produto, arq, saida, n=3, fix=False):
                 print('  ADR-082', x, flush=True)
             res['adr088_ok'], res['adr088_falhas'] = conferir_adr088(cab_pq, dados_pq)
             print('ADR-088 (datas em texto, <= 0) no PQ:', 'OK' if res['adr088_ok'] else 'FALHOU', res['adr088_falhas'], flush=True)
+            res['adr091_ok'], res['adr091_falhas'] = conferir_adr091(cab_pq, dados_pq)
+            res['adr091_lotes'] = ADR091.get('lotes')
+            res['adr091_status_pq'] = {k: cont.get(k, 0) for k in LOTE_ST}
+            print('ADR-091 (regras de material por lote) no PQ:', 'OK' if res['adr091_ok'] else 'FALHOU',
+                  res['adr091_lotes'], res['adr091_status_pq'], res['adr091_falhas'], flush=True)
         res['exemplos'] = ex
         print(json.dumps({k: res[k] for k in ('linhas', 'colunas_so_vba', 'colunas_pq_nao_comparadas', 'divergencias')}, ensure_ascii=False), flush=True)
         for c, e in ex.items():

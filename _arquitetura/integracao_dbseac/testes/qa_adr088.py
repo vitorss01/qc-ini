@@ -207,13 +207,18 @@ def executar(produto, caminho, saida):
         man_le0 = {man[f'{TAG} X12 {k}']['ID_REGISTRO'] for k in ('-1', '0') if f'{TAG} X12 {k}' in man}
         part_le0 = [x['ID_REGISTRO'] for x in fin if x['PARTICIPA_ESTATISTICA'] == 'SIM' and num(x['RESULTADO'])
                     and x['RESULTADO'] <= 0]
+        # ADR-091: a regra do lote (tblLotesMaterial) vem antes do IMPLAUSIVEL -- o <= 0 de um lote fora do CQ (ou de
+        # outro material neste analito) e LOTE_*, nao IMPLAUSIVEL; sai do conjunto esperado (e continua fora: part_le0)
+        lote_le0 = {i for i in le0 if por_id.get(i, {}).get('STATUS_ANALITICO') in ('LOTE_FORA_DO_CQ', 'LOTE_OUTRO_MATERIAL')}
+        le0 = le0 - lote_le0
         forma = all(por_id[i]['PARTICIPA_ESTATISTICA'] == NAO and por_id[i]['TIPO_PLOTAGEM_LJ'] == 'NAO_PLOTAR'
                     and por_id[i]['REGISTRAR_RESULTADO_NO_LJ'] == NAO and num(por_id[i]['RESULTADO'])
                     and por_id[i]['RESULTADO'] <= 0 for i in imp)
         reg('E17 Resultado ≤ 0 = IMPLAUSIVEL (PARTICIPA NÃO, NAO_PLOTAR): o conjunto = participantes ≤ 0 de antes '
             '(varredura independente) + os manuais ≤ 0; A11 lista exatamente esses IDs; nenhum participante ≤ 0',
             imp == (le0 | man_le0) and imp == a11 and len(man_le0) == 2 and not part_le0 and forma,
-            {'IMPLAUSIVEL': len(imp), 'participantes_le0_antes': len(le0), 'manuais_le0': sorted(man_le0),
+            {'IMPLAUSIVEL': len(imp), 'participantes_le0_antes': len(le0), 'le0_em_lote_fora_ADR091': len(lote_le0),
+             'manuais_le0': sorted(man_le0),
              'A11': len(a11), 'so_IMPLAUSIVEL': sorted(imp - a11)[:5], 'so_A11': sorted(a11 - imp)[:5],
              'participantes_le0_depois': part_le0[:5], 'amostra': sorted(imp)[:8]})
         reg('X12 Manual -1 e 0 = IMPLAUSIVEL com alerta A11 (antes: ATIVO, sem alerta)',

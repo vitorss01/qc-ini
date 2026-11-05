@@ -15,6 +15,8 @@ resultado substituido; o A01 de um manual em conflito com um automatico ja subst
 nao tem A09); o A06 de um manual que substitui nao lista o substituido nem manda usar o SUBSTITUI_ID; o I04 de quem
 continua inativado manda reativar; o E12 do 2o manual com o 1o INATIVADO manda apagar o SUBSTITUI_ID do 1o (sem A09)
 -- a copia precisa da coluna SUBSTITUI_ID (instalar_adr082.py).
+ADR-091: 'adr091' exige A13 = os IDs LOTE_* da tblCQ_Final nos dois motores e A14 = as linhas invalidas da fixture
+(mesmos textos nos dois) -- a copia precisa da tblLotesMaterial (instalar_adr091.py).
 """
 import collections
 import json
@@ -145,6 +147,18 @@ def main(produto, arq, saida, fix=False):
                                    and bool(_eq.ESPERADO_A12) and set(_eq.ESPERADO_A12) <= set(a12(pq))
                                    and a12(pq) == a12(vba))
             print('ADR-088', json.dumps(res['adr088'], ensure_ascii=False, default=str), flush=True)
+            # ADR-091: A13 = os IDs LOTE_* da tblCQ_Final (do PQ) nos DOIS motores; A14 = as linhas invalidas da fixture
+            lo_f = q.wb.Worksheets('Principal - Resultados').ListObjects('tblCQ_Final')
+            cab_f = [str(c.Name) for c in lo_f.ListColumns]
+            lote_ids = sorted(str(r[cab_f.index('ID_REGISTRO')]) for r in lo_f.DataBodyRange.Value
+                              if r[cab_f.index('STATUS_ANALITICO')] in _eq.LOTE_ST)
+            ids = lambda lst, c: sorted(str(x[3]) for x in lst if x[1] == c)       # noqa: E731
+            dets = lambda lst: sorted(str(x[7]) for x in lst if x[1] == 'A14')     # noqa: E731
+            res['adr091'] = {'LOTE_n': len(lote_ids), 'A13_pq': len(ids(pq, 'A13')), 'A13_vba': len(ids(vba, 'A13')),
+                             'A14_pq': dets(pq), 'A14_vba': dets(vba), 'A14_esperado': _eq.ADR091['a14']}
+            res['adr091']['ok'] = (bool(lote_ids) and ids(pq, 'A13') == lote_ids and ids(vba, 'A13') == lote_ids
+                                   and dets(pq) == dets(vba) == _eq.ADR091['a14'])
+            print('ADR-091', json.dumps(res['adr091'], ensure_ascii=False, default=str), flush=True)
         print(json.dumps({k: res[k] for k in ('linhas', 'por_codigo_pq', 'por_codigo_vba', 'ordem_das_partes_igual',
                                               'tempo_qa_vba_s')}, ensure_ascii=False), flush=True)
         for k in ('so_no_pq', 'so_no_vba'):

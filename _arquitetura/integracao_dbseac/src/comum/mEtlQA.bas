@@ -2,8 +2,10 @@ Attribute VB_Name = "mEtlQA"
 ' ============================================================================
 '  mEtlQA -- conferencia da integracao (tblQA_Integracao) em VBA (ADR-079)
 '
-'  Porte de pq/QA_INTEGRACAO.m (28 codigos: E01-E12, A01-A12, I01-I04), com as mesmas regras e os mesmos textos.
+'  Porte de pq/QA_INTEGRACAO.m (30 codigos: E01-E12, A01-A14, I01-I04), com as mesmas regras e os mesmos textos.
 '  ADR-088: A11 (resultado <= 0, IMPLAUSIVEL) e A12 (mais de um participante na mesma corrida e nivel, sem caixa).
+'  ADR-091: A13 (LOTE_FORA_DO_CQ / LOTE_OUTRO_MATERIAL, um por ID) e A14 (linha da tblLotesMaterial ignorada ou
+'  suspeita; o texto vem do mEtlCQ.LerLotesMaterial, a mesma leitura do calculo).
 '  ADR-082: E12 (SUBSTITUI_ID invalido) e I04 (resultado do interfaceamento substituido por manual); textos do A01, A06,
 '  A09, E09 e I04 que nao mandam desfazer uma substituicao valida nem acusam o que ela ja resolveu.
 '  Le a tblCQ_Final JA CALCULADA em memoria (o PQ gastava 17-52 s so copiando 1,33 milhao de celulas da planilha
@@ -701,6 +703,26 @@ proxR:
             End If
         End If
     Next i
+
+    ' ---- A13 (ADR-091): resultado fora do CQ pela regra do lote (tblLotesMaterial), um achado por ID
+    For i = 1 To nF
+        If F(i, Q_ST) = "LOTE_FORA_DO_CQ" Or F(i, Q_ST) = "LOTE_OUTRO_MATERIAL" Then
+            If F(i, Q_ST) = "LOTE_FORA_DO_CQ" Then
+                s = " fora do CQ (regra FORA_DO_CQ)"
+            Else
+                s = " so participa nos analitos da regra SO_ANALITOS; '" & TxtOu(F(i, Q_AN), "?") & "' e outro material"
+            End If
+            Achado "ALERTA", "A13", "Resultado fora do CQ pela regra do lote (tblLotesMaterial)", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), _
+                F(i, Q_DH), "lote " & TxtOu(F(i, Q_LT), "?") & s & _
+                ": o resultado fica guardado, fora da estatistica, do LJ, do Westgard, do Sigma e da u(Rw). Se a regra nao " & _
+                "vale mais, corrija a tblLotesMaterial (aba Cfg_Integracao) e atualize."
+        End If
+    Next i
+
+    ' ---- A14 (ADR-091): linha da tblLotesMaterial ignorada ou suspeita, um achado por linha
+    For Each k In mEtlCQ.LerLotesMaterial()
+        Achado "ALERTA", "A14", "Regra de lote da tblLotesMaterial ignorada ou suspeita", Empty, Empty, Empty, Empty, k
+    Next k
 
     MarcaQ "resto"
     CalcularQA = Ordenar()

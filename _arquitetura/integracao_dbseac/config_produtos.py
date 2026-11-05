@@ -48,6 +48,7 @@ PRODUTOS = {
                     'RDW-SD', 'RDW-CV', 'MPV', 'RET%', 'RET#', 'IRF']]
                   + [(None, a, None, None) for a in ['RET-HE', 'IPF', 'IPF#']],
         'equipamentos': ['XN1000'],
+        'lotes_material': [],                       # ADR-091: nenhuma regra na Hematologia (a tabela existe vazia)
     },
     'Bioquimica': {
         'arquivo': 'QC_Bioquimica.xlsm',
@@ -81,6 +82,29 @@ PRODUTOS = {
             ('URINA', 'UCFP', None, 'URINA'),
         ],
         'equipamentos': ['DIMENSION 1', 'DIMENSION 2'],
+        # ADR-091 (autorizado pelo usuario em 05/11/2026; carga revista no mesmo dia pela analise do relat209.csv:
+        # o CSV nao tem campo de material -- so o sufixo -EE do idAmostra, digitado pelo tecnico e inconsistente nos
+        # lotes de urina; o lote e o discriminador confiavel). (LOTE, REGRA, MATRIZ, ANALITOS, NOTA).
+        'lotes_material': [
+            ('8353', 'SO_ANALITOS', None, 'Proteína C-reativa',
+             'controle de PCR: rodado uma vez com o painel completo; so participa na PCR'),
+            ('6351', 'MATRIZ', 'URINA', None, 'controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide'),
+            ('6352', 'MATRIZ', 'URINA', None, 'controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide'),
+            ('6353', 'MATRIZ', 'URINA', None, 'controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide'),
+            ('6354', 'MATRIZ', 'URINA', None, 'controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide'),
+            ('5653', 'MATRIZ', 'URINA', None, 'controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide'),
+            ('5654', 'MATRIZ', 'URINA', None, 'controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide'),
+            ('5656', 'MATRIZ', 'URINA', None, 'controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide'),
+            ('5657', 'MATRIZ', 'URINA', None, 'controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide'),
+            ('5658', 'MATRIZ', 'URINA', None, 'controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide'),
+            ('5659', 'MATRIZ', 'URINA', None, 'controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide'),
+            ('8177', 'FORA_DO_CQ', None, None, 'provavel lote digitado errado (painel unico; lote vigente 8977)'),
+            ('8794', 'FORA_DO_CQ', None, None, 'provavel lote digitado errado (painel unico; lote vigente 8974)'),
+            ('7974', 'FORA_DO_CQ', None, None, 'provavel lote digitado errado (painel unico; lote vigente 8974)'),
+            ('8975', 'FORA_DO_CQ', None, None, 'provavel lote digitado errado (painel unico; lote vigente 8974)'),
+            ('8773', 'FORA_DO_CQ', None, None, 'provavel lote digitado errado (painel unico; lote vigente 8973)'),
+            ('8970', 'FORA_DO_CQ', None, None, 'provavel lote digitado errado (painel unico; lote vigente 8973/8974)'),
+        ],
     },
 }
 
@@ -98,3 +122,11 @@ def linhas_depara(produto):
         obs = '' if qc else 'sem cadastro no QC_INI: guardado na base, fora do Painel'
         out.append([mz, orig, qc, bloco, i, obs])
     return out
+
+
+COLUNAS_LOTES_MATERIAL = ['LOTE', 'REGRA', 'MATRIZ', 'ANALITOS', 'NOTA']
+
+
+def linhas_lotes_material(produto):
+    """ADR-091: carga inicial da tblLotesMaterial (lista de listas, na ordem de COLUNAS_LOTES_MATERIAL)."""
+    return [list(x) for x in PRODUTOS[produto].get('lotes_material', [])]

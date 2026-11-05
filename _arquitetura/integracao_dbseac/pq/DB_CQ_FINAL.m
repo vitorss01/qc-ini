@@ -9,6 +9,7 @@
 //    tblInativacao_NaoConformes .. ID + ANALITO + MOTIVO retirados da populacao estatistica (soft-delete)
 //    tblComentariosTecnicos ...... justificativa tecnica por ID
 //    tblDeParaAnalitos ........... nome do equipamento -> nome do cadastro
+//    tblLotesMaterial ............ (ADR-091, opcional) regras de material por LOTE
 //
 //  GRANULARIDADE: UMA LINHA = UM RESULTADO ANALITICO (ID_REGISTRO unico).
 //  O recebimento ja e vertical (um resultado por linha), entao a final nasce
@@ -50,10 +51,23 @@
 //                          a inativacao NAO vale e o QA acusa E10/E11)
 //                            REGISTRAR - LJ marcado (padrao) ...... X_VERMELHO
 //                            REGISTRAR - LJ desmarcado ............ NAO_PLOTAR
+//    LOTE_FORA_DO_CQ ..... (ADR-091, autorizado em 05/11/2026)      -> nao participa, nao plota (QA A13)
+//                          lote com a regra FORA_DO_CQ na tblLotesMaterial
+//    LOTE_OUTRO_MATERIAL . (ADR-091) lote com a regra SO_ANALITOS   -> nao participa, nao plota (QA A13)
+//                          e analito fora da lista da regra
 //    IMPLAUSIVEL ......... (ADR-088, autorizado em 03/11/2026)      -> nao participa, nao plota (QA A11)
 //                          resultado <= 0 que seria ATIVO: CIQ
 //                          nao tem valor <= 0 plausivel
 //    ATIVO ............... todo o resto (interface ou manual)       -> participa, ponto NORMAL
+//
+//  REGRAS DE MATERIAL POR LOTE (ADR-091; tblLotesMaterial: LOTE, REGRA, MATRIZ, ANALITOS, NOTA; ausente = nenhuma)
+//    MATRIZ ...... o resultado do lote (interfaceamento e manual) fica com a MATRIZ da regra ANTES do de/para, como se
+//                  a origem a tivesse informado (1a regra MATRIZ do lote vale);
+//    SO_ANALITOS . o lote so participa nos analitos listados (canonicos, separados por ";"): nos outros, LOTE_OUTRO_MATERIAL;
+//    FORA_DO_CQ .. o lote inteiro e LOTE_FORA_DO_CQ.
+//    Lote, regra, matriz e analito sem caixa e sem espacos nas pontas. Linha ignorada (QA A14): LOTE vazio, REGRA
+//    desconhecida, MATRIZ sem a matriz ou repetida no lote, SO_ANALITOS sem analito. O inativado continua INATIVADO.
+//    Como o IMPLAUSIVEL, os dois status contam na formacao da corrida (CORRIDA_REAL): o RUN dos outros nao muda.
 //
 //  JUSTIFICATIVA (ADR-070): o MOTIVO escrito na propria linha da aba Inativar OU um
 //  comentario na aba COMENTARIOS_TECNICOS. Inativado sem nenhum dos dois = GOVERNANCA ERRO (QA E01).
@@ -153,6 +167,34 @@ let
         in if Table.IsEmpty(r) then null else r{0},
     Cadastrados = List.Buffer(List.RemoveNulls(List.Distinct(DP[ANALITO_QCINI]))),
 
+    // ------------------------------------------------------------ ADR-091: regras de material por LOTE
+    // Mesmas regras do mEtlCQ.LerLotesMaterial (VBA). Tabela opcional: ausente = nenhuma regra.
+    LM0 = try Table.SelectColumns(Excel.CurrentWorkbook(){[Name = "tblLotesMaterial"]}[Content],
+                                  {"LOTE", "REGRA", "MATRIZ", "ANALITOS"}, MissingField.UseNull)
+          otherwise #table({"LOTE", "REGRA", "MATRIZ", "ANALITOS"}, {}),
+    LM = Table.Buffer(Table.SelectRows(Table.AddColumn(Table.AddColumn(Table.AddColumn(Table.AddColumn(LM0,
+            "_L", each AnKey([LOTE]), type nullable text),
+            "_R", each AnKey([REGRA]), type nullable text),
+            "_MZ", each AnKey([MATRIZ]), type nullable text),
+            "_AN", each List.Distinct(List.RemoveNulls(List.Transform(Text.Split(Txt([ANALITOS]) ?? "", ";"), AnKey)))),
+            each [_L] <> null)),
+    MzLote = let t = Table.Distinct(Table.SelectRows(LM, each [_R] = "MATRIZ" and [_MZ] <> null), {"_L"})
+             in Record.FromList(t[_MZ], t[_L]),
+    LoteFora = let f = List.Distinct(Table.SelectRows(LM, each [_R] = "FORA_DO_CQ")[_L])
+               in Record.FromList(List.Repeat({true}, List.Count(f)), f),
+    LoteSo = let g = Table.Group(Table.SelectRows(LM, each [_R] = "SO_ANALITOS" and not List.IsEmpty([_AN])), {"_L"},
+                                 {{"_AN", each List.Buffer(List.Distinct(List.Combine([_AN])))}})
+             in Record.FromList(g[_AN], g[_L]),
+    TemRegraLote = Record.FieldCount(LoteFora) + Record.FieldCount(LoteSo) > 0,
+    MatrizLote = (lote as any, mz as any) as any =>
+        let k = AnKey(lote) in if k = null then mz else Record.FieldOrDefault(MzLote, k, mz),
+    StatusLote = (lote as any, analito as any) as nullable text =>
+        let k = AnKey(lote) in
+        if k = null then null
+        else if Record.HasFields(LoteFora, k) then "LOTE_FORA_DO_CQ"
+        else if Record.HasFields(LoteSo, k) and not List.Contains(Record.Field(LoteSo, k), AnKey(analito)) then "LOTE_OUTRO_MATERIAL"
+        else null,
+
     // ------------------------------------------------------------ interfaceamento
     // colunas do DB_SEAC; as que um setor nao tem (Hematologia: MATRIZ, BLOCO,
     // PRIMEIRO_DO_DIA) entram com o padrao do CFG / vazias
@@ -160,7 +202,7 @@ let
                "ANALITO", "PRIMEIRO_DO_DIA", "VALOR", "FLAG", "ID_ORIGEM", "ID_AMOSTRA", "ITEM_ID", "UNIDADE", "RECEBIDO_EM"},
     R0 = Excel.CurrentWorkbook(){[Name = "tblDB_Recebimento"]}[Content],
     // Buffer: R1 e lido por Mapa, R2 e NivelDesc (3 leituras da tabela de 44 mil linhas)
-    R1 = Table.Buffer(Table.TransformColumnTypes(
+    R1a = Table.Buffer(Table.TransformColumnTypes(
         Table.RenameColumns(
             Table.ReplaceValue(Table.Distinct(Table.SelectColumns(Table.SelectRows(R0, each [ID_REGISTRO] <> null), ColsRec,
                                               MissingField.UseNull), {"ID_REGISTRO"}),          // D01: defesa, 1 linha por ID
@@ -173,6 +215,9 @@ let
         {"PRIMEIRO_DO_DIA", type nullable text}, {"VALOR", type nullable number}, {"FLAG", type nullable text},
         {"UNIDADE", type nullable text}, {"ID_AMOSTRA", type text}, {"ITEM_ID", Int64.Type},
         {"RECEBIDO_EM", type datetime}})),
+    // ADR-091: regra MATRIZ do lote ANTES do de/para (o Mapa abaixo ja ve a matriz da regra)
+    R1 = if Record.FieldCount(MzLote) = 0 then R1a
+         else Table.Buffer(Table.ReplaceValue(R1a, each [LOTE], null, (v, lote, novo) => MatrizLote(lote, v), {"MATRIZ"})),
     Mapa = Table.Buffer(Table.AddColumn(
                 Table.Distinct(Table.SelectColumns(R1, {"MATRIZ", "ANALITO_ORIGEM"})),
                 "ANALITO_QCINI", each ParaQcini([MATRIZ], [ANALITO_ORIGEM]), type text)),
@@ -218,7 +263,7 @@ let
             dt = try Date.From([DATA]) otherwise null,
             hr = try (if [HORA] is number then Time.From(Number.Mod([HORA], 1)) else Time.From([HORA])) otherwise null,
             eq = Txt([EQUIPAMENTO]) ?? C[EQUIPAMENTO_PADRAO],
-            mz = Txt([MATRIZ]) ?? C[MATRIZ_PADRAO],
+            mz = MatrizLote(lt, Txt([MATRIZ]) ?? C[MATRIZ_PADRAO]),        // ADR-091: regra MATRIZ do lote
             lt = let v = [LOTE] in if v is number then Number.ToText(v, "0") else Txt(v),
             nv = try Int64.From([NIVEL]) otherwise null,
             an = Txt([ANALITO]),
@@ -444,6 +489,7 @@ let
             inat = [_INAT_OK],
             // ADR-082: resultado do interfaceamento indicado no SUBSTITUI_ID de um manual valido
             subst = [_S_MAN] <> null,
+            stl = if TemRegraLote then StatusLote([LOTE], [ANALITO]) else null,     // ADR-091
             st = if [_MANUAL_FALTA] <> "" then "MANUAL_INCOMPLETO"
                  else if [_DUP] then "DUPLICIDADE_ORIGEM"
                  else if [_conf] <> null then "CONFLITO_MANUAL"
@@ -451,6 +497,7 @@ let
                  else if [DATA_HORA] = null then "SEM_DATA_HORA"            // D16: fora da corrida e do calculo; QA E09
                  else if [VALOR] = null then "SEM_VALOR"
                  else if inat then "INATIVADO"
+                 else if stl <> null then stl                           // ADR-091: LOTE_FORA_DO_CQ / LOTE_OUTRO_MATERIAL; QA A13
                  else if [VALOR] <= 0 then "IMPLAUSIVEL"                // ADR-088 (OC-0004): CIQ <= 0; QA A11
                  else "ATIVO",
             lj = st = "ATIVO" or (st = "INATIVADO" and [_LJ]),
@@ -462,6 +509,8 @@ let
                      else if st = "SEM_DATA_HORA" then "resultado do interfaceamento sem DATA_HORA (fora da corrida)"
                      else if st = "SEM_VALOR" then "resultado sem valor numerico (flag " & ([FLAG] ?? "vazia") & ")"
                      else if st = "IMPLAUSIVEL" then "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)"
+                     else if st = "LOTE_FORA_DO_CQ" then "lote fora do CQ (regra FORA_DO_CQ da tblLotesMaterial; fora da estatistica e do grafico)"
+                     else if st = "LOTE_OUTRO_MATERIAL" then "lote de outro material neste analito (regra SO_ANALITOS da tblLotesMaterial; fora da estatistica e do grafico)"
                      else if subst then txtSubst              // inativado pelo usuario: continua INATIVADO, com o vinculo
                      else [_NOTA]                            // manual ATIVO/INATIVADO: nota do SUBSTITUI_ID (ou nada)
         in [
@@ -474,7 +523,8 @@ let
             ID_RELACIONADO = if st = "DUPLICIDADE_ORIGEM" then [_ID_DUP_DE] else if st = "CONFLITO_MANUAL" then [_conf][id]
                              else if subst then [_S_MAN] else if [_SUBOK] = true then [_SUBST_DIG] else null,
             INATIVACAO_REGISTRADA = if inat then SIM else NAO,
-            CORRIDA_REAL = List.Contains({"ATIVO", "INATIVADO", "SEM_VALOR", "IMPLAUSIVEL"}, st)   // ADR-088: evento real
+            // ADR-088/091: evento real (= mEtlCQ.EhCorridaReal)
+            CORRIDA_REAL = List.Contains({"ATIVO", "INATIVADO", "SEM_VALOR", "IMPLAUSIVEL", "LOTE_FORA_DO_CQ", "LOTE_OUTRO_MATERIAL"}, st)
         ]),
     Exp = Table.ExpandRecordColumn(Classif, "_cls", {"STATUS_ANALITICO", "PARTICIPA_ESTATISTICA",
             "REGISTRAR_RESULTADO_NO_LJ", "TIPO_PLOTAGEM_LJ", "MOTIVO_EXCLUSAO_AUTOMATICA", "ID_RELACIONADO",

@@ -55,9 +55,11 @@ TB_QA = 'tblQA_Integracao'
 COL_LJ = 'REGISTRAR - LJ'
 
 STATUS = ('MANUAL_INCOMPLETO', 'DUPLICIDADE_ORIGEM', 'CONFLITO_MANUAL', 'SUBSTITUIDO_MANUAL', 'SEM_DATA_HORA', 'SEM_VALOR',
-          'INATIVADO', 'IMPLAUSIVEL', 'ATIVO')   # SEM_DATA_HORA: D16; SUBSTITUIDO_MANUAL: ADR-082; IMPLAUSIVEL: ADR-088
-# ADR-088: o resultado <= 0 (IMPLAUSIVEL) e um evento real da corrida, como o INATIVADO -- conta na formacao do RUN
-CORRIDA_REAL = ('ATIVO', 'INATIVADO', 'SEM_VALOR', 'IMPLAUSIVEL')
+          'INATIVADO', 'LOTE_FORA_DO_CQ', 'LOTE_OUTRO_MATERIAL', 'IMPLAUSIVEL',
+          'ATIVO')   # SEM_DATA_HORA: D16; SUBSTITUIDO_MANUAL: ADR-082; IMPLAUSIVEL: ADR-088; LOTE_*: ADR-091
+# ADR-088: o resultado <= 0 (IMPLAUSIVEL) e um evento real da corrida, como o INATIVADO -- conta na formacao do RUN.
+# ADR-091: o resultado tirado do CQ pela regra do lote (LOTE_*) tambem (mEtlCQ.EhCorridaReal / CORRIDA_REAL do PQ)
+CORRIDA_REAL = ('ATIVO', 'INATIVADO', 'SEM_VALOR', 'IMPLAUSIVEL', 'LOTE_FORA_DO_CQ', 'LOTE_OUTRO_MATERIAL')
 # colunas da tblCQ_Final que uma inativacao (e o seu comentario) pode mudar -- e nenhuma outra
 COLS_INATIVACAO = {'STATUS_ANALITICO', 'PARTICIPA_ESTATISTICA', 'REGISTRAR_RESULTADO_NO_LJ', 'TIPO_PLOTAGEM_LJ',
                    'INATIVACAO_REGISTRADA', 'DATA_INATIVACAO', 'USUARIO_INATIVACAO', 'TEM_JUSTIFICATIVA',
