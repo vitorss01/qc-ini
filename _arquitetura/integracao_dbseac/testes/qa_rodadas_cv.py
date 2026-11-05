@@ -583,7 +583,12 @@ def r00_foto(q, e, ult, foto_antes, orc, prov_de, motivo_sem=None):
             documentada.add((i, 'S'))
     formula_mudou = {}
     comparadas = {c: 0 for c in COLS_IGUAIS}
+    vazias = 0
     for i, (a0, a1) in enumerate(zip(foto_antes['linhas'], agora)):
+        # linha sem analito nas duas copias: o ADR-090 (OC-0049) tirou o "0"/"SEM EP" dela -- nao ha o que comparar
+        if a0[0] in (None, '', 0) and a1[0] in (None, '', 0):
+            vazias += 1
+            continue
         for c in COLS_IGUAIS:
             if c in fora:
                 continue
@@ -608,7 +613,7 @@ def r00_foto(q, e, ult, foto_antes, orc, prov_de, motivo_sem=None):
         not dif and not sem_ceq,
         {'linhas': len(agora), 'diferencas': dif[:8], 'n_diferencas': len(dif),
          'celulas_comparadas': sum(comparadas.values()), 'fora_da_regressao': fora,
-         'mudanca_documentada_numok': sorted({c for _, c in documentada}), 'n_documentada': len(documentada),
+         'mudanca_documentada_numok': sorted({c for _, c in documentada}), 'n_documentada': len(documentada), 'linhas_sem_analito_puladas': vazias,
          'colunas_ceq_sem_comparacao': sem_ceq, 'mudaram_por_depender_do_sigma': mud,
          'P4_antes': foto_antes.get('P4_original', foto_antes.get('P4')),
          'K5_antes': foto_antes['K5'][:90], 'K5_agora': str(e.Range('K5').Text)[:110]})
