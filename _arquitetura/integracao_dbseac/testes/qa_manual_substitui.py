@@ -662,6 +662,14 @@ def executar(produto, caminho, saida):
             not difs and not aud4, {'ids_diferentes': difs[:10], 'trilha_nova': aud4[:10]})
 
         # ------------------------------------------------------------ M15 PQ x VBA
+        # Excel NOVO para o refresh do PQ: na Hematologia, depois de M01..M14 na mesma instancia, o refresh de ~25 min
+        # derrubou o Excel duas vezes ("servidor RPC nao disponivel", entregas 36 e 38). O estado vai por SaveCopyAs
+        # para um arquivo temporario (o de entrada continua intacto -- M00) e reabre numa instancia limpa.
+        tmp_m15 = os.path.join(os.environ.get('TEMP', '.'), 'qcw', f'm15_{produto}.xlsm')
+        os.makedirs(os.path.dirname(tmp_m15), exist_ok=True)
+        q.wb.SaveCopyAs(tmp_m15)
+        q.fechar(salvar=False)
+        q = QA(produto, tmp_m15)
         cq_vba = tabela_v2(q, TB_FIN, ('RECEBIDO_EM',))
         qa_vba = qa_multiconjunto(q)
         q.cfg('MOTOR_DADOS', 'PQ')
@@ -697,6 +705,10 @@ def executar(produto, caminho, saida):
              'tempos_s': tempos})
     finally:
         q.fechar(salvar=False)
+        try:
+            os.remove(os.path.join(os.environ.get('TEMP', '.'), 'qcw', f'm15_{produto}.xlsm'))
+        except OSError:
+            pass
     hash1 = sha256_arquivo(caminho)
     reg('M00 Segurança do teste: arquivo de entrada intacto (SHA-256 igual antes e depois; nada salvo nele)',
         hash0 == hash1, {'arquivo': caminho, 'sha256_antes': hash0, 'sha256_depois': hash1, 'tempos_s': tempos})

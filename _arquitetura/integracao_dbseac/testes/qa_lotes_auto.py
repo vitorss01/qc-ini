@@ -92,9 +92,12 @@ def cadastro(q):
     return [(26 + i, str(r[0]).strip() if r[0] not in (None, '') else '', r[1], r[2]) for i, r in enumerate(v)]
 
 
-def esperados(q):
-    """Lotes que o sistema DEVE registrar: interfaceamento + analito cadastrado, fora do cadastro, por 1o resultado."""
-    cad = {c[1].upper() for c in cadastro(q) if c[1]}
+def esperados(q, cad=None):
+    """Lotes que o sistema DEVE registrar: interfaceamento + analito cadastrado, fora do cadastro, por 1o resultado.
+    cad = lotes do cadastro ANTES do ATUALIZAR; a tblCQ_Final lida e a que o proprio ATUALIZAR produziu (ADR-091: a
+    regra de material por lote muda o ANALITO_CADASTRADO dos lotes de urina -- a tabela antiga nao serve de oraculo)."""
+    if cad is None:
+        cad = {c[1].upper() for c in cadastro(q) if c[1]}
     prim = {}
     for r in q.ler('tblCQ_Final'):
         if str(r.get('ORIGEM_RESULTADO')) == 'INTERFACEAMENTO' and str(r.get('ANALITO_CADASTRADO')) == 'SIM':
@@ -152,13 +155,14 @@ def executar(produto, caminho, saida):
         reg('A00 A entrega chega com os lotes recebidos já registrados (origem automática), sem validade',
             True if not pre else all(c[2] in (None, '') for c in pre),
             {'lotes_ja_registrados_na_entrega': [c[1] for c in pre]})
-        esp = esperados(q)
+        cad0 = {c[1].upper() for c in cadastro(q) if c[1]}
         ult0 = max([c[0] for c in cadastro(q) if c[1]] or [25])
         sem_val0 = str(q.run('mLotes.LotesSemValidade'))
 
         # ------------------------------------------------------------ A01: ATUALIZAR DADOS registra
         m = marca(q)
         resumo, t = q.atualizar()
+        esp = esperados(q, cad0)
         cad = cadastro(q)
         novos = [c for c in cad if c[0] > ult0 and c[1]]
         lotes_novos = [c[1] for c in novos]
