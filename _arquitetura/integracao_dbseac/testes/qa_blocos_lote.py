@@ -172,8 +172,14 @@ def executar(produto, caminho, saida):
             pass
         ref = marca.split('ref ')[-1].strip('"= ') if marca else ''
         grupos = {}
+        # 10/11/2026: a FOTO de TESTE (16/10) foi tirada sobre os Ativos DAQUELA data. Regras posteriores tiraram
+        # resultados da estatistica sem apagar a foto: ADR-088 (<=0 -> IMPLAUSIVEL) e ADR-091 (material pelo lote:
+        # LOTE_OUTRO_MATERIAL, LOTE_FORA_DO_CQ). Para recalcular a foto, esses resultados contam como contavam entao.
+        DEPOIS_DA_FOTO = ('IMPLAUSIVEL', 'LOTE_OUTRO_MATERIAL', 'LOTE_FORA_DO_CQ')
         for r_ in rows:
-            if str(r_.get('PARTICIPA_ESTATISTICA', '')).upper() != 'SIM' or not num(r_.get('RESULTADO')):
+            st_ = str(r_.get('STATUS_ANALITICO', '')).upper()
+            if (str(r_.get('PARTICIPA_ESTATISTICA', '')).upper() != 'SIM' and st_ not in DEPOIS_DA_FOTO) \
+                    or not num(r_.get('RESULTADO')):
                 continue
             k_ = (txt(r_['LOTE']).upper(), txt(r_['ANALITO']).upper(), int(r_['NIVEL']))
             rec_ = r_.get('RECEBIDO_EM')
