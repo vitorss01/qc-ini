@@ -1,0 +1,394 @@
+[
+ {
+  "teste": "R00 Regressão contra o arquivo ANTES desta entrega (P4 = TODAS nas duas cópias): G, H, R, S, T, AC, AD, AF..AU e o resto que não depende do Sigma idênticos célula a célula; só o que depende do Sigma (L, M..P, U..AA) muda; coluna cuja fórmula mudou nesta entrega e célula da correção \"|bias|/limite vazio não é número\" ficam fora, listadas",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas": 120,
+   "diferencas": [],
+   "n_diferencas": 0,
+   "celulas_comparadas": 2784,
+   "fora_da_regressao": {},
+   "mudanca_documentada_numok": [
+    "AC",
+    "AD",
+    "G",
+    "H",
+    "S",
+    "T"
+   ],
+   "n_documentada": 72,
+   "linhas_sem_analito_puladas": 36,
+   "colunas_ceq_sem_comparacao": [],
+   "mudaram_por_depender_do_sigma": {
+    "L": 0,
+    "M": 0,
+    "N": 0,
+    "O": 0,
+    "P": 0,
+    "U": 0,
+    "V": 0,
+    "W": 0,
+    "X": 0,
+    "Y": 0,
+    "Z": 0,
+    "AA": 0
+   },
+   "P4_antes": "TODAS",
+   "K5_antes": "Bias do EP: CAP | ano 2025 | media de todas as rodadas | 3 rodada(s), 360 linha(s) analiti",
+   "K5_agora": "Bias do EP: CAP | ano 2025 | media de todas as rodadas | 3 rodada(s), 360 linha(s) analiticas"
+  }
+ },
+ {
+  "teste": "R01 Regressão com TODAS (fixado na cópia de teste): G (|bias| ABS em 2 etapas), T, AC, AD, R e S = regra ANTIGA recalculada da EQA_Base (um ano vigente <= Ano EP, rodada pelo rótulo; número = IsNumeric E não vazio) em todas as linhas",
+  "resultado": "PASS",
+  "evidencia": {
+   "rodada": "TODAS",
+   "ano_ep": 2025.0,
+   "linhas": 84,
+   "divergencias": []
+  }
+ },
+ {
+  "teste": "R02 Dado real (só um ano de CEQ): ACUMULADAS, ULTIMAS 3 e ULTIMAS 6 dão exatamente o G/T/AC/AD de TODAS; K5 conta rodadas e linhas pela mesma regra e avisa quantos analitos têm menos de n rodadas (3 ≠ 6)",
+  "resultado": "PASS",
+  "evidencia": {
+   "anos_ceq": [
+    2025
+   ],
+   "modos": {
+    "ACUMULADAS": {
+     "segundos": 3.49,
+     "diferencas": [],
+     "K5": "Bias do EP: CAP | todas as rodadas acumuladas ate 2025 (ano 2025) | 3 rodada(s), 360 linha(s) analiticas",
+     "K5_esperado": [
+      "3 rodada(s), 360 linha(s)"
+     ]
+    },
+    "ULTIMAS 3": {
+     "segundos": 4.02,
+     "diferencas": [],
+     "K5": "Bias do EP: CAP | ultimas 3 rodada(s) de cada analito ate 2025 (ano 2025) | 3 rodada(s), 360 linha(s) analiticas",
+     "K5_esperado": [
+      "3 rodada(s), 360 linha(s)"
+     ]
+    },
+    "ULTIMAS 6": {
+     "segundos": 4.32,
+     "diferencas": [],
+     "K5": "Bias do EP: CAP | ultimas 6 rodada(s) de cada analito ate 2025 (24 de 24 analito(s) com menos de 6 com dado) (ano 2025) | 3 rodada(s), 360 linha(s) analiticas",
+     "K5_esperado": [
+      "3 rodada(s), 360 linha(s)",
+      "(24 de 24 analito(s) com menos de 6 com dado)"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "teste": "R03 Dado real: listas de seleção = rodadas EXISTENTES por provedor (Uso ≠ NAO, analito canônico, |bias|), item fixo TODAS antes (anos: TODOS antes); nunca rodada de simulação nem sem alvo; validações de N4/P4 (estilo Aviso) apontam para as listas, R4 sem vazio; K5 = ResumoFiltroEQ (sem TEXTO)",
+  "resultado": "PASS",
+  "evidencia": {
+   "divergencias": [],
+   "simulacao_existente": [
+    "2025|1",
+    "2025|2",
+    "2025|3"
+   ],
+   "validacoes": {
+    "P4": "=SE(eqProvedor=\"Controllab\";lstRodadasCTL;lstRodadasCAP)",
+    "N4": "=SE(eqProvedor=\"Controllab\";lstAnosCTL;lstAnosCAP)",
+    "R4": [
+     "CAP;Controllab",
+     false
+    ]
+   },
+   "K5": "Bias do EP: CAP | ano 2025 | media de todas as rodadas | 3 rodada(s), 360 linha(s) analiticas"
+  }
+ },
+ {
+  "teste": "R04 Painel: Sigma por nível (I7..I9) = Estatística!L do analito em tela (CV pooled de N meses; sem bias = vazio, nunca bias 0); Cfg_PlanoQC!B1 = MIN dos níveis; O3 avisa \"SIGMA EM k DE N NÍVEIS\" quando um nível com dados fica sem Sigma (o MIN o ignora); no bloco DESEMPENHO o CVp ao lado fecha a conta (ETp − |Bias|)/CVp = Sigma; \"-\" sem ETp (ADR-068)",
+  "resultado": "PASS",
+  "evidencia": {
+   "analitos": {
+    "WBC": {
+     "I": [
+      2.458916824251184,
+      3.6672677734523966,
+      5.757896157206601
+     ],
+     "L": [
+      2.458916824251184,
+      3.6672677734523966,
+      5.757896157206601
+     ],
+     "B1": 2.458916824251184,
+     "O3": "SIGMA DO PLANO",
+     "CVp": [
+      2.0883932909727876,
+      1.4002755500976083,
+      0.8918509918590788
+     ],
+     "sigma_fecha_com_CVp": [
+      true,
+      true,
+      true
+     ]
+    },
+    "RBC": {
+     "I": [
+      2.6207435497386973,
+      2.9998215499322183,
+      3.1733733537525857
+     ],
+     "L": [
+      2.6207435497386973,
+      2.9998215499322183,
+      3.1733733537525857
+     ],
+     "B1": 2.6207435497386973,
+     "O3": "SIGMA DO PLANO",
+     "CVp": [
+      0.9410992826708104,
+      0.8221755306674725,
+      0.7772107469821322
+     ],
+     "sigma_fecha_com_CVp": [
+      true,
+      true,
+      true
+     ]
+    },
+    "HGB": {
+     "I": [
+      3.0867801710376583,
+      3.7486755526825166,
+      4.450684954136156
+     ],
+     "L": [
+      3.0867801710376583,
+      3.7486755526825166,
+      4.450684954136156
+     ],
+     "B1": 3.0867801710376583,
+     "O3": "SIGMA DO PLANO",
+     "CVp": [
+      0.8283346682861259,
+      0.682077441249613,
+      0.5744929275824112
+     ],
+     "sigma_fecha_com_CVp": [
+      true,
+      true,
+      true
+     ]
+    },
+    "IG%": {
+     "I": [
+      "-",
+      "-",
+      "-"
+     ],
+     "L": [
+      "-",
+      "-",
+      "-"
+     ],
+     "B1": "-",
+     "O3": "SIGMA DO PLANO",
+     "CVp": [
+      3.356661458741333,
+      2.819647327831981,
+      2.6191515054927494
+     ],
+     "sigma_fecha_com_CVp": []
+    }
+   },
+   "rotulo_I6": "Sigma (CVp 6 m)",
+   "caso_parcial_janela_1_mes": null,
+   "nivel_sem_sigma_forcado": {
+    "analito": "WBC",
+    "nivel_sem_sigma": 3,
+    "O3": "⚠ SIGMA EM 2 DE 3 NÍVEIS",
+    "O3_esperado": "SIGMA EM 2 DE 3 N",
+    "B1": 2.458916824251184,
+    "B1_esperado": 2.458916824251184,
+    "ok": true,
+    "O3_depois_de_restaurar": "SIGMA DO PLANO"
+   },
+   "divergencias": []
+  }
+ },
+ {
+  "teste": "R05 CEQ sintético (CAP 2024/2025/2026/2027 com rótulos repetidos, rodada Uso=NAO, rodada SEM ALVO, 2º analito com a família LN2-x no mesmo ano, Controllab 2025/2026 isolado do real): BiasEQ ABS/SIGNED/N/NRODADAS = oráculo em 1 rodada, conjunto (atravessando anos), ACUMULADAS, ULTIMAS n POR ANALITO, TODAS e rótulo; |bias| vazio nunca vale 0 nem torna o ano vigente; NRODADAS conta ano|rodada; CAP e Controllab nunca misturados; provedor vazio e texto inválido = SEM EP; SDI e limites pela mesma seleção; incerteza (ViesEQ) igual a TODAS (D3)",
+  "resultado": "PASS",
+  "evidencia": {
+   "casos": 46,
+   "divergencias": [],
+   "diretas": {
+    "rotulo repetido em anos diferentes = 2 rodadas": true,
+    "Controllab ACUMULADAS so com Controllab (4 amostras sinteticas; o real foi isolado)": true,
+    "CAP nunca leva o Controllab (bias 40-62 ausente)": true,
+    "Uso=NAO (2026|Z, bias 99) nunca entra": true,
+    "provedor vazio nos modos novos = SEM EP (D1)": true,
+    "ADR-072 (3): Ano = TODOS + TODAS junta as rodadas do CAP de TODOS os anos do analito": true,
+    "ADR-072 (2): ano escolhido sem dado do analito = SEM EP (nao cai para o ano anterior)": true,
+    "ADR-072 (1): rodada especifica entra sozinha, qualquer que seja o Ano": true,
+    "texto invalido = SEM EP (nunca #VALOR!)": true,
+    "conjunto atravessando anos ignora o teto": true,
+    "ULTIMAS 3 e por analito: outra familia (LN2-x 2026) nao tira o analito principal": true,
+    "rodada sem alvo (|bias| vazio) nao entra em TODAS (2026: so A e B)": true,
+    "rodada so sem alvo = SEM EP, nunca 0": true,
+    "sem provedor (caminho do BI): ano so com linha sem alvo nao vira vigente (Ano EP 2027 -> 2026)": true,
+    "ACUMULADAS = ULTIMAS 64 com rodada sem alvo na base": true
+   },
+   "D3_divergencias": [],
+   "exemplos": {
+    "WBC/'TODAS'/2026/CAP": {
+     "ABS": 3.5,
+     "SIGNED": 3.0,
+     "N": 4,
+     "NRODADAS": 2
+    },
+    "WBC/'TODAS'/2025/CAP": {
+     "ABS": 1.8648146011737141,
+     "SIGNED": -1.8648146011737141,
+     "N": 15,
+     "NRODADAS": 3
+    },
+    "WBC/'TODAS'/2027/CAP": {
+     "ABS": "SEM EP",
+     "SIGNED": "SEM EP",
+     "N": "SEM EP",
+     "NRODADAS": "SEM EP"
+    },
+    "WBC/'A'/2026/CAP": {
+     "ABS": 2.0,
+     "SIGNED": 1.0,
+     "N": 2,
+     "NRODADAS": 1
+    },
+    "WBC/'A'/2025/CAP": {
+     "ABS": "SEM EP",
+     "SIGNED": "SEM EP",
+     "N": "SEM EP",
+     "NRODADAS": "SEM EP"
+    },
+    "WBC/'A'/2027/CAP": {
+     "ABS": "SEM EP",
+     "SIGNED": "SEM EP",
+     "N": "SEM EP",
+     "NRODADAS": "SEM EP"
+    }
+   }
+  }
+ },
+ {
+  "teste": "R06 K5 (ResumoFiltroEQ) descreve o modo e conta rodadas e linhas analíticas ANALITO A ANALITO pela regra do cálculo (ano vigente de cada analito; ULTIMAS n de cada analito, dizendo quantos têm menos de n); |bias| vazio não conta; texto inválido diz INVALIDA, item do conjunto sem dado aparece como SEM DADO, provedor vazio nos modos novos é avisado",
+  "resultado": "PASS",
+  "evidencia": {
+   "textos": {
+    "CAP/2026/ULTIMAS 3": "Bias do EP: CAP | ultimas 3 rodada(s) de cada analito ate 2026 (anos 2025 a 2026) | 8 rodada(s), 345 linha(s) analiticas",
+    "CAP/2026/ULTIMAS 6": "Bias do EP: CAP | ultimas 6 rodada(s) de cada analito ate 2026 (22 de 24 analito(s) com menos de 6 com dado) (anos 2024 a 2026) | 9 rodada(s), 372 linha(s) analiticas",
+    "CAP/2025/ACUMULADAS": "Bias do EP: CAP | todas as rodadas acumuladas ate 2025 (anos 2024 a 2025) | 5 rodada(s), 364 linha(s) analiticas",
+    "CAP/2026/ACUMULADAS": "Bias do EP: CAP | todas as rodadas acumuladas ate 2026 (anos 2024 a 2026) | 10 rodada(s), 374 linha(s) analiticas",
+    "CAP/2027/ACUMULADAS": "Bias do EP: CAP | todas as rodadas acumuladas ate 2027 (anos 2024 a 2026) | 10 rodada(s), 374 linha(s) analiticas",
+    "CAP/2026/2024|A; 2024|Q": "Bias do EP: CAP | conjunto de 2 rodada(s) informada(s), 1 com dado -- SEM DADO: 2024|Q | ano 2024 | 1 rodada(s), 2 linha(s) analiticas",
+    "CAP/2026/2026|C": "Bias do EP: CAP | conjunto de 1 rodada(s) informada(s), 0 com dado -- SEM DADO: 2026|C | 0 rodada(s), 0 linha(s) analiticas",
+    "Controllab/2026/ULTIMAS 1": "Bias do EP: Controllab | ultimas 1 rodada(s) de cada analito ate 2026 (ano 2026) | 1 rodada(s), 2 linha(s) analiticas",
+    "CAP/2026/TODAS": "Bias do EP: CAP | ano 2026 | media de todas as rodadas | 5 rodada(s), 10 linha(s) analiticas",
+    "CAP/2027/TODAS": "Bias do EP: CAP | ano vigente ate 2027 | media de todas as rodadas | 0 rodada(s), 0 linha(s) analiticas",
+    "CAP/2026/2025|": "Bias do EP: CAP | rodada INVALIDA (item invalido: 2025|): SEM EP | 0 rodada(s), 0 linha(s) analiticas",
+    "-/2026/ACUMULADAS": "Bias do EP: provedor nao definido -- nos modos conjunto/ULTIMAS/ACUMULADAS o provedor e obrigatorio (CAP e Controllab nunca se misturam): SEM EP | 0 rodada(s), 0 linha(s)",
+    "CAP/2026/C-A 2025; C-B 2025": "Bias do EP: CAP | rodada INVALIDA (item sem ano (use ano|rodada): C-A 2025): SEM EP | 0 rodada(s), 0 linha(s) analiticas"
+   },
+   "divergencias": [],
+   "anos_vigentes_TODAS_2026": [
+    2026
+   ]
+  }
+ },
+ {
+  "teste": "R07 CEQ sintético (CAP 2024/2026, LN2-x, Controllab, rodada Uso=NAO e sem alvo): listas de seleção = rodadas EXISTENTES por provedor (Uso ≠ NAO, analito canônico, |bias|), item fixo TODAS antes (anos: TODOS antes); nunca rodada de simulação nem sem alvo; validações de N4/P4 (estilo Aviso) apontam para as listas, R4 sem vazio; K5 = ResumoFiltroEQ (sem TEXTO)",
+  "resultado": "PASS",
+  "evidencia": {
+   "divergencias": [],
+   "simulacao_existente": [
+    "2025|2",
+    "2025|3",
+    "2026|Z"
+   ],
+   "validacoes": {
+    "P4": "=SE(eqProvedor=\"Controllab\";lstRodadasCTL;lstRodadasCAP)",
+    "N4": "=SE(eqProvedor=\"Controllab\";lstAnosCTL;lstAnosCAP)",
+    "R4": [
+     "CAP;Controllab",
+     false
+    ]
+   },
+   "K5": "Bias do EP: CAP | ano 2025 | media de todas as rodadas | 3 rodada(s), 360 linha(s) analiticas"
+  }
+ },
+ {
+  "teste": "R08 Aba Estatística com o CEQ sintético: P4 = \"ULTIMAS 3\" (Ano EP 2026) recalcula G/T/AC/AD de TODAS as linhas igual ao oráculo (provedor de cada linha, ULTIMAS por analito), K5 conta igual, a incerteza AF..AU não muda (D3); P4 inválido = SEM EP em todas as linhas com aviso em K5; provedor vazio + ACUMULADAS = SEM EP com aviso (D1)",
+  "resultado": "PASS",
+  "evidencia": {
+   "segundos_troca_P4": 2.28,
+   "divergencias": [],
+   "K5": "Bias do EP: CAP | ultimas 3 rodada(s) de cada analito ate 2026 (anos 2025 a 2026) | 8 rodada(s), 345 linha(s) analiticas",
+   "esperado_K5": [
+    "8 rodada(s), 345 linha(s)"
+   ],
+   "incerteza_mudou": [],
+   "K5_invalido": "Bias do EP: CAP | rodada INVALIDA (item invalido: 2025|): SEM EP | 0 rodada(s), 0 linha(s) analiticas",
+   "K5_sem_provedor": "Bias do EP: provedor nao definido -- nos modos conjunto/ULTIMAS/ACUMULADAS o provedor e obrigatorio (CAP e Controllab nunca se misturam): SE"
+  }
+ },
+ {
+  "teste": "R09 Depois de mudar a EQA_Base, o fim do AtualizarEQABase (mCEQ.MarcarCEQSujo antes do Calculate do RecalcularIncerteza) atualiza G e K5 sem mexer em N4/P4/R4 (sem ele, G ficava com o conjunto antigo)",
+  "resultado": "PASS",
+  "evidencia": {
+   "analito": "WBC",
+   "G_antes": 1.8648146011737141,
+   "G_so_com_Calculate": 1.8648146011737141,
+   "G_depois": 13.898610950880286,
+   "G_esperado": 13.898610950880286,
+   "K5_antes": "Bias do EP: CAP | ano 2025 | media de todas as rodadas | 3 rodada(s), 360 linha(s) analiticas",
+   "K5_depois": "Bias do EP: CAP | ano 2025 | media de todas as rodadas | 4 rodada(s), 362 linha(s) analiticas",
+   "K5_esperado": [
+    "4 rodada(s), 362 linha(s)"
+   ],
+   "AtualizarEQABase_chama": true
+  }
+ },
+ {
+  "teste": "R10 Mais de 64 rodadas (ACUMULADAS e conjunto de 70 itens): todas entram -- NRODADAS = 70, média = oráculo; nada truncado em silêncio (antes: MAX_ROD = 64 pela ordem física da EQA_Base)",
+  "resultado": "PASS",
+  "evidencia": {
+   "obtido": {
+    "ABS": 3.55,
+    "N": 70,
+    "NRODADAS": 70
+   },
+   "esperado": {
+    "ABS": 3.55,
+    "N": 70,
+    "NRODADAS": 70
+   },
+   "conjunto_70": 70,
+   "K5": "Bias do EP: QA64 | todas as rodadas acumuladas ate 2026 (ano 2020) | 70 rodada(s), 70 linha(s) analiticas"
+  }
+ },
+ {
+  "teste": "R11 Célula com valor de erro na EQA_Base (#DIV/0! no |bias|, #N/D na rodada): o cache monta, as demais linhas calculam igual ao oráculo (erro = não número; rodada com erro = rótulo vazio), K5 não diz \"ilegível\" e as listas atualizam sem erro (antes: CStr dava erro 13 e todo o CEQ ficava SEM EP)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas_com_erro": [
+    467,
+    468
+   ],
+   "divergencias": [],
+   "K5": "Bias do EP: CAP | todas as rodadas acumuladas ate 2026 (anos 2024 a 2026) | 11 rodada(s), 375 linha(s) analiticas",
+   "AtualizarListasAno": "ok"
+  }
+ }
+]

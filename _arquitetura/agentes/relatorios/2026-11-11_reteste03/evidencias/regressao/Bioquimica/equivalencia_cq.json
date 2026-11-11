@@ -1,0 +1,165 @@
+{
+ "produto": "Bioquimica",
+ "tempos_s": [
+  9.176
+ ],
+ "fases": [
+  "ler+interface=2,04;duplicidade=1,30;manuais=2,65;status=0,86;corridas=1,07;ordem final=0,34;saida=0,37;"
+ ],
+ "linhas": {
+  "pq": 35503,
+  "vba": 35503
+ },
+ "colunas_so_vba": [],
+ "colunas_pq_nao_comparadas": [],
+ "cab_vba": [
+  "ID_REGISTRO",
+  "ORIGEM_RESULTADO",
+  "SETOR",
+  "EQUIPAMENTO",
+  "MATRIZ",
+  "BLOCO",
+  "DATA",
+  "HORA",
+  "DATA_HORA",
+  "CORRIDA_NO_DIA",
+  "RUN",
+  "NIVEL",
+  "NIVEL_DESC",
+  "LOTE",
+  "ANALITO",
+  "ANALITO_ORIGEM",
+  "ANALITO_CADASTRADO",
+  "RESULTADO",
+  "UNIDADE",
+  "FLAG",
+  "STATUS_ANALITICO",
+  "PARTICIPA_ESTATISTICA",
+  "REGISTRAR_RESULTADO_NO_LJ",
+  "TIPO_PLOTAGEM_LJ",
+  "INATIVACAO_REGISTRADA",
+  "COMENTARIO_TECNICO",
+  "TEM_JUSTIFICATIVA",
+  "GOVERNANCA",
+  "DATA_INATIVACAO",
+  "USUARIO_INATIVACAO",
+  "MOTIVO_INATIVACAO",
+  "MOTIVO_EXCLUSAO_AUTOMATICA",
+  "ID_RELACIONADO",
+  "ID_ORIGEM",
+  "ID_AMOSTRA",
+  "ITEM_ID",
+  "PRIMEIRO_DO_DIA",
+  "MOTIVO_MANUAL",
+  "USUARIO_MANUAL",
+  "RECEBIDO_EM"
+ ],
+ "divergencias": {},
+ "status_pq": {
+  "MANUAL_INCOMPLETO": 13,
+  "ATIVO": 34340,
+  "INATIVADO": 9,
+  "CONFLITO_MANUAL": 5,
+  "IMPLAUSIVEL": 50,
+  "SUBSTITUIDO_MANUAL": 2,
+  "LOTE_FORA_DO_CQ": 505,
+  "LOTE_OUTRO_MATERIAL": 579
+ },
+ "marcas_pq": {
+  "inativacao_SIM": 9,
+  "com_comentario": 1,
+  "governanca_erro": 1,
+  "com_id_relacionado": 10
+ },
+ "adr082": {
+  "BIO-203247": {
+   "STATUS_ANALITICO": "INATIVADO",
+   "ID_RELACIONADO": "MAN_0027",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "substituido pelo manual MAN_0027 (motivo: QA substitui)",
+   "RUN": "25100101.0"
+  },
+  "BIO-204159": {
+   "STATUS_ANALITICO": "SUBSTITUIDO_MANUAL",
+   "ID_RELACIONADO": "MAN_0021",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "substituido pelo manual MAN_0021 (motivo: QA substitui)",
+   "RUN": "None"
+  },
+  "BIO-204626": {
+   "STATUS_ANALITICO": "ATIVO",
+   "ID_RELACIONADO": "None",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "None",
+   "RUN": "25100601.0"
+  },
+  "BIO-204989": {
+   "STATUS_ANALITICO": "SUBSTITUIDO_MANUAL",
+   "ID_RELACIONADO": "MAN_0025",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "substituido pelo manual MAN_0025 (motivo: QA substitui)",
+   "RUN": "None"
+  },
+  "MAN_0021": {
+   "STATUS_ANALITICO": "ATIVO",
+   "ID_RELACIONADO": "BIO-204159",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "substitui o resultado do interfaceamento BIO-204159",
+   "RUN": "25100302.0"
+  },
+  "MAN_0022": {
+   "STATUS_ANALITICO": "CONFLITO_MANUAL",
+   "ID_RELACIONADO": "BIO-204626",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "coincide com resultado do interfaceamento (0 min); SUBSTITUI_ID invalido: BIO-204595 tem outra chave: DIMENSION 1 | SORO | 8974 | 1 | Bilirrubina total (este manual: DIMENSION 1 | SORO | 8974 | 2 | Bilirrubina total) (este manual nao substitui nada)",
+   "RUN": "None"
+  },
+  "MAN_0023": {
+   "STATUS_ANALITICO": "ATIVO",
+   "ID_RELACIONADO": "None",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "SUBSTITUI_ID invalido: o ID BIO-999999999 nao existe nos resultados do interfaceamento (este manual nao substitui nada)",
+   "RUN": "25100106.0"
+  },
+  "MAN_0024": {
+   "STATUS_ANALITICO": "ATIVO",
+   "ID_RELACIONADO": "None",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "SUBSTITUI_ID invalido: MAN_0021 e resultado manual (SUBSTITUI_ID aceita so resultado do interfaceamento) (este manual nao substitui nada)",
+   "RUN": "25100107.0"
+  },
+  "MAN_0025": {
+   "STATUS_ANALITICO": "INATIVADO",
+   "ID_RELACIONADO": "BIO-204989",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "substitui o resultado do interfaceamento BIO-204989",
+   "RUN": "25100701.0"
+  },
+  "MAN_0026": {
+   "STATUS_ANALITICO": "CONFLITO_MANUAL",
+   "ID_RELACIONADO": "MAN_0025",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "SUBSTITUI_ID invalido: outro manual (MAN_0025) ja substitui BIO-204989 (este manual nao substitui nada)",
+   "RUN": "None"
+  },
+  "MAN_0027": {
+   "STATUS_ANALITICO": "ATIVO",
+   "ID_RELACIONADO": "BIO-203247",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "substitui o resultado do interfaceamento BIO-203247",
+   "RUN": "25100101.0"
+  },
+  "MAN_0029": {
+   "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+   "ID_RELACIONADO": "None",
+   "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: MOTIVO (obrigatorio para substituir um resultado)",
+   "RUN": "None"
+  }
+ },
+ "adr082_substituidos_pq": 2,
+ "adr082_ok": true,
+ "adr082_falhas": [],
+ "adr088_ok": true,
+ "adr088_falhas": [],
+ "adr091_ok": true,
+ "adr091_falhas": [],
+ "adr091_lotes": {
+  "SO_ANALITOS": "8589",
+  "FORA_DO_CQ": "8590",
+  "MATRIZ": "8588"
+ },
+ "adr091_status_pq": {
+  "LOTE_FORA_DO_CQ": 505,
+  "LOTE_OUTRO_MATERIAL": 579
+ },
+ "exemplos": {}
+}

@@ -1,0 +1,504 @@
+{
+ "inicio": "2026-11-11T08:52:06",
+ "ambiente": {
+  "producao": "QC_Bioquimica.xlsm",
+  "sha_prod_12": "8b1cda1345d2",
+  "copia": "C:\\Users\\VITOR~1.SAN\\AppData\\Local\\Temp\\qcw\\auditoria\\2026-11-11_reteste03\\Bioquimica_valida.xlsm"
+ },
+ "excel_pid": 23360,
+ "linhas_tblCQ_Final": 35466,
+ "login": "TESTE_AUDITORIA_R3",
+ "manuais": {
+  "colunas": [
+   "ID_REGISTRO",
+   "DATA",
+   "HORA",
+   "EQUIPAMENTO",
+   "MATRIZ",
+   "LOTE",
+   "NIVEL",
+   "ANALITO",
+   "RESULTADO",
+   "UNIDADE",
+   "MOTIVO",
+   "USUARIO",
+   "REGISTRADO_EM",
+   "RUN",
+   "STATUS",
+   "DETALHE",
+   "SUBSTITUI_ID"
+  ],
+  "instrucao_A3": "1) Preencha DATA, HORA, EQUIPAMENTO, LOTE, NÍVEL, ANALITO, RESULTADO e MOTIVO na próxima linha livre — o ID (MAN_0001…) é gerado sozinho. EQUIPAMENTO vazio recebe o do Painel (fica em âmbar): confira. Para SUBSTITUIR um resultado do interfaceamento, digite primeiro o ID dele em SUBSTITUI_ID (o resto se preenche) e o MOTIVO.  2) Clique ⟳ ATUALIZAR DADOS.",
+  "selEquipamento": "DIMENSION 2",
+  "referencia_real": {
+   "ID_REGISTRO": "BIO-354752",
+   "EQUIPAMENTO": "DIMENSION 1",
+   "LOTE": "8977",
+   "NIVEL": "1",
+   "ANALITO": "Glicose",
+   "RESULTADO": "77",
+   "DATA_HORA": "2026-09-22 13:35:14",
+   "RUN": "26092202"
+  },
+  "O19_auto": {
+   "valor": "DIMENSION 2",
+   "fundo": 10284031.0,
+   "fonte": 22428.0,
+   "nota": "Preenchido pelo Painel com DIMENSION 2: confira antes de ATUALIZAR DADOS."
+  },
+  "O19_digitado": {
+   "valor": "DIMENSION 1",
+   "fundo": 16777215.0,
+   "nota": false
+  },
+  "O19_ok": true,
+  "validacao_dados": {
+   "M1_incompleto.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M1_incompleto.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M1_incompleto.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M1_incompleto.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M2_conflito.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M2_conflito.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M2_conflito.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M2_conflito.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M7_implausivel.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M7_implausivel.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M7_implausivel.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M7_implausivel.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M8_sem_hora.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M8_sem_hora.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M8_sem_hora.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M8_sem_hora.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M3_8353_Glicose.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M3_8353_Glicose.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M3_8353_Glicose.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M3_8353_Glicose.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M4_8353_PCR.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M4_8353_PCR.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M4_8353_PCR.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M4_8353_PCR.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M5_8794_menos1.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M5_8794_menos1.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M5_8794_menos1.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M5_8794_menos1.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M6_6354_Creatinina.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M6_6354_Creatinina.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M6_6354_Creatinina.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M6_6354_Creatinina.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ]
+  },
+  "atualizar1": {
+   "ret": "OK|Só as entradas (inativações, manuais e comentários) foram aplicadas; o DB_SEAC não foi lido -- os resultados novos en",
+   "s": 24.2
+  },
+  "ids": {
+   "M1_incompleto": "MAN_0001",
+   "M2_conflito": "MAN_0002",
+   "M7_implausivel": "MAN_0003",
+   "M8_sem_hora": "MAN_0004",
+   "M3_8353_Glicose": "MAN_0005",
+   "M4_8353_PCR": "MAN_0006",
+   "M5_8794_menos1": "MAN_0007",
+   "M6_6354_Creatinina": "MAN_0008"
+  },
+  "manuais_1": {
+   "M1_incompleto": {
+    "STATUS": "MANUAL_INCOMPLETO",
+    "RUN_txt": "",
+    "DETALHE_txt": "campos obrigatórios ausentes/inválidos: NIVEL",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: NIVEL",
+     "RUN": ""
+    }
+   },
+   "M2_conflito": {
+    "STATUS": "CONFLITO_MANUAL",
+    "RUN_txt": "",
+    "DETALHE_txt": "coincide com resultado do interfaceamento (5 min)",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "CONFLITO_MANUAL",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "coincide com resultado do interfaceamento (5 min)",
+     "RUN": ""
+    }
+   },
+   "M7_implausivel": {
+    "STATUS": "IMPLAUSIVEL",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "IMPLAUSIVEL",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)",
+     "RUN": "26092201"
+    }
+   },
+   "M8_sem_hora": {
+    "STATUS": "MANUAL_INCOMPLETO",
+    "RUN_txt": "",
+    "DETALHE_txt": "campos obrigatórios ausentes/inválidos: HORA",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: HORA",
+     "RUN": ""
+    }
+   },
+   "M3_8353_Glicose": {
+    "STATUS": "LOTE_OUTRO_MATERIAL",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "lote de outro material neste analito (regra SO_ANALITOS da tblLotesMaterial; fora da estatistica e do grafico)",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "LOTE_OUTRO_MATERIAL",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "lote de outro material neste analito (regra SO_ANALITOS da tblLotesMaterial; fora da estatistica e do grafico)",
+     "RUN": "26092201"
+    }
+   },
+   "M4_8353_PCR": {
+    "STATUS": "ATIVO",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "ANALITO": "Proteína C-reativa",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "",
+     "RUN": "26092201"
+    }
+   },
+   "M5_8794_menos1": {
+    "STATUS": "LOTE_FORA_DO_CQ",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "lote fora do CQ (regra FORA_DO_CQ da tblLotesMaterial; fora da estatistica e do grafico)",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "LOTE_FORA_DO_CQ",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "lote fora do CQ (regra FORA_DO_CQ da tblLotesMaterial; fora da estatistica e do grafico)",
+     "RUN": "26092201"
+    }
+   },
+   "M6_6354_Creatinina": {
+    "STATUS": "ATIVO",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "ANALITO": "Creatinina",
+     "MATRIZ": "URINA",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "",
+     "RUN": "26092201"
+    }
+   }
+  },
+  "trilha_1": [
+   {
+    "acao": "RESULTADO_MANUAL_RECUSADO",
+    "id": "M8_sem_hora",
+    "txt": "AUD-000735-20261111085315 | 2 | 2026-11-11 08:53:15 | 2026-11-11 00:00:00 | 0.3703125 | DADO | RESULTADO_MANUAL_RECUSADO | mIntegracao | 0|1|GLICOSE | DIMENSION 1 | 8977 | 1 | Glicose | 1 | 123,456 | 123,456 | 0 | 0 | |MANUAL:MANUAL_INCOMPLETO|VAL:123,456|DH: | ID MAN_0004 | campos obrigatorios ausentes/invalidos: HORA | manual lancado por TESTE_AUDITORIA_R3 em 11/11/2026 08:52 | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Bioquimica_valida.xlsm | 1.0.0-rc1 | f0cf6d38e3cbfdbd2f4994a52af748c42701d46e28878c2324a03387f326aad6 | c9d5115a70a922bd70a8065973de79513fd02f498af1e60d3534cdc3e2dab013"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_RECUSADO",
+    "id": "M1_incompleto",
+    "txt": "AUD-000736-20261111085315 | 2 | 2026-11-11 08:53:15 | 2026-11-11 00:00:00 | 0.3703125 | DADO | RESULTADO_MANUAL_RECUSADO | mIntegracao | 0|0|GLICOSE | 2026-09-22 03:17:00 | DIMENSION 1 | 8977 | Glicose | 1 | 123,456 | 123,456 | 0 | 0 | |MANUAL:MANUAL_INCOMPLETO|VAL:123,456|DH:2026-09-22 03:17:00 | ID MAN_0001 | campos obrigatorios ausentes/invalidos: NIVEL | manual lancado por TESTE_AUDITORIA_R3 em 11/11/2026 08:52 | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Bioquimica_valida.xlsm | 1.0.0-rc1 | c9d5115a70a922bd70a8065973de79513fd02f498af1e60d3534cdc3e2dab013 | ab89eae46d1870020cb309801aef5ec7279ef7c7752edf633c1772bab23613b1"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M3_8353_Glicose",
+    "txt": "AUD-000737-20261111085315 | 2 | 2026-11-11 08:53:15 | 2026-11-11 00:00:00 | 0.3703125 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|GLICOSE | 26092201 | 2026-09-22 03:21:00 | DIMENSION 1 | 8353 | 1 | Glicose | 1 | 123,456 | 123,456 | 0 | 0 | |MANUAL:LOTE_OUTRO_MATERIAL|VAL:123,456|DH:2026-09-22 03:21:00 | ID MAN_0005 | manual lancado por TESTE_AUDITORIA_R3 em 11/11/2026 08:52 | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Bioquimica_valida.xlsm | 1.0.0-rc1 | ab89eae46d1870020cb309801aef5ec7279ef7c7752edf633c1772bab23613b1 | 49f191e0472c178a19dc48cb295254f5106a707400dc2084f63ee845e080d27d"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M4_8353_PCR",
+    "txt": "AUD-000738-20261111085315 | 2 | 2026-11-11 08:53:15 | 2026-11-11 00:00:00 | 0.3703125 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|PROTEÍNA C-REATIVA | 26092201 | 2026-09-22 03:23:00 | DIMENSION 1 | 8353 | 1 | Proteína C-reativa | 1 | 1,234 | 1,234 | 0 | 0 | |MANUAL:ATIVO|VAL:1,234|DH:2026-09-22 03:23:00 | ID MAN_0006 | manual lancado por TESTE_AUDITORIA_R3 em 11/11/2026 08:52 | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Bioquimica_valida.xlsm | 1.0.0-rc1 | 49f191e0472c178a19dc48cb295254f5106a707400dc2084f63ee845e080d27d | 8d3329f567a6d225854c5644734409a002552bee818c07a8b473691b6d7d75df"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M5_8794_menos1",
+    "txt": "AUD-000739-20261111085315 | 2 | 2026-11-11 08:53:15 | 2026-11-11 00:00:00 | 0.3703125 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|GLICOSE | 26092201 | 2026-09-22 03:25:00 | DIMENSION 1 | 8794 | 1 | Glicose | 2 | -1 | -1 | 0 | 0 | |MANUAL:LOTE_FORA_DO_CQ|VAL:-1|DH:2026-09-22 03:25:00 | ID MAN_0007 | manual lancado por TESTE_AUDITORIA_R3 em 11/11/2026 08:52 | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Bioquimica_valida.xlsm | 1.0.0-rc1 | 8d3329f567a6d225854c5644734409a002552bee818c07a8b473691b6d7d75df | 7172026d382fd0e14a37b4e3d8a7017d350eec8eaf9b6ea7048c62fa2e199220"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M6_6354_Creatinina",
+    "txt": "AUD-000740-20261111085315 | 2 | 2026-11-11 08:53:15 | 2026-11-11 00:00:00 | 0.3703125 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|CREATININA | 26092201 | 2026-09-22 03:27:00 | DIMENSION 1 | 6354 | 1 | Creatinina | 1 | 12,345 | 12,345 | 0 | 0 | |MANUAL:ATIVO|VAL:12,345|DH:2026-09-22 03:27:00 | ID MAN_0008 | manual lancado por TESTE_AUDITORIA_R3 em 11/11/2026 08:52 | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Bioquimica_valida.xlsm | 1.0.0-rc1 | 7172026d382fd0e14a37b4e3d8a7017d350eec8eaf9b6ea7048c62fa2e199220 | 266dfcf146fa5fab591ef5eba17bed626f0317d8f318ee8908c87dacf6de3218"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M7_implausivel",
+    "txt": "AUD-000741-20261111085316 | 2 | 2026-11-11 08:53:16 | 2026-11-11 00:00:00 | 0.3703240740740741 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|GLICOSE | 26092201 | 2026-09-22 03:29:00 | DIMENSION 1 | 8977 | 1 | Glicose | 3 | -1 | -1 | 0 | 0 | |MANUAL:IMPLAUSIVEL|VAL:-1|DH:2026-09-22 03:29:00 | ID MAN_0003 | manual lancado por TESTE_AUDITORIA_R3 em 11/11/2026 08:52 | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Bioquimica_valida.xlsm | 1.0.0-rc1 | 266dfcf146fa5fab591ef5eba17bed626f0317d8f318ee8908c87dacf6de3218 | 188948c02ea469169b1ee32cbda03e20361bf679d95ef8dd4d0c364dc055fc28"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_EM_CONFLITO",
+    "id": "M2_conflito",
+    "txt": "AUD-000742-20261111085316 | 2 | 2026-11-11 08:53:16 | 2026-11-11 00:00:00 | 0.3703240740740741 | DADO | RESULTADO_MANUAL_EM_CONFLITO | mIntegracao | 0|1|GLICOSE | 2026-09-22 13:40:00 | DIMENSION 1 | 8977 | 1 | Glicose | 2 | 111,111 | 111,111 | 0 | 0 | |MANUAL:CONFLITO_MANUAL|VAL:111,111|DH:2026-09-22 13:40:00 | ID MAN_0002 | coincide com resultado do interfaceamento (5 min) | manual lancado por TESTE_AUDITORIA_R3 em 11/11/2026 08:52 | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Bioquimica_valida.xlsm | 1.0.0-rc1 | 188948c02ea469169b1ee32cbda03e20361bf679d95ef8dd4d0c364dc055fc28 | 972f559a8e552b9c8b366868fe8bd3e2d82c1abcee6af8604aedbae5097ffc3d"
+   }
+  ],
+  "O24": {
+   "resumo": [
+    "QA da integração: 6 erro(s), 137 alerta(s), 12 informativo(s).",
+    "• 2 resultado(s) manual(is) incompleto(s): veja o DETALHE na aba Digitar Resultados — não entraram na estatística.",
+    "• 4 erro(s) de governança: veja a aba QA_INTEGRACAO (ex.: inativação sem motivo, ou ID que não é do analito informado — essa não foi aplicada)."
+   ],
+   "erros_por_codigo": {
+    "E01": 4,
+    "E04": 2
+   },
+   "gov": 4,
+   "len": 323,
+   "E10": [
+    "ERRO | E01 | Resultado inativado sem justificativa tecnica | BIO-366027 | Lactato | 2 | 2026-10-13 13:30:25 | ERRO DE GOVERNANÇA: BIO-366027 | Lactato | nivel 2 | 13/10/2026 13:30 -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar",
+    "ERRO | E01 | Resultado inativado sem justificativa tecnica | BIO-366033 | Lactato | 2 | 2026-10-13 13:30:40 | ERRO DE GOVERNANÇA: BIO-366033 | Lactato | nivel 2 | 13/10/2026 13:30 -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar",
+    "ERRO | E01 | Resultado inativado sem justificativa tecnica | BIO-366054 | Lactato | 2 | 2026-10-13 13:30:55 | ERRO DE GOVERNANÇA: BIO-366054 | Lactato | nivel 2 | 13/10/2026 13:30 -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar",
+    "ERRO | E01 | Resultado inativado sem justificativa tecnica | BIO-366164 | Lactato | 2 | 2026-10-13 15:54:01 | ERRO DE GOVERNANÇA: BIO-366164 | Lactato | nivel 2 | 13/10/2026 15:54 -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar"
+   ],
+   "ok": true
+  },
+  "atualizar2": {
+   "ret": "OK|Só as entradas (inativações, manuais e comentários) foram aplicadas; o DB_SEAC não foi lido -- os resultados novos en",
+   "s": 24.2
+  },
+  "M1_depois": {
+   "STATUS": "ATIVO",
+   "RUN_txt": "26092201",
+   "DETALHE_txt": ""
+  },
+  "trilha_2": [
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "txt": "AUD-000744-20261111085342 | 2 | 2026-11-11 08:53:42 | 2026-11-11 00:00:00 | 0.370625 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|GLICOSE | 26092201 | 2026-09-22 03:17:00 | DIMENSION 1 | 8977 | 1 | Glicose | 4 | 123,456 | 123,456 | 0 | 0 | |MANUAL:MANUAL_INCOMPLETO|VAL:123,456|DH:20"
+   }
+  ],
+  "O23_ok": true,
+  "O23_trilha_por_manual": {
+   "M8_sem_hora": [
+    "RESULTADO_MANUAL_RECUSADO"
+   ],
+   "M1_incompleto": [
+    "RESULTADO_MANUAL_RECUSADO"
+   ],
+   "M3_8353_Glicose": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M4_8353_PCR": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M5_8794_menos1": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M6_6354_Creatinina": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M7_implausivel": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M2_conflito": [
+    "RESULTADO_MANUAL_EM_CONFLITO"
+   ]
+  },
+  "O21_ok": true,
+  "O21_varredura": {
+   "linhas": 300,
+   "com_zero": [],
+   "sem_acento": []
+  },
+  "adr091_manuais_ok": true,
+  "M6_no_painel": {
+   "H3": "6354",
+   "E1": "6354",
+   "engPainel": [
+    [
+     1.0,
+     1.0,
+     12.345,
+     null,
+     null
+    ],
+    [
+     2.0,
+     0.0,
+     null,
+     null,
+     null
+    ]
+   ],
+   "J7": "REJEITADO",
+   "A39": "Lote 6354 · alvo N1 73,990 ± 0,0909 · N2 176,553 ± 0,1469. Sem filtro de data",
+   "lista_H3": "=lstLotes",
+   "estat_Creatinina": {
+    "Creatinina|1": [
+     1.0,
+     12.345
+    ],
+    "Creatinina|2": [
+     0.0,
+     ""
+    ]
+   }
+  },
+  "_s": 90.8
+ },
+ "producao_intacta": {
+  "sha_antes": "8b1cda1345d2",
+  "sha_depois": "8b1cda1345d2",
+  "igual": true
+ }
+}

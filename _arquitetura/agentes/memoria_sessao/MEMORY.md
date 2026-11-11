@@ -1,0 +1,18 @@
+﻿- [Integração DB_SEAC](integracao-db-seac.md) — reestruturação 10/2026 para DB_CQ_FINAL via Power Query e decisões do usuário
+- [Contexto QC_INI](qc-ini-contexto.md) — onde fica o repo, build dos .xlsm e armadilhas de automação Excel
+- [Excel agendado de produção](excel-agendado-producao.md) — tarefa a cada 2 min abre Excel; só matar o PID que eu criei
+- [Trabalhar direto na main](trabalhar-direto-na-main.md) — sem branches de teste; testar em cópias; conferir segredos antes do push
+- [Estado em 05/10](estado-entrega-0510.md) — commit 6275ca8 da sessão de casa; passos para ligar MODO_FONTE=SEAC no laboratório
+- [Incerteza só CIQ+CEQ](incerteza-nordtest.md) — Nordtest (ADR-067); nunca pedir certificado de calibrador
+- [Manual substitui (ADR-082); D-01](manual-nao-substitui.md) — D09b revogada 22/10 (SUBSTITUI_ID); D-01 decidida (ADR-072)
+- [Especificações + blocos por lote](abas-especificacoes-blocos.md) — ADR-074/075: motor = aba Especificações; Analitos = blocos; LET em nome falha via COM
+- [Linhas do alvo ADR-078](linhas-alvo-adr078.md) — limites do LJ em Calc 184:185 (2 pontos); troca de lote nunca grava na LotesStore
+- [Motor de dados VBA (ADR-079)](motor-dados-vba-adr079.md) — MOTOR_DADOS=VBA, Sync_Log, tempos medidos, armadilhas
+- [Corrida do lote ADR-080](corrida-lote-adr080.md) — eixo X do LJ = corrida do lote por nível, recomeça do 1; RUN do dia inalterado
+- [Entrega limpa e sozinha](entrega-limpa-sozinha.md) — git archive + QC_RAIZ; nenhum Excel em paralelo; fumaça dos instaladores antes
+- [Westgard por sequência ADR-083](westgard-sequencia-adr083.md) — mesmo nível = sequência de ativos; aba Westgard_Fotos audita todos os lotes; sem BI
+- [ADR-085 painel tela única](adr085-painel-tela-unica.md) — duplo clique sem "Formatar", ações NC/INATIVAR/COMENTAR, comentário fonte única; H3 vazio adiado
+- [ADR-084 usuários/calibração](adr084-usuarios-calibracao.md) — padrões assumidos (central+PBKDF2, assinaturas/, todos níveis), sem alvo TESTE, sync por ACE
+- [ADR-086/087 telas](adr086-087-telas.md) — em produção desde 31/10; Names.Add com TRUE corrompe; src em UTF-8; S6 do PQ varia muito
+- [Agentes de auditoria](agentes-auditoria-qc.md) — /auditoria-qc + 4 agentes; instalar_agentes.py; registro só na sessão seguinte
+- [Lote define o material](lote-define-material.md) — relat209 sem campo de material; sufixo -EE digitado é inconsistente; tblLotesMaterial (ADR-091)

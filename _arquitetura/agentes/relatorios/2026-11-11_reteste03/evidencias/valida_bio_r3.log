@@ -1,0 +1,9 @@
+## ambiente {"producao": "QC_Bioquimica.xlsm", "sha_prod_12": "8b1cda1345d2", "copia": "C:\\Users\\VITOR~1.SAN\\AppData\\Local\\Temp\\qcw\\auditoria\\2026-11-11_reteste03\\Bioquimica_valida.xlsm"}
+EXCEL_PID 23360
+## excel_pid 23360
+## linhas_tblCQ_Final 35466
+## login "TESTE_AUDITORIA_R3"
+## manuais {"colunas": ["ID_REGISTRO", "DATA", "HORA", "EQUIPAMENTO", "MATRIZ", "LOTE", "NIVEL", "ANALITO", "RESULTADO", "UNIDADE", "MOTIVO", "USUARIO", "REGISTRADO_EM", "RUN", "STATUS", "DETALHE", "SUBSTITUI_ID"], "instrucao_A3": "1) Preencha DATA, HORA, EQUIPAMENTO, LOTE, NÍVEL, ANALITO, RESULTADO e MOTIVO na próxima linha livre — o ID (MAN_0001…) é gerado sozinho. EQUIPAMENTO vazio recebe o do Painel (fica em âmbar): confira. Para SUBSTITUIR um resultado do interfaceamento, digite primeiro o ID dele em SUBSTITUI_ID (o resto se preenche) e o MOTIVO.  2) Clique ⟳ ATUALIZAR DADOS.", "selEquipamento": "DIMENSION 2", "referencia_real": {"ID_REGISTRO": "BIO-354752", "EQUIPAMENTO": "DIMENSION 1", "LOTE": "8977", "NIVEL": "1", "ANALITO": "Glicose", "RESULTADO": "77", "DATA_HORA": "2026-09-22 13:35:14", "RUN": "26092202"}, "O19_auto": {"valor": "DIMENSION 2", "fundo": 10284031.0, "fonte": 22428.0, "nota"
+## producao_intacta {"sha_antes": "8b1cda1345d2", "sha_depois": "8b1cda1345d2", "igual": true}
+FIM Bioquimica
+tempo 128s

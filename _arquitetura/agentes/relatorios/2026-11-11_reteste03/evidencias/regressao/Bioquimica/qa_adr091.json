@@ -1,0 +1,413 @@
+[
+ {
+  "teste": "T01 tblLotesMaterial com as colunas do ADR e a carga inicial do config_produtos (17 regras); sem aviso (A14)",
+  "resultado": "PASS",
+  "evidencia": {
+   "colunas": [
+    "LOTE",
+    "REGRA",
+    "MATRIZ",
+    "ANALITOS",
+    "NOTA"
+   ],
+   "regras": [
+    [
+     "8353",
+     "SO_ANALITOS",
+     null,
+     "Proteína C-reativa",
+     "controle de PCR: rodado uma vez com o painel completo; so participa na PCR"
+    ],
+    [
+     "6351",
+     "MATRIZ",
+     "URINA",
+     null,
+     "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    ],
+    [
+     "6352",
+     "MATRIZ",
+     "URINA",
+     null,
+     "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    ],
+    [
+     "6353",
+     "MATRIZ",
+     "URINA",
+     null,
+     "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    ],
+    [
+     "6354",
+     "MATRIZ",
+     "URINA",
+     null,
+     "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    ],
+    [
+     "5653",
+     "MATRIZ",
+     "URINA",
+     null,
+     "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    ],
+    [
+     "5654",
+     "MATRIZ",
+     "URINA",
+     null,
+     "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    ],
+    [
+     "5656",
+     "MATRIZ",
+     "URINA",
+     null,
+     "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    ],
+    [
+     "5657",
+     "MATRIZ",
+     "URINA",
+     null,
+     "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    ],
+    [
+     "5658",
+     "MATRIZ",
+     "URINA",
+     null,
+     "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    ],
+    [
+     "5659",
+     "MATRIZ",
+     "URINA",
+     null,
+     "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    ],
+    [
+     "8177",
+     "FORA_DO_CQ",
+     null,
+     null,
+     "provavel lote digitado errado (painel unico; lote vigente 8977)"
+    ],
+    [
+     "8794",
+     "FORA_DO_CQ",
+     null,
+     null,
+     "provavel lote digitado errado (painel unico; lote vigente 8974)"
+    ],
+    [
+     "7974",
+     "FORA_DO_CQ",
+     null,
+     null,
+     "provavel lote digitado errado (painel unico; lote vigente 8974)"
+    ],
+    [
+     "8975",
+     "FORA_DO_CQ",
+     null,
+     null,
+     "provavel lote digitado errado (painel unico; lote vigente 8974)"
+    ],
+    [
+     "8773",
+     "FORA_DO_CQ",
+     null,
+     null,
+     "provavel lote digitado errado (painel unico; lote vigente 8973)"
+    ],
+    [
+     "8970",
+     "FORA_DO_CQ",
+     null,
+     null,
+     "provavel lote digitado errado (painel unico; lote vigente 8973/8974)"
+    ]
+   ],
+   "resumo": "MATRIZ=10;FORA_DO_CQ=6;SO_ANALITOS=1|"
+  }
+ },
+ {
+  "teste": "T02 Sem regras: 0 LOTE_*, 0 A13, 0 A14",
+  "resultado": "PASS",
+  "evidencia": {
+   "LOTE_*": 0,
+   "A13/A14": 0
+  }
+ },
+ {
+  "teste": "T03 Regras reais: MATRIZ URINA sai do soro; 8353 so PCR; 8177/8794 fora; resto igual ao de sem regras",
+  "resultado": "PASS",
+  "evidencia": {
+   "por_lote_antes_instalar": {
+    "8353": {
+     "linhas": 996,
+     "ATIVO": 965,
+     "participa": 965,
+     "IMPLAUSIVEL": 1,
+     "LOTE_OUTRO_MATERIAL": 30
+    },
+    "8794": {
+     "linhas": 30,
+     "LOTE_FORA_DO_CQ": 30,
+     "participa": 0
+    },
+    "5657": {
+     "linhas": 7,
+     "ATIVO": 7,
+     "participa": 7
+    },
+    "6353": {
+     "linhas": 44,
+     "ATIVO": 44,
+     "participa": 44
+    },
+    "5658": {
+     "linhas": 15,
+     "ATIVO": 15,
+     "participa": 15
+    },
+    "6354": {
+     "linhas": 860,
+     "ATIVO": 859,
+     "participa": 859,
+     "IMPLAUSIVEL": 1
+    },
+    "5659": {
+     "linhas": 155,
+     "ATIVO": 154,
+     "participa": 154,
+     "IMPLAUSIVEL": 1
+    },
+    "8177": {
+     "linhas": 29,
+     "LOTE_FORA_DO_CQ": 29,
+     "participa": 0
+    }
+   },
+   "por_lote_sem_regras": {
+    "8353": {
+     "linhas": 996,
+     "ATIVO": 982,
+     "participa": 982,
+     "IMPLAUSIVEL": 14
+    },
+    "8794": {
+     "linhas": 30,
+     "ATIVO": 30,
+     "participa": 30
+    },
+    "5657": {
+     "linhas": 7,
+     "ATIVO": 7,
+     "participa": 7
+    },
+    "6353": {
+     "linhas": 44,
+     "ATIVO": 44,
+     "participa": 44
+    },
+    "5658": {
+     "linhas": 15,
+     "ATIVO": 15,
+     "participa": 15
+    },
+    "6354": {
+     "linhas": 860,
+     "ATIVO": 859,
+     "participa": 859,
+     "IMPLAUSIVEL": 1
+    },
+    "5659": {
+     "linhas": 155,
+     "ATIVO": 154,
+     "participa": 154,
+     "IMPLAUSIVEL": 1
+    },
+    "8177": {
+     "linhas": 29,
+     "ATIVO": 29,
+     "participa": 29
+    }
+   },
+   "por_lote_com_regras": {
+    "8353": {
+     "linhas": 996,
+     "ATIVO": 965,
+     "participa": 965,
+     "IMPLAUSIVEL": 1,
+     "LOTE_OUTRO_MATERIAL": 30
+    },
+    "8794": {
+     "linhas": 30,
+     "LOTE_FORA_DO_CQ": 30,
+     "participa": 0
+    },
+    "5657": {
+     "linhas": 7,
+     "ATIVO": 7,
+     "participa": 7
+    },
+    "6353": {
+     "linhas": 44,
+     "ATIVO": 44,
+     "participa": 44
+    },
+    "5658": {
+     "linhas": 15,
+     "ATIVO": 15,
+     "participa": 15
+    },
+    "6354": {
+     "linhas": 860,
+     "ATIVO": 859,
+     "participa": 859,
+     "IMPLAUSIVEL": 1
+    },
+    "5659": {
+     "linhas": 155,
+     "ATIVO": 154,
+     "participa": 154,
+     "IMPLAUSIVEL": 1
+    },
+    "8177": {
+     "linhas": 29,
+     "LOTE_FORA_DO_CQ": 29,
+     "participa": 0
+    }
+   },
+   "varredura": {
+    "ok": true,
+    "difs": [],
+    "flags_ruins": [],
+    "matriz_ruim": [],
+    "A13": 89,
+    "A13_igual": true
+   },
+   "LOTE_*": 89,
+   "interface_URINA_em_analito_cadastrado": [],
+   "participa_indevido": [],
+   "A14": 0,
+   "fora_dos_lotes_igual_sem_regras": true,
+   "dif_fora": [],
+   "lotes_da_tabela_sem_dado": [
+    "5653",
+    "5654",
+    "5656",
+    "6351",
+    "6352",
+    "7974",
+    "8773",
+    "8970",
+    "8975"
+   ]
+  }
+ },
+ {
+  "teste": "T04 Regras de teste (SO_ANALITOS em minusculas, FORA_DO_CQ com um INATIVADO, MATRIZ sintetica) e manuais: LOTE_* = varredura independente; NAO participa/plota; A13 = os mesmos IDs; inativado continua INATIVADO; RUN igual; fora dos lotes de teste nada muda",
+  "resultado": "PASS",
+  "evidencia": {
+   "lotes": {
+    "SO_ANALITOS": [
+     "8974",
+     "ALT (TGP)"
+    ],
+    "FORA_DO_CQ": "8977",
+    "MATRIZ": "8589"
+   },
+   "varredura": {
+    "ok": true,
+    "difs": [],
+    "flags_ruins": [],
+    "matriz_ruim": [],
+    "A13": 31036,
+    "A13_igual": true
+   },
+   "por_status": {
+    "LOTE_OUTRO_MATERIAL": 20956,
+    "LOTE_FORA_DO_CQ": 10080
+   },
+   "inativado": [
+    "BIO-371184",
+    "INATIVADO"
+   ],
+   "run_mudou": [],
+   "fora_igual": true,
+   "dif_fora": [],
+   "manuais": {
+    "M2 so outro analito": [
+     "MAN_9202",
+     "LOTE_OUTRO_MATERIAL",
+     "SORO"
+    ],
+    "M3 so analito da lista": [
+     "MAN_9203",
+     "ATIVO",
+     "SORO"
+    ],
+    "M4 matriz": [
+     "MAN_9204",
+     "ATIVO",
+     "TESTE-ADR091"
+    ],
+    "M1 fora": [
+     "MAN_9201",
+     "LOTE_FORA_DO_CQ",
+     "SORO"
+    ],
+    "M5 fora e -1": [
+     "MAN_9205",
+     "LOTE_FORA_DO_CQ",
+     "SORO"
+    ]
+   },
+   "manuais_ok": true
+  }
+ },
+ {
+  "teste": "T05 Linhas invalidas da tblLotesMaterial -> A14 nas linhas e com os textos esperados",
+  "resultado": "PASS",
+  "evidencia": {
+   "obtido": [
+    "linha 21 (lote ?, regra FORA_DO_CQ): LOTE vazio; a linha foi ignorada",
+    "linha 22 (lote 8589, regra XYZ): REGRA 'XYZ' desconhecida (use MATRIZ, SO_ANALITOS ou FORA_DO_CQ); a linha foi ignorada",
+    "linha 23 (lote 8974, regra MATRIZ): regra MATRIZ sem a MATRIZ; a linha foi ignorada",
+    "linha 24 (lote 8589, regra MATRIZ): o lote ja tem uma regra MATRIZ antes desta (TESTE-ADR091); esta linha foi ignorada",
+    "linha 25 (lote 8977, regra SO_ANALITOS): regra SO_ANALITOS sem ANALITOS; a linha foi ignorada",
+    "linha 26 (lote 8974, regra SO_ANALITOS): analito(s) fora do de/para do QC_INI: Analito Inexistente ADR091 (nenhum resultado tem esse nome; confira a grafia)"
+   ],
+   "esperado": [
+    "linha 21 (lote ?, regra FORA_DO_CQ): LOTE vazio; a linha foi ignorada",
+    "linha 22 (lote 8589, regra XYZ): REGRA 'XYZ' desconhecida (use MATRIZ, SO_ANALITOS ou FORA_DO_CQ); a linha foi ignorada",
+    "linha 23 (lote 8974, regra MATRIZ): regra MATRIZ sem a MATRIZ; a linha foi ignorada",
+    "linha 24 (lote 8589, regra MATRIZ): o lote ja tem uma regra MATRIZ antes desta (TESTE-ADR091); esta linha foi ignorada",
+    "linha 25 (lote 8977, regra SO_ANALITOS): regra SO_ANALITOS sem ANALITOS; a linha foi ignorada",
+    "linha 26 (lote 8974, regra SO_ANALITOS): analito(s) fora do de/para do QC_INI: Analito Inexistente ADR091 (nenhum resultado tem esse nome; confira a grafia)"
+   ]
+  }
+ },
+ {
+  "teste": "T06 Regras de teste apagadas + ATUALIZAR: o interfaceamento volta ao estado das regras reais; nenhum manual de teste com LOTE_*",
+  "resultado": "PASS",
+  "evidencia": {
+   "diferencas": [],
+   "manuais_LOTE": []
+  }
+ },
+ {
+  "teste": "Y00 Segurança do teste: arquivo de entrada intacto (SHA-256 igual antes e depois; nada salvo nele)",
+  "resultado": "PASS",
+  "evidencia": {
+   "arquivo": "C:\\Users\\VITOR~1.SAN\\AppData\\Local\\Temp\\qcw\\auditoria\\2026-11-11_reteste03\\regressao\\Bioquimica\\copia_qa_adr091\\QC_Bioquimica.xlsm",
+   "sha256_antes": "8b1cda1345d2d6ffca6f3c01f9112081111fe869f9ca494819f087dc8e1828e9",
+   "sha256_depois": "8b1cda1345d2d6ffca6f3c01f9112081111fe869f9ca494819f087dc8e1828e9"
+  }
+ }
+]

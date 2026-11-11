@@ -1,0 +1,344 @@
+[
+ {
+  "teste": "O35 GUIA §5–6: o CEQ pela janela (Registrar, Corrigir/Excluir selecionado, Consolidar, aviso do Z3, ATUALIZAR) e sem mandar digitar nas abas EQA",
+  "resultado": "PASS",
+  "evidencia": {
+   "trecho": "## 5. Controle externo (CEQ) e Sigma (aba Estatística)\n\n**Bias do CEQ.** O programa é escolhido em R4 na Hematologia e por analito em Especificações!AR na Bioquímica. CAP e\nControllab nunca se misturam. As opções:\n\n| Ano | Rodada | Bias |\n|---|---|---|\n| qualquer | uma rodada da lista | só aquela ro"
+  }
+ },
+ {
+  "teste": "O43 Painel J7:J9 com \"Reduzir para caber\" (o status longo não é cortado)",
+  "resultado": "PASS",
+  "evidencia": {
+   "shrink": true,
+   "wrap": false
+  }
+ },
+ {
+  "teste": "O44 Estatística: nome do analito e nível centralizados na vertical (A:B das linhas de analito)",
+  "resultado": "PASS",
+  "evidencia": {
+   "linhas": 96,
+   "fora": []
+  }
+ },
+ {
+  "teste": "O36 Estatística AT (RMS viés / u(Cref)): vírgula decimal e 2 casas, nenhum \"004 / 000\"; texto (SEM EP) continua igual",
+  "resultado": "PASS",
+  "evidencia": {
+   "exemplos": [
+    [
+     14,
+     "3,69 / 0,26"
+    ],
+    [
+     15,
+     "3,69 / 0,26"
+    ],
+    [
+     16,
+     "2,37 / 0,17"
+    ],
+    [
+     17,
+     "2,37 / 0,17"
+    ]
+   ],
+   "ruins": [],
+   "formula_AT14": "=IF(OR($A14=\"\",$A14=0),\"\",IFERROR(IFERROR(FIXED(mCEQ.ViesEQ($A14,eqAnoEP,\"RMS\",IFERROR(INDEX(Especificações!$AR$4:$AR$43,MATCH($A14,Especificações!$A$4:$A$43,0)"
+  }
+ },
+ {
+  "teste": "O50 Principal - Resultados A5: \"Total: <n com ponto de milhar>\" = linhas da tblCQ_Final (sem \",0\")",
+  "resultado": "PASS",
+  "evidencia": {
+   "A5": "Total: 35.466  ·  participam: 35.323  ·  X vermelho: 4  ·  inativados: 11  ·  manuais: 0  ·  substituídos por manual: 0",
+   "linhas": 35466
+  }
+ },
+ {
+  "teste": "O12 Mais de 180 corridas no período: o A39 diz que o corte vale para os indicadores do Painel e mostra o n do período inteiro por nível (= contagem independente na tblCQ_Final); o n da janela continua o de antes (menor)",
+  "resultado": "PASS",
+  "evidencia": {
+   "cortadas": 39,
+   "AF1": "N1 174 · N2 161",
+   "independente": "N1 174 · N2 161",
+   "engPainel": [
+    [
+     1.0,
+     140.0,
+     89.15,
+     16.967987209,
+     19.03307595
+    ],
+    [
+     2.0,
+     131.0,
+     281.984732824,
+     4.922452067,
+     1.745644886
+    ]
+   ],
+   "A39": "Lote 8974 · alvo N1 87,1 ± 1,03 · N2 285,6 ± 3,35. ⚠ 39 corrida(s) antigas do período fora do gráfico e dos indicadores do Painel (máx. 180). Período inteiro: N1 174 · N2 161 — veja a aba Estatística. Sem filtro de data",
+   "filtro": [
+    "None",
+    "None"
+   ],
+   "lote": "8974",
+   "todos": false,
+   "n_janela": [
+    140.0,
+    131.0
+   ]
+  }
+ },
+ {
+  "teste": "O40 Digitar De/Até (Painel protegido): K4 = \"Personalizado\" e K3 = ano das datas; anos diferentes = K3 vazio; escolher \"Out\" depois reescreve G3/G4; escolher o rótulo não mexe no De/Até; a lista tem o rótulo",
+  "resultado": "PASS",
+  "evidencia": {
+   "passos": [
+    [
+     "G3/G4 set-out",
+     "2026",
+     "Personalizado",
+     "2026-09-01",
+     "2026-10-31"
+    ],
+    [
+     "G3 2025",
+     "",
+     "Personalizado"
+    ],
+    [
+     "K4 Out",
+     "2026",
+     "Out",
+     "2026-10-01",
+     "2026-10-31"
+    ]
+   ],
+   "protegido": true,
+   "lista_fim": "un;Jul;Ago;Set;Out;Nov;Dez;Personalizado",
+   "ok": [
+    true,
+    true,
+    true,
+    true
+   ]
+  }
+ },
+ {
+  "teste": "O33 Sem login: SalvarCEQ devolve \"ERRO|0|Sessão encerrada…\" e nada é gravado; AbrirCEQ confere a sessão (SessaoAtiva) antes de abrir a janela (fonte: o MsgBox não roda por automação)",
+  "resultado": "PASS",
+  "evidencia": {
+   "retorno": "ERRO|0|Sessão encerrada: faça o login de novo. Nada foi gravado.",
+   "linhas": 545
+  }
+ },
+ {
+  "teste": "O19 EQUIPAMENTO vazio recebe o do Painel em âmbar com a nota \"Preenchido pelo Painel com …: confira\"; digitar o equipamento tira a cor e a nota; a instrução da aba cita EQUIPAMENTO",
+  "resultado": "PASS",
+  "evidencia": {
+   "equip": "DIMENSION 1",
+   "cor": 10284031.0,
+   "nota": "Preenchido pelo Painel com DIMENSION 1: confira antes de ATUALIZAR DADOS.",
+   "depois_de_digitar": [
+    16777215.0,
+    false
+   ],
+   "instrucao": "1) Preencha DATA, HORA, EQUIPAMENTO, LOTE, NÍVEL, ANALITO, RESULTADO e MOTIVO na próxima linha livre — o ID (MAN_0001…) "
+  }
+ },
+ {
+  "teste": "O23 Audit_Log do manual pelo STATUS: sem NÍVEL = RESULTADO_MANUAL_RECUSADO (detalhe com o campo), sem INCLUIDO; completo = RESULTADO_MANUAL_INCLUIDO (status ATIVO)",
+  "resultado": "PASS",
+  "evidencia": {
+   "id": "MAN_0001",
+   "atualizar1": "OK|Só as entradas (inativações, manuais e comentários) foram",
+   "trilha1": [
+    [
+     "RESULTADO_MANUAL_RECUSADO",
+     "AUD-000736-20261111091851 | 2 | 2026-11-11 09:18:51+00:00 | 2026-11-11 00:00:00+00:00 | 0.38809027777777777 | DADO | RESULTADO_MANUAL_RECUSADO | mIntegracao | 0|0|TNIH |  | 2026-11-09 03:17:00+00:00 |"
+    ]
+   ],
+   "status2": "ATIVO",
+   "trilha2": [
+    [
+     "RESULTADO_MANUAL_INCLUIDO",
+     "AUD-000737-20261111091911 | 2 | 2026-11-11 09:19:11+00:00 | 2026-11-11 00:00:00+00:00 | 0.38832175925925927 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 2"
+    ]
+   ]
+  }
+ },
+ {
+  "teste": "O21 Digitar Resultados: RUN vazio sem \"0\" (MANUAL_INCOMPLETO); DETALHE com acento (\"obrigatórios\") e sem \"0\" quando vazio",
+  "resultado": "PASS",
+  "evidencia": {
+   "RUN": "",
+   "DETALHE1": "campos obrigatórios ausentes/inválidos: NIVEL",
+   "DETALHE2": "",
+   "status2": "ATIVO"
+  }
+ },
+ {
+  "teste": "O24 ResumoQA por grupo: o E04 (manual incompleto) tem linha própria com o n certo; sem \"Há ERRO DE GOVERNANÇA\"; a linha de governança só aparece com E01/E02/E03/E10/E11",
+  "resultado": "PASS",
+  "evidencia": {
+   "resumo": [
+    "QA da integração: 5 erro(s), 132 alerta(s), 12 informativo(s).",
+    "• 1 resultado(s) manual(is) incompleto(s): veja o DETALHE na aba Digitar Resultados — não entraram na estatística.",
+    "• 4 erro(s) de governança: veja a aba QA_INTEGRACAO (ex.: inativação sem motivo, ou ID que não é do analito informado — essa não foi aplicada)."
+   ],
+   "E04": 1,
+   "governanca": 4
+  }
+ },
+ {
+  "teste": "O31 CEQ sem valor-alvo: a confirmação avisa que a amostra NÃO entra no bias; com alvo, sem esse aviso; gravado, o OK diz \"fora do bias (sem valor-alvo)\"; rótulo \"Valor-alvo ¹\"",
+  "resultado": "PASS",
+  "evidencia": {
+   "confirmacao": "cluir o nome no mapa (EQA_Base, colunas W:Y).\n\nSem o valor-alvo, esta amostra NÃO entra no bias (nem no ET e no Sigma). Ela conta só na verificação dos limites.",
+   "com_alvo": "O analito “QA090 analito” não está no mapa do CAP. O registro será gravado, mas ",
+   "retorno": "OK|547|Gravado fora do bias (analito não mapeado). Gravado fora do bias (sem valor-alvo).",
+   "rotulo": "Valor-alvo ¹"
+  }
+ },
+ {
+  "teste": "O55 Descrição do registro sem o ano repetido (rodada \"QA-090 2026\", ano 2026)",
+  "resultado": "PASS",
+  "evidencia": {
+   "descricao": "CAP QA-090 2026 · QA090 analito · QA90-01 (resultado 10)"
+  }
+ },
+ {
+  "teste": "O34 Lista de analitos da janela sem os nomes que só existem na simulação (Uso = NAO)",
+  "resultado": "PASS",
+  "evidencia": {
+   "n_lista": 32,
+   "n_esperado": 32,
+   "so_simulacao": [
+    "Colesterol total",
+    "Creatinina",
+    "Glicose",
+    "HDL colesterol",
+    "Ureia",
+    "Ácido úrico"
+   ]
+  }
+ },
+ {
+  "teste": "O52 Par por prefixo também sem espaço (ex.: MCH → MCHC) no aviso azul; o par de palavra continua primeiro",
+  "resultado": "PASS",
+  "evidencia": {
+   "pares_sem_espaco": [],
+   "par_de_palavra": "ias deste analito. Atenção: existe também “Lactate Dehydrogenase” (Lactato desidrogenase)."
+  }
+ },
+ {
+  "teste": "O53 Colunas de fórmula do CEQ (O, P, S..X) recusam digitação (validação personalizada); sobrescrever mesmo assim -> Z3 \"FÓRMULA SOBRESCRITA\" e CEQ_FORMULA_SOBRESCRITA no Audit_Log; restaurar -> Z3 de antes",
+  "resultado": "PASS",
+  "evidencia": {
+   "validacao": {
+    "O": [
+     7,
+     "=1=0"
+    ],
+    "P": [
+     7,
+     "=1=0"
+    ],
+    "S": [
+     7,
+     "=1=0"
+    ],
+    "X": [
+     7,
+     "=1=0"
+    ]
+   },
+   "erro": "Esta coluna é calculada por fórmula (Bias, |Bias| e colunas de apoio). Não digit",
+   "Z3": [
+    "base em dia",
+    "⚠ FÓRMULA SOBRESCRITA em Bias (%) ou |Bias| (%): o bias usar",
+    "base em dia"
+   ],
+   "trilha": [
+    [
+     "CEQ_FORMULA_SOBRESCRITA",
+     "AUD-000740-20261111091937 | 2 | 2026-11-11 09:19:37+00:00 | 2026-11-11 00:00:00+00:00 | 0.38862268518518517 | SISTEMA | CEQ_FORMULA_SOBRESCRITA |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | edição"
+    ]
+   ]
+  }
+ },
+ {
+  "teste": "O54 Edição direta sem selecionar antes: o mesmo valor não registra \"? → mesmo\" nem cria pendência (Z4 igual); valor diferente registra o antes da EQA_Base (não \"?\")",
+  "resultado": "PASS",
+  "evidencia": {
+   "mesmo_valor": [],
+   "Z4": [
+    null,
+    null
+   ],
+   "antes": 120.0,
+   "diferente": [
+    [
+     "CEQ_ALTERADO",
+     "edição direta na tabela | aba EQA.CAP_Dados | linha 2 (CAP | C-A 2025 | 2025 | ALT (SGPT) | CHM-01) · Seu Resultado: 120 → 121 | falta consolidar (Consolidar na EQA_Base ou ATUALIZAR DADOS) | QA_INATIVAR_UX | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | QC_Bioquimica.xlsm"
+    ]
+   ]
+  }
+ },
+ {
+  "teste": "V01 frmCEQ igual à especificação; auditoria da janela (rótulo \"Valor-alvo ¹\" e a nota do alvo): nada cortado nem sobreposto",
+  "resultado": "PASS",
+  "evidencia": {
+   "diferencas": [],
+   "auditoria": []
+  }
+ },
+ {
+  "teste": "INFO pendência anterior ao ADR-090: status longos em J7:J9; Hema TODOS: H4 e btnGrafTodos",
+  "resultado": "INFO",
+  "evidencia": {
+   "Painel (A39 com o corte, K4 Tudo)": [],
+   "Painel (K4 Personalizado)": [
+    {
+     "tipo": "texto_cortado",
+     "celula": "J7",
+     "texto": "SEM CORRIDA NO PERÍODO",
+     "texto_pt": 124,
+     "largura_pt": 47
+    },
+    {
+     "tipo": "texto_cortado",
+     "celula": "J8",
+     "texto": "SEM CORRIDA NO PERÍODO",
+     "texto_pt": 124,
+     "largura_pt": 47
+    }
+   ]
+  }
+ },
+ {
+  "teste": "V02 Painel (A39 do corte; K4 \"Personalizado\"), Digitar Resultados (instrução), Estatística (AT) e Principal (A5) sem texto cortado",
+  "resultado": "PASS",
+  "evidencia": {
+   "abas": [
+    "Painel (A39 com o corte, K4 Tudo)",
+    "Painel (K4 Personalizado)",
+    "Digitar Resultados (instrução nova, antes da linha de teste)",
+    "Estatística",
+    "Principal - Resultados"
+   ]
+  }
+ },
+ {
+  "teste": "R00 Segurança do teste: arquivo de entrada intacto (SHA-256 igual antes e depois; nada salvo nele)",
+  "resultado": "PASS",
+  "evidencia": {
+   "arquivo": "C:\\Users\\VITOR~1.SAN\\AppData\\Local\\Temp\\qcw\\auditoria\\2026-11-11_reteste03\\regressao\\Bioquimica\\copia_qa_adr090\\QC_Bioquimica.xlsm",
+   "sha256_antes": "8b1cda1345d2d6ffca6f3c01f9112081111fe869f9ca494819f087dc8e1828e9",
+   "sha256_depois": "8b1cda1345d2d6ffca6f3c01f9112081111fe869f9ca494819f087dc8e1828e9"
+  }
+ }
+]

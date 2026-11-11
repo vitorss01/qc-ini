@@ -1,0 +1,12 @@
+sha_prod 8b1cda1345d2
+qa_final rc 1 1203 s | FAIL T15 Resultado manual MAN_0001: ORIGEM=MANUAL, PARTICIPA=SIM, RUN pela mesma regra, aparece no LJ -- {"linha_manual": {"ID_REGISTRO": "MAN_0001", "DATA": "2026-11-11 03:00:00", "HORA": 0.9993055555555556, "EQUIPAMENTO": "DIMENSION 2", "MATRIZ": "SORO", "LOTE": "8977", "NIVEL": 1.0, "ANALITO": "Potássio", "RESULTADO": 3.74, "UNIDADE": null, "MOTIVO": "Falha do interfaceamento", "USUARIO": "(sem login)", "REGISTRADO_EM": "2026-11-12 03:10:00", "RUN": "—", "STATUS": "—", "DETALHE": "atualize os dados", "SUBSTITUI_ID": null}, "final": {"ID_REGISTRO": "MAN_0001", "ORIGEM_RESULTADO": "MANUAL", "STATUS_ANALITICO": "ATIVO", "PARTICIPA_ESTATISTICA": "SIM", "RUN": 26111102.0, "RESULTADO": 3.74}, "no_LJ | FAIL T19 Refresh idempotente (4x): mesma contagem, mesmos IDs/RUN, inativações, comentários e manuais mantidos -- {"linhas": [35622, 35625], "tempos_s": [20.6, 22.9, 24.7, 25.1], "manuais": ["
+qa_rodadas_cv rc 0 125 s | === Bioquimica rodadas/CV: 12 PASS / 0 FAIL ===
+qa_adr090 rc 0 257 s | === Bioquimica ADR-090 (lote 3 da auditoria): 22 PASS / 0 FAIL ===
+qa_adr091 rc 0 272 s | === Bioquimica ADR-091 (material por lote): 7 PASS / 0 FAIL ===
+equivalencia_cq rc 0 739 s | status PQ {'MANUAL_INCOMPLETO': 13, 'ATIVO': 34340, 'INATIVADO': 9, 'CONFLITO_MANUAL': 5, 'IMPLAUSIVEL': 50, 'SUBSTITUIDO_MANUAL': 2, 'LOTE_FORA_DO_CQ': 505, 'LOTE_OUTRO_MATERIAL': 579} {'inativacao_SIM': 9, 'com_comentario': 1, 'governanca_erro': 1, 'com_id_relacionado': 10} | ADR-082 SUBSTITUIDO_MANUAL no PQ: 2 | esperado: OK | ADR-088 (datas em texto, <= 0) no PQ: OK [] | ADR-091 (regras de material por lote) no PQ: OK {'SO_ANALITOS': '8589', 'FORA_DO_CQ': '8590', 'MATRIZ': '8588'} {'LOTE_FORA_DO_CQ': 505, 'LOTE_OUTRO_MATERIAL': 579} [] | {"linhas": {"pq": 35503, "vba": 35503}, "colunas_so_vba": [], "colunas_pq_nao_comparadas": [], "divergencias": {}}
+sha_prod_depois 8b1cda1345d2 igual True
+sha_prod f1907656b663
+qa_final rc 0 1809 s | === Hematologia: 29 PASS / 0 FAIL ===
+qa_rodadas_cv rc 0 139 s | === Hematologia rodadas/CV: 12 PASS / 0 FAIL ===
+qa_adr090 rc 0 283 s | === Hematologia ADR-090 (lote 3 da auditoria): 23 PASS / 0 FAIL ===
+qa_adr091 rc 0 305 s | === Hematologia ADR-091 (material por lote): 7 PASS / 0 FAIL ===

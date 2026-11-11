@@ -1,0 +1,953 @@
+{
+ "inicio": "2026-11-11T08:43:38",
+ "ambiente": {
+  "producao": "QC_Bioquimica.xlsm",
+  "sha_prod_12": "8b1cda1345d2",
+  "copia": "C:\\Users\\VITOR~1.SAN\\AppData\\Local\\Temp\\qcw\\auditoria\\2026-11-11_reteste03\\Bioquimica_valida.xlsm"
+ },
+ "excel_pid": 31572,
+ "linhas_tblCQ_Final": 35466,
+ "ADR091": {
+  "tabela": {
+   "aba": "Cfg_Integracao",
+   "colunas": [
+    "LOTE",
+    "REGRA",
+    "MATRIZ",
+    "ANALITOS",
+    "NOTA"
+   ],
+   "n": 17,
+   "regras": [
+    {
+     "LOTE": "8353",
+     "REGRA": "SO_ANALITOS",
+     "MATRIZ": "",
+     "ANALITOS": "Proteína C-reativa",
+     "NOTA": "controle de PCR: rodado uma vez com o painel completo; so participa na PCR"
+    },
+    {
+     "LOTE": "6351",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "6352",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "6353",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "6354",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "5653",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "5654",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "5656",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "5657",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "5658",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "5659",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "8177",
+     "REGRA": "FORA_DO_CQ",
+     "MATRIZ": "",
+     "ANALITOS": "",
+     "NOTA": "provavel lote digitado errado (painel unico; lote vigente 8977)"
+    },
+    {
+     "LOTE": "8794",
+     "REGRA": "FORA_DO_CQ",
+     "MATRIZ": "",
+     "ANALITOS": "",
+     "NOTA": "provavel lote digitado errado (painel unico; lote vigente 8974)"
+    },
+    {
+     "LOTE": "7974",
+     "REGRA": "FORA_DO_CQ",
+     "MATRIZ": "",
+     "ANALITOS": "",
+     "NOTA": "provavel lote digitado errado (painel unico; lote vigente 8974)"
+    },
+    {
+     "LOTE": "8975",
+     "REGRA": "FORA_DO_CQ",
+     "MATRIZ": "",
+     "ANALITOS": "",
+     "NOTA": "provavel lote digitado errado (painel unico; lote vigente 8974)"
+    },
+    {
+     "LOTE": "8773",
+     "REGRA": "FORA_DO_CQ",
+     "MATRIZ": "",
+     "ANALITOS": "",
+     "NOTA": "provavel lote digitado errado (painel unico; lote vigente 8973)"
+    },
+    {
+     "LOTE": "8970",
+     "REGRA": "FORA_DO_CQ",
+     "MATRIZ": "",
+     "ANALITOS": "",
+     "NOTA": "provavel lote digitado errado (painel unico; lote vigente 8973/8974)"
+    }
+   ]
+  },
+  "resumo_vba": "MATRIZ=10;FORA_DO_CQ=6;SO_ANALITOS=1|",
+  "status_copia": {
+   "ATIVO": 35323,
+   "LOTE_FORA_DO_CQ": 59,
+   "IMPLAUSIVEL": 43,
+   "LOTE_OUTRO_MATERIAL": 30,
+   "INATIVADO": 11
+  },
+  "por_regra": {
+   "FORA 7974": {
+    "linhas": 0,
+    "status": {},
+    "participam": 0
+   },
+   "FORA 8177": {
+    "linhas": 29,
+    "status": {
+     "LOTE_FORA_DO_CQ": 29
+    },
+    "participam": 0
+   },
+   "FORA 8773": {
+    "linhas": 0,
+    "status": {},
+    "participam": 0
+   },
+   "FORA 8794": {
+    "linhas": 30,
+    "status": {
+     "LOTE_FORA_DO_CQ": 30
+    },
+    "participam": 0
+   },
+   "FORA 8970": {
+    "linhas": 0,
+    "status": {},
+    "participam": 0
+   },
+   "FORA 8975": {
+    "linhas": 0,
+    "status": {},
+    "participam": 0
+   },
+   "SO 8353": {
+    "linhas": 996,
+    "dentro": {
+     "ATIVO": 965,
+     "IMPLAUSIVEL": 1
+    },
+    "dentro_participam": 965,
+    "outros": {
+     "LOTE_OUTRO_MATERIAL": 30
+    },
+    "outros_analitos": 29,
+    "outros_participam": 0
+   },
+   "MATRIZ 5653": {
+    "linhas": 0,
+    "matriz": {},
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {},
+    "participam": 0
+   },
+   "MATRIZ 5654": {
+    "linhas": 0,
+    "matriz": {},
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {},
+    "participam": 0
+   },
+   "MATRIZ 5656": {
+    "linhas": 0,
+    "matriz": {},
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {},
+    "participam": 0
+   },
+   "MATRIZ 5657": {
+    "linhas": 7,
+    "matriz": {
+     "URINA": 7
+    },
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {
+     "UCFP": 7
+    },
+    "participam": 7
+   },
+   "MATRIZ 5658": {
+    "linhas": 15,
+    "matriz": {
+     "URINA": 15
+    },
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {
+     "UCFP": 15
+    },
+    "participam": 15
+   },
+   "MATRIZ 5659": {
+    "linhas": 155,
+    "matriz": {
+     "URINA": 155
+    },
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {
+     "GLUC": 78,
+     "UCFP": 77
+    },
+    "participam": 154
+   },
+   "MATRIZ 6351": {
+    "linhas": 0,
+    "matriz": {},
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {},
+    "participam": 0
+   },
+   "MATRIZ 6352": {
+    "linhas": 0,
+    "matriz": {},
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {},
+    "participam": 0
+   },
+   "MATRIZ 6353": {
+    "linhas": 44,
+    "matriz": {
+     "URINA": 44
+    },
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {
+     "CRE2": 7,
+     "MALB": 7,
+     "PHOS": 7,
+     "UCFP": 7,
+     "CL": 4,
+     "K": 4,
+     "NA": 4,
+     "BUN": 2
+    },
+    "participam": 44
+   },
+   "MATRIZ 6354": {
+    "linhas": 860,
+    "matriz": {
+     "URINA": 860
+    },
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {
+     "MALB": 151,
+     "CRE2": 139,
+     "CL": 126,
+     "K": 126,
+     "NA": 126,
+     "PHOS": 122,
+     "UCFP": 70
+    },
+    "participam": 859
+   }
+  },
+  "violacoes": [],
+  "n_violacoes": 0,
+  "LOTE_total": 89,
+  "LOTE_fora_dos_lotes_com_regra": [],
+  "colunas_derivadas_LOTE": [
+   [
+    "LOTE_FORA_DO_CQ",
+    "NÃO",
+    "NÃO",
+    "NAO_PLOTAR",
+    "lote fora do CQ (regra FORA_DO_CQ da tblLotesMaterial; fora da estatis",
+    59
+   ],
+   [
+    "LOTE_OUTRO_MATERIAL",
+    "NÃO",
+    "NÃO",
+    "NAO_PLOTAR",
+    "lote de outro material neste analito (regra SO_ANALITOS da tblLotesMat",
+    30
+   ]
+  ],
+  "LOTE_sem_RUN": 0,
+  "resultado_leq0_nos_lotes_com_regra": [
+   [
+    "BIO-224563",
+    0.0,
+    "IMPLAUSIVEL"
+   ],
+   [
+    "BIO-340781",
+    -3.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340788",
+    -0.15,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340768",
+    -0.9,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340784",
+    -0.01,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340782",
+    -35.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340793",
+    -0.32,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340790",
+    -1.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340769",
+    -0.09,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340776",
+    -5.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340786",
+    0.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340766",
+    0.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340775",
+    0.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340789",
+    -1.0,
+    "LOTE_OUTRO_MATERIAL"
+   ]
+  ],
+  "A13": {
+   "n": 89,
+   "severidades": {
+    "ALERTA": 89
+   },
+   "ids_LOTE_cobertos": 89,
+   "ids_LOTE": 89,
+   "exemplo": {
+    "SEVERIDADE": "ALERTA",
+    "CODIGO": "A13",
+    "TESTE": "Resultado fora do CQ pela regra do lote (tblLotesMaterial)",
+    "ID_REGISTRO": "BIO-222924",
+    "ANALITO": "ALT (TGP)",
+    "NIVEL": "1",
+    "DATA_HORA": "2025-12-01 07:31:08",
+    "DETALHE": "lote 8794 fora do CQ (regra FORA_DO_CQ): o resultado fica guardado, fora da estatistica, d"
+   }
+  },
+  "A14": {
+   "n": 0,
+   "textos": []
+  },
+  "OC0007_sericos_participando": {},
+  "ampliacao": {
+   "paineis_rodados_uma_vez_fora_da_tabela": {},
+   "familias_urina_pcr_fora_da_tabela": {
+    "8352": {
+     "Proteína C-reativa": 144
+    },
+    "8356": {
+     "Proteína C-reativa": 3
+    },
+    "8359": {
+     "Hemoglobina glicada": 2
+    }
+   },
+   "lotes_de_PCR_participando": {
+    "8352": 144,
+    "5352": 1,
+    "8353": 965,
+    "8335": 3,
+    "8553": 2,
+    "8974": 2,
+    "8356": 3,
+    "8383": 2
+   }
+  },
+  "ok": true,
+  "_s": 0.9
+ },
+ "login": "TESTE_AUDITORIA_R3",
+ "manuais": {
+  "colunas": [
+   "ID_REGISTRO",
+   "DATA",
+   "HORA",
+   "EQUIPAMENTO",
+   "MATRIZ",
+   "LOTE",
+   "NIVEL",
+   "ANALITO",
+   "RESULTADO",
+   "UNIDADE",
+   "MOTIVO",
+   "USUARIO",
+   "REGISTRADO_EM",
+   "RUN",
+   "STATUS",
+   "DETALHE",
+   "SUBSTITUI_ID"
+  ],
+  "instrucao_A3": "1) Preencha DATA, HORA, EQUIPAMENTO, LOTE, NÍVEL, ANALITO, RESULTADO e MOTIVO na próxima linha livre — o ID (MAN_0001…) é gerado sozinho. EQUIPAMENTO vazio recebe o do Painel (fica em âmbar): confira. Para SUBSTITUIR um resultado do interfaceamento, digite primeiro o ID dele em SUBSTITUI_ID (o resto se preenche) e o MOTIVO.  2) Clique ⟳ ATUALIZAR DADOS.",
+  "selEquipamento": "DIMENSION 2",
+  "referencia_real": {
+   "ID_REGISTRO": "BIO-354752",
+   "EQUIPAMENTO": "DIMENSION 1",
+   "LOTE": "8977",
+   "NIVEL": "1",
+   "ANALITO": "Glicose",
+   "RESULTADO": "77",
+   "DATA_HORA": "2026-09-22 13:35:14",
+   "RUN": "26092202"
+  },
+  "O19_auto": {
+   "valor": "DIMENSION 2",
+   "fundo": 10284031.0,
+   "fonte": 22428.0,
+   "nota": "Preenchido pelo Painel com DIMENSION 2: confira antes de ATUALIZAR DADOS."
+  },
+  "O19_digitado": {
+   "valor": "DIMENSION 1",
+   "fundo": 16777215.0,
+   "nota": false
+  },
+  "O19_ok": true,
+  "validacao_dados": {
+   "M1_incompleto.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M1_incompleto.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M1_incompleto.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M1_incompleto.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M2_conflito.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M2_conflito.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M2_conflito.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M2_conflito.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M7_implausivel.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M7_implausivel.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M7_implausivel.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M7_implausivel.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M8_sem_hora.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M8_sem_hora.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M8_sem_hora.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M8_sem_hora.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M3_8353_Glicose.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M3_8353_Glicose.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M3_8353_Glicose.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M3_8353_Glicose.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M4_8353_PCR.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M4_8353_PCR.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M4_8353_PCR.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M4_8353_PCR.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M5_8794_menos1.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M5_8794_menos1.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M5_8794_menos1.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M5_8794_menos1.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ],
+   "M6_6354_Creatinina.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M6_6354_Creatinina.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M6_6354_Creatinina.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M6_6354_Creatinina.EQUIPAMENTO": [
+    3,
+    "DIMENSION 1,DIMENSION 2",
+    false
+   ]
+  },
+  "atualizar1": {
+   "ret": "OK|Só as entradas (inativações, manuais e comentários) foram aplicadas; o DB_SEAC não foi lido -- os resultados novos en",
+   "s": 24.7
+  },
+  "ids": {
+   "M1_incompleto": "MAN_0001",
+   "M2_conflito": "MAN_0002",
+   "M7_implausivel": "MAN_0003",
+   "M8_sem_hora": "MAN_0004",
+   "M3_8353_Glicose": "MAN_0005",
+   "M4_8353_PCR": "MAN_0006",
+   "M5_8794_menos1": "MAN_0007",
+   "M6_6354_Creatinina": "MAN_0008"
+  },
+  "manuais_1": {
+   "M1_incompleto": {
+    "STATUS": "MANUAL_INCOMPLETO",
+    "RUN_txt": "",
+    "DETALHE_txt": "campos obrigatórios ausentes/inválidos: NIVEL",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: NIVEL",
+     "RUN": ""
+    }
+   },
+   "M2_conflito": {
+    "STATUS": "CONFLITO_MANUAL",
+    "RUN_txt": "",
+    "DETALHE_txt": "coincide com resultado do interfaceamento (5 min)",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "CONFLITO_MANUAL",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "coincide com resultado do interfaceamento (5 min)",
+     "RUN": ""
+    }
+   },
+   "M7_implausivel": {
+    "STATUS": "IMPLAUSIVEL",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "IMPLAUSIVEL",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)",
+     "RUN": "26092201"
+    }
+   },
+   "M8_sem_hora": {
+    "STATUS": "MANUAL_INCOMPLETO",
+    "RUN_txt": "",
+    "DETALHE_txt": "campos obrigatórios ausentes/inválidos: HORA",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: HORA",
+     "RUN": ""
+    }
+   },
+   "M3_8353_Glicose": {
+    "STATUS": "LOTE_OUTRO_MATERIAL",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "lote de outro material neste analito (regra SO_ANALITOS da tblLotesMaterial; fora da estatistica e do grafico)",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "LOTE_OUTRO_MATERIAL",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "lote de outro material neste analito (regra SO_ANALITOS da tblLotesMaterial; fora da estatistica e do grafico)",
+     "RUN": "26092201"
+    }
+   },
+   "M4_8353_PCR": {
+    "STATUS": "ATIVO",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "ANALITO": "Proteína C-reativa",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "",
+     "RUN": "26092201"
+    }
+   },
+   "M5_8794_menos1": {
+    "STATUS": "LOTE_FORA_DO_CQ",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "lote fora do CQ (regra FORA_DO_CQ da tblLotesMaterial; fora da estatistica e do grafico)",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "LOTE_FORA_DO_CQ",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "lote fora do CQ (regra FORA_DO_CQ da tblLotesMaterial; fora da estatistica e do grafico)",
+     "RUN": "26092201"
+    }
+   },
+   "M6_6354_Creatinina": {
+    "STATUS": "ATIVO",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "ANALITO": "Creatinina",
+     "MATRIZ": "URINA",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "",
+     "RUN": "26092201"
+    }
+   }
+  },
+  "trilha_1": [
+   {
+    "acao": "RESULTADO_MANUAL_RECUSADO",
+    "id": "M8_sem_hora",
+    "txt": "AUD-000735-20261111084510 | 2 | 2026-11-11 08:45:10 | 2026-11-11 00:00:00 | 0.3646990740740741 | DADO | RESULTADO_MANUAL_RECUSADO | mIntegracao | 0|1|GLICOSE | DIMENSION 1 | 8977 | 1 | Glicose | 1 | 123,456 | 123,456 | 0 | 0 | |MANUAL:MANUAL_INCOMPLETO|VAL:123,456|DH: | ID MAN_0004 | campos obrigato"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_RECUSADO",
+    "id": "M1_incompleto",
+    "txt": "AUD-000736-20261111084510 | 2 | 2026-11-11 08:45:10 | 2026-11-11 00:00:00 | 0.3646990740740741 | DADO | RESULTADO_MANUAL_RECUSADO | mIntegracao | 0|0|GLICOSE | 2026-09-22 03:17:00 | DIMENSION 1 | 8977 | Glicose | 1 | 123,456 | 123,456 | 0 | 0 | |MANUAL:MANUAL_INCOMPLETO|VAL:123,456|DH:2026-09-22 03:"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M3_8353_Glicose",
+    "txt": "AUD-000737-20261111084511 | 2 | 2026-11-11 08:45:11 | 2026-11-11 00:00:00 | 0.36471064814814813 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|GLICOSE | 26092201 | 2026-09-22 03:21:00 | DIMENSION 1 | 8353 | 1 | Glicose | 1 | 123,456 | 123,456 | 0 | 0 | |MANUAL:LOTE_OUTRO_MATERIAL|VAL:"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M4_8353_PCR",
+    "txt": "AUD-000738-20261111084511 | 2 | 2026-11-11 08:45:11 | 2026-11-11 00:00:00 | 0.36471064814814813 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|PROTEÍNA C-REATIVA | 26092201 | 2026-09-22 03:23:00 | DIMENSION 1 | 8353 | 1 | Proteína C-reativa | 1 | 1,234 | 1,234 | 0 | 0 | |MANUAL:ATIVO|"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M5_8794_menos1",
+    "txt": "AUD-000739-20261111084511 | 2 | 2026-11-11 08:45:11 | 2026-11-11 00:00:00 | 0.36471064814814813 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|GLICOSE | 26092201 | 2026-09-22 03:25:00 | DIMENSION 1 | 8794 | 1 | Glicose | 2 | -1 | -1 | 0 | 0 | |MANUAL:LOTE_FORA_DO_CQ|VAL:-1|DH:2026-09-"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M6_6354_Creatinina",
+    "txt": "AUD-000740-20261111084511 | 2 | 2026-11-11 08:45:11 | 2026-11-11 00:00:00 | 0.36471064814814813 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|CREATININA | 26092201 | 2026-09-22 03:27:00 | DIMENSION 1 | 6354 | 1 | Creatinina | 1 | 12,345 | 12,345 | 0 | 0 | |MANUAL:ATIVO|VAL:12,345|DH:"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M7_implausivel",
+    "txt": "AUD-000741-20261111084511 | 2 | 2026-11-11 08:45:11 | 2026-11-11 00:00:00 | 0.36471064814814813 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|GLICOSE | 26092201 | 2026-09-22 03:29:00 | DIMENSION 1 | 8977 | 1 | Glicose | 3 | -1 | -1 | 0 | 0 | |MANUAL:IMPLAUSIVEL|VAL:-1|DH:2026-09-22 0"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_EM_CONFLITO",
+    "id": "M2_conflito",
+    "txt": "AUD-000742-20261111084511 | 2 | 2026-11-11 08:45:11 | 2026-11-11 00:00:00 | 0.36471064814814813 | DADO | RESULTADO_MANUAL_EM_CONFLITO | mIntegracao | 0|1|GLICOSE | 2026-09-22 13:40:00 | DIMENSION 1 | 8977 | 1 | Glicose | 2 | 111,111 | 111,111 | 0 | 0 | |MANUAL:CONFLITO_MANUAL|VAL:111,111|DH:2026-09-"
+   }
+  ],
+  "O24": {
+   "resumo": [
+    "QA da integração: 6 erro(s), 137 alerta(s), 12 informativo(s).",
+    "• 2 resultado(s) manual(is) incompleto(s): veja o DETALHE na aba Digitar Resultados — não entraram na estatística.",
+    "• 4 erro(s) de governança: veja a aba QA_INTEGRACAO (ex.: inativação sem motivo, ou ID que não é do analito informado — essa não foi aplicada)."
+   ],
+   "erros_por_codigo": {
+    "E01": 4,
+    "E04": 2
+   },
+   "gov": 4,
+   "len": 323,
+   "E10": [
+    "ERRO | E01 | Resultado inativado sem justificativa tecnica | BIO-366027 | Lactato | 2 | 2026-10-13 13:30:25 | ERRO DE GOVERNANÇA: BIO-366027 | Lactato | nivel 2 | 13/10/2026 13:30 -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar",
+    "ERRO | E01 | Resultado inativado sem justificativa tecnica | BIO-366033 | Lactato | 2 | 2026-10-13 13:30:40 | ERRO DE GOVERNANÇA: BIO-366033 | Lactato | nivel 2 | 13/10/2026 13:30 -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar",
+    "ERRO | E01 | Resultado inativado sem justificativa tecnica | BIO-366054 | Lactato | 2 | 2026-10-13 13:30:55 | ERRO DE GOVERNANÇA: BIO-366054 | Lactato | nivel 2 | 13/10/2026 13:30 -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar",
+    "ERRO | E01 | Resultado inativado sem justificativa tecnica | BIO-366164 | Lactato | 2 | 2026-10-13 15:54:01 | ERRO DE GOVERNANÇA: BIO-366164 | Lactato | nivel 2 | 13/10/2026 15:54 -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar"
+   ],
+   "ok": true
+  },
+  "atualizar2": {
+   "ret": "OK|Só as entradas (inativações, manuais e comentários) foram aplicadas; o DB_SEAC não foi lido -- os resultados novos en",
+   "s": 22.0
+  },
+  "M1_depois": {
+   "STATUS": "ATIVO",
+   "RUN_txt": "26092201",
+   "DETALHE_txt": ""
+  },
+  "trilha_2": [
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "txt": "AUD-000744-20261111084538 | 2 | 2026-11-11 08:45:38 | 2026-11-11 00:00:00 | 0.3650231481481481 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|GLICOSE | 26092201 | 2026-09-22 03:17:00 | DIMENSION 1 | 8977 | 1 | Glicose | 4 | 123,456 | 123,456 | 0 | 0 | |MANUAL:MANUAL_INCOMPLETO|VAL:123"
+   }
+  ],
+  "O23_ok": false,
+  "O23_trilha_por_manual": {
+   "M8_sem_hora": [
+    "RESULTADO_MANUAL_RECUSADO"
+   ],
+   "M1_incompleto": [
+    "RESULTADO_MANUAL_RECUSADO"
+   ],
+   "M3_8353_Glicose": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M4_8353_PCR": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M5_8794_menos1": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M6_6354_Creatinina": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M7_implausivel": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M2_conflito": [
+    "RESULTADO_MANUAL_EM_CONFLITO"
+   ]
+  },
+  "O21_ok": true,
+  "O21_varredura": {
+   "linhas": 300,
+   "com_zero": [],
+   "sem_acento": []
+  },
+  "adr091_manuais_ok": true,
+  "M6_no_painel": {
+   "H3": "6354",
+   "E1": "6354",
+   "engPainel": [
+    [
+     1.0,
+     1.0,
+     12.345,
+     null,
+     null
+    ],
+    [
+     2.0,
+     0.0,
+     null,
+     null,
+     null
+    ]
+   ],
+   "J7": "REJEITADO",
+   "A39": "Lote 6354 · alvo N1 73,990 ± 0,0909 · N2 176,553 ± 0,1469. Sem filtro de data",
+   "lista_H3": "=lstLotes",
+   "estat_Creatinina": {
+    "Creatinina|1": [
+     1.0,
+     12.345
+    ],
+    "Creatinina|2": [
+     0.0,
+     ""
+    ]
+   }
+  },
+  "_s": 104.6
+ },
+ "producao_intacta": {
+  "sha_antes": "8b1cda1345d2",
+  "sha_depois": "8b1cda1345d2",
+  "igual": true
+ }
+}

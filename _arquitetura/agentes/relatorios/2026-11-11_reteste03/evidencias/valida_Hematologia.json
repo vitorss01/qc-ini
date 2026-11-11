@@ -1,0 +1,1011 @@
+{
+ "inicio": "2026-11-11T08:47:04",
+ "ambiente": {
+  "producao": "QC_Hematologia.xlsm",
+  "sha_prod_12": "f1907656b663",
+  "copia": "C:\\Users\\VITOR~1.SAN\\AppData\\Local\\Temp\\qcw\\auditoria\\2026-11-11_reteste03\\Hematologia_valida.xlsm"
+ },
+ "excel_pid": 17400,
+ "linhas_tblCQ_Final": 48081,
+ "estaticas": {
+  "O43": {
+   "celulas": {
+    "J7": {
+     "shrink": true,
+     "wrap": false,
+     "largura_pt": 48.0,
+     "fonte": [
+      "Segoe UI",
+      true,
+      10.0
+     ],
+     "valor_atual": "REJEITADO",
+     "medidas": {
+      "REJEITADO": {
+       "texto_pt": 51.8,
+       "fator": 0.928
+      },
+      "ALERTA": {
+       "texto_pt": 36.0,
+       "fator": 1.0
+      },
+      "OK": {
+       "texto_pt": 13.5,
+       "fator": 1.0
+      },
+      "SEM CORRIDA NO PERÍODO": {
+       "texto_pt": 129.0,
+       "fator": 0.372
+      },
+      "AGUARDANDO 1ª CORRIDA": {
+       "texto_pt": 127.5,
+       "fator": 0.376
+      },
+      "SEM CORRIDA DESTE ANALITO": {
+       "texto_pt": 143.2,
+       "fator": 0.335
+      }
+     }
+    },
+    "J8": {
+     "shrink": true,
+     "wrap": false,
+     "largura_pt": 48.0,
+     "fonte": [
+      "Segoe UI",
+      true,
+      10.0
+     ],
+     "valor_atual": "REJEITADO",
+     "medidas": {
+      "REJEITADO": {
+       "texto_pt": 51.8,
+       "fator": 0.928
+      },
+      "ALERTA": {
+       "texto_pt": 36.0,
+       "fator": 1.0
+      },
+      "OK": {
+       "texto_pt": 13.5,
+       "fator": 1.0
+      },
+      "SEM CORRIDA NO PERÍODO": {
+       "texto_pt": 129.0,
+       "fator": 0.372
+      },
+      "AGUARDANDO 1ª CORRIDA": {
+       "texto_pt": 127.5,
+       "fator": 0.376
+      },
+      "SEM CORRIDA DESTE ANALITO": {
+       "texto_pt": 143.2,
+       "fator": 0.335
+      }
+     }
+    },
+    "J9": {
+     "shrink": true,
+     "wrap": false,
+     "largura_pt": 48.0,
+     "fonte": [
+      "Segoe UI",
+      true,
+      10.0
+     ],
+     "valor_atual": "REJEITADO",
+     "medidas": {
+      "REJEITADO": {
+       "texto_pt": 51.8,
+       "fator": 0.928
+      },
+      "ALERTA": {
+       "texto_pt": 36.0,
+       "fator": 1.0
+      },
+      "OK": {
+       "texto_pt": 13.5,
+       "fator": 1.0
+      },
+      "SEM CORRIDA NO PERÍODO": {
+       "texto_pt": 129.0,
+       "fator": 0.372
+      },
+      "AGUARDANDO 1ª CORRIDA": {
+       "texto_pt": 127.5,
+       "fator": 0.376
+      },
+      "SEM CORRIDA DESTE ANALITO": {
+       "texto_pt": 143.2,
+       "fator": 0.335
+      }
+     }
+    }
+   },
+   "ok_rejeitado": true,
+   "longos_alem_30pct": [
+    "AGUARDANDO 1ª CORRIDA",
+    "SEM CORRIDA DESTE ANALITO",
+    "SEM CORRIDA NO PERÍODO"
+   ]
+  },
+  "O44": {
+   "linhas_com_formula": 120,
+   "fora_do_centro": [],
+   "exemplos_do_parecer": {},
+   "ok": true
+  },
+  "O36": {
+   "formula_AT14": "=IF(OR($A14=\"\",$A14=0),\"\",IFERROR(IFERROR(FIXED(mCEQ.ViesEQ($A14,eqAnoEP,\"RMS\",eqProvedor,eqRodada),2,TRUE),mCEQ.ViesEQ($A14,eqAnoEP,\"RMS\",eqProvedor,eqRodada))&\" / \"&IFERROR(IFERROR(FIXED(mCEQ.ViesEQ($A14,eqAnoEP,\"UCREF",
+   "refs": [],
+   "n_textos": 84,
+   "conferidos_com_origem": 0,
+   "exemplos": [
+    [
+     14,
+     "2,49 / 0,04"
+    ],
+    [
+     15,
+     "2,49 / 0,04"
+    ],
+    [
+     16,
+     "2,49 / 0,04"
+    ],
+    [
+     17,
+     "1,73 / 0,02"
+    ],
+    [
+     18,
+     "1,73 / 0,02"
+    ]
+   ],
+   "ruins": [],
+   "ok": true
+  },
+  "O49": {
+   "linhas_vazias": 36,
+   "primeira": [
+    98
+   ],
+   "ultima": [
+    133
+   ],
+   "com_texto_visivel_A_AU": [
+    [
+     98,
+     {
+      "B98": "1"
+     }
+    ],
+    [
+     99,
+     {
+      "B99": "2"
+     }
+    ],
+    [
+     100,
+     {
+      "B100": "3"
+     }
+    ],
+    [
+     101,
+     {
+      "B101": "1"
+     }
+    ],
+    [
+     102,
+     {
+      "B102": "2"
+     }
+    ],
+    [
+     103,
+     {
+      "B103": "3"
+     }
+    ]
+   ],
+   "n_sujas": 36,
+   "ok_A_G_R_S_T": true
+  },
+  "O50": {
+   "A5": "Total: 48.081  ·  participam: 47.399  ·  X vermelho: 0  ·  inativados: 0  ·  manuais: 0  ·  substituídos por manual: 0",
+   "linhas": 48081,
+   "participam": 47399,
+   "ok": true
+  },
+  "O40": {
+   "cabecalho_estatistica": {
+    "A2": {
+     "f": "IQC (n/Média/DP/CV%) + especificações (ETp, limites de CV) + EQC (Bias anual) → ET e Sigma.",
+     "txt": "IQC (n/Média/DP/CV%) + especificações (ETp, limites de CV) + EQC (Bias anual) → ET e Sigma.",
+     "locked": true
+    },
+    "A3": {
+     "f": "Ano De",
+     "txt": "Ano De",
+     "locked": true
+    },
+    "B3": {
+     "f": "2025",
+     "txt": "2025",
+     "locked": false
+    },
+    "C3": {
+     "f": "Ano Até",
+     "txt": "Ano Até",
+     "locked": true
+    },
+    "D3": {
+     "f": "2025",
+     "txt": "2025",
+     "locked": false
+    },
+    "F3": {
+     "f": "Sigma: ≥6 excelente · ≥4 bom · 3–4 marginal · <3 inaceitável · CV% deve ficar ≤ limites CLIA/VB.",
+     "txt": "Sigma: ≥6 excelente · ≥4 bom · 3–4 marginal · <3 inaceitável · CV% deve ficar ≤ limites CLIA/VB.",
+     "locked": true
+    },
+    "A4": {
+     "f": "Lote",
+     "txt": "Lote",
+     "locked": true
+    },
+    "B4": {
+     "f": "=loteAnalise",
+     "txt": "522611",
+     "locked": false
+    },
+    "C4": {
+     "f": "(refletido do Painel)",
+     "txt": "(refletido do Painel)",
+     "locked": true
+    },
+    "F4": {
+     "f": "Ano De/Até filtram um intervalo (ex.: 3 ou 5 anos). O lote é o escolhido no Painel (H3): média, DP e CV nunca misturam lotes.",
+     "txt": "Ano De/Até filtram um intervalo (ex.: 3 ou 5 anos). O lote é o escolhido no Painel (H3): média, DP e CV nunca misturam l",
+     "locked": true
+    },
+    "K5": {
+     "f": "=ResumoFiltroEQ(eqProvedor,eqAnoEP,eqRodada)",
+     "txt": "Bias do EP: CAP | ano 2025 | media de todas as rodadas | 3 rodada(s), 360 linha(s) analiticas",
+     "locked": true
+    }
+   },
+   "com_Ano_0": {},
+   "Painel_I3": "",
+   "Painel_K3": "2025",
+   "D4": null,
+   "D4_ref_I3": false,
+   "protegida": false
+  },
+  "_s": 9.3
+ },
+ "O35_guia": {
+  "s3_equipamento": true,
+  "termos_s5_s6": {
+   "Registrar resultado do CEQ": true,
+   "Salvar e próximo": true,
+   "Corrigir selecionado": true,
+   "Excluir selecionado": true,
+   "Consolidar": true,
+   "ATUALIZAR DADOS": true,
+   "Z3": true,
+   "valor-alvo": true,
+   "FÓRMULA SOBRESCRITA": true,
+   "login": true
+  },
+  "manda_digitar_nas_abas": false,
+  "R4_hema_no_guia": true,
+  "botoes_existem": {
+   "Registrar resultado do CEQ": true,
+   "Salvar e próximo": true,
+   "Corrigir selecionado": true,
+   "Excluir selecionado": true,
+   "Consolidar": true,
+   "ATUALIZAR DADOS": true
+  },
+  "onde": {
+   "Registrar resultado do CEQ": [
+    "EQA.CAP_Resumo",
+    "EQA.Controllab_Resumo"
+   ],
+   "Salvar e próximo": [],
+   "Corrigir selecionado": [],
+   "Excluir selecionado": [],
+   "Consolidar": [
+    "EQA.CAP_Dados",
+    "EQA.Controllab_Dados"
+   ],
+   "ATUALIZAR DADOS": [
+    "Painel",
+    "DB",
+    "DB_ORGANIZADO",
+    "Digitar Resultados"
+   ]
+  },
+  "frm_captions": [
+   "Registrar resultado do Controle Externo (CEQ)",
+   "Campos com * são obrigatórios. ¹ Sem o valor-alvo, a amostra não entra no bias. O resultado vai para a aba do provedor e a EQA_Base é consolidada.",
+   "1 · RODADA",
+   "2 · ANALITO E AMOSTRA",
+   "Provedor *",
+   "Rodada / Survey *",
+   "Ano *",
+   "Analito *",
+   "Amostra *",
+   "Unidade",
+   "3 · RESULTADO",
+   "4 · AVALIAÇÃO E FONTE",
+   "Seu resultado *",
+   "Valor-alvo ¹",
+   "SD",
+   "SDI",
+   "Limite inferior",
+   "Limite superior",
+   "Nº laboratórios",
+   "Avaliação *",
+   "Página do PDF",
+   "Arquivo fonte",
+   "REGISTROS DESTA RODADA",
+   "Salvar e próximo",
+   "Fechar",
+   "Corrigir selecionado",
+   "Excluir selecionado"
+  ],
+  "_s": 3.0
+ },
+ "O33_sem_sessao_inicio": {
+  "SessaoAtiva": false,
+  "retorno": "ERRO|0|Sessão encerrada: faça o login de novo. Nada foi gravado.",
+  "linhas_usadas": [
+   465,
+   465
+  ],
+  "linhas_tabela": [
+   465,
+   465
+  ],
+  "audit": [],
+  "ok": true,
+  "_s": 0.6
+ },
+ "ADR091": {
+  "tabela": {
+   "aba": "Cfg_Integracao",
+   "colunas": [
+    "LOTE",
+    "REGRA",
+    "MATRIZ",
+    "ANALITOS",
+    "NOTA"
+   ],
+   "n": 0,
+   "regras": []
+  },
+  "resumo_vba": "MATRIZ=0;FORA_DO_CQ=0;SO_ANALITOS=0|",
+  "status_copia": {
+   "ATIVO": 47399,
+   "DUPLICIDADE_ORIGEM": 589,
+   "SEM_VALOR": 93
+  },
+  "por_regra": {},
+  "violacoes": [],
+  "n_violacoes": 0,
+  "LOTE_total": 0,
+  "LOTE_fora_dos_lotes_com_regra": [],
+  "colunas_derivadas_LOTE": [],
+  "LOTE_sem_RUN": 0,
+  "resultado_leq0_nos_lotes_com_regra": [],
+  "A13": {
+   "n": 0,
+   "severidades": {},
+   "ids_LOTE_cobertos": 0,
+   "ids_LOTE": 0,
+   "exemplo": {}
+  },
+  "A14": {
+   "n": 0,
+   "textos": []
+  },
+  "OC0007_sericos_participando": {},
+  "ampliacao": {
+   "paineis_rodados_uma_vez_fora_da_tabela": {},
+   "familias_urina_pcr_fora_da_tabela": {},
+   "lotes_de_PCR_participando": {}
+  },
+  "ok": true,
+  "_s": 0.9
+ },
+ "O12": {
+  "original_WBC_TODOS_2026": {
+   "filtro": {
+    "analito": "WBC",
+    "lote": null,
+    "todos": true,
+    "equip": null,
+    "de": "2026-01-01 00:00:00",
+    "ate": "2026-12-31 00:00:00",
+    "K4": "Ano inteiro"
+   },
+   "cortadas_M1": 272,
+   "AF1": "N1 372 · N2 394 · N3 338",
+   "independente": "N1 372 · N2 394 · N3 338",
+   "n_janela_painel": [
+    123.0,
+    157.0,
+    114.0
+   ],
+   "A39": "Lote 522611 · alvo N1 3,0038 ± 0,05290 · N2 6,8052 ± 0,09120 · N3 16,5238 ± 0,16930. ⚠ 272 corrida(s) antigas do período fora do gráfico e dos indicadores do Painel (máx. 180). Período inteiro: N1 372 · N2 394 · N3 338 — veja a aba Estatística. Filtro 01/01/26 a 31/12/26",
+   "ok": true
+  },
+  "ampliacao_RBC_TODOS_2026": {
+   "filtro": {
+    "analito": "RBC",
+    "lote": null,
+    "todos": true,
+    "equip": null,
+    "de": "2026-01-01 00:00:00",
+    "ate": "2026-12-31 00:00:00",
+    "K4": "Ano inteiro"
+   },
+   "cortadas_M1": 272,
+   "AF1": "N1 372 · N2 394 · N3 338",
+   "independente": "N1 372 · N2 394 · N3 338",
+   "n_janela_painel": [
+    123.0,
+    157.0,
+    114.0
+   ],
+   "A39": "Lote 522611 · alvo N1 2,3066 ± 0,02190 · N2 4,3769 ± 0,03500 · N3 5,1228 ± 0,03450. ⚠ 272 corrida(s) antigas do período fora do gráfico e dos indicadores do Painel (máx. 180). Período inteiro: N1 372 · N2 394 · N3 338 — veja a aba Estatística. Filtro 01/01/26 a 31/12/26",
+   "ok": true
+  },
+  "ok": true,
+  "_s": 9.0
+ },
+ "login": "TESTE_AUDITORIA_R3",
+ "manuais": {
+  "colunas": [
+   "ID_REGISTRO",
+   "DATA",
+   "HORA",
+   "EQUIPAMENTO",
+   "MATRIZ",
+   "LOTE",
+   "NIVEL",
+   "ANALITO",
+   "RESULTADO",
+   "UNIDADE",
+   "MOTIVO",
+   "USUARIO",
+   "REGISTRADO_EM",
+   "RUN",
+   "STATUS",
+   "DETALHE",
+   "SUBSTITUI_ID"
+  ],
+  "instrucao_A3": "1) Preencha DATA, HORA, EQUIPAMENTO, LOTE, NÍVEL, ANALITO, RESULTADO e MOTIVO na próxima linha livre — o ID (MAN_0001…) é gerado sozinho. EQUIPAMENTO vazio recebe o do Painel (fica em âmbar): confira. Para SUBSTITUIR um resultado do interfaceamento, digite primeiro o ID dele em SUBSTITUI_ID (o resto se preenche) e o MOTIVO.  2) Clique ⟳ ATUALIZAR DADOS.",
+  "selEquipamento": "XN1000",
+  "referencia_real": {
+   "ID_REGISTRO": "HEM-357847",
+   "EQUIPAMENTO": "XN1000",
+   "LOTE": "619611",
+   "NIVEL": "1",
+   "ANALITO": "WBC",
+   "RESULTADO": "3",
+   "DATA_HORA": "2026-09-29 08:11:36",
+   "RUN": "26092903"
+  },
+  "O19_auto": {
+   "valor": "XN1000",
+   "fundo": 16777215.0,
+   "fonte": 0.0,
+   "nota": ""
+  },
+  "O19_ok": true,
+  "validacao_dados": {
+   "M1_incompleto.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M1_incompleto.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M1_incompleto.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M1_incompleto.EQUIPAMENTO": [
+    3,
+    "XN1000",
+    true
+   ],
+   "M2_conflito.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M2_conflito.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M2_conflito.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M2_conflito.EQUIPAMENTO": [
+    3,
+    "XN1000",
+    true
+   ],
+   "M7_implausivel.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M7_implausivel.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M7_implausivel.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M7_implausivel.EQUIPAMENTO": [
+    3,
+    "XN1000",
+    true
+   ],
+   "M8_sem_hora.LOTE": [
+    3,
+    "=lstLotes",
+    true
+   ],
+   "M8_sem_hora.ANALITO": [
+    3,
+    "=lstAnalitos",
+    true
+   ],
+   "M8_sem_hora.NIVEL": [
+    1,
+    "1",
+    true
+   ],
+   "M8_sem_hora.EQUIPAMENTO": [
+    3,
+    "XN1000",
+    true
+   ]
+  },
+  "atualizar1": {
+   "ret": "OK|Só as entradas (inativações, manuais e comentários) foram aplicadas; o DB_SEAC não foi lido -- os resultados novos en",
+   "s": 32.8
+  },
+  "ids": {
+   "M1_incompleto": "MAN_0001",
+   "M2_conflito": "MAN_0002",
+   "M7_implausivel": "MAN_0003",
+   "M8_sem_hora": "MAN_0004"
+  },
+  "manuais_1": {
+   "M1_incompleto": {
+    "STATUS": "MANUAL_INCOMPLETO",
+    "RUN_txt": "",
+    "DETALHE_txt": "campos obrigatórios ausentes/inválidos: NIVEL",
+    "MATRIZ": "SANGUE TOTAL",
+    "final": {
+     "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "WBC",
+     "MATRIZ": "SANGUE TOTAL",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: NIVEL",
+     "RUN": ""
+    }
+   },
+   "M2_conflito": {
+    "STATUS": "CONFLITO_MANUAL",
+    "RUN_txt": "",
+    "DETALHE_txt": "coincide com resultado do interfaceamento (1 min)",
+    "MATRIZ": "SANGUE TOTAL",
+    "final": {
+     "STATUS_ANALITICO": "CONFLITO_MANUAL",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "WBC",
+     "MATRIZ": "SANGUE TOTAL",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "coincide com resultado do interfaceamento (1 min)",
+     "RUN": ""
+    }
+   },
+   "M7_implausivel": {
+    "STATUS": "IMPLAUSIVEL",
+    "RUN_txt": "26092901",
+    "DETALHE_txt": "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)",
+    "MATRIZ": "SANGUE TOTAL",
+    "final": {
+     "STATUS_ANALITICO": "IMPLAUSIVEL",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "WBC",
+     "MATRIZ": "SANGUE TOTAL",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)",
+     "RUN": "26092901"
+    }
+   },
+   "M8_sem_hora": {
+    "STATUS": "MANUAL_INCOMPLETO",
+    "RUN_txt": "",
+    "DETALHE_txt": "campos obrigatórios ausentes/inválidos: HORA",
+    "MATRIZ": "SANGUE TOTAL",
+    "final": {
+     "STATUS_ANALITICO": "MANUAL_INCOMPLETO",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "WBC",
+     "MATRIZ": "SANGUE TOTAL",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "campos obrigatorios ausentes/invalidos: HORA",
+     "RUN": ""
+    }
+   }
+  },
+  "trilha_1": [
+   {
+    "acao": "RESULTADO_MANUAL_RECUSADO",
+    "id": "M8_sem_hora",
+    "txt": "AUD-000231-20261111084822 | 2 | 2026-11-11 08:48:22 | 2026-11-11 00:00:00 | 0.3669212962962963 | DADO | RESULTADO_MANUAL_RECUSADO | mIntegracao | 0|1|WBC | XN1000 | 619611 | 1 | WBC | 1 | 123,456 | 123,456 | 0 | 0 | |MANUAL:MANUAL_INCOMPLETO|VAL:123,456|DH: | ID MAN_0004 | campos obrigatorios ausentes/invalidos: HORA | manual lancado por TESTE_AUDITORIA_R3 em 11/11/2026 08:48 | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Hematologia_valida.xlsm | 1.0.0-rc1 | 265d80f73714d8643fa02fa76dc8f28024bfffdb4a705f54f609567c1b89edaf | 3724d5a3076225c561016610d001ffc1c34ee7faf2f86a33764490eb11e89fcc"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_RECUSADO",
+    "id": "M1_incompleto",
+    "txt": "AUD-000232-20261111084822 | 2 | 2026-11-11 08:48:22 | 2026-11-11 00:00:00 | 0.3669212962962963 | DADO | RESULTADO_MANUAL_RECUSADO | mIntegracao | 0|0|WBC | 2026-09-29 03:17:00 | XN1000 | 619611 | WBC | 1 | 123,456 | 123,456 | 0 | 0 | |MANUAL:MANUAL_INCOMPLETO|VAL:123,456|DH:2026-09-29 03:17:00 | ID MAN_0001 | campos obrigatorios ausentes/invalidos: NIVEL | manual lancado por TESTE_AUDITORIA_R3 em 11/11/2026 08:47 | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Hematologia_valida.xlsm | 1.0.0-rc1 | 3724d5a3076225c561016610d001ffc1c34ee7faf2f86a33764490eb11e89fcc | dcfe22a0ceb0131d2fb9072330618c98574696ea3c2e3d9d5dbaa8767e1c336e"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M7_implausivel",
+    "txt": "AUD-000233-20261111084822 | 2 | 2026-11-11 08:48:22 | 2026-11-11 00:00:00 | 0.3669212962962963 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092901|1|WBC | 26092901 | 2026-09-29 03:29:00 | XN1000 | 619611 | 1 | WBC | 1 | -1 | -1 | 0 | 0 | |MANUAL:IMPLAUSIVEL|VAL:-1|DH:2026-09-29 03:29:00 | ID MAN_0003 | manual lancado por TESTE_AUDITORIA_R3 em 11/11/2026 08:48 | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Hematologia_valida.xlsm | 1.0.0-rc1 | dcfe22a0ceb0131d2fb9072330618c98574696ea3c2e3d9d5dbaa8767e1c336e | cd56a21e5cb0ddd7239b4ebbb42fef9ced299abed13c864f52cf6e5b849121ec"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_EM_CONFLITO",
+    "id": "M2_conflito",
+    "txt": "AUD-000234-20261111084822 | 2 | 2026-11-11 08:48:22 | 2026-11-11 00:00:00 | 0.3669212962962963 | DADO | RESULTADO_MANUAL_EM_CONFLITO | mIntegracao | 0|1|WBC | 2026-09-29 08:16:00 | XN1000 | 619611 | 1 | WBC | 2 | 111,111 | 111,111 | 0 | 0 | |MANUAL:CONFLITO_MANUAL|VAL:111,111|DH:2026-09-29 08:16:00 | ID MAN_0002 | coincide com resultado do interfaceamento (1 min) | manual lancado por TESTE_AUDITORIA_R3 em 11/11/2026 08:47 | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Hematologia_valida.xlsm | 1.0.0-rc1 | cd56a21e5cb0ddd7239b4ebbb42fef9ced299abed13c864f52cf6e5b849121ec | aa86f33d803f93f2e4b67d5ab09ca14940038d87065cb569249ffb92d94ff4af"
+   }
+  ],
+  "O24": {
+   "resumo": [
+    "QA da integração: 2 erro(s), 591 alerta(s), 34 informativo(s).",
+    "• 2 resultado(s) manual(is) incompleto(s): veja o DETALHE na aba Digitar Resultados — não entraram na estatística."
+   ],
+   "erros_por_codigo": {
+    "E04": 2
+   },
+   "gov": 0,
+   "len": 178,
+   "E10": [],
+   "ok": true
+  },
+  "atualizar2": {
+   "ret": "OK|Só as entradas (inativações, manuais e comentários) foram aplicadas; o DB_SEAC não foi lido -- os resultados novos en",
+   "s": 27.3
+  },
+  "M1_depois": {
+   "STATUS": "ATIVO",
+   "RUN_txt": "26092901",
+   "DETALHE_txt": ""
+  },
+  "trilha_2": [
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "txt": "AUD-000235-20261111084858 | 2 | 2026-11-11 08:48:58 | 2026-11-11 00:00:00 | 0.36733796296296295 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092901|1|WBC | 26092901 | 2026-09-29 03:17:00 | XN1000 | 619611 | 1 | WBC | 2 | 123,456 | 123,456 | 0 | 0 | |MANUAL:MANUAL_INCOMPLETO|VAL:123,456|DH:20"
+   }
+  ],
+  "O23_ok": true,
+  "O23_trilha_por_manual": {
+   "M8_sem_hora": [
+    "RESULTADO_MANUAL_RECUSADO"
+   ],
+   "M1_incompleto": [
+    "RESULTADO_MANUAL_RECUSADO"
+   ],
+   "M7_implausivel": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M2_conflito": [
+    "RESULTADO_MANUAL_EM_CONFLITO"
+   ]
+  },
+  "O21_ok": true,
+  "O21_varredura": {
+   "linhas": 300,
+   "com_zero": [],
+   "sem_acento": []
+  },
+  "_s": 76.5
+ },
+ "ceq": {
+  "O34": {
+   "CAP": {
+    "rodada": {
+     "n_lista": 3,
+     "n_esperado": 3,
+     "igual": true,
+     "so_simulacao": [
+      "1",
+      "2",
+      "3"
+     ],
+     "simulacao_na_lista": []
+    },
+    "analito": {
+     "n_lista": 25,
+     "n_esperado": 25,
+     "igual": true,
+     "so_simulacao": [
+      "HCT",
+      "HGB",
+      "RBC",
+      "WBC"
+     ],
+     "simulacao_na_lista": []
+    },
+    "avaliacao": {
+     "n_lista": 3,
+     "n_esperado": 3,
+     "igual": true,
+     "so_simulacao": [
+      "OK"
+     ],
+     "simulacao_na_lista": []
+    }
+   },
+   "Controllab": {
+    "rodada": {
+     "n_lista": 0,
+     "n_esperado": 0,
+     "igual": true,
+     "so_simulacao": [],
+     "simulacao_na_lista": []
+    },
+    "analito": {
+     "n_lista": 0,
+     "n_esperado": 0,
+     "igual": true,
+     "so_simulacao": [],
+     "simulacao_na_lista": []
+    },
+    "avaliacao": {
+     "n_lista": 0,
+     "n_esperado": 0,
+     "igual": true,
+     "so_simulacao": [],
+     "simulacao_na_lista": []
+    }
+   }
+  },
+  "O34_ok": true,
+  "O52": {
+   "mapa_linhas": 31,
+   "cabecalho": [
+    "Provedor",
+    "Nome no provedor",
+    "Analito canônico"
+   ],
+   "CAP": {
+    "nomes": 29,
+    "pares_sem_espaco": [
+     {
+      "digitado": "MCH",
+      "pares_literais": [
+       "MCHC"
+      ],
+      "aviso": "AZUL|No QC_INI: MCH. Este resultado entra no bias deste analito. Atenção: existe também “MCHC” (MCHC).",
+      "cita_par": true
+     }
+    ]
+   },
+   "Controllab": {
+    "nomes": 0,
+    "pares_sem_espaco": []
+   },
+   "MCH_hema": "AZUL|No QC_INI: MCH. Este resultado entra no bias deste analito. Atenção: existe também “MCHC” (MCHC).",
+   "par_de_palavra": "AZUL|No QC_INI: LYMPH%. Este resultado entra no bias deste analito. Atenção: existe também “Lymphs Absolute” (LYMPH#)."
+  },
+  "O52_ok": true,
+  "O52_n_pares": 1,
+  "O31": {
+   "G0": {
+    "RBC|1": 1.533620125276759,
+    "RBC|2": 1.533620125276759,
+    "RBC|3": 1.533620125276759
+   },
+   "G_depois_sem_alvo": {
+    "RBC|1": 1.533620125276759,
+    "RBC|2": 1.533620125276759,
+    "RBC|3": 1.533620125276759
+   },
+   "G_depois_com_alvo": {
+    "RBC|1": 3.650215093957569,
+    "RBC|2": 3.650215093957569,
+    "RBC|3": 3.650215093957569
+   },
+   "confirmacao_sem_alvo": "Sem o valor-alvo, esta amostra NÃO entra no bias (nem no ET e no Sigma). Ela conta só na verificação dos limites.",
+   "confirmacao_com_alvo": "",
+   "salvar_sem_alvo": "OK|467|Gravado fora do bias (sem valor-alvo).",
+   "salvar_com_alvo": "OK|468|",
+   "rotulos": {
+    "lblAlvo": "Valor-alvo ¹",
+    "lblSub": "Campos com * são obrigatórios. ¹ Sem o valor-alvo, a amostra não entra no bias. O resultado vai para a aba do provedor e a EQA_Base é consolidada."
+   },
+   "audit": [
+    "CEQ_REGISTRADO",
+    "EQA_BASE_CONSOLIDADA",
+    "CEQ_REGISTRADO",
+    "EQA_BASE_CONSOLIDADA"
+   ]
+  },
+  "O31_ok": true,
+  "O55": {
+   "descricao": "CAP TESTE-AUDITORIA C-A 2025 · Red Blood Cell Count · TA-55 (resultado 110)",
+   "registros_da_rodada": [
+    [
+     "Red Blood Cell Count",
+     "TA-31",
+     "110",
+     "Acceptable",
+     "467"
+    ],
+    [
+     "Red Blood Cell Count",
+     "TA-55",
+     "110",
+     "Acceptable",
+     "468"
+    ]
+   ],
+   "excluir": "OK|468|",
+   "trilha": [
+    "AUD-000239-20261111084933 | 2 | 2026-11-11 08:49:33 | 2026-11-11 00:00:00 | 0.36774305555555553 | SISTEMA | CEQ_REGISTRADO | CAP | TESTE-AUDITORIA C-A 2025 | 2025 | Red Blood Cell Count | TA-55 | resultado 110 | avaliação Acceptable | aba EQA.CAP_Dados linha 4",
+    "AUD-000240-20261111084933 | 2 | 2026-11-11 08:49:33 | 2026-11-11 00:00:00 | 0.36774305555555553 | SISTEMA | EQA_BASE_CONSOLIDADA | origem: janela do CEQ (registro) | linhas 467 (CAP 467, Controllab 0, sem analito canônico 15) | incluídas 1 · alteradas 0 · remo",
+    "AUD-000241-20261111084953 | 2 | 2026-11-11 08:49:53 | 2026-11-11 00:00:00 | 0.36797453703703703 | SISTEMA | CEQ_EXCLUIDO | CAP | TESTE-AUDITORIA C-A 2025 | 2025 | Red Blood Cell Count | TA-55 | valores apagados: Seu resultado 110; Valor-alvo 100; SD 2; SDI 5; ",
+    "AUD-000242-20261111084953 | 2 | 2026-11-11 08:49:53 | 2026-11-11 00:00:00 | 0.36797453703703703 | SISTEMA | EQA_BASE_CONSOLIDADA | origem: janela do CEQ (exclusão) | linhas 466 (CAP 466, Controllab 0, sem analito canônico 15) | incluídas 0 · alteradas 0 · remo"
+   ],
+   "repete_ano": []
+  },
+  "O55_ok": true,
+  "linha_sem_alvo": 467,
+  "O53": {
+   "linha": 2,
+   "analito_cap": "Basophils",
+   "canonico": "BASO%",
+   "validacao": {
+    "O": [
+     7,
+     "=1=0"
+    ],
+    "P": [
+     7,
+     "=1=0"
+    ],
+    "S": [
+     7,
+     "=1=0"
+    ],
+    "T": [
+     7,
+     "=1=0"
+    ],
+    "U": [
+     7,
+     "=1=0"
+    ],
+    "V": [
+     7,
+     "=1=0"
+    ],
+    "W": [
+     7,
+     "=1=0"
+    ],
+    "X": [
+     7,
+     "=1=0"
+    ]
+   },
+   "P_antes": 0.4149377593361091,
+   "formula_P": "=IF(O2=\"\",\"\",ABS(O2))",
+   "Z3": [
+    "base em dia",
+    "⚠ FÓRMULA SOBRESCRITA em Bias (%) ou |Bias| (%): o bias usaria o valor digitado — restaure a fórmula da coluna",
+    "base em dia"
+   ],
+   "validacao_aceita_2,55": false,
+   "G_antes": {
+    "BASO%|1": 2.5085549222470034,
+    "BASO%|2": 2.5085549222470034,
+    "BASO%|3": 2.5085549222470034
+   },
+   "G_sobrescrito": {
+    "BASO%|1": 2.5085549222470034,
+    "BASO%|2": 2.5085549222470034,
+    "BASO%|3": 2.5085549222470034
+   },
+   "G_restaurado": {
+    "BASO%|1": 2.5085549222470034,
+    "BASO%|2": 2.5085549222470034,
+    "BASO%|3": 2.5085549222470034
+   },
+   "trilha": [
+    "AUD-000243-20261111085016 | 2 | 2026-11-11 08:50:16 | 2026-11-11 00:00:00 | 0.36824074074074076 | SISTEMA | CEQ_FORMULA_SOBRESCRITA | edição direta numa coluna de fórmula | aba EQA.CAP_Dados | P2 (|Bias| (%)) = 2,55 | o bias usaria o valor digitado: restaure a fórmula (copie de outra linha da coluna"
+   ]
+  },
+  "O53_ok": true,
+  "O54": {
+   "F_antes": 4.8,
+   "mesmo_valor_trilha": [],
+   "Z4": [
+    null,
+    null
+   ],
+   "Z3_mesmo_valor": "base em dia",
+   "diferente_trilha": [
+    "AUD-000244-20261111085017 | 2 | 2026-11-11 08:50:17 | 2026-11-11 00:00:00 | 0.3682523148148148 | SISTEMA | CEQ_ALTERADO | edição direta na tabela | aba EQA.CAP_Dados | linha 2 (CAP | FH9-A 2025 | 2025 | Basophils | FH9-01) · Seu Resultado: 4,8 → 5,8 | falta consolidar (Consolidar na EQA_Base ou ATUALIZAR DADOS) | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | He"
+   ],
+   "Z3_diferente": "⚠ HÁ EDIÇÃO NÃO CONSOLIDADA — clique em Consolidar na EQA_Base"
+  },
+  "O54_ok": true,
+  "_s": 65.7
+ },
+ "fim_sem_sessao": {
+  "SessaoAtiva_apos_logout": false,
+  "salvar": "ERRO|0|Sessão encerrada: faça o login de novo. Nada foi gravado.",
+  "corrigir_sem_sessao": "OK|467|Gravado fora do bias (sem valor-alvo).",
+  "F_antes_depois": [
+   "110",
+   "115"
+  ],
+  "excluir_sem_sessao": "OK|467|",
+  "A_depois": "",
+  "audit": [
+   "AUD-000245-20261111085018 | 2 | 2026-11-11 08:50:18 | 2026-11-11 00:00:00 | 0.3682638888888889 | SEGURANCA | LOGOUT | mSeguranca | ANALISTA | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Hematologia_valida.xlsm | 1.0.0-rc1",
+   "AUD-000246-20261111085021 | 2 | 2026-11-11 08:50:21 | 2026-11-11 00:00:00 | 0.3682986111111111 | SISTEMA | CEQ_ALTERADO | CAP | TESTE-AUDITORIA C-A 2025 | 2025 | Red Blood Cell Count | TA-31 | Seu resultado: 110 → 115 | pela janela | aba EQA.CAP_Dados linha 46",
+   "AUD-000247-20261111085021 | 2 | 2026-11-11 08:50:21 | 2026-11-11 00:00:00 | 0.3682986111111111 | SISTEMA | EQA_BASE_CONSOLIDADA | origem: janela do CEQ (correção) | linhas 466 (CAP 466, Controllab 0, sem analito canônico 15) | incluídas 0 · alteradas 1 · remov",
+   "AUD-000248-20261111085046 | 2 | 2026-11-11 08:50:46 | 2026-11-11 00:00:00 | 0.368587962962963 | SISTEMA | CEQ_EXCLUIDO | CAP | TESTE-AUDITORIA C-A 2025 | 2025 | Red Blood Cell Count | TA-31 | valores apagados: Seu resultado 115; SD 2; SDI 5; Limite inferior 90",
+   "AUD-000249-20261111085046 | 2 | 2026-11-11 08:50:46 | 2026-11-11 00:00:00 | 0.368587962962963 | SISTEMA | EQA_BASE_CONSOLIDADA | origem: janela do CEQ (exclusão) | linhas 465 (CAP 465, Controllab 0, sem analito canônico 15) | incluídas 0 · alteradas 0 · removi"
+  ],
+  "abrir": {
+   "caixas": [
+    {
+     "classe": "#32770",
+     "titulo": "Controle externo (CEQ)",
+     "textos": [
+      "OK",
+      "Faça o login para registrar resultados do CEQ."
+     ]
+    }
+   ],
+   "erro_run": null,
+   "segundos": 0.1,
+   "ok": true
+  },
+  "_s": 52.1
+ },
+ "producao_intacta": {
+  "sha_antes": "f1907656b663",
+  "sha_depois": "f1907656b663",
+  "igual": true
+ }
+}

@@ -1,0 +1,9 @@
+EXCEL_PID 4184
+  VBA compilado: OK
+fases ler+interface=2,04;duplicidade=1,30;manuais=2,65;status=0,86;corridas=1,07;ordem final=0,34;saida=0,37;
+tempo VBA 9.176
+status PQ {'MANUAL_INCOMPLETO': 13, 'ATIVO': 34340, 'INATIVADO': 9, 'CONFLITO_MANUAL': 5, 'IMPLAUSIVEL': 50, 'SUBSTITUIDO_MANUAL': 2, 'LOTE_FORA_DO_CQ': 505, 'LOTE_OUTRO_MATERIAL': 579} {'inativacao_SIM': 9, 'com_comentario': 1, 'governanca_erro': 1, 'com_id_relacionado': 10}
+ADR-082 SUBSTITUIDO_MANUAL no PQ: 2 | esperado: OK
+ADR-088 (datas em texto, <= 0) no PQ: OK []
+ADR-091 (regras de material por lote) no PQ: OK {'SO_ANALITOS': '8589', 'FORA_DO_CQ': '8590', 'MATRIZ': '8588'} {'LOTE_FORA_DO_CQ': 505, 'LOTE_OUTRO_MATERIAL': 579} []
+{"linhas": {"pq": 35503, "vba": 35503}, "colunas_so_vba": [], "colunas_pq_nao_comparadas": [], "divergencias": {}}

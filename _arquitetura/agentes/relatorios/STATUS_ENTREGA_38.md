@@ -5,7 +5,13 @@
 - A produção nova tem sha256 `e3efc3c9f42fdf3a`.
 - O backup ficou em `_backup_pre_integracao_2026-11-10_1511`.
 
-## Bioquímica: em reentrega
+## Bioquímica: ENTREGUE às 19h15 (3ª tentativa)
+- As 31 suítes passaram, sem nenhuma falha.
+- A produção nova tem sha256 `62c98a500ed06856`.
+- O backup ficou em `_backup_pre_integracao_2026-11-10_1915`.
+- As duas entregas estão registradas no MANIFESTO_PRODUCAO (commit `edc54ef`).
+
+### Histórico das tentativas
 - **Na primeira tentativa, 1 teste falhou em 14.** Foi o BN da suíte de blocos por lote, que confere os valores de TESTE do lote 8353.
 - **Causa:** a falha estava no teste, não no sistema. Os valores de TESTE foram calculados em 16/10 com os resultados que contavam naquela data. Depois disso, duas regras novas tiraram alguns desses resultados da estatística:
   - o ADR-088, que exclui valores ≤ 0;

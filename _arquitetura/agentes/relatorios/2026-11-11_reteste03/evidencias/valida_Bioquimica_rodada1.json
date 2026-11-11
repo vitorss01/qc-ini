@@ -1,0 +1,1533 @@
+{
+ "inicio": "2026-11-11T08:36:18",
+ "ambiente": {
+  "producao": "QC_Bioquimica.xlsm",
+  "sha_prod_12": "8b1cda1345d2",
+  "copia": "C:\\Users\\VITOR~1.SAN\\AppData\\Local\\Temp\\qcw\\auditoria\\2026-11-11_reteste03\\Bioquimica_valida.xlsm"
+ },
+ "excel_pid": 16912,
+ "linhas_tblCQ_Final": 35466,
+ "estaticas": {
+  "O43": {
+   "celulas": {
+    "J7": {
+     "shrink": true,
+     "wrap": false,
+     "largura_pt": 48.0,
+     "fonte": [
+      "Segoe UI",
+      true,
+      10.0
+     ],
+     "valor_atual": "OK",
+     "medidas": {
+      "REJEITADO": {
+       "texto_pt": 51.8,
+       "fator": 0.928
+      },
+      "ALERTA": {
+       "texto_pt": 36.0,
+       "fator": 1.0
+      },
+      "OK": {
+       "texto_pt": 13.5,
+       "fator": 1.0
+      },
+      "SEM CORRIDA NO PERÍODO": {
+       "texto_pt": 129.0,
+       "fator": 0.372
+      },
+      "AGUARDANDO 1ª CORRIDA": {
+       "texto_pt": 127.5,
+       "fator": 0.376
+      },
+      "SEM CORRIDA DESTE ANALITO": {
+       "texto_pt": 143.2,
+       "fator": 0.335
+      }
+     }
+    },
+    "J8": {
+     "shrink": true,
+     "wrap": false,
+     "largura_pt": 48.0,
+     "fonte": [
+      "Segoe UI",
+      true,
+      10.0
+     ],
+     "valor_atual": "OK",
+     "medidas": {
+      "REJEITADO": {
+       "texto_pt": 51.8,
+       "fator": 0.928
+      },
+      "ALERTA": {
+       "texto_pt": 36.0,
+       "fator": 1.0
+      },
+      "OK": {
+       "texto_pt": 13.5,
+       "fator": 1.0
+      },
+      "SEM CORRIDA NO PERÍODO": {
+       "texto_pt": 129.0,
+       "fator": 0.372
+      },
+      "AGUARDANDO 1ª CORRIDA": {
+       "texto_pt": 127.5,
+       "fator": 0.376
+      },
+      "SEM CORRIDA DESTE ANALITO": {
+       "texto_pt": 143.2,
+       "fator": 0.335
+      }
+     }
+    }
+   },
+   "ok_rejeitado": true,
+   "longos_alem_30pct": [
+    "AGUARDANDO 1ª CORRIDA",
+    "SEM CORRIDA DESTE ANALITO",
+    "SEM CORRIDA NO PERÍODO"
+   ]
+  },
+  "O44": {
+   "linhas_com_formula": 96,
+   "fora_do_centro": [],
+   "exemplos_do_parecer": {
+    "Lactato N1 (L14)": [
+     -4108,
+     -4108,
+     16.5
+    ],
+    "Lactato N2 (L15)": [
+     -4108,
+     -4108,
+     33.0
+    ],
+    "Ácido úrico N1 (L16)": [
+     -4108,
+     -4108,
+     16.5
+    ],
+    "Ácido úrico N2 (L17)": [
+     -4108,
+     -4108,
+     16.5
+    ],
+    "Cálcio N1 (L24)": [
+     -4108,
+     -4108,
+     33.0
+    ],
+    "Cálcio N2 (L25)": [
+     -4108,
+     -4108,
+     33.0
+    ],
+    "Lactato N2 (L108)": [
+     -4108,
+     -4108,
+     16.5
+    ]
+   },
+   "ok": true
+  },
+  "O36": {
+   "formula_AT14": "=IF(OR($A14=\"\",$A14=0),\"\",IFERROR(IFERROR(FIXED(mCEQ.ViesEQ($A14,eqAnoEP,\"RMS\",IFERROR(INDEX(Especificações!$AR$4:$AR$43,MATCH($A14,Especificações!$A$4:$A$43,0)),\"CAP\"),eqRodada),2,TRUE),mCEQ.ViesEQ($A14,eqAnoEP,\"RMS\",IF",
+   "refs": [],
+   "n_textos": 62,
+   "conferidos_com_origem": 0,
+   "exemplos": [
+    [
+     14,
+     "3,69 / 0,26"
+    ],
+    [
+     15,
+     "3,69 / 0,26"
+    ],
+    [
+     16,
+     "2,37 / 0,17"
+    ],
+    [
+     17,
+     "2,37 / 0,17"
+    ],
+    [
+     18,
+     "5,51 / 0,14"
+    ]
+   ],
+   "ruins": [],
+   "ok": true
+  },
+  "O50": {
+   "A5": "Total: 35.466  ·  participam: 35.323  ·  X vermelho: 4  ·  inativados: 11  ·  manuais: 0  ·  substituídos por manual: 0",
+   "linhas": 35466,
+   "participam": 35323,
+   "ok": true
+  },
+  "O40": {
+   "cabecalho_estatistica": {
+    "A2": {
+     "f": "Imprecisão (CV), inexatidão (Bias) e erro total (ET) confrontados com as especificações de qualidade vigentes no período.",
+     "txt": "Imprecisão (CV), inexatidão (Bias) e erro total (ET) confrontados com as especificações de qualidade vigentes no período",
+     "locked": false
+    },
+    "A3": {
+     "f": "PERÍODO ANALISADO",
+     "txt": "PERÍODO ANALISADO",
+     "locked": false
+    },
+    "K3": {
+     "f": "CONTROLE EXTERNO — origem do bias",
+     "txt": "CONTROLE EXTERNO — origem do bias",
+     "locked": false
+    },
+    "A4": {
+     "f": "Visão",
+     "txt": "Visão",
+     "locked": false
+    },
+    "B4": {
+     "f": "PERSONALIZADO",
+     "txt": "PERSONALIZADO",
+     "locked": true
+    },
+    "C4": {
+     "f": "Ano",
+     "txt": "Ano",
+     "locked": false
+    },
+    "D4": {
+     "f": "=Painel!I3",
+     "txt": "0",
+     "locked": true
+    },
+    "E4": {
+     "f": "(refletido do Painel)",
+     "txt": "(refletido do Painel)",
+     "locked": false
+    },
+    "G4": {
+     "f": "Lote",
+     "txt": "Lote",
+     "locked": false
+    },
+    "H4": {
+     "f": "=loteAnalise",
+     "txt": "8977",
+     "locked": true
+    },
+    "I4": {
+     "f": "(refletido do Painel)",
+     "txt": "(refletido do Painel)",
+     "locked": false
+    },
+    "K4": {
+     "f": "Provedor",
+     "txt": "Provedor",
+     "locked": false
+    },
+    "A5": {
+     "f": "Personalizado",
+     "txt": "Personalizado",
+     "locked": false
+    },
+    "B5": {
+     "f": "=Painel!G3",
+     "txt": "01/10/2026",
+     "locked": true
+    },
+    "C5": {
+     "f": "até",
+     "txt": "até",
+     "locked": false
+    },
+    "D5": {
+     "f": "=Painel!G4",
+     "txt": "31/10/2026",
+     "locked": true
+    },
+    "E5": {
+     "f": "(replicado do Painel automaticamente)",
+     "txt": "(replicado do Painel automaticamente)",
+     "locked": false
+    },
+    "G5": {
+     "f": "Janela",
+     "txt": "Janela",
+     "locked": false
+    },
+    "H5": {
+     "f": "=JanelaInicio($B$4,$D$4,$F$4,$B$5,$D$5)",
+     "txt": "01/10/2026",
+     "locked": false
+    },
+    "I5": {
+     "f": "a",
+     "txt": "a",
+     "locked": false
+    },
+    "J5": {
+     "f": "=JanelaFim($B$4,$D$4,$F$4,$B$5,$D$5)",
+     "txt": "31/10/2026",
+     "locked": false
+    },
+    "K5": {
+     "f": "=ResumoFiltroEQ(eqProvedor,eqAnoEP,eqRodada)",
+     "txt": "Bias do EP: CAP | ano 2025 | media de todas as rodadas | 3 rodada(s), 435 linha(s) analiticas",
+     "locked": false
+    }
+   },
+   "com_Ano_0": {},
+   "Painel_I3": "",
+   "Painel_K3": "2026",
+   "D4": {
+    "f": "=Painel!I3",
+    "txt": "0",
+    "locked": true
+   },
+   "D4_ref_I3": true,
+   "protegida": false
+  },
+  "_s": 2.6
+ },
+ "O35_guia": {
+  "s3_equipamento": true,
+  "termos_s5_s6": {
+   "Registrar resultado do CEQ": true,
+   "Salvar e próximo": true,
+   "Corrigir selecionado": true,
+   "Excluir selecionado": true,
+   "Consolidar": true,
+   "ATUALIZAR DADOS": true,
+   "Z3": true,
+   "valor-alvo": true,
+   "FÓRMULA SOBRESCRITA": true,
+   "login": true
+  },
+  "manda_digitar_nas_abas": false,
+  "R4_hema_no_guia": true,
+  "botoes_existem": {
+   "Registrar resultado do CEQ": true,
+   "Salvar e próximo": true,
+   "Corrigir selecionado": true,
+   "Excluir selecionado": true,
+   "Consolidar": true,
+   "ATUALIZAR DADOS": true
+  },
+  "onde": {
+   "Registrar resultado do CEQ": [
+    "EQA.CAP_Resumo",
+    "EQA.Controllab_Resumo"
+   ],
+   "Salvar e próximo": [],
+   "Corrigir selecionado": [],
+   "Excluir selecionado": [],
+   "Consolidar": [
+    "EQA.CAP_Dados",
+    "EQA.Controllab_Dados"
+   ],
+   "ATUALIZAR DADOS": [
+    "Painel",
+    "DB",
+    "DB_ORGANIZADO",
+    "Digitar Resultados"
+   ]
+  },
+  "frm_captions": [
+   "Registrar resultado do Controle Externo (CEQ)",
+   "Campos com * são obrigatórios. ¹ Sem o valor-alvo, a amostra não entra no bias. O resultado vai para a aba do provedor e a EQA_Base é consolidada.",
+   "1 · RODADA",
+   "2 · ANALITO E AMOSTRA",
+   "Provedor *",
+   "Rodada / Survey *",
+   "Ano *",
+   "Analito *",
+   "Amostra *",
+   "Unidade",
+   "3 · RESULTADO",
+   "4 · AVALIAÇÃO E FONTE",
+   "Seu resultado *",
+   "Valor-alvo ¹",
+   "SD",
+   "SDI",
+   "Limite inferior",
+   "Limite superior",
+   "Nº laboratórios",
+   "Avaliação *",
+   "Página do PDF",
+   "Arquivo fonte",
+   "REGISTROS DESTA RODADA",
+   "Salvar e próximo",
+   "Fechar",
+   "Corrigir selecionado",
+   "Excluir selecionado"
+  ],
+  "_s": 19.4
+ },
+ "O33_sem_sessao_inicio": {
+  "SessaoAtiva": false,
+  "retorno": "ERRO|0|Sessão encerrada: faça o login de novo. Nada foi gravado.",
+  "linhas_usadas": [
+   545,
+   545
+  ],
+  "linhas_tabela": [
+   545,
+   545
+  ],
+  "audit": [],
+  "ok": true,
+  "_s": 0.9
+ },
+ "ADR091": {
+  "tabela": {
+   "aba": "Cfg_Integracao",
+   "colunas": [
+    "LOTE",
+    "REGRA",
+    "MATRIZ",
+    "ANALITOS",
+    "NOTA"
+   ],
+   "n": 17,
+   "regras": [
+    {
+     "LOTE": "8353",
+     "REGRA": "SO_ANALITOS",
+     "MATRIZ": "",
+     "ANALITOS": "Proteína C-reativa",
+     "NOTA": "controle de PCR: rodado uma vez com o painel completo; so participa na PCR"
+    },
+    {
+     "LOTE": "6351",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "6352",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "6353",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "6354",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "5653",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "5654",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "5656",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "5657",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "5658",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "5659",
+     "REGRA": "MATRIZ",
+     "MATRIZ": "URINA",
+     "ANALITOS": "",
+     "NOTA": "controle de urina (familia 635x/565x): o sufixo -EE do idAmostra, digitado no equipamento, vem ora 03/04 (URINA), ora 01/02 (SORO) -- o lote decide"
+    },
+    {
+     "LOTE": "8177",
+     "REGRA": "FORA_DO_CQ",
+     "MATRIZ": "",
+     "ANALITOS": "",
+     "NOTA": "provavel lote digitado errado (painel unico; lote vigente 8977)"
+    },
+    {
+     "LOTE": "8794",
+     "REGRA": "FORA_DO_CQ",
+     "MATRIZ": "",
+     "ANALITOS": "",
+     "NOTA": "provavel lote digitado errado (painel unico; lote vigente 8974)"
+    },
+    {
+     "LOTE": "7974",
+     "REGRA": "FORA_DO_CQ",
+     "MATRIZ": "",
+     "ANALITOS": "",
+     "NOTA": "provavel lote digitado errado (painel unico; lote vigente 8974)"
+    },
+    {
+     "LOTE": "8975",
+     "REGRA": "FORA_DO_CQ",
+     "MATRIZ": "",
+     "ANALITOS": "",
+     "NOTA": "provavel lote digitado errado (painel unico; lote vigente 8974)"
+    },
+    {
+     "LOTE": "8773",
+     "REGRA": "FORA_DO_CQ",
+     "MATRIZ": "",
+     "ANALITOS": "",
+     "NOTA": "provavel lote digitado errado (painel unico; lote vigente 8973)"
+    },
+    {
+     "LOTE": "8970",
+     "REGRA": "FORA_DO_CQ",
+     "MATRIZ": "",
+     "ANALITOS": "",
+     "NOTA": "provavel lote digitado errado (painel unico; lote vigente 8973/8974)"
+    }
+   ]
+  },
+  "resumo_vba": "MATRIZ=10;FORA_DO_CQ=6;SO_ANALITOS=1|",
+  "status_copia": {
+   "ATIVO": 35323,
+   "LOTE_FORA_DO_CQ": 59,
+   "IMPLAUSIVEL": 43,
+   "LOTE_OUTRO_MATERIAL": 30,
+   "INATIVADO": 11
+  },
+  "por_regra": {
+   "FORA 7974": {
+    "linhas": 0,
+    "status": {},
+    "participam": 0
+   },
+   "FORA 8177": {
+    "linhas": 29,
+    "status": {
+     "LOTE_FORA_DO_CQ": 29
+    },
+    "participam": 0
+   },
+   "FORA 8773": {
+    "linhas": 0,
+    "status": {},
+    "participam": 0
+   },
+   "FORA 8794": {
+    "linhas": 30,
+    "status": {
+     "LOTE_FORA_DO_CQ": 30
+    },
+    "participam": 0
+   },
+   "FORA 8970": {
+    "linhas": 0,
+    "status": {},
+    "participam": 0
+   },
+   "FORA 8975": {
+    "linhas": 0,
+    "status": {},
+    "participam": 0
+   },
+   "SO 8353": {
+    "linhas": 996,
+    "dentro": {
+     "ATIVO": 965,
+     "IMPLAUSIVEL": 1
+    },
+    "dentro_participam": 965,
+    "outros": {
+     "LOTE_OUTRO_MATERIAL": 30
+    },
+    "outros_analitos": 29,
+    "outros_participam": 0
+   },
+   "MATRIZ 5653": {
+    "linhas": 0,
+    "matriz": {},
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {},
+    "participam": 0
+   },
+   "MATRIZ 5654": {
+    "linhas": 0,
+    "matriz": {},
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {},
+    "participam": 0
+   },
+   "MATRIZ 5656": {
+    "linhas": 0,
+    "matriz": {},
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {},
+    "participam": 0
+   },
+   "MATRIZ 5657": {
+    "linhas": 7,
+    "matriz": {
+     "URINA": 7
+    },
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {
+     "UCFP": 7
+    },
+    "participam": 7
+   },
+   "MATRIZ 5658": {
+    "linhas": 15,
+    "matriz": {
+     "URINA": 15
+    },
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {
+     "UCFP": 15
+    },
+    "participam": 15
+   },
+   "MATRIZ 5659": {
+    "linhas": 155,
+    "matriz": {
+     "URINA": 155
+    },
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {
+     "GLUC": 78,
+     "UCFP": 77
+    },
+    "participam": 154
+   },
+   "MATRIZ 6351": {
+    "linhas": 0,
+    "matriz": {},
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {},
+    "participam": 0
+   },
+   "MATRIZ 6352": {
+    "linhas": 0,
+    "matriz": {},
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {},
+    "participam": 0
+   },
+   "MATRIZ 6353": {
+    "linhas": 44,
+    "matriz": {
+     "URINA": 44
+    },
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {
+     "CRE2": 7,
+     "MALB": 7,
+     "PHOS": 7,
+     "UCFP": 7,
+     "CL": 4,
+     "K": 4,
+     "NA": 4,
+     "BUN": 2
+    },
+    "participam": 44
+   },
+   "MATRIZ 6354": {
+    "linhas": 860,
+    "matriz": {
+     "URINA": 860
+    },
+    "em_analito_serico": 0,
+    "serico_participa": 0,
+    "analitos": {
+     "MALB": 151,
+     "CRE2": 139,
+     "CL": 126,
+     "K": 126,
+     "NA": 126,
+     "PHOS": 122,
+     "UCFP": 70
+    },
+    "participam": 859
+   }
+  },
+  "violacoes": [
+   [
+    "MATRIZ-depara",
+    "5657",
+    [
+     [
+      "BIO-225455",
+      "UCFP",
+      "UCFP"
+     ],
+     [
+      "BIO-225457",
+      "UCFP",
+      "UCFP"
+     ],
+     [
+      "BIO-225475",
+      "UCFP",
+      "UCFP"
+     ]
+    ]
+   ],
+   [
+    "MATRIZ-depara",
+    "5658",
+    [
+     [
+      "BIO-244276",
+      "UCFP",
+      "UCFP"
+     ],
+     [
+      "BIO-349871",
+      "UCFP",
+      "UCFP"
+     ],
+     [
+      "BIO-349872",
+      "UCFP",
+      "UCFP"
+     ]
+    ]
+   ],
+   [
+    "MATRIZ-depara",
+    "5659",
+    [
+     [
+      "BIO-349106",
+      "UCFP",
+      "UCFP"
+     ],
+     [
+      "BIO-349153",
+      "UCFP",
+      "UCFP"
+     ],
+     [
+      "BIO-353712",
+      "UCFP",
+      "UCFP"
+     ]
+    ]
+   ],
+   [
+    "MATRIZ-depara",
+    "6353",
+    [
+     [
+      "BIO-225466",
+      "CRE2",
+      "CRE2"
+     ],
+     [
+      "BIO-225464",
+      "MALB",
+      "MALB"
+     ],
+     [
+      "BIO-225463",
+      "PHOS",
+      "PHOS"
+     ]
+    ]
+   ],
+   [
+    "MATRIZ-depara",
+    "6354",
+    [
+     [
+      "BIO-327679",
+      "CRE2",
+      "CRE2"
+     ],
+     [
+      "BIO-327678",
+      "MALB",
+      "MALB"
+     ],
+     [
+      "BIO-349146",
+      "CRE2",
+      "CRE2"
+     ]
+    ]
+   ]
+  ],
+  "n_violacoes": 5,
+  "LOTE_total": 89,
+  "LOTE_fora_dos_lotes_com_regra": [],
+  "colunas_derivadas_LOTE": [
+   [
+    "LOTE_FORA_DO_CQ",
+    "NÃO",
+    "NÃO",
+    "NAO_PLOTAR",
+    "lote fora do CQ (regra FORA_DO_CQ da tblLotesMaterial; fora da estatis",
+    59
+   ],
+   [
+    "LOTE_OUTRO_MATERIAL",
+    "NÃO",
+    "NÃO",
+    "NAO_PLOTAR",
+    "lote de outro material neste analito (regra SO_ANALITOS da tblLotesMat",
+    30
+   ]
+  ],
+  "LOTE_sem_RUN": 0,
+  "resultado_leq0_nos_lotes_com_regra": [
+   [
+    "BIO-224563",
+    0.0,
+    "IMPLAUSIVEL"
+   ],
+   [
+    "BIO-340781",
+    -3.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340788",
+    -0.15,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340768",
+    -0.9,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340784",
+    -0.01,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340782",
+    -35.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340793",
+    -0.32,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340790",
+    -1.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340769",
+    -0.09,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340776",
+    -5.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340786",
+    0.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340766",
+    0.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340775",
+    0.0,
+    "LOTE_OUTRO_MATERIAL"
+   ],
+   [
+    "BIO-340789",
+    -1.0,
+    "LOTE_OUTRO_MATERIAL"
+   ]
+  ],
+  "A13": {
+   "n": 89,
+   "severidades": {
+    "ALERTA": 89
+   },
+   "ids_LOTE_cobertos": 89,
+   "ids_LOTE": 89,
+   "exemplo": {
+    "SEVERIDADE": "ALERTA",
+    "CODIGO": "A13",
+    "TESTE": "Resultado fora do CQ pela regra do lote (tblLotesMaterial)",
+    "ID_REGISTRO": "BIO-222924",
+    "ANALITO": "ALT (TGP)",
+    "NIVEL": "1",
+    "DATA_HORA": "2025-12-01 07:31:08",
+    "DETALHE": "lote 8794 fora do CQ (regra FORA_DO_CQ): o resultado fica guardado, fora da estatistica, d"
+   }
+  },
+  "A14": {
+   "n": 0,
+   "textos": []
+  },
+  "OC0007_sericos_participando": {},
+  "ampliacao": {
+   "paineis_rodados_uma_vez_fora_da_tabela": {},
+   "familias_urina_pcr_fora_da_tabela": {
+    "8352": {
+     "Proteína C-reativa": 144
+    },
+    "8356": {
+     "Proteína C-reativa": 3
+    },
+    "8359": {
+     "Hemoglobina glicada": 2
+    }
+   },
+   "lotes_de_PCR_participando": {
+    "8352": 144,
+    "5352": 1,
+    "8353": 965,
+    "8335": 3,
+    "8553": 2,
+    "8974": 2,
+    "8356": 3,
+    "8383": 2
+   }
+  },
+  "ok": false,
+  "_s": 1.3
+ },
+ "O12": {
+  "original_Glicose_8974_DIM1_Tudo": {
+   "filtro": {
+    "analito": "Glicose",
+    "lote": "8974",
+    "todos": false,
+    "equip": "DIMENSION 1",
+    "de": "None",
+    "ate": "None",
+    "K4": "Tudo (sem filtro)"
+   },
+   "cortadas_M1": 39,
+   "AF1": "N1 174 · N2 161",
+   "independente": "N1 174 · N2 161",
+   "n_janela_painel": [
+    140.0,
+    131.0
+   ],
+   "A39": "Lote 8974 · alvo N1 87,1 ± 1,03 · N2 285,6 ± 3,35. ⚠ 39 corrida(s) antigas do período fora do gráfico e dos indicadores do Painel (máx. 180). Período inteiro: N1 174 · N2 161 — veja a aba Estatística. Sem filtro de data",
+   "ok": true
+  },
+  "ampliacao": {
+   "filtro": {
+    "analito": "Cloro",
+    "lote": "8974",
+    "todos": false,
+    "equip": "DIMENSION 1",
+    "de": "None",
+    "ate": "None",
+    "K4": "Tudo (sem filtro)"
+   },
+   "cortadas_M1": 116,
+   "AF1": "N1 250 · N2 224",
+   "independente": "N1 250 · N2 224",
+   "n_janela_painel": [
+    148.0,
+    135.0
+   ],
+   "A39": "Lote 8974 · alvo N1 120,0 ± 1,75 · N2 96,0 ± 1,03. ⚠ 116 corrida(s) antigas do período fora do gráfico e dos indicadores do Painel (máx. 180). Período inteiro: N1 250 · N2 224 — veja a aba Estatística. Sem filtro de data",
+   "ok": true,
+   "escolhido": [
+    "Cloro",
+    "8974",
+    "DIMENSION 1",
+    250
+   ]
+  },
+  "ok": true,
+  "_s": 35.2
+ },
+ "O41_G23_bonus": {
+  "passos": [
+   [
+    "De/Até 01/09–31/10/2026",
+    "2026",
+    "Personalizado"
+   ],
+   [
+    "K4 Out",
+    "2026",
+    "Out",
+    "2026-10-01",
+    "2026-10-31"
+   ]
+  ],
+  "ok": true,
+  "_s": 7.0
+ },
+ "login": "TESTE_AUDITORIA_R3",
+ "manuais": {
+  "colunas": [
+   "ID_REGISTRO",
+   "DATA",
+   "HORA",
+   "EQUIPAMENTO",
+   "MATRIZ",
+   "LOTE",
+   "NIVEL",
+   "ANALITO",
+   "RESULTADO",
+   "UNIDADE",
+   "MOTIVO",
+   "USUARIO",
+   "REGISTRADO_EM",
+   "RUN",
+   "STATUS",
+   "DETALHE",
+   "SUBSTITUI_ID"
+  ],
+  "instrucao_A3": "1) Preencha DATA, HORA, EQUIPAMENTO, LOTE, NÍVEL, ANALITO, RESULTADO e MOTIVO na próxima linha livre — o ID (MAN_0001…) é gerado sozinho. EQUIPAMENTO vazio recebe o do Painel (fica em âmbar): confira. Para SUBSTITUIR um resultado do interfaceamento, digite primeiro o ID dele em SUBSTITUI_ID (o resto se preenche) e o MOTIVO.  2) Clique ⟳ ATUALIZAR DADOS.",
+  "selEquipamento": "DIMENSION 2",
+  "referencia_real": {
+   "ID_REGISTRO": "BIO-354752",
+   "EQUIPAMENTO": "DIMENSION 1",
+   "LOTE": "8977",
+   "NIVEL": "1",
+   "ANALITO": "Glicose",
+   "RESULTADO": "77",
+   "DATA_HORA": "2026-09-22 13:35:14",
+   "RUN": "26092202"
+  },
+  "O19_auto": {
+   "valor": "DIMENSION 2",
+   "fundo": 10284031.0,
+   "fonte": 22428.0,
+   "nota": "Preenchido pelo Painel com DIMENSION 2: confira antes de ATUALIZAR DADOS."
+  },
+  "O19_digitado": {
+   "valor": "DIMENSION 1",
+   "fundo": 16777215.0,
+   "nota": false
+  },
+  "O19_ok": true,
+  "atualizar1": {
+   "ret": "OK|Só as entradas (inativações, manuais e comentários) foram aplicadas; o DB_SEAC não foi lido -- os resultados novos en",
+   "s": 64.9
+  },
+  "ids": {
+   "M1_incompleto": "MAN_0001",
+   "M2_conflito": "MAN_0002",
+   "M7_implausivel": "MAN_0003",
+   "M3_8353_Glicose": "MAN_0004",
+   "M4_8353_PCR": "MAN_0005",
+   "M5_8794_menos1": "MAN_0006",
+   "M6_6354_Creatinina": "MAN_0007"
+  },
+  "manuais_1": {
+   "M1_incompleto": {
+    "STATUS": "ATIVO",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "",
+     "RUN": "26092201"
+    }
+   },
+   "M2_conflito": {
+    "STATUS": "CONFLITO_MANUAL",
+    "RUN_txt": "",
+    "DETALHE_txt": "coincide com resultado do interfaceamento (5 min)",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "CONFLITO_MANUAL",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "coincide com resultado do interfaceamento (5 min)",
+     "RUN": ""
+    }
+   },
+   "M7_implausivel": {
+    "STATUS": "IMPLAUSIVEL",
+    "RUN_txt": "26092202",
+    "DETALHE_txt": "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "IMPLAUSIVEL",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)",
+     "RUN": "26092202"
+    }
+   },
+   "M3_8353_Glicose": {
+    "STATUS": "LOTE_OUTRO_MATERIAL",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "lote de outro material neste analito (regra SO_ANALITOS da tblLotesMaterial; fora da estatistica e do grafico)",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "LOTE_OUTRO_MATERIAL",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "lote de outro material neste analito (regra SO_ANALITOS da tblLotesMaterial; fora da estatistica e do grafico)",
+     "RUN": "26092201"
+    }
+   },
+   "M4_8353_PCR": {
+    "STATUS": "ATIVO",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "ANALITO": "Proteína C-reativa",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "",
+     "RUN": "26092201"
+    }
+   },
+   "M5_8794_menos1": {
+    "STATUS": "LOTE_FORA_DO_CQ",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "lote fora do CQ (regra FORA_DO_CQ da tblLotesMaterial; fora da estatistica e do grafico)",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "LOTE_FORA_DO_CQ",
+     "PARTICIPA_ESTATISTICA": "NÃO",
+     "ANALITO": "Glicose",
+     "MATRIZ": "SORO",
+     "TIPO_PLOTAGEM_LJ": "NAO_PLOTAR",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "lote fora do CQ (regra FORA_DO_CQ da tblLotesMaterial; fora da estatistica e do grafico)",
+     "RUN": "26092201"
+    }
+   },
+   "M6_6354_Creatinina": {
+    "STATUS": "ATIVO",
+    "RUN_txt": "26092201",
+    "DETALHE_txt": "",
+    "MATRIZ": "SORO",
+    "final": {
+     "STATUS_ANALITICO": "ATIVO",
+     "PARTICIPA_ESTATISTICA": "SIM",
+     "ANALITO": "Creatinina",
+     "MATRIZ": "URINA",
+     "TIPO_PLOTAGEM_LJ": "NORMAL",
+     "MOTIVO_EXCLUSAO_AUTOMATICA": "",
+     "RUN": "26092201"
+    }
+   }
+  },
+  "trilha_1": [
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M1_incompleto",
+    "txt": "AUD-000736-20261111083938 | 2 | 2026-11-11 08:39:38 | 2026-11-11 00:00:00 | 0.3608564814814815 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|GLICOSE | 26092201 | 2026-09-22 03:17:00 | DIMENSION 1 | 8977 | 1 | Glicose | 1 | 123,456 | 123,456 | 0 | 0 | |MANUAL:ATIVO|VAL:123,456|DH:2026"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M3_8353_Glicose",
+    "txt": "AUD-000737-20261111083940 | 2 | 2026-11-11 08:39:40 | 2026-11-11 00:00:00 | 0.3608796296296296 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|GLICOSE | 26092201 | 2026-09-22 03:21:00 | DIMENSION 1 | 8353 | 1 | Glicose | 2 | 123,456 | 123,456 | 0 | 0 | |MANUAL:LOTE_OUTRO_MATERIAL|VAL:1"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M4_8353_PCR",
+    "txt": "AUD-000738-20261111083940 | 2 | 2026-11-11 08:39:40 | 2026-11-11 00:00:00 | 0.3608796296296296 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|PROTEÍNA C-REATIVA | 26092201 | 2026-09-22 03:23:00 | DIMENSION 1 | 8353 | 1 | Proteína C-reativa | 1 | 1,234 | 1,234 | 0 | 0 | |MANUAL:ATIVO|V"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M5_8794_menos1",
+    "txt": "AUD-000739-20261111083941 | 2 | 2026-11-11 08:39:41 | 2026-11-11 00:00:00 | 0.3608912037037037 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|GLICOSE | 26092201 | 2026-09-22 03:25:00 | DIMENSION 1 | 8794 | 1 | Glicose | 3 | -1 | -1 | 0 | 0 | |MANUAL:LOTE_FORA_DO_CQ|VAL:-1|DH:2026-09-2"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M6_6354_Creatinina",
+    "txt": "AUD-000740-20261111083941 | 2 | 2026-11-11 08:39:41 | 2026-11-11 00:00:00 | 0.3608912037037037 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092201|1|CREATININA | 26092201 | 2026-09-22 03:27:00 | DIMENSION 1 | 6354 | 1 | Creatinina | 1 | 12,345 | 12,345 | 0 | 0 | |MANUAL:ATIVO|VAL:12,345|DH:2"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_INCLUIDO",
+    "id": "M7_implausivel",
+    "txt": "AUD-000741-20261111083941 | 2 | 2026-11-11 08:39:41 | 2026-11-11 00:00:00 | 0.3608912037037037 | DADO | RESULTADO_MANUAL_INCLUIDO | mIntegracao | 26092202|1|GLICOSE | 26092202 | 2026-09-22 03:29:00 | DIMENSION 1 | 8977 | 1 | Glicose | 1 | -1 | -1 | 0 | 0 | |MANUAL:IMPLAUSIVEL|VAL:-1|DH:2026-09-22 03"
+   },
+   {
+    "acao": "RESULTADO_MANUAL_EM_CONFLITO",
+    "id": "M2_conflito",
+    "txt": "AUD-000742-20261111083941 | 2 | 2026-11-11 08:39:41 | 2026-11-11 00:00:00 | 0.3608912037037037 | DADO | RESULTADO_MANUAL_EM_CONFLITO | mIntegracao | 0|1|GLICOSE | 2026-09-22 13:40:00 | DIMENSION 1 | 8977 | 1 | Glicose | 1 | 111,111 | 111,111 | 0 | 0 | |MANUAL:CONFLITO_MANUAL|VAL:111,111|DH:2026-09-2"
+   }
+  ],
+  "O24": {
+   "resumo": [
+    "QA da integração: 4 erro(s), 138 alerta(s), 12 informativo(s).",
+    "• 4 erro(s) de governança: veja a aba QA_INTEGRACAO (ex.: inativação sem motivo, ou ID que não é do analito informado — essa não foi aplicada)."
+   ],
+   "erros_por_codigo": {
+    "E01": 4
+   },
+   "gov": 4,
+   "len": 207,
+   "E10": [
+    "ERRO | E01 | Resultado inativado sem justificativa tecnica | BIO-366027 | Lactato | 2 | 2026-10-13 13:30:25 | ERRO DE GOVERNANÇA: BIO-366027 | Lactato | nivel 2 | 13/10/2026 13:30 -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar",
+    "ERRO | E01 | Resultado inativado sem justificativa tecnica | BIO-366033 | Lactato | 2 | 2026-10-13 13:30:40 | ERRO DE GOVERNANÇA: BIO-366033 | Lactato | nivel 2 | 13/10/2026 13:30 -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar",
+    "ERRO | E01 | Resultado inativado sem justificativa tecnica | BIO-366054 | Lactato | 2 | 2026-10-13 13:30:55 | ERRO DE GOVERNANÇA: BIO-366054 | Lactato | nivel 2 | 13/10/2026 13:30 -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar",
+    "ERRO | E01 | Resultado inativado sem justificativa tecnica | BIO-366164 | Lactato | 2 | 2026-10-13 15:54:01 | ERRO DE GOVERNANÇA: BIO-366164 | Lactato | nivel 2 | 13/10/2026 15:54 -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar"
+   ],
+   "ok": false
+  },
+  "atualizar2": {
+   "ret": "OK|Só as entradas (inativações, manuais e comentários) foram aplicadas; o DB_SEAC não foi lido -- os resultados novos en",
+   "s": 33.5
+  },
+  "M1_depois": {
+   "STATUS": "ATIVO",
+   "RUN_txt": "26092201",
+   "DETALHE_txt": ""
+  },
+  "trilha_2": [],
+  "O23_ok": false,
+  "O23_trilha_por_manual": {
+   "M1_incompleto": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M3_8353_Glicose": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M4_8353_PCR": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M5_8794_menos1": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M6_6354_Creatinina": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M7_implausivel": [
+    "RESULTADO_MANUAL_INCLUIDO"
+   ],
+   "M2_conflito": [
+    "RESULTADO_MANUAL_EM_CONFLITO"
+   ]
+  },
+  "O21_ok": false,
+  "O21_varredura": {
+   "linhas": 300,
+   "com_zero": [],
+   "sem_acento": []
+  },
+  "adr091_manuais_ok": true,
+  "_s": 135.7
+ },
+ "ceq": {
+  "O34": {
+   "CAP": {
+    "rodada": {
+     "n_lista": 3,
+     "n_esperado": 3,
+     "igual": true,
+     "so_simulacao": [
+      "A",
+      "B",
+      "C"
+     ],
+     "simulacao_na_lista": []
+    },
+    "analito": {
+     "n_lista": 31,
+     "n_esperado": 31,
+     "igual": true,
+     "so_simulacao": [
+      "COLESTEROL TOTAL",
+      "CREATININA",
+      "GLICOSE",
+      "HDL COLESTEROL",
+      "UREIA",
+      "ÁCIDO ÚRICO"
+     ],
+     "simulacao_na_lista": []
+    },
+    "avaliacao": {
+     "n_lista": 2,
+     "n_esperado": 2,
+     "igual": true,
+     "so_simulacao": [
+      "OK"
+     ],
+     "simulacao_na_lista": []
+    }
+   },
+   "Controllab": {
+    "rodada": {
+     "n_lista": 0,
+     "n_esperado": 0,
+     "igual": true,
+     "so_simulacao": [],
+     "simulacao_na_lista": []
+    },
+    "analito": {
+     "n_lista": 0,
+     "n_esperado": 0,
+     "igual": true,
+     "so_simulacao": [],
+     "simulacao_na_lista": []
+    },
+    "avaliacao": {
+     "n_lista": 0,
+     "n_esperado": 0,
+     "igual": true,
+     "so_simulacao": [],
+     "simulacao_na_lista": []
+    }
+   }
+  },
+  "O34_ok": true,
+  "O52": {
+   "mapa_linhas": 37,
+   "cabecalho": [
+    "Provedor",
+    "Nome no provedor",
+    "Analito canônico"
+   ],
+   "CAP": {
+    "nomes": 37,
+    "pares_sem_espaco": []
+   },
+   "Controllab": {
+    "nomes": 0,
+    "pares_sem_espaco": []
+   },
+   "MCH_hema": null,
+   "par_de_palavra": "AZUL|No QC_INI: Lactato. Este resultado entra no bias deste analito. Atenção: existe também “Lactate Dehydrogenase” (Lactato desidrogenase)."
+  },
+  "O52_ok": true,
+  "O52_n_pares": 0,
+  "O31": {
+   "G0": {
+    "Proteína total|1": 3.3793363600341007,
+    "Proteína total|2": 3.3793363600341007
+   },
+   "G_depois_sem_alvo": {
+    "Proteína total|1": 3.3793363600341007,
+    "Proteína total|2": 3.3793363600341007
+   },
+   "G_depois_com_alvo": {
+    "Proteína total|1": 5.034502270025575,
+    "Proteína total|2": 5.034502270025575
+   },
+   "confirmacao_sem_alvo": "Sem o valor-alvo, esta amostra NÃO entra no bias (nem no ET e no Sigma). Ela conta só na verificação dos limites.",
+   "confirmacao_com_alvo": "",
+   "salvar_sem_alvo": "OK|547|Gravado fora do bias (sem valor-alvo).",
+   "salvar_com_alvo": "OK|548|",
+   "rotulos": {
+    "lblAlvo": "Valor-alvo ¹",
+    "lblSub": "Campos com * são obrigatórios. ¹ Sem o valor-alvo, a amostra não entra no bias. O resultado vai para a aba do provedor e a EQA_Base é consolidada."
+   },
+   "audit": [
+    "CEQ_REGISTRADO",
+    "EQA_BASE_CONSOLIDADA",
+    "CEQ_REGISTRADO",
+    "EQA_BASE_CONSOLIDADA"
+   ]
+  },
+  "O31_ok": true,
+  "O55": {
+   "descricao": "CAP TESTE-AUDITORIA C-A 2025 · Protein, total, serum · TA-55 (resultado 110)",
+   "registros_da_rodada": [
+    [
+     "Protein, total, serum",
+     "TA-31",
+     "110",
+     "Acceptable",
+     "547"
+    ],
+    [
+     "Protein, total, serum",
+     "TA-55",
+     "110",
+     "Acceptable",
+     "548"
+    ]
+   ],
+   "excluir": "OK|548|",
+   "trilha": [
+    "AUD-000747-20261111084124 | 2 | 2026-11-11 08:41:24 | 2026-11-11 00:00:00 | 0.3620833333333333 | SISTEMA | CEQ_REGISTRADO | CAP | TESTE-AUDITORIA C-A 2025 | 2025 | Protein, total, serum | TA-55 | resultado 110 | avaliação Acceptable | aba EQA.CAP_Dados linha 5",
+    "AUD-000748-20261111084125 | 2 | 2026-11-11 08:41:25 | 2026-11-11 00:00:00 | 0.3620949074074074 | SISTEMA | EQA_BASE_CONSOLIDADA | origem: janela do CEQ (registro) | linhas 547 (CAP 547, Controllab 0, sem analito canônico 20) | incluídas 1 · alteradas 0 · remov",
+    "AUD-000749-20261111084146 | 2 | 2026-11-11 08:41:46 | 2026-11-11 00:00:00 | 0.36233796296296295 | SISTEMA | CEQ_EXCLUIDO | CAP | TESTE-AUDITORIA C-A 2025 | 2025 | Protein, total, serum | TA-55 | valores apagados: Seu resultado 110; Valor-alvo 100; SD 2; SDI 5;",
+    "AUD-000750-20261111084146 | 2 | 2026-11-11 08:41:46 | 2026-11-11 00:00:00 | 0.36233796296296295 | SISTEMA | EQA_BASE_CONSOLIDADA | origem: janela do CEQ (exclusão) | linhas 546 (CAP 546, Controllab 0, sem analito canônico 20) | incluídas 0 · alteradas 0 · remo"
+   ],
+   "repete_ano": []
+  },
+  "O55_ok": true,
+  "linha_sem_alvo": 547,
+  "O53": {
+   "linha": 2,
+   "analito_cap": "ALT (SGPT)",
+   "canonico": "ALT (TGP)",
+   "validacao": {
+    "O": [
+     7,
+     "=1=0"
+    ],
+    "P": [
+     7,
+     "=1=0"
+    ],
+    "S": [
+     7,
+     "=1=0"
+    ],
+    "T": [
+     7,
+     "=1=0"
+    ],
+    "U": [
+     7,
+     "=1=0"
+    ],
+    "V": [
+     7,
+     "=1=0"
+    ],
+    "W": [
+     7,
+     "=1=0"
+    ],
+    "X": [
+     7,
+     "=1=0"
+    ]
+   },
+   "P_antes": 2.1207177814029317,
+   "formula_P": "=IF(O2=\"\",\"\",ABS(O2))",
+   "Z3": [
+    "base em dia",
+    "⚠ FÓRMULA SOBRESCRITA em Bias (%) ou |Bias| (%): o bias usaria o valor digitado — restaure a fórmula da coluna",
+    "base em dia"
+   ],
+   "validacao_aceita_2,55": false,
+   "G_antes": {
+    "ALT (TGP)|1": 6.185176166653275,
+    "ALT (TGP)|2": 6.185176166653275
+   },
+   "G_sobrescrito": {
+    "ALT (TGP)|1": 6.185176166653275,
+    "ALT (TGP)|2": 6.185176166653275
+   },
+   "G_restaurado": {
+    "ALT (TGP)|1": 6.185176166653275,
+    "ALT (TGP)|2": 6.185176166653275
+   },
+   "trilha": [
+    "AUD-000751-20261111084205 | 2 | 2026-11-11 08:42:05 | 2026-11-11 00:00:00 | 0.36255787037037035 | SISTEMA | CEQ_FORMULA_SOBRESCRITA | edição direta numa coluna de fórmula | aba EQA.CAP_Dados | P2 (|Bias| (%)) = 2,55 | o bias usaria o valor digitado: restaure a fórmula (copie de outra linha da coluna"
+   ]
+  },
+  "O53_ok": true,
+  "O54": {
+   "F_antes": 120.0,
+   "mesmo_valor_trilha": [],
+   "Z4": [
+    null,
+    null
+   ],
+   "Z3_mesmo_valor": "base em dia",
+   "diferente_trilha": [
+    "AUD-000752-20261111084207 | 2 | 2026-11-11 08:42:07 | 2026-11-11 00:00:00 | 0.36258101851851854 | SISTEMA | CEQ_ALTERADO | edição direta na tabela | aba EQA.CAP_Dados | linha 2 (CAP | C-A 2025 | 2025 | ALT (SGPT) | CHM-01) · Seu Resultado: 120 → 121 | falta consolidar (Consolidar na EQA_Base ou ATUALIZAR DADOS) | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Bi"
+   ],
+   "Z3_diferente": "⚠ HÁ EDIÇÃO NÃO CONSOLIDADA — clique em Consolidar na EQA_Base"
+  },
+  "O54_ok": true,
+  "_s": 71.6
+ },
+ "fim_sem_sessao": {
+  "SessaoAtiva_apos_logout": false,
+  "salvar": "ERRO|0|Sessão encerrada: faça o login de novo. Nada foi gravado.",
+  "corrigir_sem_sessao": "OK|547|Gravado fora do bias (sem valor-alvo).",
+  "F_antes_depois": [
+   "110",
+   "115"
+  ],
+  "excluir_sem_sessao": "OK|547|",
+  "A_depois": "",
+  "audit": [
+   "AUD-000753-20261111084207 | 2 | 2026-11-11 08:42:07 | 2026-11-11 00:00:00 | 0.36258101851851854 | SEGURANCA | LOGOUT | mSeguranca | ANALISTA | TESTE_AUDITORIA_R3 | ANALISTA | Vitor Santos da Silva | vitor.santos | SHEM-8932 | Bioquimica_valida.xlsm | 1.0.0-rc1",
+   "AUD-000754-20261111084211 | 2 | 2026-11-11 08:42:11 | 2026-11-11 00:00:00 | 0.3626273148148148 | SISTEMA | CEQ_ALTERADO | CAP | TESTE-AUDITORIA C-A 2025 | 2025 | Protein, total, serum | TA-31 | Seu resultado: 110 → 115 | pela janela | aba EQA.CAP_Dados linha 5",
+   "AUD-000755-20261111084212 | 2 | 2026-11-11 08:42:12 | 2026-11-11 00:00:00 | 0.3626388888888889 | SISTEMA | EQA_BASE_CONSOLIDADA | origem: janela do CEQ (correção) | linhas 546 (CAP 546, Controllab 0, sem analito canônico 20) | incluídas 0 · alteradas 1 · remov",
+   "AUD-000756-20261111084230 | 2 | 2026-11-11 08:42:30 | 2026-11-11 00:00:00 | 0.3628472222222222 | SISTEMA | CEQ_EXCLUIDO | CAP | TESTE-AUDITORIA C-A 2025 | 2025 | Protein, total, serum | TA-31 | valores apagados: Seu resultado 115; SD 2; SDI 5; Limite inferior ",
+   "AUD-000757-20261111084231 | 2 | 2026-11-11 08:42:31 | 2026-11-11 00:00:00 | 0.3628587962962963 | SISTEMA | EQA_BASE_CONSOLIDADA | origem: janela do CEQ (exclusão) | linhas 545 (CAP 545, Controllab 0, sem analito canônico 20) | incluídas 0 · alteradas 0 · remov"
+  ],
+  "abrir": {
+   "caixas": [
+    {
+     "classe": "#32770",
+     "titulo": "Controle externo (CEQ)",
+     "textos": [
+      "OK",
+      "Faça o login para registrar resultados do CEQ."
+     ]
+    }
+   ],
+   "erro_run": null,
+   "segundos": 0.3,
+   "ok": true
+  },
+  "_s": 42.4
+ },
+ "producao_intacta": {
+  "sha_antes": "8b1cda1345d2",
+  "sha_depois": "8b1cda1345d2",
+  "igual": true
+ }
+}
