@@ -1,0 +1,583 @@
+{
+ "produto": "Bioquimica",
+ "quando": "2026-11-11T08:17",
+ "sha_antes": "62c98a500ed0685632e2d7c87e8c0ad136dd8a5ad9aac84a020f42804dab1722",
+ "resumo_atualizar": "Atualização concluída.\r\n\r\nResultados recebidos: 35.466 (novos nesta atualização: 1212)\r\nResultado mais recente recebido: 10/11/2026 10:09\r\nPrincipal - Resultados: 35.466 resultados\r\nQA da integração: 4 erro(s), 132 alerta(s), 12 informativo(s).\r\n• 4 erro(s) de governança: veja a aba QA_INTEGRACAO (ex.: inativação sem motivo, ou ID que não é do analito informado — essa não foi aplicada).\r\n\r\nTempo: origem 2,1s · recebimento 0,8s · cq 6,0s · validar 0,0s · gravar 5,3s · qa 4,9s · motor 76,9s · westgard_fotos 66,46s [RECALC=19/43 MUDANCAS=232]",
+ "segundos": 98,
+ "linhas": [
+  34254,
+  35466
+ ],
+ "status_antes": {
+  "ATIVO": 34187,
+  "IMPLAUSIVEL": 56,
+  "INATIVADO": 11
+ },
+ "status_depois": {
+  "ATIVO": 35323,
+  "LOTE_FORA_DO_CQ": 59,
+  "IMPLAUSIVEL": 43,
+  "LOTE_OUTRO_MATERIAL": 30,
+  "INATIVADO": 11
+ },
+ "participantes_que_mudaram": {
+  "1003106|TNIH": [
+   31,
+   44
+  ],
+  "1003125|TNIH": [
+   29,
+   43
+  ],
+  "4046|FERR": [
+   144,
+   163
+  ],
+  "5659|GLUC": [
+   14,
+   78
+  ],
+  "5659|Glicose": [
+   28,
+   0
+  ],
+  "5659|UCFP": [
+   52,
+   76
+  ],
+  "6353|BUN": [
+   0,
+   2
+  ],
+  "6353|CA": [
+   0,
+   2
+  ],
+  "6353|CL": [
+   0,
+   4
+  ],
+  "6353|CRE2": [
+   0,
+   7
+  ],
+  "6353|Cloro": [
+   4,
+   0
+  ],
+  "6353|Creatinina": [
+   7,
+   0
+  ],
+  "6353|Cálcio": [
+   2,
+   0
+  ],
+  "6353|Fósforo": [
+   7,
+   0
+  ],
+  "6353|K": [
+   0,
+   4
+  ],
+  "6353|NA": [
+   0,
+   4
+  ],
+  "6353|PHOS": [
+   0,
+   7
+  ],
+  "6353|Potássio": [
+   4,
+   0
+  ],
+  "6353|Sódio": [
+   4,
+   0
+  ],
+  "6353|Ureia": [
+   2,
+   0
+  ],
+  "6354|CL": [
+   101,
+   126
+  ],
+  "6354|CRE2": [
+   100,
+   138
+  ],
+  "6354|Cloro": [
+   7,
+   0
+  ],
+  "6354|Creatinina": [
+   6,
+   0
+  ],
+  "6354|Fósforo": [
+   4,
+   0
+  ],
+  "6354|K": [
+   101,
+   126
+  ],
+  "6354|MALB": [
+   116,
+   151
+  ],
+  "6354|NA": [
+   101,
+   126
+  ],
+  "6354|PHOS": [
+   87,
+   122
+  ],
+  "6354|Potássio": [
+   7,
+   0
+  ],
+  "6354|Sódio": [
+   7,
+   0
+  ],
+  "6354|UCFP": [
+   48,
+   70
+  ],
+  "8177|ALT (TGP)": [
+   1,
+   0
+  ],
+  "8177|AST (TGO)": [
+   1,
+   0
+  ],
+  "8177|Albumina": [
+   1,
+   0
+  ],
+  "8177|Amilase": [
+   1,
+   0
+  ],
+  "8177|Bicarbonato": [
+   1,
+   0
+  ],
+  "8177|Bilirrubina direta": [
+   1,
+   0
+  ],
+  "8177|Bilirrubina total": [
+   1,
+   0
+  ],
+  "8177|Capacidade de fixação do ferro": [
+   1,
+   0
+  ],
+  "8177|Cloro": [
+   1,
+   0
+  ],
+  "8177|Colesterol total": [
+   1,
+   0
+  ],
+  "8177|Creatina fosfoquinase": [
+   1,
+   0
+  ],
+  "8177|Creatinina": [
+   1,
+   0
+  ],
+  "8177|Cálcio": [
+   1,
+   0
+  ],
+  "8177|Ferro": [
+   1,
+   0
+  ],
+  "8177|Fosfatase alcalina": [
+   1,
+   0
+  ],
+  "8177|Fósforo": [
+   1,
+   0
+  ],
+  "8177|GGT": [
+   1,
+   0
+  ],
+  "8177|Glicose": [
+   1,
+   0
+  ],
+  "8177|HDL colesterol": [
+   1,
+   0
+  ],
+  "8177|Lactato": [
+   1,
+   0
+  ],
+  "8177|Lactato desidrogenase": [
+   1,
+   0
+  ],
+  "8177|Lipase": [
+   1,
+   0
+  ],
+  "8177|Magnésio": [
+   1,
+   0
+  ],
+  "8177|Potássio": [
+   1,
+   0
+  ],
+  "8177|Proteína total": [
+   1,
+   0
+  ],
+  "8177|Sódio": [
+   1,
+   0
+  ],
+  "8177|Triglicerídeos": [
+   1,
+   0
+  ],
+  "8177|Ureia": [
+   1,
+   0
+  ],
+  "8177|Ácido úrico": [
+   1,
+   0
+  ],
+  "8335|Proteína C-reativa": [
+   2,
+   3
+  ],
+  "8353|AST (TGO)": [
+   1,
+   0
+  ],
+  "8353|Amilase": [
+   1,
+   0
+  ],
+  "8353|Bilirrubina total": [
+   1,
+   0
+  ],
+  "8353|Capacidade de fixação do ferro": [
+   1,
+   0
+  ],
+  "8353|Cloro": [
+   1,
+   0
+  ],
+  "8353|Colesterol total": [
+   1,
+   0
+  ],
+  "8353|Creatina fosfoquinase": [
+   1,
+   0
+  ],
+  "8353|Cálcio": [
+   1,
+   0
+  ],
+  "8353|Ferro": [
+   1,
+   0
+  ],
+  "8353|Fosfatase alcalina": [
+   1,
+   0
+  ],
+  "8353|Fósforo": [
+   1,
+   0
+  ],
+  "8353|GGT": [
+   1,
+   0
+  ],
+  "8353|HDL colesterol": [
+   1,
+   0
+  ],
+  "8353|Magnésio": [
+   1,
+   0
+  ],
+  "8353|Proteína C-reativa": [
+   928,
+   965
+  ],
+  "8353|Proteína total": [
+   1,
+   0
+  ],
+  "8353|Sódio": [
+   1,
+   0
+  ],
+  "8353|Ácido úrico": [
+   1,
+   0
+  ],
+  "8590|Hemoglobina glicada": [
+   412,
+   445
+  ],
+  "8794|ALT (TGP)": [
+   1,
+   0
+  ],
+  "8794|AST (TGO)": [
+   1,
+   0
+  ],
+  "8794|Albumina": [
+   1,
+   0
+  ],
+  "8794|Amilase": [
+   1,
+   0
+  ],
+  "8794|Bicarbonato": [
+   1,
+   0
+  ],
+  "8794|Bilirrubina direta": [
+   1,
+   0
+  ],
+  "8794|Bilirrubina total": [
+   1,
+   0
+  ],
+  "8794|Capacidade de fixação do ferro": [
+   1,
+   0
+  ],
+  "8794|Cloro": [
+   1,
+   0
+  ],
+  "8794|Colesterol total": [
+   1,
+   0
+  ],
+  "8794|Creatina fosfoquinase": [
+   1,
+   0
+  ],
+  "8794|Creatinina": [
+   1,
+   0
+  ],
+  "8794|Cálcio": [
+   1,
+   0
+  ],
+  "8794|Ferro": [
+   1,
+   0
+  ],
+  "8794|Fosfatase alcalina": [
+   1,
+   0
+  ],
+  "8794|Fósforo": [
+   1,
+   0
+  ],
+  "8794|GGT": [
+   2,
+   0
+  ],
+  "8794|Glicose": [
+   1,
+   0
+  ],
+  "8794|HDL colesterol": [
+   1,
+   0
+  ],
+  "8794|Lactato": [
+   1,
+   0
+  ],
+  "8794|Lactato desidrogenase": [
+   1,
+   0
+  ],
+  "8794|Lipase": [
+   1,
+   0
+  ],
+  "8794|Magnésio": [
+   1,
+   0
+  ],
+  "8794|Potássio": [
+   1,
+   0
+  ],
+  "8794|Proteína total": [
+   1,
+   0
+  ],
+  "8794|Sódio": [
+   1,
+   0
+  ],
+  "8794|Triglicerídeos": [
+   1,
+   0
+  ],
+  "8794|Ureia": [
+   1,
+   0
+  ],
+  "8794|Ácido úrico": [
+   1,
+   0
+  ],
+  "8977|ALT (TGP)": [
+   320,
+   345
+  ],
+  "8977|AST (TGO)": [
+   370,
+   395
+  ],
+  "8977|Albumina": [
+   330,
+   355
+  ],
+  "8977|Amilase": [
+   304,
+   331
+  ],
+  "8977|Bicarbonato": [
+   302,
+   329
+  ],
+  "8977|Bilirrubina direta": [
+   296,
+   321
+  ],
+  "8977|Bilirrubina total": [
+   353,
+   384
+  ],
+  "8977|Capacidade de fixação do ferro": [
+   283,
+   313
+  ],
+  "8977|Cloro": [
+   322,
+   349
+  ],
+  "8977|Colesterol total": [
+   322,
+   347
+  ],
+  "8977|Creatina fosfoquinase": [
+   293,
+   320
+  ],
+  "8977|Creatinina": [
+   315,
+   352
+  ],
+  "8977|Cálcio": [
+   307,
+   333
+  ],
+  "8977|Ferro": [
+   285,
+   320
+  ],
+  "8977|Fosfatase alcalina": [
+   297,
+   336
+  ],
+  "8977|Fósforo": [
+   329,
+   354
+  ],
+  "8977|GGT": [
+   293,
+   318
+  ],
+  "8977|Glicose": [
+   313,
+   355
+  ],
+  "8977|HDL colesterol": [
+   309,
+   334
+  ],
+  "8977|Lactato": [
+   326,
+   372
+  ],
+  "8977|Lactato desidrogenase": [
+   295,
+   327
+  ],
+  "8977|Lipase": [
+   306,
+   331
+  ],
+  "8977|Magnésio": [
+   328,
+   369
+  ],
+  "8977|Potássio": [
+   323,
+   350
+  ],
+  "8977|Proteína total": [
+   328,
+   355
+  ],
+  "8977|Sódio": [
+   323,
+   350
+  ],
+  "8977|Triglicerídeos": [
+   306,
+   332
+  ],
+  "8977|Ureia": [
+   355,
+   392
+  ],
+  "8977|Ácido úrico": [
+   308,
+   333
+  ]
+ },
+ "sha_depois": "8b1cda1345d2d6ffca6f3c01f9112081111fe869f9ca494819f087dc8e1828e9",
+ "backup": "_backup_pre_atualizar_2026-11-11_0818"
+}

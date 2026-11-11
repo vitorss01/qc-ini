@@ -1,0 +1,149 @@
+{
+ "produto": "Hematologia",
+ "quando": "2026-11-11T08:20",
+ "sha_antes": "e3efc3c9f42fdf3a2c8527dad77df4198d4fadf71cf1358c7d0cc0df416f66fd",
+ "resumo_atualizar": "Atualização concluída.\r\n\r\nResultados recebidos: 48.081 (novos nesta atualização: 3689)\r\nResultado mais recente recebido: 11/11/2026 08:05\r\nPrincipal - Resultados: 48.081 resultados\r\nQA da integração: 0 erro(s), 589 alerta(s), 34 informativo(s).\r\n\r\nTempo: origem 2,2s · recebimento 1,4s · cq 6,3s · validar 1,5s · gravar 14,8s · qa 8,7s · motor 58,7s · westgard_fotos 46,67s [RECALC=1/9 MUDANCAS=306]",
+ "segundos": 95,
+ "linhas": [
+  44392,
+  48081
+ ],
+ "status_antes": {
+  "ATIVO": 43710,
+  "DUPLICIDADE_ORIGEM": 589,
+  "SEM_VALOR": 93
+ },
+ "status_depois": {
+  "ATIVO": 47399,
+  "DUPLICIDADE_ORIGEM": 589,
+  "SEM_VALOR": 93
+ },
+ "participantes_que_mudaram": {
+  "625311|BASO#": [
+   4,
+   123
+  ],
+  "625311|BASO%": [
+   4,
+   123
+  ],
+  "625311|EO#": [
+   4,
+   123
+  ],
+  "625311|EO%": [
+   4,
+   123
+  ],
+  "625311|HCT": [
+   4,
+   123
+  ],
+  "625311|HGB": [
+   4,
+   123
+  ],
+  "625311|IG#": [
+   4,
+   123
+  ],
+  "625311|IG%": [
+   4,
+   123
+  ],
+  "625311|IPF": [
+   4,
+   123
+  ],
+  "625311|IPF#": [
+   4,
+   123
+  ],
+  "625311|IRF": [
+   4,
+   123
+  ],
+  "625311|LYMPH#": [
+   4,
+   123
+  ],
+  "625311|LYMPH%": [
+   4,
+   123
+  ],
+  "625311|MCH": [
+   4,
+   123
+  ],
+  "625311|MCHC": [
+   4,
+   123
+  ],
+  "625311|MCV": [
+   4,
+   123
+  ],
+  "625311|MONO#": [
+   4,
+   123
+  ],
+  "625311|MONO%": [
+   4,
+   123
+  ],
+  "625311|MPV": [
+   4,
+   123
+  ],
+  "625311|NEUT#": [
+   4,
+   123
+  ],
+  "625311|NEUT%": [
+   4,
+   123
+  ],
+  "625311|NRBC#": [
+   4,
+   123
+  ],
+  "625311|NRBC%": [
+   4,
+   123
+  ],
+  "625311|PLT": [
+   4,
+   123
+  ],
+  "625311|RBC": [
+   4,
+   123
+  ],
+  "625311|RDW-CV": [
+   4,
+   123
+  ],
+  "625311|RDW-SD": [
+   4,
+   123
+  ],
+  "625311|RET#": [
+   4,
+   123
+  ],
+  "625311|RET%": [
+   4,
+   123
+  ],
+  "625311|RET-HE": [
+   4,
+   123
+  ],
+  "625311|WBC": [
+   4,
+   123
+  ]
+ },
+ "sha_depois": "f1907656b663ea6b615b19781c89fb91ebd2e9e4a1d39ffcfbddeb60b873a79c",
+ "backup": "_backup_pre_atualizar_2026-11-11_0821"
+}
