@@ -130,6 +130,7 @@ sozinho), marque ou não **Registrar-LJ** (X vermelho), escreva o **motivo** e c
   valer (Audit_Log: SUBSTITUICAO_POR_MANUAL_ALTERADA).
 - Corrigir depois o valor ou a hora de um manual fica no Audit_Log (RESULTADO_MANUAL_ALTERADO).
 - Manuais antigos (sem SUBSTITUI_ID) continuam como estavam: nada muda no histórico.
+- **Lote de urina (ADR-091/093):** o material é definido pelo **lote**, conforme a tabela de lotes (aba Cfg_Integracao, `tblLotesMaterial`). Se você digitar o manual num lote de URINA escolhendo o analito de soro (ex.: lote 6354 + "Creatinina"), o sistema lança no analito de urina que o equipamento usa (ex.: CRE2). A coluna DETALHE mostra a troca, e o QA registra o I05. Se não houver um analito de urina único para aquele nome, o manual fica fora da estatística (A13): corrija o ANALITO ou o LOTE.
 
 ## 4. Especificações de qualidade (aba Especificações, nos dois QCs)
 
@@ -255,6 +256,7 @@ ficou sem Sigma.
   incerteza não sai. Correção e exclusão: **Corrigir selecionado** / **Excluir selecionado** na mesma janela.
 - **Cadastro:** ETp, CVI e CVG de analito novo e da biblioteca de cada ano (Bioquímica: aba Especificações);
   **Média/DP e anos de referência de cada lote novo** (seção 4b).
+- **Lote novo de urina (ou de outro material):** cadastre-o na `tblLotesMaterial` (aba Cfg_Integracao, regra MATRIZ) **antes** do primeiro uso. Sem a regra, o sufixo digitado no ID da amostra decide o material, e um erro de digitação mistura urina no soro. Use a regra FORA_DO_CQ para um lote digitado errado e a SO_ANALITOS para um lote de um único analito (ex.: PCR).
 - **Investigação do CV:** revisar os IDs de `estudos/cv_suspeitos_<produto>.csv` (relatório
   `estudos/CV_INVESTIGACAO_2026-10-13.md`) e inativar os não conformes com motivo.
 

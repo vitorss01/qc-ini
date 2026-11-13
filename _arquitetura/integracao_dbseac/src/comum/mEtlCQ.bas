@@ -45,7 +45,9 @@ Private Const F_SUBDIG As Long = 45, F_SUBR As Long = 46, F_SUBOK As Long = 47, 
 Private Const F_SUBPOR As Long = 49, F_SUBMOT As Long = 50, F_NOTA As Long = 51, F_SUBIDX As Long = 52
 ' ADR-092 (N-01): manual num lote de regra MATRIZ com analito do catalogo sem de/para nessa matriz
 Private Const F_MZSEM As Long = 53
-Private Const NF As Long = 53
+' ADR-093 (decisao do usuario em 13/11/2026): o mesmo manual, aceito no analito da matriz do lote; guarda o nome digitado
+Private Const F_MZCORR As Long = 54
+Private Const NF As Long = 54
 Private Const SUF_SUB As String = " (este manual nao substitui nada)"
 ' ADR-088 (OC-0004, autorizado pelo usuario em 03/11/2026): resultado de CIQ <= 0 nao participa (mesmo texto do PQ)
 Private Const TXT_IMPLAUSIVEL As String = "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)"
@@ -710,6 +712,14 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
             Case Else
                 ' ADR-082: inativado pelo usuario e substituido continua INATIVADO, com o vinculo; manual: a nota
                 If Not IsEmpty(U(i, F_SUBPOR)) Then out(i, 32) = TextoSubstituido(U, i) Else out(i, 32) = U(i, F_NOTA)
+                ' ADR-093: manual aceito no analito da matriz do lote (mesmo texto do PQ)
+                If Not IsEmpty(U(i, F_MZCORR)) Then
+                    If IsEmpty(out(i, 32)) Then
+                        out(i, 32) = TextoMzCorr(U, i)
+                    Else
+                        out(i, 32) = out(i, 32) & "; " & TextoMzCorr(U, i)
+                    End If
+                End If
         End Select
         If st = "DUPLICIDADE_ORIGEM" Then
             out(i, 33) = U(i, F_DUPDE)
@@ -970,6 +980,35 @@ Private Function ParaOrigem(ByRef DP() As Variant, ByVal nD As Long, ByVal mz As
     Next i
 End Function
 
+' ADR-093: o codigo de origem do analito do catalogo, se for UNICO no de/para (qualquer matriz); senao Empty.
+Private Function CodigoUnicoDoAnalito(ByRef DP() As Variant, ByVal nD As Long, ByVal q As Variant) As Variant
+    Dim i As Long
+    CodigoUnicoDoAnalito = Empty
+    For i = 1 To nD
+        If MesmoValor(DP(i, 3), q) Then
+            If IsEmpty(CodigoUnicoDoAnalito) Then
+                CodigoUnicoDoAnalito = DP(i, 2)
+            ElseIf Not MesmoValor(DP(i, 2), CodigoUnicoDoAnalito) Then
+                CodigoUnicoDoAnalito = Empty: Exit Function
+            End If
+        End If
+    Next i
+End Function
+
+' ADR-093: o interfaceamento ja enviou algum resultado com esse ANALITO_ORIGEM nessa MATRIZ (comparacao binaria, = PQ Mapa)? Function InterfaceUsa(ByRef U() As Variant, ByVal nInterface As Long, ByVal mz As Variant, ByVal cod As Variant) As Boolean
+    Dim i As Long
+    For i = 1 To nInterface
+        If MesmoValor(U(i, F_AO), cod) Then
+            If MesmoValor(U(i, F_MZ), mz) Then InterfaceUsa = True: Exit Function
+        End If
+    Next i Function
+
+' ADR-093: nota do manual aceito no analito da matriz do lote (MOTIVO_EXCLUSAO_AUTOMATICA; mesmo texto do PQ).
+Private Function TextoMzCorr(ByRef U() As Variant, ByVal i As Long) As String
+    TextoMzCorr = "analito '" & U(i, F_MZCORR) & "' digitado num lote de " & U(i, F_MZ) & ": lancado como '" & U(i, F_AN) & _
+                  "' (o analito que o interfaceamento usa nessa matriz; regra MATRIZ da tblLotesMaterial)"
+End Function
+
 ' ---------------------------------------------------------------- resultados manuais (Manuais0, conflitos)
 Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As Variant, ByVal cM As Object, ByVal nMan As Long, _
                             ByRef DP() As Variant, ByVal nD As Long, ByVal cadastrados As Object, ByVal nivelDesc As Object, _
@@ -979,7 +1018,7 @@ Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As 
     Dim eq As Variant, mz As Variant, v As Variant, lt As Variant, nv As Variant, an As Variant, res As Variant
     Dim isnum As Boolean, rtx As Variant, amb As Boolean, vl As Variant, orig As Long, ndesc As Variant, dh As Variant
     Dim reg As Variant, regc As Variant, valido As Boolean, falt As String, ini As Long, subd As Variant
-    Dim mzsem As Boolean
+    Dim mzsem As Boolean, mzcorr As Variant, cod As Variant
     ini = nU + 1
     For L = 1 To nMan
         conta = 0
@@ -1030,6 +1069,19 @@ Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As 
             If orig = 0 And mzLote.Count > 0 And Not IsEmpty(an) And Not IsEmpty(lt) Then
                 If mzLote.Exists(AnKey(lt)) Then mzsem = cadastrados.Exists(an)
             End If
+            ' ADR-093 (decisao do usuario em 13/11/2026): o lote define o material. O manual e aceito no analito que o
+            ' interfaceamento usa nessa matriz -- o codigo de origem UNICO do analito digitado, quando esse codigo nao tem
+            ' de/para na matriz do lote E o equipamento ja enviou resultado com ele nessa matriz (o nome com que o resultado
+            ' chega). Codigo ambiguo ou nunca recebido nessa matriz (ex.: analito digitado errado): continua recusado.
+            mzcorr = Empty
+            If mzsem Then
+                cod = CodigoUnicoDoAnalito(DP, nD, an)
+                If Not IsEmpty(cod) Then
+                    If IsEmpty(ParaQcini(DP, nD, mz, cod)) Then
+                        If InterfaceUsa(U, nInterface, mz, cod) Then mzcorr = an: an = cod: mzsem = False
+                    End If
+                End If
+            End If
             If IsEmpty(nv) Then
                 ndesc = Empty
             ElseIf nivelDesc.Exists(KDup(nv)) Then
@@ -1064,6 +1116,7 @@ Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As 
             nU = nU + 1
             U(nU, F_ID) = IIf(valido, idn, "MAN_INVALIDO_L" & L)
             If mzsem Then U(nU, F_MZSEM) = True
+            U(nU, F_MZCORR) = mzcorr
             U(nU, F_IDO) = Empty: U(nU, F_IDDIG) = idn
             U(nU, F_EQ) = eq: U(nU, F_MZ) = mz
             If orig > 0 Then U(nU, F_BL) = DP(orig, 4) Else U(nU, F_BL) = Empty

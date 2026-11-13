@@ -626,7 +626,9 @@ Private Sub Registrar(ByVal id As String, ByVal a As String, ByVal b As String, 
     ' depois passa a ATIVO ganha o INCLUIDO nessa hora (antes: RESULTADO_MANUAL_STATUS).
     If manB And Not manA Then
         JuntarAcao acao, AcaoManualNovo(ParteEstado(b, "MANUAL:"))
-        If AcaoManualNovo(ParteEstado(b, "MANUAL:")) <> "RESULTADO_MANUAL_INCLUIDO" And Len(CStr(x(10))) > 0 Then _
+        ' ADR-093: a troca do analito pela matriz do lote vai para a trilha tambem quando o manual e INCLUIDO
+        If Len(CStr(x(10))) > 0 And (AcaoManualNovo(ParteEstado(b, "MANUAL:")) <> "RESULTADO_MANUAL_INCLUIDO" Or _
+                InStr(1, CStr(x(10)), "(o analito que o interfaceamento usa nessa matriz; regra MATRIZ da tblLotesMaterial)", vbBinaryCompare) > 0) Then _
             nota = nota & IIf(Len(nota) > 0, " | ", "") & CStr(x(10))
         If Len(quem) > 0 Then nota = nota & IIf(Len(nota) > 0, " | ", "") & quem
     End If

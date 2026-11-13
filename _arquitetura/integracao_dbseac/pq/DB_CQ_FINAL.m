@@ -266,16 +266,27 @@ let
             mz = MatrizLote(lt, Txt([MATRIZ]) ?? C[MATRIZ_PADRAO]),        // ADR-091: regra MATRIZ do lote
             lt = let v = [LOTE] in if v is number then Number.ToText(v, "0") else Txt(v),
             nv = try Int64.From([NIVEL]) otherwise null,
-            an = Txt([ANALITO]),
+            an0 = Txt([ANALITO]),
             // D07: texto com ponto e sem virgula ("1.5") e AMBIGUO em pt-BR (ponto = milhar: viraria 15) -- nunca converte
             rtx = if [RESULTADO] is number then null else Txt([RESULTADO]),
             amb = rtx <> null and Text.Contains(rtx, ".") and not Text.Contains(rtx, ","),
             vl = if amb then null
                  else try (if [RESULTADO] is number then [RESULTADO] else Number.FromText(Text.Trim(Text.From([RESULTADO])), "pt-BR")) otherwise null,
-            orig = ParaOrigem(mz, an),
+            orig = ParaOrigem(mz, an0),
             // ADR-092 (N-01): lote de regra MATRIZ e analito do catalogo sem de/para nessa matriz (= mEtlCQ, F_MZSEM)
-            mzsem = orig = null and an <> null and lt <> null and List.Contains(Cadastrados, an)
+            mzsem0 = orig = null and an0 <> null and lt <> null and List.Contains(Cadastrados, an0)
                     and (let k = AnKey(lt) in k <> null and Record.HasFields(MzLote, k)),
+            // ADR-093 (decisao do usuario em 13/11/2026): aceito no analito que o interfaceamento usa na matriz do lote --
+            // o codigo de origem UNICO do analito digitado, sem de/para nessa matriz (= mEtlCQ.CodigoUnicoDoAnalito)
+            cod = if not mzsem0 then null else
+                  let cs = List.Distinct(Table.SelectRows(DP, each [ANALITO_QCINI] = an0)[ANALITO_ORIGEM])
+                  in if List.Count(cs) = 1 then cs{0} else null,
+            // e so se o equipamento ja enviou esse codigo nessa matriz (Mapa = pares MATRIZ x ANALITO_ORIGEM recebidos;
+            // = mEtlCQ.InterfaceUsa); senao (ex.: analito digitado errado) continua recusado
+            corr = cod <> null and ParaQcini(mz, cod) = null
+                   and Table.MatchesAnyRows(Mapa, each [MATRIZ] = mz and [ANALITO_ORIGEM] = cod),
+            an = if corr then cod else an0,
+            mzsem = mzsem0 and not corr,
             nd = let p = List.PositionOf(NivelDesc[NIVEL], nv) in if p >= 0 then NivelDesc{p}[NIVEL_DESC] else (if nv = null then null else Text.From(nv)),
             dh = if dt = null or hr = null then null else DateTime.From(dt) + (hr - #time(0, 0, 0)),
             // gate 4.4 (data futura): o resultado nao pode ser posterior ao proprio
@@ -306,13 +317,14 @@ let
             ANALITO_QCINI = if List.Contains(Cadastrados, an) then an else null, ANALITO = an,
             ORIGEM_RESULTADO = "MANUAL", _LINHA_MANUAL = [_LINHA_MANUAL],
             _MANUAL_FALTA = Text.Combine(List.Transform(faltando, each _{0}), ", "),
-            MOTIVO_MANUAL = mot, USUARIO_MANUAL = Txt([USUARIO]), _SUBST_DIG = sid, _MZSEM = mzsem
+            MOTIVO_MANUAL = mot, USUARIO_MANUAL = Txt([USUARIO]), _SUBST_DIG = sid, _MZSEM = mzsem,
+            _MZCORR = if corr then an0 else null                                    // ADR-093
         ]),
     // lista de colunas explicita: sem linha manual, a tabela vazia ainda tem as colunas
     ColsManual = {"ID_REGISTRO", "ID_ORIGEM", "EQUIPAMENTO", "MATRIZ", "BLOCO", "LOTE", "NIVEL", "NIVEL_DESC",
                   "DATA", "DATA_HORA", "ANALITO_ORIGEM", "PRIMEIRO_DO_DIA", "VALOR", "FLAG", "UNIDADE", "ID_AMOSTRA", "ITEM_ID",
                   "RECEBIDO_EM", "ANALITO_QCINI", "ANALITO", "ORIGEM_RESULTADO", "_LINHA_MANUAL", "_MANUAL_FALTA",
-                  "MOTIVO_MANUAL", "USUARIO_MANUAL", "ID_DIGITADO", "_SUBST_DIG", "_MZSEM"},
+                  "MOTIVO_MANUAL", "USUARIO_MANUAL", "ID_DIGITADO", "_SUBST_DIG", "_MZSEM", "_MZCORR"},
     Manuais0 = Table.FromRecords(M2[_r], ColsManual, MissingField.UseNull),
     // ID repetido entre manuais: vale a 1a linha; as seguintes ganham sufixo ~L<n>
     // (o ID_REGISTRO da DB_CQ_FINAL e UNICO sempre) e viram CONFLITO_MANUAL
@@ -440,7 +452,7 @@ let
               "DATA", "DATA_HORA", "ANALITO", "ANALITO_ORIGEM", "ANALITO_QCINI", "PRIMEIRO_DO_DIA", "VALOR", "FLAG", "UNIDADE",
               "ID_AMOSTRA", "ITEM_ID", "RECEBIDO_EM", "ORIGEM_RESULTADO", "_LINHA_MANUAL",
               "_DUP", "_ID_DUP_DE", "_MANUAL_FALTA", "_conf", "MOTIVO_MANUAL", "USUARIO_MANUAL",
-              "_SUBST_DIG", "_SUBOK", "_NOTA", "_S_MAN", "_S_MOT", "_S_FORA", "_MZSEM"},        // ADR-082, ADR-092
+              "_SUBST_DIG", "_SUBOK", "_NOTA", "_S_MAN", "_S_MOT", "_S_FORA", "_MZSEM", "_MZCORR"}, // ADR-082, ADR-092, ADR-093
     // Buffer: o UNICO buffer largo. U alimenta a corrida (tabela estreita) e a
     // saida; sem ele a uniao (leitura + duplicidade) seria avaliada duas vezes.
     U = Table.Buffer(Table.Combine({
@@ -518,7 +530,12 @@ let
                      else if st = "LOTE_OUTRO_MATERIAL" and mzUsado then "manual com analito do catalogo sem cadastro na matriz do lote (regra MATRIZ da tblLotesMaterial; fora da estatistica e do grafico)"
                      else if st = "LOTE_OUTRO_MATERIAL" then "lote de outro material neste analito (regra SO_ANALITOS da tblLotesMaterial; fora da estatistica e do grafico)"
                      else if subst then txtSubst              // inativado pelo usuario: continua INATIVADO, com o vinculo
-                     else [_NOTA]                            // manual ATIVO/INATIVADO: nota do SUBSTITUI_ID (ou nada)
+                     // manual ATIVO/INATIVADO: nota do SUBSTITUI_ID (ou nada) e, ADR-093, a do analito aceito pela matriz do lote
+                     else let n = [_NOTA],
+                              c = if [_MZCORR] = null then null
+                                  else "analito '" & [_MZCORR] & "' digitado num lote de " & ([MATRIZ] ?? "") & ": lancado como '" &
+                                       ([ANALITO] ?? "") & "' (o analito que o interfaceamento usa nessa matriz; regra MATRIZ da tblLotesMaterial)"
+                          in if c = null then n else if n = null then c else n & "; " & c
         in [
             STATUS_ANALITICO = st,
             PARTICIPA_ESTATISTICA = if st = "ATIVO" then SIM else NAO,

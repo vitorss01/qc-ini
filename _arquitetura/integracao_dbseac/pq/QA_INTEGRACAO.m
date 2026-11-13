@@ -9,7 +9,7 @@
 //  Le as tabelas JA carregadas (tblCQ_Final e as de entrada) -- roda depois do
 //  DB_CQ_FINAL e nao refaz nenhuma regra: so CONFERE o que ele decidiu.
 //  Unica releitura da origem: A03, que compara o recebido com o DB_SEAC atual.
-//  30 codigos: E01-E12, A01-A14, I01-I04 (ADR-082: E12 SUBSTITUI_ID invalido; I04 substituido por manual;
+//  31 codigos: E01-E12, A01-A14, I01-I05 (ADR-082: E12 SUBSTITUI_ID invalido; I04 substituido por manual;
 //  ADR-088: A11 resultado <= 0 fora da estatistica; A12 mais de um participante na mesma corrida e nivel;
 //  ADR-091: A13 resultado fora do CQ pela regra do lote; A14 linha da tblLotesMaterial ignorada ou suspeita).
 // =====================================================================
@@ -419,8 +419,15 @@ let
             Table.SelectColumns(LMv, {"_linha", "LOTE", "_R", "_msg"}),
             each "linha " & Text.From(_[_linha]) & " (lote " & (Txt(_[LOTE]) ?? "?") & ", regra " & (_[_R] ?? "?") & "): " & _[_msg]),
 
+    // I05 (ADR-093) -- manual aceito no analito que o interfaceamento usa na matriz do lote; um achado por ID
+    I05 = Achado("INFO", "I05", "Manual aceito no analito da matriz do lote (tblLotesMaterial)",
+            Table.SelectRows(F, each Text.Contains(Txt([MOTIVO_EXCLUSAO_AUTOMATICA]) ?? "",
+                "(o analito que o interfaceamento usa nessa matriz; regra MATRIZ da tblLotesMaterial)")),
+            each "lote " & (Txt(_[LOTE]) ?? "?") & ": " & Txt(_[MOTIVO_EXCLUSAO_AUTOMATICA]) &
+                 ". Confira o lancamento: se o material nao for o do lote, corrija o LOTE ou o ANALITO do manual."),
+
     Tudo = Table.Combine({E01, E02, E03, E04, E05, E06, E07, E08, E09, E10, E11, E12, A01, A02, A03, A04, A05, A06, A07, A08, A09, A10,
-                          A11, A12, A13, A14, I01, I02, I03, I04}),
+                          A11, A12, A13, A14, I01, I02, I03, I04, I05}),
     Peso = (s as text) as number => if s = "ERRO" then 1 else if s = "ALERTA" then 2 else 3,
     Ordenado = Table.Sort(Tudo, {{each Peso([SEVERIDADE]), Order.Ascending}, {"CODIGO", Order.Ascending}, {"DATA_HORA", Order.Ascending}}),
     Tipos = Table.TransformColumnTypes(Ordenado, {{"SEVERIDADE", type text}, {"CODIGO", type text}, {"TESTE", type text},

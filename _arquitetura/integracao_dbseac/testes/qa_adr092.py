@@ -5,8 +5,9 @@ Roda numa COPIA instalada (instalar_adr092.py); nada e salvo. Dados de teste com
 Uso: python qa_adr092.py <Bioquimica|Hematologia> <copia_instalada.xlsm> <saida.json>
 
   K01 N-01: manual num lote com regra MATRIZ (lote de teste, matriz URINA) e analito do catalogo -> o status e o da
-      varredura independente (Bio: LOTE_OUTRO_MATERIAL com o texto proprio e A13; Hema: o de/para nao tem matriz, entao
-      ATIVO); o mesmo lote com um nome FORA do catalogo nao vira LOTE_*; o mesmo analito num lote comum fica ATIVO
+      varredura independente (ADR-093: codigo de origem unico, sem de/para em URINA e ja recebido em URINA -> ATIVO nesse
+      codigo, com a nota e o I05; senao LOTE_OUTRO_MATERIAL com o texto proprio e A13; Hema: o de/para nao tem matriz,
+      entao ATIVO); o mesmo lote com um nome FORA do catalogo nao vira LOTE_*; o mesmo analito num lote comum fica ATIVO
   K02 N-02: sem login, CorrigirCEQ e ExcluirCEQ devolvem "ERRO|0|Sessão encerrada…" e nada muda (tabela e Audit_Log)
   K03 N-03: manual IMPLAUSIVEL (-1) e o LOTE_* do K01 -> trilha RESULTADO_MANUAL_FORA_DA_ESTATISTICA, nunca INCLUIDO
   K04 OC-0043: cada status de J7:J9 (as formas curtas da formula + OK/ALERTA/REJEITADO) cabe com reducao <= 30 % na
@@ -35,6 +36,8 @@ import auditoria_abas  # noqa: E402
 TAG = 'TESTE-ADR092'
 NAO = 'NÃO'
 LOTE_T = 'QA092U'
+TXT_MZCORR = ("analito '%s' digitado num lote de URINA: lancado como '%s' (o analito que o interfaceamento usa nessa "
+              "matriz; regra MATRIZ da tblLotesMaterial)")                               # ADR-093, = mEtlCQ / DB_CQ_FINAL
 TXT_MZSEM = ('manual com analito do catalogo sem cadastro na matriz do lote (regra MATRIZ da tblLotesMaterial; '
              'fora da estatistica e do grafico)')
 SESSAO = 'ERRO|0|Sessão encerrada'
@@ -92,6 +95,8 @@ def executar(produto, caminho, saida):
         fin0 = q.ler('tblCQ_Final')
         dp = q.ler('tblDeParaAnalitos')
         linhas_dp = [(txt(r.get('MATRIZ')), txt(r.get('ANALITO_QCINI'))) for r in dp if txt(r.get('ANALITO_ORIGEM'))]
+        trios_dp = [(txt(r.get('MATRIZ')), txt(r.get('ANALITO_QCINI')), txt(r.get('ANALITO_ORIGEM')))
+                    for r in dp if txt(r.get('ANALITO_ORIGEM'))]
         cat = {a for _, a in linhas_dp if a}
         reais = sorted([r for r in fin0 if r['STATUS_ANALITICO'] == 'ATIVO' and r['ORIGEM_RESULTADO'] == 'INTERFACEAMENTO'
                         and txt(r['ANALITO']) in cat and isinstance(r['DATA_HORA'], dt.datetime)
@@ -102,6 +107,19 @@ def executar(produto, caminho, saida):
         an = txt(T['ANALITO'])
         mapeado_urina = any(a == an and (not m or m.upper() == 'URINA') for m, a in linhas_dp)
         esp_m1 = 'ATIVO' if mapeado_urina else 'LOTE_OUTRO_MATERIAL'
+        # ADR-093 (decisao do usuario em 13/11/2026): codigo de origem UNICO do analito e sem de/para em URINA -> o manual
+        # e aceito nesse codigo (o nome com que o resultado de urina chega do equipamento). Oraculo independente.
+        cod_m1 = None
+        if not mapeado_urina:
+            cods = {o for _, a, o in trios_dp if a == an}
+            # = ParaQcini (1a linha que casa; QCINI vazio = nada) e o codigo ja recebido do equipamento em URINA
+            recebidos_urina = {txt(r.get('ANALITO_ORIGEM')) for r in fin0 if r.get('ORIGEM_RESULTADO') == 'INTERFACEAMENTO'
+                               and txt(r.get('MATRIZ')).upper() == 'URINA'}
+            if len(cods) == 1:
+                c_ = next(iter(cods))
+                pq_ = next((q_ or None for m_, q_, o in trios_dp if o == c_ and (not m_ or m_.upper() == 'URINA')), None)
+                if pq_ is None and c_ in recebidos_urina:
+                    cod_m1, esp_m1 = c_, 'ATIVO'
         # regra MATRIZ de teste (acrescentada as reais)
         lo_lm = q.lo('tblLotesMaterial')
         ws_lm = lo_lm.Parent
@@ -142,12 +160,21 @@ def executar(produto, caminho, saida):
         a13 = {txt(x.get('ID_REGISTRO')) for x in qa1 if x.get('CODIGO') == 'A13'}
         ok1 = (r_at.startswith('OK|') and st['M1'] == esp_m1 and st['M2'] not in ('LOTE_OUTRO_MATERIAL', 'LOTE_FORA_DO_CQ')
                and st['M3'] in ('ATIVO', 'CONFLITO_MANUAL') and st['M4'] == 'IMPLAUSIVEL')
+        i05 = {txt(x.get('ID_REGISTRO')): txt(x.get('DETALHE')) for x in qa1 if x.get('CODIGO') == 'I05'}
         if esp_m1 == 'LOTE_OUTRO_MATERIAL':
             ok1 = ok1 and m['M1']['PARTICIPA_ESTATISTICA'] == NAO and m['M1']['TIPO_PLOTAGEM_LJ'] == 'NAO_PLOTAR' \
                 and txt(m['M1']['MOTIVO_EXCLUSAO_AUTOMATICA']) == TXT_MZSEM and 'MAN_9921' in a13
-        reg('K01 N-01: manual no lote de regra MATRIZ URINA com analito do catálogo -> %s (varredura independente do '
-            'de/para); nome fora do catálogo no mesmo lote não vira LOTE_*; o analito num lote comum participa'
-            % esp_m1, ok1, {'analito': an, 'mapeado_em_URINA': mapeado_urina, 'status': st, 'A13_M1': 'MAN_9921' in a13,
+        elif cod_m1:                                                     # ADR-093
+            mot1 = txt(m['M1']['MOTIVO_EXCLUSAO_AUTOMATICA'])
+            ok1 = ok1 and txt(m['M1']['ANALITO']) == cod_m1 and m['M1']['PARTICIPA_ESTATISTICA'] != NAO \
+                and txt(m['M1']['MATRIZ']).upper() == 'URINA' and mot1 == TXT_MZCORR % (an, cod_m1) \
+                and 'MAN_9921' not in a13 and 'MAN_9921' in i05 and mot1 in i05.get('MAN_9921', '')
+        reg('K01 N-01/ADR-093: manual no lote de regra MATRIZ URINA com analito do catálogo -> %s (varredura independente '
+            'do de/para; código de origem único = aceito nesse código, com I05); nome fora do catálogo no mesmo lote não '
+            'vira LOTE_*; o analito num lote comum participa'
+            % (esp_m1 + (f' como {cod_m1}' if cod_m1 else '')), ok1,
+            {'analito': an, 'codigo_ADR093': cod_m1, 'analito_M1': txt((m['M1'] or {}).get('ANALITO')),
+             'I05_M1': i05.get('MAN_9921'), 'mapeado_em_URINA': mapeado_urina, 'status': st, 'A13_M1': 'MAN_9921' in a13,
                            'motivo_M1': txt((m['M1'] or {}).get('MOTIVO_EXCLUSAO_AUTOMATICA')), 'atualizar': r_at[:80]})
         tr = aud(a1)
         acoes = {k: sorted({a for a, det in tr if c['ID_REGISTRO'] in det and a.startswith('RESULTADO_MANUAL')})

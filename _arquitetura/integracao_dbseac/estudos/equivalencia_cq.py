@@ -243,9 +243,10 @@ def conferir_adr088(cab, dados):
 
 # ADR-091: regras gravadas pela fixture (todas as linhas da tblLotesMaterial), o inativado do lote FORA_DO_CQ, o que cada
 # manual deve dar e os textos do A14 -- conferidos em conferir_adr091 e no equivalencia_qa
-ADR091 = {'regras': [], 'inat': None, 'manuais': {}, 'a14': [], 'depara': []}
+ADR091 = {'regras': [], 'inat': None, 'manuais': {}, 'a14': [], 'depara': [], 'origem': []}
 TXT_MZSEM = ('manual com analito do catalogo sem cadastro na matriz do lote (regra MATRIZ da tblLotesMaterial; '
              'fora da estatistica e do grafico)')                          # ADR-092 (N-01), = mEtlCQ / DB_CQ_FINAL
+TXT_MZCORR_MARCA = '(o analito que o interfaceamento usa nessa matriz; regra MATRIZ da tblLotesMaterial)'   # ADR-093
 MZ_TESTE_091 = 'TESTE-ADR091'
 LOTE_ST = ('LOTE_FORA_DO_CQ', 'LOTE_OUTRO_MATERIAL')
 PRECEDE_091 = ('MANUAL_INCOMPLETO', 'DUPLICIDADE_ORIGEM', 'CONFLITO_MANUAL', 'SUBSTITUIDO_MANUAL', 'SEM_DATA_HORA',
@@ -291,6 +292,11 @@ def fixture_adr091(q, cab, d, reais_usados, manuais_usados):
                if any(t.Name == 'tblDeParaAnalitos' for t in ws.ListObjects))
     hdp = [str(c.Name) for c in ldp.ListColumns]
     ADR091['depara'] = [(str(r[hdp.index('MATRIZ')] or '').strip().upper(), str(r[hdp.index('ANALITO_QCINI')] or '').strip())
+                        for r in (ldp.DataBodyRange.Value if ldp.ListRows.Count else ())
+                        if str(r[hdp.index('ANALITO_ORIGEM')] or '').strip()]
+    # ADR-093: (MATRIZ, ANALITO_QCINI, ANALITO_ORIGEM) -- o manual N-01 com codigo de origem unico e aceito nesse codigo
+    ADR091['origem'] = [(str(r[hdp.index('MATRIZ')] or '').strip().upper(), str(r[hdp.index('ANALITO_QCINI')] or '').strip(),
+                         str(r[hdp.index('ANALITO_ORIGEM')] or '').strip())
                         for r in (ldp.DataBodyRange.Value if ldp.ListRows.Count else ())
                         if str(r[hdp.index('ANALITO_ORIGEM')] or '').strip()]
     reais = [[r[hc.index(c)] for c in ('LOTE', 'REGRA', 'MATRIZ', 'ANALITOS', 'NOTA')] for r in corpo
@@ -368,9 +374,42 @@ def fixture_adr091(q, cab, d, reais_usados, manuais_usados):
     r_b = next(r for r in intf if _up(col(r, 'LOTE')) == L_so and col(r, 'ANALITO') == B)
     r_mz = next(r for r in intf if _up(col(r, 'LOTE')) == L_mz)
     manuais = [man(61, x_in), man(62, r_b), man(63, r_b, ANALITO=A), man(64, r_mz), man(65, x_in, RESULTADO=-1)]
+    # ADR-093: manual no lote MATRIZ com um analito do catalogo cujo codigo de origem e UNICO, sem de/para na matriz do
+    # teste e JA RECEBIDO nela (o lote L_mz inteiro passa para a matriz do teste) -> aceito nesse codigo (ATIVO). E um
+    # analito do catalogo cujo codigo nunca chegou nessa matriz -> continua recusado (ADR-092). Oraculo independente.
+    esp_mz = {'MAN_0064': 'matriz'}
+
+    def cod_unico(a_):
+        cods = {o_ for _, q_, o_ in ADR091['origem'] if q_ == a_}
+        return next(iter(cods)) if len(cods) == 1 else None
+
+    def para_qcini(mz_, cod_):                       # = ParaQcini: a 1a linha que casa; QCINI vazio = nada
+        for m_, q_, o_ in ADR091['origem']:
+            if o_ == cod_ and (not m_ or m_ == mz_):
+                return q_ or None
+        return None
+
+    def n01(a_, mz_):
+        return a_ in {q_ for _, q_, _ in ADR091['origem'] if q_} and not any(
+            q_ == a_ and (not m_ or m_ == mz_) for m_, q_, _ in ADR091['origem'])
+
+    recebidos = {str(col(r, 'ANALITO_ORIGEM') or '').strip() for r in d if _up(col(r, 'LOTE')) == L_mz
+                 and col(r, 'ORIGEM_RESULTADO') == 'INTERFACEAMENTO'}
+    a66 = str(col(r_mz, 'ANALITO') or '').strip()
+    c66 = cod_unico(a66) if n01(a66, MZ_TESTE_091) else None
+    if c66 and para_qcini(MZ_TESTE_091, c66) is None and c66 in recebidos:
+        dh66 = col(r_mz, 'DATA_HORA').replace(tzinfo=None)
+        manuais.append(man(66, r_mz, ANALITO=a66, HORA=f'{(dh66.hour + 12) % 24:02d}:07'))   # longe do automatico
+        esp_mz['MAN_0066'] = 'corrigido:' + c66
+    for a67 in sorted({q_ for _, q_, _ in ADR091['origem'] if q_}):
+        c67 = cod_unico(a67)
+        if n01(a67, MZ_TESTE_091) and (c67 is None or c67 not in recebidos):
+            manuais.append(man(67, r_mz, ANALITO=a67))
+            esp_mz['MAN_0067'] = 'LOTE_OUTRO_MATERIAL'                   # ADR-092: recusado (conferido o TXT_MZSEM)
+            break
     ADR091.update(regras=todas, inat=col(x_in, 'ID_REGISTRO'), lotes={'SO_ANALITOS': L_so, 'FORA_DO_CQ': L_fora, 'MATRIZ': L_mz},
                   manuais={'MAN_0061': 'LOTE_FORA_DO_CQ', 'MAN_0062': 'LOTE_OUTRO_MATERIAL', 'MAN_0063': 'nao_lote',
-                           'MAN_0064': 'matriz', 'MAN_0065': 'LOTE_FORA_DO_CQ'},   # MAN_0064: + o status do N-01 (ADR-092), no laco
+                           'MAN_0065': 'LOTE_FORA_DO_CQ', **esp_mz},   # MAN_0064: + o status do N-01 (ADR-092), no laco
                   a14=sorted(f'linha {n0 + k} (lote {lt or "?"}, regra {rg}): {m}' for k, (_, lt, rg, m) in enumerate(inval, 1)))
     return {'inat': [{'ID_REGISTRO': col(x_in, 'ID_REGISTRO'), 'ANALITO': col(x_in, 'ANALITO'), 'REGISTRAR - LJ': True,
                       'MOTIVO': 'QA adr091 inativado num lote FORA_DO_CQ', 'USUARIO': 'QA'}],
@@ -412,6 +451,14 @@ def conferir_adr091(cab, dados):
     for m, e in ADR091['manuais'].items():
         r = por_id.get(m)
         st = None if r is None else v(r, 'STATUS_ANALITICO')
+        if e.startswith('corrigido:'):                                     # ADR-093
+            mot = str(v(r, 'MOTIVO_EXCLUSAO_AUTOMATICA') or '') if r is not None else ''
+            ok = (r is not None and st == 'ATIVO' and v(r, 'PARTICIPA_ESTATISTICA') == 'SIM'
+                  and str(v(r, 'ANALITO')) == e.split(':', 1)[1] and _up(v(r, 'MATRIZ')) == MZ_TESTE_091
+                  and TXT_MZCORR_MARCA in mot and f"lancado como '{e.split(':', 1)[1]}'" in mot)
+            if not ok:
+                falhas.append(f'{m}: {st} {None if r is None else (v(r, "ANALITO"), mot)} (esperado {e})')
+            continue
         ok = r is not None and (st == e if e in LOTE_ST else st not in LOTE_ST if e == 'nao_lote'
                                 else _up(v(r, 'MATRIZ')) == MZ_TESTE_091)
         if not ok:

@@ -2,7 +2,7 @@ Attribute VB_Name = "mEtlQA"
 ' ============================================================================
 '  mEtlQA -- conferencia da integracao (tblQA_Integracao) em VBA (ADR-079)
 '
-'  Porte de pq/QA_INTEGRACAO.m (30 codigos: E01-E12, A01-A14, I01-I04), com as mesmas regras e os mesmos textos.
+'  Porte de pq/QA_INTEGRACAO.m (31 codigos: E01-E12, A01-A14, I01-I05), com as mesmas regras e os mesmos textos.
 '  ADR-088: A11 (resultado <= 0, IMPLAUSIVEL) e A12 (mais de um participante na mesma corrida e nivel, sem caixa).
 '  ADR-091: A13 (LOTE_FORA_DO_CQ / LOTE_OUTRO_MATERIAL, um por ID) e A14 (linha da tblLotesMaterial ignorada ou
 '  suspeita; o texto vem do mEtlCQ.LerLotesMaterial, a mesma leitura do calculo).
@@ -20,6 +20,8 @@ Option Compare Binary
 
 Private Const SIM As String = "SIM"
 Private Const NAO As String = "NÃO"
+' ADR-093: marca do MOTIVO_EXCLUSAO_AUTOMATICA do manual aceito no analito da matriz do lote (I05; mesmo texto do PQ)
+Private Const TXT_I05_MARCA As String = "(o analito que o interfaceamento usa nessa matriz; regra MATRIZ da tblLotesMaterial)"
 
 ' colunas da tblCQ_Final (ordem de mEtlCQ.NomesColunas)
 Private Const Q_ID As Long = 1, Q_OR As Long = 2, Q_EQ As Long = 4, Q_MZ As Long = 5, Q_DT As Long = 7, Q_DH As Long = 9
@@ -728,6 +730,15 @@ proxR:
     For Each k In mEtlCQ.LerLotesMaterial()
         Achado "ALERTA", "A14", "Regra de lote da tblLotesMaterial ignorada ou suspeita", Empty, Empty, Empty, Empty, k
     Next k
+
+    ' ---- I05 (ADR-093): manual aceito no analito que o interfaceamento usa na matriz do lote, um achado por ID
+    For i = 1 To nF
+        If InStr(1, CStr(F(i, Q_MOTEX)), TXT_I05_MARCA, vbBinaryCompare) > 0 Then
+            Achado "INFO", "I05", "Manual aceito no analito da matriz do lote (tblLotesMaterial)", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), _
+                F(i, Q_DH), "lote " & TxtOu(F(i, Q_LT), "?") & ": " & CStr(F(i, Q_MOTEX)) & _
+                ". Confira o lancamento: se o material nao for o do lote, corrija o LOTE ou o ANALITO do manual."
+        End If
+    Next i
 
     MarcaQ "resto"
     CalcularQA = Ordenar()
