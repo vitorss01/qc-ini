@@ -982,26 +982,29 @@ End Function
 
 ' ADR-093: o codigo de origem do analito do catalogo, se for UNICO no de/para (qualquer matriz); senao Empty.
 Private Function CodigoUnicoDoAnalito(ByRef DP() As Variant, ByVal nD As Long, ByVal q As Variant) As Variant
-    Dim i As Long
-    CodigoUnicoDoAnalito = Empty
+    Dim i As Long, c As Variant                    ' local: ler o nome da funcao seria chamada recursiva
+    c = Empty
     For i = 1 To nD
         If MesmoValor(DP(i, 3), q) Then
-            If IsEmpty(CodigoUnicoDoAnalito) Then
-                CodigoUnicoDoAnalito = DP(i, 2)
-            ElseIf Not MesmoValor(DP(i, 2), CodigoUnicoDoAnalito) Then
+            If IsEmpty(c) Then
+                c = DP(i, 2)
+            ElseIf Not MesmoValor(DP(i, 2), c) Then
                 CodigoUnicoDoAnalito = Empty: Exit Function
             End If
         End If
     Next i
+    CodigoUnicoDoAnalito = c
 End Function
 
-' ADR-093: o interfaceamento ja enviou algum resultado com esse ANALITO_ORIGEM nessa MATRIZ (comparacao binaria, = PQ Mapa)? Function InterfaceUsa(ByRef U() As Variant, ByVal nInterface As Long, ByVal mz As Variant, ByVal cod As Variant) As Boolean
+' ADR-093: o interfaceamento ja enviou algum resultado com esse ANALITO_ORIGEM nessa MATRIZ (comparacao binaria, = PQ Mapa)?
+Private Function InterfaceUsa(ByRef U() As Variant, ByVal nInterface As Long, ByVal mz As Variant, ByVal cod As Variant) As Boolean
     Dim i As Long
     For i = 1 To nInterface
         If MesmoValor(U(i, F_AO), cod) Then
             If MesmoValor(U(i, F_MZ), mz) Then InterfaceUsa = True: Exit Function
         End If
-    Next i Function
+    Next i
+End Function
 
 ' ADR-093: nota do manual aceito no analito da matriz do lote (MOTIVO_EXCLUSAO_AUTOMATICA; mesmo texto do PQ).
 Private Function TextoMzCorr(ByRef U() As Variant, ByVal i As Long) As String

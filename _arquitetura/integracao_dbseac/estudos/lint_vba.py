@@ -48,6 +48,24 @@ def checar(caminho):
     t = re.sub(r'(?ms)^\s*#Else\b.*?^\s*#End If\b', '', t)
     mod = nomes_modulo(t)
     problemas = []
+    # 13/11/2026 (ADR-093): cada Function/Sub/Property abre e fecha uma vez, sem aninhar (uma edicao quebrada juntou a
+    # declaracao a um comentario e trocou "End Function" por "Next i Function": o VBA nao compilou e o lint nao viu)
+    aberto = None
+    for n_, linha in enumerate(t.split('\n'), 1):
+        limpa = re.sub(r"'.*$", '', re.sub(r'"[^"]*"', '""', linha)).strip()
+        if re.match(r'(?:(?:Private|Public|Friend)\s+)?(?:Static\s+)?(?:Function|Sub|Property\s+(?:Get|Let|Set))\s+\w+', limpa):
+            if aberto:
+                problemas.append(f'linha {n_}: procedimento aberto dentro de "{aberto}" (falta o End?)')
+            # procedimento de uma linha ("Public Sub X(): ...: End Sub") abre e fecha na mesma linha
+            aberto = None if re.search(r':\s*End\s+(?:Function|Sub|Property)\s*$', limpa) else limpa[:50]
+        elif re.match(r'End\s+(?:Function|Sub|Property)\b', limpa):
+            if not aberto:
+                problemas.append(f'linha {n_}: "{limpa[:30]}" sem procedimento aberto')
+            aberto = None
+        elif re.match(r'(?:Next|Loop|Wend)\b[^:]*\s(?:Function|Sub)\s*$', limpa):
+            problemas.append(f'linha {n_}: "{limpa[:40]}" termina em Function/Sub (End quebrado?)')
+    if aberto:
+        problemas.append(f'fim do modulo com "{aberto}" sem End')
     for nome, params, corpo in procedimentos(t):
         decl = []
         for prm in params.split(','):
