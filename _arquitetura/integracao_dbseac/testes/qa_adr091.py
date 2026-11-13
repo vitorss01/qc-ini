@@ -48,6 +48,19 @@ PRECEDE = ('MANUAL_INCOMPLETO', 'DUPLICIDADE_ORIGEM', 'CONFLITO_MANUAL', 'SUBSTI
 TXT = {'LOTE_FORA_DO_CQ': 'lote fora do CQ (regra FORA_DO_CQ da tblLotesMaterial; fora da estatistica e do grafico)',
        'LOTE_OUTRO_MATERIAL': 'lote de outro material neste analito (regra SO_ANALITOS da tblLotesMaterial; fora da '
                               'estatistica e do grafico)'}
+# ADR-092 (N-01): manual num lote de regra MATRIZ com analito do catalogo sem de/para nessa matriz
+TXT_MZSEM = ('manual com analito do catalogo sem cadastro na matriz do lote (regra MATRIZ da tblLotesMaterial; '
+             'fora da estatistica e do grafico)')
+DEPARA = {'cat': set(), 'linhas': []}       # preenchido na execucao (tblDeParaAnalitos da copia)
+
+
+def n01(x, mz):
+    """ADR-092 (N-01), varredura independente: manual + lote com regra MATRIZ + analito do catalogo + nenhuma linha do
+    de/para com esse ANALITO_QCINI e MATRIZ vazia ou igual a do lote."""
+    lt, an = up(x['LOTE']), txt(x['ANALITO'])
+    if x.get('ORIGEM_RESULTADO') != 'MANUAL' or lt not in mz or an not in DEPARA['cat']:
+        return False
+    return not any(q_ == an and (not m_ or m_.upper() == mz[lt]) for m_, q_ in DEPARA['linhas'])
 
 
 def txt(v):
@@ -78,7 +91,7 @@ def regras_de(linhas):
     return mz, fora, so
 
 
-def esperado_lote(x, fora, so):
+def esperado_lote(x, fora, so, mz=None):
     if x['STATUS_ANALITICO'] in PRECEDE:
         return None
     lt = up(x['LOTE'])
@@ -86,6 +99,8 @@ def esperado_lote(x, fora, so):
         return 'LOTE_FORA_DO_CQ'
     if lt in so and up(x['ANALITO']) not in so[lt]:
         return 'LOTE_OUTRO_MATERIAL'
+    if mz and n01(x, mz):
+        return 'LOTE_OUTRO_MATERIAL'                 # ADR-092 (N-01)
     return None
 
 
@@ -130,12 +145,14 @@ def executar(produto, caminho, saida):
             obt = {x['ID_REGISTRO']: x['STATUS_ANALITICO'] for x in fin if x['STATUS_ANALITICO'] in LOTE_ST}
             esp = {}
             for x in fin:
-                e = esperado_lote(x, fora, so) if x['STATUS_ANALITICO'] in LOTE_ST + PRECEDE + ('ATIVO', 'IMPLAUSIVEL') else None
+                e = esperado_lote(x, fora, so, mz) if x['STATUS_ANALITICO'] in LOTE_ST + PRECEDE + ('ATIVO', 'IMPLAUSIVEL') else None
                 if e:
                     esp[x['ID_REGISTRO']] = e
             ruins = [x['ID_REGISTRO'] for x in fin if x['STATUS_ANALITICO'] in LOTE_ST and not (
                 x['PARTICIPA_ESTATISTICA'] == NAO and x['TIPO_PLOTAGEM_LJ'] == 'NAO_PLOTAR'
-                and x['REGISTRAR_RESULTADO_NO_LJ'] == NAO and txt(x['MOTIVO_EXCLUSAO_AUTOMATICA']) == TXT[x['STATUS_ANALITICO']])]
+                and x['REGISTRAR_RESULTADO_NO_LJ'] == NAO and txt(x['MOTIVO_EXCLUSAO_AUTOMATICA']) == (
+                    TXT_MZSEM if x['STATUS_ANALITICO'] == 'LOTE_OUTRO_MATERIAL' and n01(x, mz) and not (
+                        up(x['LOTE']) in so and up(x['ANALITO']) not in so[up(x['LOTE'])]) else TXT[x['STATUS_ANALITICO']]))]
             mz_ruim = [x['ID_REGISTRO'] for x in fin if up(x['LOTE']) in mz and up(x['MATRIZ']) != mz[up(x['LOTE'])]]
             a13 = {x['ID_REGISTRO'] for x in qa if x.get('CODIGO') == 'A13'}
             return {'obtido': obt, 'esperado': esp, 'ok': obt == esp and not ruins and not mz_ruim and a13 == set(obt),
@@ -157,6 +174,10 @@ def executar(produto, caminho, saida):
             b = {x['ID_REGISTRO']: x for x in fb if up(x['LOTE']) not in lotes and not txt(x.get('MOTIVO_MANUAL')).startswith(TAG)}
             dif = [(i, c, a[i][c], b.get(i, {}).get(c)) for i in a for c in cols if i not in b or a[i][c] != b[i][c]]
             return set(a) == set(b) and not dif, dif[:5]
+
+        dp_ = q.ler('tblDeParaAnalitos')
+        DEPARA['linhas'] = [(txt(r.get('MATRIZ')), txt(r.get('ANALITO_QCINI'))) for r in dp_ if txt(r.get('ANALITO_ORIGEM'))]
+        DEPARA['cat'] = {q_ for _, q_ in DEPARA['linhas'] if q_}
 
         # ------------------------------------------------------------------ T01
         lo = q.lo(TB)

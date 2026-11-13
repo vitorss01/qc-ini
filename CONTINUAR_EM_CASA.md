@@ -1,4 +1,49 @@
-# Continuar em casa: situação em 11/11/2026, às 11h
+# Continuar: situação em 13/11/2026 (ADR-092 pronto em casa; falta a entrega no trabalho)
+
+## 0. Feito em casa, 12–13/11/2026 (entrega 39 = ADR-092)
+
+Itens 1 e 2 do §4 abaixo **concluídos no código** e testados numa cópia de teste montada em casa. A montagem partiu dos
+`.xlsm` de 05/10 e passou pela cadeia inteira do `entregar.py`, em modo HISTÓRICO, sem DB_SEAC. Ver
+`_arquitetura/integracao_dbseac/ADR-092.md`.
+
+- **T15/T19 do qa_final Bio:** corrigidos no teste. T15 estende o G4 do Painel, e T19 aceita IDs novos do interfaceamento.
+  Na cópia, qa_final deu Bio 29/0 e Hema 29/0.
+- **Ocorrências corrigidas (ADR-092):**
+  - OC-0040: D4 com o ano do Painel, A4 e H5:J5;
+  - OC-0043: formas curtas em J7:J9, com a longa no Q4 e a legenda no GUIA_DE_USO;
+  - OC-0049: coluna B vazia nas linhas sem analito;
+  - OC-0056 (N-01), OC-0057 (N-02), OC-0058 (N-03) e OC-0059 (N-05), registradas no OCORRENCIAS.md.
+- **Antes da aplicação:** revisão independente (14 defeitos confirmados e incorporados).
+- **N-01: regra conservadora (RECUSAR)**, com o manual LOTE_OUTRO_MATERIAL + A13. **Falta a confirmação do CQ.** Com os dados
+  reais ela não tira nenhum resultado (0 manuais).
+- **Ambiente de casa** (Excel sem cache makepy): COM com argumento nomeado falha. Três instaladores passaram a usar argumento
+  posicional com `None` (ver ADR-092).
+- **Resultado na cópia de teste:**
+  - `qa_adr092`: Bio 6/0, Hema 6/0;
+  - equivalência VBA×PQ `--fixtures`: Bio 32.070 linhas e Hema 44.430, 0 divergências;
+  - qa_adr091, qa_adr090, qa_linhas_alvo, qa_troca_lote, qa_varredura_lotes, qa_adr089 e qa_final: OK nos dois produtos.
+- **Falhas de ambiente, não do código (conferir no trabalho):**
+  - `qa_sync`: sem DB_SEAC;
+  - `qa_usuarios_adr084`: sem o arquivo do cadastro central;
+  - `qa_rodadas_cv` R00: a referência é o arquivo de 05/10, anterior a várias entregas;
+  - Bio `qa_blocos_lote`: na cópia, Especificações!B64/B73/B82 = texto "yyyy", vindo do arquivo antigo, e a foto de TESTE foi tirada antes do ADR-091;
+  - Bio `qa_adr088` R12c: a janela escolhida tem 1 resultado por nível, então não há CV.
+- **Teste corrigido:** o U03 do `qa_inativar_ux`. A janela do gráfico, de 180 corridas, admite uma corrida mais antiga quando
+  a única elegível sai; o teste não previa isso. A análise está no ADR-092.
+
+**Próximos passos no PC do trabalho:**
+1. `git pull`.
+2. `python _arquitetura/integracao_dbseac/entregar.py Hematologia Bioquimica`, com todas as suítes e a produção atual como
+   referência do R00. Se R00, qa_blocos_lote ou qa_adr088 falharem lá, investigar: em casa a causa foi o arquivo antigo.
+3. `aplicar_atualizar.py`.
+4. Usuário Simulado (reteste): as 19 do ADR-090, OC-0040/0043/0049/0056..0059 e o ADR-091.
+5. Tester VALIDAR do que mudou.
+6. Marcar VALIDADA só com as duas validações.
+7. **Pedir ao CQ a confirmação da regra do N-01.**
+
+---
+
+# Situação anterior: 11/11/2026, às 11h
 
 A validação foi interrompida às 10h45 a pedido do usuário, porque o PC do trabalho estava lento. Este arquivo diz o que já está pronto, o que falta e como retomar sem começar do zero.
 

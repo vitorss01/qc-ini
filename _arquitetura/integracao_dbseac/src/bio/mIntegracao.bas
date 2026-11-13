@@ -558,6 +558,8 @@ Private Function AcaoManualNovo(ByVal st As String) As String
     Select Case st
         Case "MANUAL_INCOMPLETO": AcaoManualNovo = "RESULTADO_MANUAL_RECUSADO"
         Case "CONFLITO_MANUAL": AcaoManualNovo = "RESULTADO_MANUAL_EM_CONFLITO"
+        ' ADR-092 (N-03): gravado, mas fora da estatistica e do grafico (o detalhe traz MANUAL:<status>)
+        Case "IMPLAUSIVEL", "LOTE_FORA_DO_CQ", "LOTE_OUTRO_MATERIAL": AcaoManualNovo = "RESULTADO_MANUAL_FORA_DA_ESTATISTICA"
         Case Else: AcaoManualNovo = "RESULTADO_MANUAL_INCLUIDO"
     End Select
 End Function

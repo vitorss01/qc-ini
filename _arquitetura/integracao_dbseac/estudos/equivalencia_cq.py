@@ -243,7 +243,9 @@ def conferir_adr088(cab, dados):
 
 # ADR-091: regras gravadas pela fixture (todas as linhas da tblLotesMaterial), o inativado do lote FORA_DO_CQ, o que cada
 # manual deve dar e os textos do A14 -- conferidos em conferir_adr091 e no equivalencia_qa
-ADR091 = {'regras': [], 'inat': None, 'manuais': {}, 'a14': []}
+ADR091 = {'regras': [], 'inat': None, 'manuais': {}, 'a14': [], 'depara': []}
+TXT_MZSEM = ('manual com analito do catalogo sem cadastro na matriz do lote (regra MATRIZ da tblLotesMaterial; '
+             'fora da estatistica e do grafico)')                          # ADR-092 (N-01), = mEtlCQ / DB_CQ_FINAL
 MZ_TESTE_091 = 'TESTE-ADR091'
 LOTE_ST = ('LOTE_FORA_DO_CQ', 'LOTE_OUTRO_MATERIAL')
 PRECEDE_091 = ('MANUAL_INCOMPLETO', 'DUPLICIDADE_ORIGEM', 'CONFLITO_MANUAL', 'SUBSTITUIDO_MANUAL', 'SEM_DATA_HORA',
@@ -284,6 +286,13 @@ def fixture_adr091(q, cab, d, reais_usados, manuais_usados):
               if any(t.Name == 'tblLotesMaterial' for t in ws.ListObjects))
     hc = [str(c.Name) for c in lo.ListColumns]
     corpo = lo.DataBodyRange.Value if lo.ListRows.Count else ()
+    # ADR-092 (N-01): de/para da copia (MATRIZ, ANALITO_QCINI) para o oraculo do manual em lote de regra MATRIZ
+    ldp = next(ws.ListObjects('tblDeParaAnalitos') for ws in q.wb.Worksheets
+               if any(t.Name == 'tblDeParaAnalitos' for t in ws.ListObjects))
+    hdp = [str(c.Name) for c in ldp.ListColumns]
+    ADR091['depara'] = [(str(r[hdp.index('MATRIZ')] or '').strip().upper(), str(r[hdp.index('ANALITO_QCINI')] or '').strip())
+                        for r in (ldp.DataBodyRange.Value if ldp.ListRows.Count else ())
+                        if str(r[hdp.index('ANALITO_ORIGEM')] or '').strip()]
     reais = [[r[hc.index(c)] for c in ('LOTE', 'REGRA', 'MATRIZ', 'ANALITOS', 'NOTA')] for r in corpo
              if any(r[hc.index(c)] not in (None, '') for c in ('LOTE', 'REGRA', 'MATRIZ', 'ANALITOS'))]
     mz0, fora0, so0 = regras_091(reais)
@@ -361,7 +370,7 @@ def fixture_adr091(q, cab, d, reais_usados, manuais_usados):
     manuais = [man(61, x_in), man(62, r_b), man(63, r_b, ANALITO=A), man(64, r_mz), man(65, x_in, RESULTADO=-1)]
     ADR091.update(regras=todas, inat=col(x_in, 'ID_REGISTRO'), lotes={'SO_ANALITOS': L_so, 'FORA_DO_CQ': L_fora, 'MATRIZ': L_mz},
                   manuais={'MAN_0061': 'LOTE_FORA_DO_CQ', 'MAN_0062': 'LOTE_OUTRO_MATERIAL', 'MAN_0063': 'nao_lote',
-                           'MAN_0064': 'matriz', 'MAN_0065': 'LOTE_FORA_DO_CQ'},
+                           'MAN_0064': 'matriz', 'MAN_0065': 'LOTE_FORA_DO_CQ'},   # MAN_0064: + o status do N-01 (ADR-092), no laco
                   a14=sorted(f'linha {n0 + k} (lote {lt or "?"}, regra {rg}): {m}' for k, (_, lt, rg, m) in enumerate(inval, 1)))
     return {'inat': [{'ID_REGISTRO': col(x_in, 'ID_REGISTRO'), 'ANALITO': col(x_in, 'ANALITO'), 'REGISTRAR - LJ': True,
                       'MOTIVO': 'QA adr091 inativado num lote FORA_DO_CQ', 'USUARIO': 'QA'}],
@@ -374,7 +383,8 @@ def conferir_adr091(cab, dados):
         return False, ['fixture_adr091 nao rodou']
     mz, fora, so = regras_091(ADR091['regras'])
     ix = {c: cab.index(c) for c in ('ID_REGISTRO', 'STATUS_ANALITICO', 'LOTE', 'ANALITO', 'MATRIZ', 'PARTICIPA_ESTATISTICA',
-                                    'TIPO_PLOTAGEM_LJ')}
+                                    'TIPO_PLOTAGEM_LJ', 'ORIGEM_RESULTADO', 'MOTIVO_EXCLUSAO_AUTOMATICA')}
+    cat = {a for _, a in ADR091['depara'] if a}
     v = lambda r, c: r[ix[c]]                                                   # noqa: E731
     falhas = []
     for r in dados:
@@ -385,6 +395,11 @@ def conferir_adr091(cab, dados):
                 esp = 'LOTE_FORA_DO_CQ'
             elif lt in so and _up(v(r, 'ANALITO')) not in so[lt]:
                 esp = 'LOTE_OUTRO_MATERIAL'
+            elif (lt in mz and v(r, 'ORIGEM_RESULTADO') == 'MANUAL' and str(v(r, 'ANALITO') or '').strip() in cat
+                  and not any(a == str(v(r, 'ANALITO')).strip() and (not m or m == mz[lt]) for m, a in ADR091['depara'])):
+                esp = 'LOTE_OUTRO_MATERIAL'                                  # ADR-092 (N-01)
+                if v(r, 'MOTIVO_EXCLUSAO_AUTOMATICA') != TXT_MZSEM:
+                    falhas.append(f'{v(r, "ID_REGISTRO")}: motivo do N-01 {v(r, "MOTIVO_EXCLUSAO_AUTOMATICA")!r}')
         if (st in LOTE_ST or esp) and st != esp:
             falhas.append(f'{v(r, "ID_REGISTRO")}: {st} (esperado {esp})')
         if st in LOTE_ST and (v(r, 'PARTICIPA_ESTATISTICA') == 'SIM' or v(r, 'TIPO_PLOTAGEM_LJ') != 'NAO_PLOTAR'):

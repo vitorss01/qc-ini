@@ -136,7 +136,7 @@ def main(caminho, salvar=True):
         log('3. VBA: mSenha, mCadastro, frmCadastroUsuario; compilado')
         # 4. LOG_CADASTRO e botao
         if 'LOG_CADASTRO' not in [w.Name for w in wb.Worksheets]:
-            lg = wb.Worksheets.Add(After=wb.Worksheets(wb.Worksheets.Count))
+            lg = wb.Worksheets.Add(None, wb.Worksheets(wb.Worksheets.Count))   # After posicional com None (nomeado: a aba vai para o inicio)
             lg.Name = 'LOG_CADASTRO'
             lg.Range('A1').Value = 'Trilha do cadastro central (ADR-084). Sem senha nem hash.'
             lg.Range('A2:F2').Value = ('DATA_HORA', 'USUARIO_WINDOWS', 'ADMINISTRADOR', 'ACAO', 'LOGIN_ALVO', 'DETALHE')

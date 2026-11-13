@@ -378,6 +378,11 @@ let
             Table.SelectRows(F, each [STATUS_ANALITICO] = "LOTE_FORA_DO_CQ" or [STATUS_ANALITICO] = "LOTE_OUTRO_MATERIAL"),
             each "lote " & (Txt(_[LOTE]) ?? "?") &
                  (if _[STATUS_ANALITICO] = "LOTE_FORA_DO_CQ" then " fora do CQ (regra FORA_DO_CQ)"
+                  // ADR-092 (N-01): o lote nao tem SO_ANALITOS; o erro esta no lancamento, nao na regra
+                  else if _[MOTIVO_EXCLUSAO_AUTOMATICA] = "manual com analito do catalogo sem cadastro na matriz do lote (regra MATRIZ da tblLotesMaterial; fora da estatistica e do grafico)" then
+                      " tem regra MATRIZ " & (Txt(_[MATRIZ]) ?? "?") & " e o manual usa o analito '" & (Txt(_[ANALITO]) ?? "?") &
+                      "' do catalogo, sem de/para nessa matriz (corrija o lancamento com o nome do analito de " &
+                      (Txt(_[MATRIZ]) ?? "?") & "; nao apague a regra MATRIZ)"
                   else " so participa nos analitos da regra SO_ANALITOS; '" & (Txt(_[ANALITO]) ?? "?") & "' e outro material") &
                  ": o resultado fica guardado, fora da estatistica, do LJ, do Westgard, do Sigma e da u(Rw). Se a regra nao " &
                  "vale mais, corrija a tblLotesMaterial (aba Cfg_Integracao) e atualize."),

@@ -262,24 +262,35 @@ def status_nivel(m, i):
     # ADR-084 (28/10/2026, pedido do usuario): o status mostra so o veredito -- sem o sufixo " (alvo TESTE)". A marca
     # TESTE continua na LotesStore (lsTesteN*) e no Calc (alvoTeste); so nao aparece mais no Painel
     M = 'Calc!' + m['niveis'][i - 1]['M']
-    return ('=IF(OR((""&engLote)<>(""&loteAnalise),(""&engAnalito)<>(""&selAnalito),' + EQ_DIF + '),"DESATUALIZADO",'
-            'IF(N(engNLoteBase)<0,"BASE SEM DADOS",'
-            f'IF({M}="","SEM MÉDIA/DP",'
-            'IF(N(engNLoteBase)=0,"AGUARDANDO 1ª CORRIDA",'
-            'IF(N(engNTotal)=0,"SEM CORRIDA DESTE ANALITO",'
-            'IF(COUNTIF(Calc!$D$3:$D$182,1)=0,"SEM CORRIDA NO PERÍODO",'
-            f'IF(INDEX(engPainel,{i},10)="","SEM PONTO NO PERÍODO",INDEX(engPainel,{i},10))))))))')
+    # ADR-092 (OC-0043): FORMA CURTA -- J7:J9 tem 48 pt uteis e "Reduzir para caber" so e legivel ate 30 %; a forma
+    # longa de cada estado fica no Q4 (q4 abaixo) e no A39
+    return ('=IF(OR((""&engLote)<>(""&loteAnalise),(""&engAnalito)<>(""&selAnalito),' + EQ_DIF + '),"DESATUAL.",'
+            'IF(N(engNLoteBase)<0,"BASE VAZIA",'
+            f'IF({M}="","SEM MÉD/DP",'
+            'IF(N(engNLoteBase)=0,"AGUARDA 1ª",'
+            'IF(N(engNTotal)=0,"SEM CORRIDA",'
+            'IF(COUNTIF(Calc!$D$3:$D$182,1)=0,"PER. VAZIO",'
+            f'IF(INDEX(engPainel,{i},10)="","SEM PONTO",INDEX(engPainel,{i},10))))))))')
+
+
+# forma curta (J7:J9) -> forma longa (Q4); usada tambem pelas suites
+STATUS_LONGO = {'DESATUAL.': 'DESATUALIZADO', 'BASE VAZIA': 'BASE SEM DADOS', 'SEM MÉD/DP': 'SEM MÉDIA/DP',
+                'AGUARDA 1ª': 'AGUARDANDO 1ª CORRIDA', 'SEM CORRIDA': 'SEM CORRIDA DESTE ANALITO',
+                'PER. VAZIO': 'SEM CORRIDA NO PERÍODO', 'SEM PONTO': 'SEM PONTO NO PERÍODO'}
 
 
 def q4(nlv):
     J = f'$J$7:$J${6 + nlv}'
-    return (f'=IF(COUNTIF({J},"DESATUALIZADO*")>0,"DESATUALIZADO",'
-            f'IF(COUNTIF({J},"BASE SEM DADOS*")>0,"BASE SEM DADOS",'
+    # ADR-092: J7:J9 com a forma curta; o Q4 (largo) diz a forma longa
+    return (f'=IF(COUNTIF({J},"DESATUAL.")>0,"DESATUALIZADO",'
+            f'IF(COUNTIF({J},"BASE VAZIA")>0,"BASE SEM DADOS",'
             f'IF(COUNTIF({J},"REJEITADO*")>0,"REJEITADO",'
-            f'IF(COUNTIF({J},"SEM MÉDIA/DP*")>0,"SEM MÉDIA/DP",'
-            f'IF(COUNTIF({J},"AGUARDANDO*")>0,"AGUARDANDO 1ª CORRIDA",'
-            f'IF(COUNTIF({J},"SEM *")>0,INDEX({J},MATCH("SEM *",{J},0)),'
-            f'IF(COUNTIF({J},"OK*")>0,"OK","—")))))))')
+            f'IF(COUNTIF({J},"SEM MÉD/DP")>0,"SEM MÉDIA/DP",'
+            f'IF(COUNTIF({J},"AGUARDA 1ª")>0,"AGUARDANDO 1ª CORRIDA",'
+            f'IF(COUNTIF({J},"SEM CORRIDA")>0,"SEM CORRIDA DESTE ANALITO",'
+            f'IF(COUNTIF({J},"PER. VAZIO")>0,"SEM CORRIDA NO PERÍODO",'
+            f'IF(COUNTIF({J},"SEM PONTO")>0,"SEM PONTO NO PERÍODO",'
+            f'IF(COUNTIF({J},"OK*")>0,"OK","—")))))))))')
 
 
 def a39(m, nlv):
@@ -307,6 +318,8 @@ def a39(m, nlv):
 
 AZUL = (7949855, 16247773)          # fonte RGB(31,78,121), fundo RGB(221,235,247)
 AMBAR = (22428, 10284031)           # fonte RGB(156,87,0),  fundo RGB(255,235,156)
+# "SEM MÉD/DP" (J7:J9) e "SEM MÉDIA/DP" (Q4): as cores da regra original do painel.py (ADR-092)
+SEM_MEDIA = (0x007A9C, 0xCEF4FF)
 
 
 def regras_texto(rng, extras):
@@ -334,7 +347,8 @@ def regras_texto(rng, extras):
     for t, fo, fu, b in regras:
         if t in novas:
             continue
-        fc = rng.FormatConditions.Add(Type=9, String=t, TextOperator=2)
+        fc = rng.FormatConditions.Add(9, None, None, None, t, 2)   # xlTextString, String, xlBeginsWith
+        # posicional com None: sem o cache makepy do Excel, nomeado ou Missing da "parametro nao opcional" (12/11/2026)
         fc.Font.Color = fo
         if b is not None:
             fc.Font.Bold = bool(b)
@@ -352,8 +366,9 @@ def painel(wb, m, nlv):
     setf(p.Range('A39'), a39(m, nlv), 'Painel A39')
     setf(p.Range('H4'), '=IF(engAviso<>"","▲ lote em análise · ver o aviso abaixo dos gráficos","▲ lote em análise")',
          'Painel H4')
-    extras = [('AGUARDANDO', AZUL), ('SEM CORRIDA', AZUL), ('SEM PONTO', AZUL), ('DESATUALIZADO', AMBAR),
-              ('BASE SEM DADOS', AMBAR)]
+    # "comeca com": as formas curtas (J7:J9) e as longas (Q4) -- ADR-092
+    extras = [('AGUARDA', AZUL), ('SEM CORRIDA', AZUL), ('SEM PONTO', AZUL), ('PER. VAZIO', AZUL),
+              ('DESATUAL', AMBAR), ('BASE VAZIA', AMBAR), ('BASE SEM DADOS', AMBAR), ('SEM MÉD', SEM_MEDIA)]
     regras_texto(p.Range(f'J7:J{6 + nlv}'), extras)
     regras_texto(p.Range('Q4'), extras)
 

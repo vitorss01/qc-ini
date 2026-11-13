@@ -709,6 +709,11 @@ proxR:
         If F(i, Q_ST) = "LOTE_FORA_DO_CQ" Or F(i, Q_ST) = "LOTE_OUTRO_MATERIAL" Then
             If F(i, Q_ST) = "LOTE_FORA_DO_CQ" Then
                 s = " fora do CQ (regra FORA_DO_CQ)"
+            ElseIf CStr(F(i, Q_MOTEX)) = "manual com analito do catalogo sem cadastro na matriz do lote (regra MATRIZ da tblLotesMaterial; fora da estatistica e do grafico)" Then
+                ' ADR-092 (N-01): o lote NAO tem SO_ANALITOS; o erro esta no lancamento, nao na regra
+                s = " tem regra MATRIZ " & TxtOu(F(i, Q_MZ), "?") & " e o manual usa o analito '" & TxtOu(F(i, Q_AN), "?") & _
+                    "' do catalogo, sem de/para nessa matriz (corrija o lancamento com o nome do analito de " & _
+                    TxtOu(F(i, Q_MZ), "?") & "; nao apague a regra MATRIZ)"
             Else
                 s = " so participa nos analitos da regra SO_ANALITOS; '" & TxtOu(F(i, Q_AN), "?") & "' e outro material"
             End If

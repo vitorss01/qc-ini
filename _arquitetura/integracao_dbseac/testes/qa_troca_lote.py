@@ -21,7 +21,7 @@ sys.path.insert(0, AQUI)
 from qa_final import QA, reg, RES  # noqa: E402
 
 LOTE_TESTE = 'QA9999'
-SEM = 'SEM MÉDIA/DP'
+SEM = 'SEM MÉD/DP'                 # ADR-092: forma curta em J7:J9 (o Q4 diz "SEM MÉDIA/DP")
 
 
 def executar(produto, caminho, saida):

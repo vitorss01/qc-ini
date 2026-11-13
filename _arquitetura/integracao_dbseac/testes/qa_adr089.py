@@ -102,7 +102,7 @@ def executar(produto, caminho, saida):
         lote = SEQ51[produto][[c for c, _ in SEQ51[produto]].index('H3')][1].strip("'")
         com_lote = [d for d in passos if d['passo'] != 'h3_vazio']
         ok51 = (all(d['E1'] == lote for d in com_lote if d['passo'] != 'apos_L4' and d['passo'] != 'apos_C3')
-                and not any(d['J7'] == 'DESATUALIZADO' for d in passos)
+                and not any(str(d['J7']).startswith('DESATUAL') for d in passos)
                 and fim['AD1'] is True and 'TODOS' in fim['H4'] and 'método' in fim['G6'])
         reg('L51 OC-0051: sem o UserInterfaceOnly da sessão, lote em H3 -> K3/K4 -> apagar H3: o motor acompanha cada '
             'passo (E1 = lote, nunca DESATUALIZADO) e o H3 vazio entra no modo TODOS (AD1, H4, G6 "do método")',

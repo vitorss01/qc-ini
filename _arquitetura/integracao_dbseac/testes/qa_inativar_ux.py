@@ -200,8 +200,13 @@ def renumerou(antes, depois, t, run_alvo):
         if rn not in d or abs(d[rn] - esp) > 1e-9:
             ruins.append((rn, esp, d.get(rn)))
     lista = ativos_em_ordem(depois, t)
-    ok = not ruins and consecutivos(lista) and len(lista) == len(a) - 1
-    return ok, {'n_antes': len(a), 'n_depois': len(lista), 'divergencias': ruins[:10],
+    # 12/11/2026: a janela do grafico e de 180 CORRIDAS elegiveis (mEstatistica NK). Se o ponto tirado era o unico
+    # elegivel da corrida, a corrida sai e a proxima mais antiga do lote entra: so o que vem ANTES da 1a de 'a' pode
+    # sobrar, e o resto continua 1 a menos
+    novas = [x for x in lista if x[0] not in runs]
+    entrou_antiga = len(novas) == 1 and a and novas[0][1] == a[0][1] - 1 and lista[0] == novas[0]
+    ok = not ruins and consecutivos(lista) and (len(lista) == len(a) - 1 or (entrou_antiga and len(lista) == len(a)))
+    return ok, {'n_antes': len(a), 'n_depois': len(lista), 'divergencias': ruins[:10], 'entrou_corrida_antiga': bool(entrou_antiga),
                 'primeira_e_ultima_depois': [lista[0][1], lista[-1][1]] if lista else None}
 
 

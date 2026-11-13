@@ -107,7 +107,7 @@ def executar(produto, caminho, saida):
                          for nv in range(nlv)]
             if na_base.get(lote, 0) == 0:
                 for nv in range(nlv):
-                    esperado = 'AGUARDANDO 1ª CORRIDA' if tem_alvo[nv] else 'SEM MÉDIA/DP'
+                    esperado = 'AGUARDA 1ª' if tem_alvo[nv] else 'SEM MÉD/DP'      # ADR-092: forma curta
                     if not st[nv].startswith(esperado) or not linhas_ok[nv]:
                         sem_dado_ruins.append(linha)
                         break

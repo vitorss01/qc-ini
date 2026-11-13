@@ -192,7 +192,7 @@ def executar(produto, caminho, saida):
                 ruins.append(f'N{i}: eixo X {ax.MinimumScale}..{ax.MaximumScale} auto={ax.MinimumScaleIsAuto}')
             if not (perto(ay.MinimumScale, m - 3.3 * s, 1e-6) and perto(ay.MaximumScale, m + 3.3 * s, 1e-6)):
                 ruins.append(f'N{i}: eixo Y {ay.MinimumScale}..{ay.MaximumScale}')
-            if not st[i - 1].startswith('AGUARDANDO 1ª CORRIDA'):
+            if not st[i - 1].startswith('AGUARDA 1ª'):          # ADR-092: forma curta em J7:J9 (Q4 = longa)
                 ruins.append(f'N{i}: status {st[i - 1]!r}')
         if not q4.startswith('AGUARDANDO'):
             ruins.append(f'Q4 {q4!r}')
@@ -218,7 +218,7 @@ def executar(produto, caminho, saida):
             se = series(p.ChartObjects(i).Chart)
             se_vazio.append(sum(len(se.get(nm, [{'pares': []}])[0]['pares']) for nm in LIM))
         reg('A02 Mesmo lote, analito SEM Média/DP: nenhuma linha no gráfico e status "SEM MÉDIA/DP" (nada de outro lote)',
-            all(n == 0 for n in se_vazio) and all(s.startswith('SEM MÉDIA/DP') for s in st2)
+            all(n == 0 for n in se_vazio) and all(s.startswith('SEM MÉD/DP') for s in st2)
             and all(md(i) == ('', '') or not num(md(i)[0]) for i in range(1, nlv + 1)),
             {'lote': L, 'analito': an2, 'pares_nas_linhas': se_vazio, 'status': st2})
 
@@ -237,7 +237,7 @@ def executar(produto, caminho, saida):
         for i in range(1, nlv + 1):
             se = series(p.ChartObjects(i).Chart)
             pares3.append([len(se.get(nm, [{'pares': []}])[0]['pares']) for nm in LIM])
-        ok3 = all((s.startswith('SEM CORRIDA NO PERÍODO') and all(n == 2 for n in pr)) if ta else s.startswith('SEM MÉDIA/DP')
+        ok3 = all((s.startswith('PER. VAZIO') and all(n == 2 for n in pr)) if ta else s.startswith('SEM MÉD/DP')
                   for s, pr, ta in zip(st3, pares3, tem_alvo)) and any(tem_alvo)
         reg('A03 Lote em uso com um período sem corrida: status "SEM CORRIDA NO PERÍODO" e as 7 linhas do alvo continuam '
             'no gráfico (2 pontos cada)', ok3, {'lote': lote0, 'analito': an, 'status': st3, 'pares': pares3})

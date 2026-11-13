@@ -43,12 +43,15 @@ Private Const F_RUN As Long = 40, F_INAT As Long = 41, F_COMENT As Long = 42, F_
 ' substitui (repetido) e a nota; no interfaceamento, o manual que o substitui, o MOTIVO dele e a linha dele em U
 Private Const F_SUBDIG As Long = 45, F_SUBR As Long = 46, F_SUBOK As Long = 47, F_SUBREP As Long = 48
 Private Const F_SUBPOR As Long = 49, F_SUBMOT As Long = 50, F_NOTA As Long = 51, F_SUBIDX As Long = 52
-Private Const NF As Long = 52
+' ADR-092 (N-01): manual num lote de regra MATRIZ com analito do catalogo sem de/para nessa matriz
+Private Const F_MZSEM As Long = 53
+Private Const NF As Long = 53
 Private Const SUF_SUB As String = " (este manual nao substitui nada)"
 ' ADR-088 (OC-0004, autorizado pelo usuario em 03/11/2026): resultado de CIQ <= 0 nao participa (mesmo texto do PQ)
 Private Const TXT_IMPLAUSIVEL As String = "resultado <= 0: implausivel para material de controle (fora da estatistica e do grafico)"
 ' ADR-091 (autorizado pelo usuario em 05/11/2026): regras de material por LOTE (mesmos textos do PQ)
 Private Const TXT_LOTE_FORA As String = "lote fora do CQ (regra FORA_DO_CQ da tblLotesMaterial; fora da estatistica e do grafico)"
+Private Const TXT_LOTE_MZSEM As String = "manual com analito do catalogo sem cadastro na matriz do lote (regra MATRIZ da tblLotesMaterial; fora da estatistica e do grafico)"
 Private Const TXT_LOTE_OUTRO As String = "lote de outro material neste analito (regra SO_ANALITOS da tblLotesMaterial; fora da estatistica e do grafico)"
 
 Private mPrefixo As String
@@ -646,6 +649,7 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
 
     ' ---- status
     Dim st As String, inatOk As Boolean, lj As Boolean, out() As Variant, stLote As String, temRegraLote As Boolean
+    Dim mzUsado As Boolean                          ' ADR-092 (N-01): o status veio da regra MATRIZ (nao do SO_ANALITOS)
     temRegraLote = (loteFora.Count + loteSo.Count > 0)
     ReDim out(1 To IIf(nU > 0, nU, 1), 1 To NC)
     For i = 1 To nU
@@ -662,6 +666,8 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
         End If
         If coment.Exists(U(i, F_ID)) Then U(i, F_COMENT) = coment(U(i, F_ID)) Else U(i, F_COMENT) = Empty
         If temRegraLote Then stLote = StatusDoLote(loteFora, loteSo, U(i, F_LT), U(i, F_AN)) Else stLote = ""
+        mzUsado = False
+        If Len(stLote) = 0 Then If U(i, F_MZSEM) = True Then stLote = "LOTE_OUTRO_MATERIAL": mzUsado = True   ' ADR-092 (N-01)
         If U(i, F_FALTA) <> "" Then
             st = "MANUAL_INCOMPLETO"
         ElseIf U(i, F_DUP) Then
@@ -700,7 +706,7 @@ Public Function CalcularCQFinal(Optional ByVal agora As Variant) As Variant
             Case "SEM_VALOR": out(i, 32) = "resultado sem valor numerico (flag " & IIf(IsEmpty(U(i, F_FL)), "vazia", U(i, F_FL)) & ")"
             Case "IMPLAUSIVEL": out(i, 32) = TXT_IMPLAUSIVEL
             Case "LOTE_FORA_DO_CQ": out(i, 32) = TXT_LOTE_FORA
-            Case "LOTE_OUTRO_MATERIAL": out(i, 32) = TXT_LOTE_OUTRO
+            Case "LOTE_OUTRO_MATERIAL": If mzUsado Then out(i, 32) = TXT_LOTE_MZSEM Else out(i, 32) = TXT_LOTE_OUTRO
             Case Else
                 ' ADR-082: inativado pelo usuario e substituido continua INATIVADO, com o vinculo; manual: a nota
                 If Not IsEmpty(U(i, F_SUBPOR)) Then out(i, 32) = TextoSubstituido(U, i) Else out(i, 32) = U(i, F_NOTA)
@@ -973,6 +979,7 @@ Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As 
     Dim eq As Variant, mz As Variant, v As Variant, lt As Variant, nv As Variant, an As Variant, res As Variant
     Dim isnum As Boolean, rtx As Variant, amb As Boolean, vl As Variant, orig As Long, ndesc As Variant, dh As Variant
     Dim reg As Variant, regc As Variant, valido As Boolean, falt As String, ini As Long, subd As Variant
+    Dim mzsem As Boolean
     ini = nU + 1
     For L = 1 To nMan
         conta = 0
@@ -1017,6 +1024,12 @@ Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As 
                 On Error GoTo 0
             End If
             orig = ParaOrigem(DP, nD, mz, an)
+            ' ADR-092 (N-01): lote de regra MATRIZ (ex.: urina) e analito do catalogo (soro) sem de/para nessa matriz: o
+            ' manual entrava na estatistica do soro. Nome proprio da outra matriz (fora do catalogo) continua valendo.
+            mzsem = False
+            If orig = 0 And mzLote.Count > 0 And Not IsEmpty(an) And Not IsEmpty(lt) Then
+                If mzLote.Exists(AnKey(lt)) Then mzsem = cadastrados.Exists(an)
+            End If
             If IsEmpty(nv) Then
                 ndesc = Empty
             ElseIf nivelDesc.Exists(KDup(nv)) Then
@@ -1050,6 +1063,7 @@ Private Sub CalcularManuais(ByRef U() As Variant, ByRef nU As Long, ByRef dM As 
             If Len(falt) > 0 Then falt = Mid$(falt, 3)
             nU = nU + 1
             U(nU, F_ID) = IIf(valido, idn, "MAN_INVALIDO_L" & L)
+            If mzsem Then U(nU, F_MZSEM) = True
             U(nU, F_IDO) = Empty: U(nU, F_IDDIG) = idn
             U(nU, F_EQ) = eq: U(nU, F_MZ) = mz
             If orig > 0 Then U(nU, F_BL) = DP(orig, 4) Else U(nU, F_BL) = Empty

@@ -691,6 +691,18 @@ def executar(produto, caminho, saida):
                                                    'REGISTRADO_EM': dtm.datetime.combine(dia + dtm.timedelta(days=1),
                                                                                          dtm.time(0, 10))})
         man = [r for r in q.ler('tblResultados_Manuais') if r['ID_REGISTRO']]
+        # ADR-092 (T15): em MODO SEAC chegam resultados novos durante a suite e o "ultimo dia" do manual pode passar do
+        # Ate (G4) fixado no inicio -- a janela do Painel vai ate o dia do manual antes de conferir o LJ
+        pai = q.ws('Painel')
+        g4 = pai.Range('G4').Value
+        serie_dia = float((dtm.datetime.combine(dia, dtm.time()) - dtm.datetime(1899, 12, 30)).days)
+        g4_serie = float((g4.replace(tzinfo=None) - dtm.datetime(1899, 12, 30)).days) if hasattr(g4, 'year') else (
+            float(g4) if isinstance(g4, (int, float)) else None)
+        if g4_serie is not None and g4_serie < serie_dia:
+            q.ex.xl.EnableEvents = False
+            pai.Unprotect('qcini2025')
+            pai.Range('G4').Value = serie_dia
+            q.ex.xl.EnableEvents = True
         q.atualizar()
         fin4 = q.final_por_id()
         fm = fin4.get('MAN_0001')
@@ -824,9 +836,14 @@ def executar(produto, caminho, saida):
             tempos.append(round(tk, 1))
         fin7 = q.final_por_id()
         estado1 = {i: (r['RUN'], r['STATUS_ANALITICO'], r['TIPO_PLOTAGEM_LJ'], r['COMENTARIO_TECNICO']) for i, r in fin7.items()}
+        # ADR-092 (T19): em MODO SEAC resultados novos do interfaceamento podem chegar entre as 4 atualizacoes; o que
+        # importa e que NADA do que existia mude e que nenhum manual apareca do nada
+        novos = [i for i in estado1 if i not in estado0]
+        mudados = [i for i, v in estado0.items() if estado1.get(i) != v]
         reg('T19 Refresh idempotente (4x): mesma contagem, mesmos IDs/RUN, inativações, comentários e manuais mantidos',
-            estado0 == estado1 and len(fin7) == n0, {'linhas': [n0, len(fin7)], 'tempos_s': tempos,
-                                                    'manuais': [i for i in fin7 if i.startswith('MAN_')]})
+            not mudados and not any(str(i).startswith('MAN_') for i in novos),
+            {'linhas': [n0, len(fin7)], 'tempos_s': tempos, 'mudados': mudados[:8],
+             'novos_do_interfaceamento': len(novos), 'manuais': [i for i in fin7 if i.startswith('MAN_')]})
 
         # ---------------------------------------------------------------- falha nao vira "concluida"
         cfg = q.lo('tblConfigIntegracao')

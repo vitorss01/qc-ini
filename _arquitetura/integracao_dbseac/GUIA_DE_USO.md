@@ -180,16 +180,18 @@ laboratório preencher (ADR-075).
   alvo antes da 1ª corrida do lote novo.
 - **Status de cada nível no Painel (J7..):**
 
+  No J7.. aparece a forma curta (para caber na célula); a forma longa, entre parênteses, aparece no resumo do Q4.
+
   | Status | O que quer dizer |
   |---|---|
   | OK / REJEITADO | veredito do Westgard no período |
-  | SEM MÉDIA/DP | o nível não tem Média/DP no bloco do lote: sem linhas e sem Westgard |
-  | AGUARDANDO 1ª CORRIDA | o lote ainda não tem resultado; as linhas mostram o alvo cadastrado |
-  | SEM CORRIDA DESTE ANALITO | o lote tem resultados, mas não deste analito neste equipamento |
-  | SEM CORRIDA NO PERÍODO | há corridas, mas nenhuma no período do filtro |
-  | SEM PONTO NO PERÍODO | este nível não tem ponto no período |
-  | DESATUALIZADO | o motor ainda está no lote, analito ou equipamento anterior (aguarde ou troque de novo) |
-  | BASE SEM DADOS | a base de resultados está vazia ou não carregou: use ATUALIZAR DADOS |
+  | SEM MÉD/DP (SEM MÉDIA/DP) | o nível não tem Média/DP no bloco do lote: sem linhas e sem Westgard |
+  | AGUARDA 1ª (AGUARDANDO 1ª CORRIDA) | o lote ainda não tem resultado; as linhas mostram o alvo cadastrado |
+  | SEM CORRIDA (SEM CORRIDA DESTE ANALITO) | o lote tem resultados, mas não deste analito neste equipamento |
+  | PER. VAZIO (SEM CORRIDA NO PERÍODO) | há corridas, mas nenhuma no período do filtro |
+  | SEM PONTO (SEM PONTO NO PERÍODO) | este nível não tem ponto no período |
+  | DESATUAL. (DESATUALIZADO) | o motor ainda está no lote, analito ou equipamento anterior (aguarde ou troque de novo) |
+  | BASE VAZIA (BASE SEM DADOS) | a base de resultados está vazia ou não carregou: use ATUALIZAR DADOS |
 
 - **Trocar de lote no Painel não grava nada:** só mostra. Quem grava é a digitação no bloco (ou na Especificações).
 - **Filtro ajustado:** se o lote escolhido não tem resultado no filtro atual, o Painel ajusta o período, o analito ou,

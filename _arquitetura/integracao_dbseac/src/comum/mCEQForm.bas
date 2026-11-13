@@ -407,6 +407,7 @@ End Function
 ' registro novo (a duplicidade ignora a propria linha), grava A..N, Q, R na MESMA linha, registra CEQ_ALTERADO com o
 ' antes e o depois de cada campo e consolida a EQA_Base. Mesmo retorno do SalvarCEQ.
 Public Function CorrigirCEQ(ByVal linha As Long, ByVal campos As Variant) As String
+    If Not mSeguranca.SessaoAtiva() Then CorrigirCEQ = "ERRO|0|Sessão encerrada: faça o login de novo. Nada foi gravado.": Exit Function   ' ADR-092 (N-02)
     If linha <= 0 Then CorrigirCEQ = "ERRO|0|Escolha o registro a corrigir.": Exit Function
     CorrigirCEQ = GravarCEQ(campos, linha)
 End Function
@@ -542,6 +543,7 @@ End Function
 Public Function ExcluirCEQ(ByVal provedor As String, ByVal linha As Long) As String
     Dim lo As ListObject, ws As Worksheet, v As Variant, prot As Boolean, ev As Boolean, cn As Variant, sE As String
     Dim aviso As String, nomes As Variant, k As Long, s As String
+    If Not mSeguranca.SessaoAtiva() Then ExcluirCEQ = "ERRO|0|Sessão encerrada: faça o login de novo. Nada foi gravado.": Exit Function   ' ADR-092 (N-02)
     On Error GoTo falha
     Set lo = TabelaCEQ(provedor)
     If lo Is Nothing Then ExcluirCEQ = "ERRO|0|A tabela de digitação do " & provedor & " não foi encontrada.": Exit Function

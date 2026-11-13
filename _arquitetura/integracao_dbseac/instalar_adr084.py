@@ -130,7 +130,7 @@ def usuarios_central(wb):
     """Aba tecnica Usuarios_Central (copia do cadastro central; o mUsuariosCentral grava). Oculta e protegida."""
     nomes = [w.Name for w in wb.Worksheets]
     if 'Usuarios_Central' not in nomes:
-        ws = wb.Worksheets.Add(After=wb.Worksheets(wb.Worksheets.Count))
+        ws = wb.Worksheets.Add(None, wb.Worksheets(wb.Worksheets.Count))   # After posicional com None (nomeado: a aba vai para o inicio)
         ws.Name = 'Usuarios_Central'
         MUDANCAS.append('aba Usuarios_Central criada')
     ws = wb.Worksheets('Usuarios_Central')
