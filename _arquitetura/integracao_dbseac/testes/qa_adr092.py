@@ -8,6 +8,10 @@ Uso: python qa_adr092.py <Bioquimica|Hematologia> <copia_instalada.xlsm> <saida.
       varredura independente (ADR-093: codigo de origem unico, sem de/para em URINA e ja recebido em URINA -> ATIVO nesse
       codigo, com a nota e o I05; senao LOTE_OUTRO_MATERIAL com o texto proprio e A13; Hema: o de/para nao tem matriz,
       entao ATIVO); o mesmo lote com um nome FORA do catalogo nao vira LOTE_*; o mesmo analito num lote comum fica ATIVO
+  K01b ADR-093 (o caminho ACEITO, que o K01 so pega se o analito sorteado cair nele): um analito do catalogo escolhido
+      pela varredura independente (codigo unico, sem de/para em URINA, ja recebido em URINA; ex.: Creatinina -> CRE2)
+      no lote de teste -> ATIVO nesse codigo, MATRIZ URINA, nota, I05, sem A13 e trilha INCLUIDO com a nota. Se o
+      produto nao tem nenhum (Hema: de/para sem matriz), o K01b diz isso (N/A) e nao finge que testou
   K02 N-02: sem login, CorrigirCEQ e ExcluirCEQ devolvem "ERRO|0|Sessão encerrada…" e nada muda (tabela e Audit_Log)
   K03 N-03: manual IMPLAUSIVEL (-1) e o LOTE_* do K01 -> trilha RESULTADO_MANUAL_FORA_DA_ESTATISTICA, nunca INCLUIDO
   K04 OC-0043: cada status de J7:J9 (as formas curtas da formula + OK/ALERTA/REJEITADO) cabe com reducao <= 30 % na
@@ -120,6 +124,21 @@ def executar(produto, caminho, saida):
                 pq_ = next((q_ or None for m_, q_, o in trios_dp if o == c_ and (not m_ or m_.upper() == 'URINA')), None)
                 if pq_ is None and c_ in recebidos_urina:
                     cod_m1, esp_m1 = c_, 'ATIVO'
+        # K01b (ADR-093): um analito que DEVE ser aceito, pela mesma varredura independente (deterministico: o 1o em ordem)
+        rec_u = {txt(r.get('ANALITO_ORIGEM')) for r in fin0 if r.get('ORIGEM_RESULTADO') == 'INTERFACEAMENTO'
+                 and txt(r.get('MATRIZ')).upper() == 'URINA'}
+        an5 = cod5 = None
+        for a_ in sorted(cat):
+            if any(a == a_ and (not m_ or m_.upper() == 'URINA') for m_, a in linhas_dp):
+                continue
+            cs_ = {o for _, a, o in trios_dp if a == a_}
+            if len(cs_) != 1:
+                continue
+            c_ = next(iter(cs_))
+            if next((q_ or None for m_, q_, o in trios_dp if o == c_ and (not m_ or m_.upper() == 'URINA')), None) is None \
+                    and c_ in rec_u:
+                an5, cod5 = a_, c_
+                break
         # regra MATRIZ de teste (acrescentada as reais)
         lo_lm = q.lo('tblLotesMaterial')
         ws_lm = lo_lm.Parent
@@ -147,6 +166,8 @@ def executar(produto, caminho, saida):
                  'M3': dict(ID_REGISTRO='MAN_9923', HORA='23:53', LOTE="'" + txt(T['LOTE']), ANALITO=an,
                             RESULTADO=float(T['RESULTADO'])),
                  'M4': dict(ID_REGISTRO='MAN_9924', HORA='23:54', LOTE="'" + txt(T['LOTE']), ANALITO=an, RESULTADO=-1)}
+        if an5:
+            casos['M5'] = dict(ID_REGISTRO='MAN_9925', HORA='23:55', LOTE="'" + LOTE_T, ANALITO=an5, RESULTADO=23.456)
         q.lo('tblResultados_Manuais').Parent.Unprotect(ii.SENHA)       # REGISTRADO_EM e coluna travada
         for k, c in casos.items():
             q.escrever_linha('tblResultados_Manuais', dict(base, MOTIVO=f'{TAG} {k}', **c))
@@ -185,6 +206,25 @@ def executar(produto, caminho, saida):
             ok3 = ok3 and fora in acoes['M1'] and 'RESULTADO_MANUAL_INCLUIDO' not in acoes['M1']
         reg('K03 N-03: manual IMPLAUSIVEL (e o LOTE_* do K01) -> trilha RESULTADO_MANUAL_FORA_DA_ESTATISTICA, nunca INCLUIDO',
             ok3, {'acoes': acoes})
+        if an5:
+            r5 = m.get('M5') or {}
+            mot5 = txt(r5.get('MOTIVO_EXCLUSAO_AUTOMATICA'))
+            esp5 = TXT_MZCORR % (an5, cod5)
+            trilha5 = [det for a, det in tr if 'MAN_9925' in det and a == 'RESULTADO_MANUAL_INCLUIDO']
+            ok5 = (st.get('M5') == 'ATIVO' and txt(r5.get('ANALITO')) == cod5 and r5.get('PARTICIPA_ESTATISTICA') != NAO
+                   and txt(r5.get('MATRIZ')).upper() == 'URINA' and mot5 == esp5 and 'MAN_9925' not in a13
+                   and esp5 in i05.get('MAN_9925', '') and any(esp5 in det for det in trilha5)
+                   and fora not in acoes.get('M5', []))
+            reg('K01b ADR-093: manual no lote URINA com "%s" (código único %s, sem de/para em URINA, já recebido em URINA) -> '
+                'ATIVO como %s, MATRIZ URINA, nota no DETALHE, I05, sem A13, trilha INCLUIDO com a nota' % (an5, cod5, cod5), ok5,
+                {'analito': an5, 'codigo': cod5, 'status': st.get('M5'), 'analito_final': txt(r5.get('ANALITO')),
+                 'matriz': txt(r5.get('MATRIZ')), 'participa': r5.get('PARTICIPA_ESTATISTICA'), 'motivo': mot5,
+                 'I05': i05.get('MAN_9925'), 'A13': 'MAN_9925' in a13, 'trilha_INCLUIDO': [x[:300] for x in trilha5],
+                 'acoes': acoes.get('M5')})
+        else:
+            reg('K01b ADR-093: N/A neste produto -- nenhum analito do catálogo com código único, sem de/para em URINA e já '
+                'recebido em URINA (o caminho aceito não se aplica; nada foi testado aqui)', True,
+                {'motivo': 'de/para sem matriz ou nenhum codigo recebido em URINA', 'recebidos_URINA': sorted(rec_u)[:20]})
 
         # ------------------------------------------------------------ K04 OC-0043
         p = q.ws('Painel')

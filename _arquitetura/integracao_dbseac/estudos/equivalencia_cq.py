@@ -690,8 +690,12 @@ def main(produto, arq, saida, n=3, fix=False):
             res['adr091_ok'], res['adr091_falhas'] = conferir_adr091(cab_pq, dados_pq)
             res['adr091_lotes'] = ADR091.get('lotes')
             res['adr091_status_pq'] = {k: cont.get(k, 0) for k in LOTE_ST}
+            # quais casos a fixture criou (MAN_0066/0067 do ADR-093 dependem dos dados da copia): sem isto, um caso que
+            # nao foi criado passaria calado como "OK"
+            res['adr091_casos'] = dict(ADR091.get('manuais') or {})
             print('ADR-091 (regras de material por lote) no PQ:', 'OK' if res['adr091_ok'] else 'FALHOU',
                   res['adr091_lotes'], res['adr091_status_pq'], res['adr091_falhas'], flush=True)
+            print('ADR-091/093 casos conferidos:', res['adr091_casos'], flush=True)
         res['exemplos'] = ex
         print(json.dumps({k: res[k] for k in ('linhas', 'colunas_so_vba', 'colunas_pq_nao_comparadas', 'divergencias')}, ensure_ascii=False), flush=True)
         for c, e in ex.items():
