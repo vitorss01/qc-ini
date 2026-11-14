@@ -199,7 +199,7 @@ def filtros(wb):
             v.Delete()
             v.Add(4, 1, 5, '1/1/2000')                 # xlValidateDate, xlGreater... (so datas)
             v.ErrorMessage = 'Digite uma data (dd/mm/aaaa).'
-            c_val.NumberFormat = 'dd/mm/yyyy'
+            cd.fmt_data(c_val, 'dd/mm/yyyy')           # ADR-095: 'yyyy' por NumberFormat vira texto no pt-BR
             MUDANCAS.append(f'Registros validacao {rot}')
         c_val.Locked = False
     # aparencia: rotulos pequenos cinza, campos com borda e fundo claro

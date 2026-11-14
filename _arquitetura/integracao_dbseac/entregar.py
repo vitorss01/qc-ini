@@ -147,6 +147,7 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('adr091', ['instalar_adr091.py', produto, alvo]),         # ADR-091: regras de material por lote
               ('adr092', ['instalar_adr092.py', produto, alvo]),         # ADR-092: reteste 03 (N-01..N-03, OC-0040/0043/0049)
               ('adr094', ['instalar_adr094.py', produto, alvo]),         # ADR-094: data-hora com segundos (so apresentacao)
+              ('adr095', ['instalar_adr095.py', produto, alvo]),         # ADR-095: ano literal nos formatos de data (fim da cadeia)
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:
         ok, fim = rodar(os.path.join(trab, f'{nome}.log'), AQUI, *args)

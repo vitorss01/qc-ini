@@ -29,6 +29,7 @@ import xlh  # noqa: E402
 import pqlib  # noqa: E402
 import instalar_integracao as ii  # noqa: E402
 import codigo_atual  # noqa: E402
+import camada_dados as cd  # noqa: E402
 from instalar_seguranca_usuarios import foto_protecao, devolver_protecao  # noqa: E402
 
 MUDANCAS = []
@@ -112,10 +113,13 @@ def estatistica_bio(wb):
     e = wb.Worksheets('Estatística')
     setf(e.Range('D4'), D4, D4_ANTIGO, 'Estatística D4 (ano do Painel K3; vazio sem De/Até)')
     for c in ('B5', 'D5'):                                  # ADR-095: so o formato (formula e valor intactos)
-        if str(e.Range(c).NumberFormat) != FMT_B5D5:
+        # NumberFormatLocal com o codigo de ano do Excel (cd.fmt_data): 'yyyy' por NumberFormat vira o texto 'yyyy' no
+        # pt-BR (achado da revisao independente do ADR-095, 14/11)
+        local = FMT_B5D5.replace('y', str(e.Application.International[19 - 1] or 'y'))
+        if str(e.Range(c).NumberFormatLocal) != local:
             if not re.fullmatch(r'=Painel!\$?G\$?[34]', str(e.Range(c).Formula)):
                 raise SystemExit(f'Estatística {c} inesperada: {e.Range(c).Formula!r} -- nada foi salvo')
-            e.Range(c).NumberFormat = FMT_B5D5
+            cd.fmt_data(e.Range(c), FMT_B5D5)
             MUDANCAS.append(f'Estatística {c} formato (zero em branco)')
     if str(e.Range('A4').Value or '') != A4:
         if str(e.Range('A4').Value or '').strip() != 'Visão':
@@ -154,8 +158,12 @@ def fumaca(ex, wb, produto):
     if produto.startswith('Bio'):
         d4, k3 = e.Range('D4').Text, p.Range('K3').Text
         sem = p.Range('G3').Value in (None, '') and p.Range('G4').Value in (None, '')
-        if str(d4) != ('' if sem else str(k3)) or str(d4) == '0' or '1900' in str(e.Range('B5').Text + e.Range('D5').Text):
-            raise SystemExit(f'fumaca: Estatística D4 = {d4!r}, Painel K3 = {k3!r} -- nada foi salvo')
+        b5d5 = str(e.Range('B5').Text) + str(e.Range('D5').Text)
+        if (str(d4) != ('' if sem else str(k3)) or str(d4) == '0' or '1900' in b5d5
+                or re.search(r'[A-Za-z]', b5d5)
+                or any(t and not re.fullmatch(r'\d{2}/\d{2}/\d{4}', t)
+                       for t in (str(e.Range('B5').Text), str(e.Range('D5').Text)))):
+            raise SystemExit(f'fumaca: Estatística D4 = {d4!r}, Painel K3 = {k3!r}, B5/D5 = {b5d5!r} -- nada foi salvo')
         log(f'   Estatística D4 = {d4!r} (Painel K3), H5 = {e.Range("H5").Text!r}')
     else:
         sujas = [r for r in range(14, 134) if not str(e.Cells(r, 1).Text) and str(e.Cells(r, 2).Text)]

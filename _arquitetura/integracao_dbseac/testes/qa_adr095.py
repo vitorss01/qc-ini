@@ -10,6 +10,7 @@ Uso: python qa_adr095.py <Bioquimica|Hematologia> <copia_instalada.xlsm> <saida.
   L02 (R4-01) Registros H4 "Calibrado?": Sim e Não aceitos, "Sim,Não" recusado; Bio: Painel L4 aceita cada equipamento
   L03 (R4-01) nenhuma validacao de lista do arquivo gravada como item unico com virgula (x12ac:list no XML) -- a trava
       contra o defeito voltar por outro instalador
+  L04 nenhum formato de data com o ano literal (barra-y no XML: "14/11/yyyy" na tela) -- instalar_adr095
   D01 (OC-0021) DETALHE: a formula da coluna = camada_dados.FORMULA_DETALHE; os textos literais dos dois motores
       (mEtlCQ.bas e DB_CQ_FINAL.m) depois dos acentos nao tem nenhuma palavra de SEM_ACENTO_PROIBIDO; a trava reprova
       um texto sintetico sem acento
@@ -145,6 +146,14 @@ def executar(produto, caminho, saida):
         reg('L03 Nenhuma validação de lista gravada como item único com vírgula (x12ac:list) em nenhuma aba', not x12,
             {'x12ac': x12})
 
+        # ------------------------------------------------------------ L04 (XML da copia, sem Excel)
+        import instalar_adr095 as i95
+        lit = i95.ano_literal(caminho)
+        reg('L04 Nenhuma célula ou coluna com o ano literal no formato de data ("14/11/yyyy": NumberFormat "yyyy" gravado '
+            'por automação no Excel pt-BR), em nenhuma aba (ADR-095, revisão independente)', not lit,
+            {a_: {'celulas': len(d['celulas']), 'colunas': len(d['colunas']), 'faixas': [f[:3] for f in i95.faixas(d['celulas'])[:6]]}
+             for a_, d in lit.items()})
+
         # ------------------------------------------------------------ D01
         lo_m = lo
         fd = txt(lo_m.ListColumns('DETALHE').DataBodyRange.Cells(1, 1).Formula)
@@ -187,7 +196,8 @@ def executar(produto, caminho, saida):
         if bio:
             ok6 = 'veja a aba Estatística' in a39 and 'Período inteiro: "&Eng_Saida!$AF$1' in a39
         else:
-            ok6 = 'Estatística' not in a39 and '(todos os lotes)' in a39 and ' do lote' in a39 and 'resultados.' in a39
+            ok6 = ('Estatística' not in a39 and '" (todos os lotes)"," do lote")' in a39
+                   and '&Eng_Saida!$AF$1&" resultados. ' in a39)
         reg('A01 Painel A39 (corte de 180 corridas): Bio aponta a aba Estatística; Hema não aponta e diz o recorte '
             '(todos os lotes ou o lote) -- efeito colateral da OC-0012', ok6, {'A39_fim': a39[-420:]})
     except Exception as e:                                     # noqa: BLE001
