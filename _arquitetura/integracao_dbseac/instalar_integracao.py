@@ -339,7 +339,7 @@ def remover_legado(wb, produto):
         rot = str(ini.Cells(r, 2).Value or '')
         if rot.startswith('Última corrida'):
             ini.Cells(r, 2).Value = 'Último resultado recebido'
-            ini.Cells(r, 3).Formula = '=IF(COUNT(tblCQ_Final[DATA_HORA])=0,"nenhum",TEXT(MAX(tblCQ_Final[DATA_HORA]),"dd/mm/aaaa hh:mm"))'
+            ini.Cells(r, 3).Formula = '=IF(COUNT(tblCQ_Final[DATA_HORA])=0,"nenhum",TEXT(MAX(tblCQ_Final[DATA_HORA]),"dd/mm/aaaa hh:mm:ss"))'
         elif rot.startswith('Resultados no banco'):
             ini.Cells(r, 2).Value = 'Resultados na DB_CQ_FINAL'
             ini.Cells(r, 3).Formula = ('=TEXT(ROWS(tblCQ_Final),"#.##0")&" · na estatística: "&'

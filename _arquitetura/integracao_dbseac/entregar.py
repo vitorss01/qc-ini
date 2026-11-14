@@ -73,7 +73,8 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_adr089.py',                                # ADR-089: lote 2 da auditoria (CEQ corrigir/excluir, mapa, trilha; OC-0051)
           'qa_adr090.py',                                # ADR-090: lote 3 da auditoria (avisos, rotulos, formatos, trilha, protecao)
           'qa_adr091.py',                                # ADR-091: regras de material por lote (tblLotesMaterial)
-          'qa_adr092.py']                                # ADR-092: reteste 03 (N-01..N-03, OC-0040/0043/0049)
+          'qa_adr092.py',                                # ADR-092: reteste 03 (N-01..N-03, OC-0040/0043/0049)
+          'qa_adr094.py']                                # ADR-094: data-hora com segundos (so apresentacao)
 
 
 def sha(p):
@@ -143,6 +144,7 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('adr090', ['instalar_adr090.py', produto, alvo]),         # ADR-090: lote 3 (avisos, formatos, trilha)
               ('adr091', ['instalar_adr091.py', produto, alvo]),         # ADR-091: regras de material por lote
               ('adr092', ['instalar_adr092.py', produto, alvo]),         # ADR-092: reteste 03 (N-01..N-03, OC-0040/0043/0049)
+              ('adr094', ['instalar_adr094.py', produto, alvo]),         # ADR-094: data-hora com segundos (so apresentacao)
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:
         ok, fim = rodar(os.path.join(trab, f'{nome}.log'), AQUI, *args)

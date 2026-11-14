@@ -240,7 +240,7 @@ Public Function UltimaCopia() As String
     On Error Resume Next
     Dim v As Variant
     v = ThisWorkbook.Worksheets(ABA).Range("B1").Value
-    If IsDate(v) Then UltimaCopia = Format$(v, "dd/mm/yyyy hh:mm") Else UltimaCopia = "nenhuma"
+    If IsDate(v) Then UltimaCopia = Format$(v, "dd/mm/yyyy hh:nn:ss") Else UltimaCopia = "nenhuma"
 End Function
 
 Private Sub Auditar(ByVal acao As String, ByVal detalhe As String)

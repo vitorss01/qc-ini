@@ -19,8 +19,8 @@ from instalar_seguranca_usuarios import foto_protecao, devolver_protecao  # noqa
 from camada_dados import fmt_data, formulas_resumo, LINHA_CAB  # noqa: E402
 
 # formato pretendido por nome de coluna (o mesmo do camada_dados)
-FMT = {'DATA': 'dd/mm/yyyy', 'DATA_HORA': 'dd/mm/yyyy hh:mm:ss', 'RECEBIDO_EM': 'dd/mm/yyyy hh:mm',
-       'DATA_INATIVACAO': 'dd/mm/yyyy hh:mm', 'REGISTRADO_EM': 'dd/mm/yyyy hh:mm'}
+FMT = {'DATA': 'dd/mm/yyyy', 'DATA_HORA': 'dd/mm/yyyy hh:mm:ss', 'RECEBIDO_EM': 'dd/mm/yyyy hh:mm:ss',   # ADR-094
+       'DATA_INATIVACAO': 'dd/mm/yyyy hh:mm:ss', 'REGISTRADO_EM': 'dd/mm/yyyy hh:mm:ss'}
 
 
 def log(m):

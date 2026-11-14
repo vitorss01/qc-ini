@@ -34,7 +34,7 @@ DINAMICOS = {
     'frmInativar': {
         'lblTitulo': ['Resultado ID 1234567 — NÃO CONFORME (X vermelho)'],
         'lblDetalhe': ['ID 1234567 · Hemoglobina corpuscular média · DIMENSION 2 · Nível 3 · Lote 8977\n'
-                       'Entre as corridas 120 e 121 (RUN 26102803) · Data 28/10/2026 · Hora 14:32 · Valor 123,45\n'
+                       'Entre as corridas 120 e 121 (RUN 26102803) · Data 28/10/2026 · Hora 14:32:07 · Valor 123,45\n'
                        'Gráfico N3 · série "Violação" · Westgard: 1-3s + 2de3-2s + R-4s\n'
                        'Estado atual: NÃO CONFORME (inativado, X vermelho) — fora da média, do DP e do Westgard'],
         'optNC': ['A · MARCAR COMO NÃO CONFORME — continua visível no gráfico como X vermelho',

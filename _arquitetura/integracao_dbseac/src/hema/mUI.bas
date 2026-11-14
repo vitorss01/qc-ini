@@ -739,7 +739,7 @@ Private Function TextoDica(ByVal idv As Variant, ByVal inativado As Boolean, ByV
     s = s & "ID " & IdCurto(CStr(idv)) & TextoSubstitui(idv)
     If inativado Then s = s & sep & "INATIVADO"
     s = s & sep & "RUN " & CStr(runv)
-    If IsDate(dh) Then s = s & sep & Format$(dh, "dd/mm/yyyy hh:mm")
+    If IsDate(dh) Then s = s & sep & Format$(dh, "dd/mm/yyyy hh:nn:ss")
     TextoDica = s & sep & CStr(CDbl(v))
 End Function
 

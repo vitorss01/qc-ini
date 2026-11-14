@@ -104,11 +104,13 @@ def executar(produto, caminho, saida):
         ficha = run('mUI.FichaPonto', 1, s_res, PA[1] + 1, teto=60)
         r_a = L.cq({PA[2]})[PA[2]]
         dh = r_a['DATA_HORA']
+        import datetime as _dt
+        dh = (dh + _dt.timedelta(microseconds=500000)).replace(microsecond=0)        # ADR-094: ao segundo, como o VBA
         val = r_a['RESULTADO']
         idc = PA[2].split('-')[-1]
         esperado = [f'ID {idc}', str(r_a['ANALITO']).strip(), str(r_a['EQUIPAMENTO']).strip(), 'Nível 1',
                     f'Lote {str(r_a["LOTE"]).strip()}', f'Corrida {int(PA[3])}',
-                    f'RUN {str(r_a["RUN"]).split(".")[0]}', f'Data {dh:%d/%m/%Y}', f'Hora {dh:%H:%M}',
+                    f'RUN {str(r_a["RUN"]).split(".")[0]}', f'Data {dh:%d/%m/%Y}', f'Hora {dh:%H:%M:%S}',
                     'Gráfico N1', 'série "Resultado"']
         faltam = [e for e in esperado if e not in ficha]
         m_val = re.search(r'Valor ([-0-9,\.E+]+)', ficha)

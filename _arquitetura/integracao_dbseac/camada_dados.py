@@ -128,7 +128,7 @@ ENTRADAS = {
         ('UNIDADE', 9, '@', 'in'),
         ('MOTIVO', 28, '@', 'in'),
         ('USUARIO', 14, '@', 'auto'),
-        ('REGISTRADO_EM', 16, 'dd/mm/yyyy hh:mm', 'auto'),
+        ('REGISTRADO_EM', 16, 'dd/mm/yyyy hh:mm:ss', 'auto'),
         ('RUN', 11, FMT_RUN, LOOKUP.format(c='RUN')),               # ADR-090 (OC-0021): sem o "0" do XLOOKUP vazio
         ('STATUS', 20, 'General', LOOKUP.format(c='STATUS_ANALITICO')),
         ('DETALHE', 50, FMT_DETALHE, FORMULA_DETALHE),             # ADR-090 (OC-0021): sem "0" e com acentos
@@ -143,13 +143,13 @@ ENTRADAS = {
         ('ANALITO', 24, '@', 'in'),
         ('REGISTRAR - LJ', 11, 'General', 'in'),
         ('MOTIVO', 50, '@', 'in'),
-        ('DATA_INATIVACAO', 16, 'dd/mm/yyyy hh:mm', 'auto'),
+        ('DATA_INATIVACAO', 16, 'dd/mm/yyyy hh:mm:ss', 'auto'),
         ('USUARIO', 14, '@', 'auto'),
     ]),
     'tblComentariosTecnicos': ('COMENTARIOS_TECNICOS', [
         ('ID_REGISTRO', 14, '@', 'in'),
         ('COMENTARIO_TECNICO', 70, '@', 'in'),
-        ('DATA', 16, 'dd/mm/yyyy hh:mm', 'auto'),
+        ('DATA', 16, 'dd/mm/yyyy hh:mm:ss', 'auto'),
         ('USUARIO', 14, '@', 'auto'),
         ('ANALITO', 24, 'General', LOOKUP.format(c='ANALITO')),
         ('NIVEL', 7, '0', LOOKUP.format(c='NIVEL')),
@@ -169,8 +169,8 @@ LARG_SAIDA = {'ID_REGISTRO': 13, 'DATA': 11, 'DATA_HORA': 16, 'HORA': 8, 'ANALIT
               'STATUS_ANALITICO': 19, 'TIPO_PLOTAGEM_LJ': 15, 'COMENTARIO_TECNICO': 40, 'GOVERNANCA': 30,
               'MOTIVO_INATIVACAO': 30,
               'MOTIVO_EXCLUSAO_AUTOMATICA': 40, 'DETALHE': 90, 'TESTE': 48, 'RECEBIDO_EM': 16, 'EQUIPAMENTO': 13}
-FMT_SAIDA = {'DATA': 'dd/mm/yyyy', 'DATA_HORA': 'dd/mm/yyyy hh:mm:ss', 'HORA': 'hh:mm:ss', 'RECEBIDO_EM': 'dd/mm/yyyy hh:mm',
-             'DATA_INATIVACAO': 'dd/mm/yyyy hh:mm', 'RUN': '0', 'ID_ORIGEM': '0', 'ITEM_ID': '0'}
+FMT_SAIDA = {'DATA': 'dd/mm/yyyy', 'DATA_HORA': 'dd/mm/yyyy hh:mm:ss', 'HORA': 'hh:mm:ss', 'RECEBIDO_EM': 'dd/mm/yyyy hh:mm:ss',
+             'DATA_INATIVACAO': 'dd/mm/yyyy hh:mm:ss', 'RUN': '0', 'ID_ORIGEM': '0', 'ITEM_ID': '0'}
 
 
 # ================================================================ utilitarios
@@ -607,9 +607,9 @@ def formulas_resumo():
         # 28/10/2026: o ano por YEAR() -- o "yyyy" do TEXT e lido na lingua do Excel e aparecia como "yyyy" no pt-BR
         'DB': '="Recebidos: "&FIXED(ROWS(tblDB_Recebimento),0)&" resultados  ·  último resultado: "&'
               'TEXT(MAX(tblDB_Recebimento[DATA_HORA]),"dd/mm/")&YEAR(MAX(tblDB_Recebimento[DATA_HORA]))&'
-              'TEXT(MAX(tblDB_Recebimento[DATA_HORA])," hh:mm")&"  ·  última chegada: "&'
+              'TEXT(MAX(tblDB_Recebimento[DATA_HORA])," hh:mm:ss")&"  ·  última chegada: "&'
               'TEXT(MAX(tblDB_Recebimento[RECEBIDO_EM]),"dd/mm/")&YEAR(MAX(tblDB_Recebimento[RECEBIDO_EM]))&'
-              'TEXT(MAX(tblDB_Recebimento[RECEBIDO_EM])," hh:mm")',
+              'TEXT(MAX(tblDB_Recebimento[RECEBIDO_EM])," hh:mm:ss")',
         'DB_ORGANIZADO': '="Linhas (instante × nível): "&TEXT(ROWS(tblDB_Organizado),"#,##0")',
         # ADR-090 (OC-0050): FIXED, nao TEXT(...,"#,##0") -- o codigo do TEXT e lido no idioma do Excel (pt-BR: "44392,0")
         'Principal - Resultados': '="Total: "&FIXED(ROWS(tblCQ_Final),0)&"  ·  participam: "&'

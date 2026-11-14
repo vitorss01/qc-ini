@@ -37,7 +37,13 @@ let
         let t = try Excel.CurrentWorkbook(){[Name = nome]}[Content]
                 otherwise error Error.Record("TABELA_AUSENTE", "Tabela obrigatoria ausente ou renomeada: " & nome, nome)
         in Table.SelectColumns(t, cols, MissingField.UseNull),
-    DataHoraTxt = (v as any) as text => try DateTime.ToText(DateTime.From(v), "dd/MM/yyyy HH:mm") otherwise "?",
+    // ADR-094: ao segundo, de segundos INTEIROS (o mesmo Segundos do A03; = mEtlQA.DH)
+    DataHoraTxt = (v as any) as text => let s = Segundos(v) in if s = null then "?" else
+        let d = Number.RoundDown(s / 86400), r = s - d * 86400 in
+            Date.ToText(Date.AddDays(#date(1899, 12, 30), d), "dd/MM/yyyy") & " " &
+            Text.PadStart(Text.From(Number.IntegerDivide(r, 3600)), 2, "0") & ":" &
+            Text.PadStart(Text.From(Number.IntegerDivide(Number.Mod(r, 3600), 60)), 2, "0") & ":" &
+            Text.PadStart(Text.From(Number.Mod(r, 60)), 2, "0"),
     Segundos = (v as any) as nullable number => try Number.Round(Number.From(DateTime.From(v)) * 86400) otherwise null,
 
     F0 = Excel.CurrentWorkbook(){[Name = "tblCQ_Final"]}[Content],
@@ -57,7 +63,7 @@ let
     E01 = Achado("ERRO", "E01", "Resultado inativado sem justificativa tecnica",
             Table.SelectRows(F, each [STATUS_ANALITICO] = "INATIVADO" and [TEM_JUSTIFICATIVA] <> SIM),
             each "ERRO DE GOVERNANÇA: " & _[ID_REGISTRO] & " | " & (_[ANALITO] ?? "?") & " | nivel " & Text.From(_[NIVEL] ?? "?") &
-                 " | " & (try DateTime.ToText(_[DATA_HORA], "dd/MM/yyyy HH:mm") otherwise "?") &
+                 " | " & DataHoraTxt(_[DATA_HORA]) &
                  " -- inativado sem justificativa; escrever o MOTIVO na linha da aba Inativar"),
 
     // E02 / E03 -- tabela de inativacao: ID repetido, ID inexistente
@@ -280,7 +286,7 @@ let
     A07 = Achado("ALERTA", "A07", "MODO HISTORICO: DB_SEAC nao lido nesta atualizacao",
             if ModoF = "HISTORICO" or ModoF = "HISTÓRICO" then #table({"DATA_HORA"}, {{UltRec}}) else #table({"DATA_HORA"}, {}),
             each "nenhum resultado novo foi recebido; vale o historico ate " &
-                 (try DateTime.ToText(DateTime.From(_[DATA_HORA]), "dd/MM/yyyy HH:mm") otherwise "?") &
+                 DataHoraTxt(_[DATA_HORA]) &
                  ". Na rede do laboratorio, voltar Cfg_Integracao MODO_FONTE = SEAC."),
 
     // E09 (D16) -- resultado do interfaceamento sem DATA_HORA: fora da corrida e do calculo (SEM_DATA_HORA).

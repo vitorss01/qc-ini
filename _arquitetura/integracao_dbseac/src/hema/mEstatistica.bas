@@ -3608,7 +3608,7 @@ Private Sub GravarFotoWg(ByVal ws As Worksheet, ByRef vA As Variant, ByVal nA As
         Next lin
         ' texto: o lote "010" nao vira 10 e a lista de corridas nao vira numero
         ws.Range(ws.Cells(WGF_R0, 1), ws.Cells(WGF_R0 + n - 1, WGF_NCOL - 1)).NumberFormat = "@"
-        ws.Range(ws.Cells(WGF_R0, WGF_NCOL), ws.Cells(WGF_R0 + n - 1, WGF_NCOL)).NumberFormat = "dd/mm/yyyy hh:mm"
+        ws.Range(ws.Cells(WGF_R0, WGF_NCOL), ws.Cells(WGF_R0 + n - 1, WGF_NCOL)).NumberFormat = "dd/mm/yyyy hh:mm:ss"
         ws.Range(ws.Cells(WGF_R0, 1), ws.Cells(WGF_R0 + n - 1, WGF_NCOL)).Value = blocoFoto
     End If
     ws.Range("H2").Value = ctrl.Count

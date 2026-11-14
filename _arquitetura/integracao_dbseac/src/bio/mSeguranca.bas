@@ -502,7 +502,7 @@ Public Function AssinarCom(ByVal tcell As Range, ByVal login As String, ByVal se
         AuditarSeg "ASSINATURA_RECUSADA", "", papel, tipo & " | login " & login & " | " & AssinarCom
         Exit Function
     End If
-    quando = Format(Now, "dd/mm/yyyy hh:mm")
+    quando = Format(Now, "dd/mm/yyyy hh:nn:ss")
     ident = IdentificacaoProfissional(nome, cargo, conselho, login)
     If origem = "LOCAL" Then
         CarimbarRubrica ws, r, tcell

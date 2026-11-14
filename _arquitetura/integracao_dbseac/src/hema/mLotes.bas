@@ -1261,7 +1261,7 @@ Public Function RegistroLote(ByVal lote As Variant) As String
         Exit Function
     End If
     RegistroLote = "Lote " & l & ": media/DP em " & n & " de " & nTot & " analitos" & _
-        IIf(IsEmpty(quando), "", " · ultimo registro " & Format$(quando, "dd/mm/yyyy hh:mm") & IIf(quem <> "", " por " & quem, "")) & _
+        IIf(IsEmpty(quando), "", " · ultimo registro " & Format$(quando, "dd/mm/yyyy hh:nn:ss") & IIf(quem <> "", " por " & quem, "")) & _
         IIf(fontes.Count > 0, " · especificacao: " & Join(fontes.Keys, ", "), "") & _
         IIf(origens.Count > 0, " · origem: " & Join(origens.Keys, ", "), "")
     Exit Function

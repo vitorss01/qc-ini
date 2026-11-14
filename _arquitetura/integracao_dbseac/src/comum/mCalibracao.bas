@@ -137,7 +137,7 @@ Public Function RegistrarCalibracaoPorId(ByVal id As String, Optional ByVal linh
     mSeguranca.RestaurarProtecao ws, prot
     Application.EnableEvents = ev
     GarantirLinhaNova                        ' ADR-087: a proxima linha ja fica pronta
-    quando = Format$(dh, "dd/mm/yyyy hh:mm")
+    quando = Format$(dh, "dd/mm/yyyy hh:nn:ss")
     Auditar "CALIBRACAO_REGISTRADA", "ID " & p(1) & " | " & p(2) & " | " & p(4) & " | RUN " & p(6) & " | " & quando & _
                                      " | lote do resultado " & p(5) & " | aba Registros linha " & r
     RegistrarCalibracaoPorId = "OK|" & r & "|" & p(2) & "|" & p(4) & "|" & quando

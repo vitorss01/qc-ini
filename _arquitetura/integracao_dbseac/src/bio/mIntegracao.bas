@@ -332,7 +332,7 @@ Private Function UltimoResultado() As String
     For i = 1 To UBound(v, 1)
         If VarType(v(i, 1)) = vbDouble Then If v(i, 1) > mx Then mx = v(i, 1)
     Next i
-    If mx > 0 Then UltimoResultado = "Resultado mais recente recebido: " & Format$(CDate(mx), "dd/mm/yyyy hh:mm") & vbCrLf
+    If mx > 0 Then UltimoResultado = "Resultado mais recente recebido: " & Format$(CDate(mx), "dd/mm/yyyy hh:nn:ss") & vbCrLf
 fim:
 End Function
 
@@ -517,7 +517,7 @@ Private Function TextoQuemLancou(ByVal usuario As Variant, ByVal quando As Varia
     If Not (IsEmpty(usuario) Or IsNull(usuario) Or IsError(usuario)) Then u = Trim$(CStr(usuario))
     If Len(u) > 0 Then s = " por " & u
     If Not IsError(quando) Then
-        If IsDate(quando) Then s = s & " em " & Format$(CDate(quando), "dd/mm/yyyy hh:nn")
+        If IsDate(quando) Then s = s & " em " & Format$(CDate(quando), "dd/mm/yyyy hh:nn:ss")
     End If
     If Len(s) > 0 Then TextoQuemLancou = "manual lancado" & s
 End Function
@@ -1156,7 +1156,7 @@ Public Function DadosDoPonto(ByVal nivel As Long, ByVal serie As Long, ByVal pon
     rq = LinhaCQ(lo, idN)
     If rq = 0 Then DadosDoPonto = "ERRO|" & TextoIdNaoEncontrado(idN): Exit Function
     dh = ValorCQ(lo, rq, "DATA_HORA")
-    If IsDate(dh) Then txtDh = Format$(dh, "dd/mm/yyyy hh:nn")
+    If IsDate(dh) Then txtDh = Format$(dh, "dd/mm/yyyy hh:nn:ss")
     vl = ValorCQ(lo, rq, "RESULTADO")
     If EhNum(vl) Then txtVl = CStr(CDbl(vl)) Else txtVl = CStr(vl)
     If UCase$(Trim$(CStr(ValorCQ(lo, rq, "STATUS_ANALITICO")))) = "INATIVADO" Then st = "INATIVADO" Else st = "ATIVO"

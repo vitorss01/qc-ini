@@ -423,7 +423,7 @@ Public Function HistoricoDoRegistro(ByVal run As Long, ByVal nivel As Long, _
     For i = AUDIT_R0 To ult
         If CStr(ws.Cells(i, AU_CHAVE).Value) = chave Then
             n = n + 1
-            r = r & Format$(ws.Cells(i, AU_TS).Value, "dd/mm/yyyy hh:mm") & "  " & _
+            r = r & Format$(ws.Cells(i, AU_TS).Value, "dd/mm/yyyy hh:nn:ss") & "  " & _
                 CStr(ws.Cells(i, AU_ACAO).Value) & "  " & _
                 CStr(ws.Cells(i, AU_RESANT).Value) & " -> " & CStr(ws.Cells(i, AU_RESNOVO).Value) & _
                 "  [" & CStr(ws.Cells(i, AU_USRSIST).Value) & "]" & vbLf

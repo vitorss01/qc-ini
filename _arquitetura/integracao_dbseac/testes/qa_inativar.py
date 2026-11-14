@@ -66,9 +66,10 @@ def num_pt(t):
 
 def confere_dica(dica, r, inativado):
     """A dica bate com a linha r da tblCQ_Final? Devolve (ok, esperado)."""
-    dh = r['DATA_HORA']
+    import datetime as _dt
+    dh = (r['DATA_HORA'] + _dt.timedelta(microseconds=500000)).replace(microsecond=0)   # ADR-094: ao segundo, como o VBA
     esp = ['ID ' + curto(r['ID_REGISTRO'])] + (['INATIVADO'] if inativado else []) + \
-          [f"RUN {int(r['RUN'])}", dh.strftime('%d/%m/%Y %H:%M'), str(r['RESULTADO'])]
+          [f"RUN {int(r['RUN'])}", dh.strftime('%d/%m/%Y %H:%M:%S'), str(r['RESULTADO'])]
     p = partes(dica)
     if p and (p[0].startswith('Corrida ') or p[0].startswith('Entre as corridas') or p[0].startswith('Antes da corrida')):
         p = p[1:]                       # ADR-081: "Corrida n" / "Entre as corridas k e k+1" (eixo X; qa_corrida_lote)

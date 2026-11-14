@@ -362,7 +362,7 @@ def executar(produto, caminho, saida):
             r = L.cq({d['id'][t]}).get(d['id'][t], {})
             ok = (len(p) == 9 and p[0] == 'OK' and p[1] == d['id'][t].upper() and p[2] == txt(r.get('ANALITO'))
                   and p[3] == str(t + 1) and p[4] == str(int(d['cor'][t]))
-                  and r.get('DATA_HORA') is not None and p[5] == r['DATA_HORA'].strftime('%d/%m/%Y %H:%M')
+                  and r.get('DATA_HORA') is not None and p[5] == (r['DATA_HORA'] + dt.timedelta(microseconds=500000)).strftime('%d/%m/%Y %H:%M:%S')
                   and num_pt(p[6]) is not None and abs(num_pt(p[6]) - float(r.get('RESULTADO'))) < 1e-9
                   and p[7] == ('INATIVADO' if r.get('STATUS_ANALITICO') == 'INATIVADO' else 'ATIVO')
                   and p[8] == txt(r.get('LOTE')))

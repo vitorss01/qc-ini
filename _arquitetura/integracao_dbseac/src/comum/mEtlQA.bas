@@ -140,8 +140,14 @@ Private Function AnKeyQ(ByVal x As Variant) As Variant
     If IsEmpty(Txt(x)) Then AnKeyQ = Empty Else AnKeyQ = UCase$(Txt(x))
 End Function
 
-Private Function DH(ByVal v As Variant) As String              ' 'dd/MM/yyyy HH:mm' (nulo -> "?")
-    If Vazio(v) Then DH = "?" Else DH = Format$(CDate(CDbl(v)), "dd/mm/yyyy hh:nn")
+Private Function DH(ByVal v As Variant) As String              ' 'dd/MM/yyyy HH:mm:ss' (nulo -> "?"); ADR-094
+    Dim s As Variant, d As Double, r As Long
+    s = Segundos(v)
+    If IsEmpty(s) Then DH = "?": Exit Function
+    d = Int(s / 86400#)
+    r = CLng(s - d * 86400#)
+    DH = Format$(CDate(d), "dd/mm/yyyy") & " " & Format$(r \ 3600, "00") & ":" & Format$((r Mod 3600) \ 60, "00") & _
+         ":" & Format$(r Mod 60, "00")
 End Function
 
 Private Function Dia(ByVal v As Variant) As String
