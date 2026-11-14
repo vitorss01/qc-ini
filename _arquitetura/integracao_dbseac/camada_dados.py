@@ -103,7 +103,16 @@ FMT_RUN = '0;-0;;@'
 FMT_DETALHE = 'General'          # o DETALHE e sempre texto (XLOOKUP(...)&""): o "0" some pela formula
 ACENTOS_DETALHE = [('obrigatorio', 'obrigatório'), ('invalido', 'inválido'), ('lancamento', 'lançamento'),
                    ('ambiguo', 'ambíguo'), ('virgula', 'vírgula'), ('padrao', 'padrão'), ('numerico', 'numérico'),
-                   ('retransmissao', 'retransmissão')]
+                   ('retransmissao', 'retransmissão'),
+                   # ADR-095 (OC-0021, reteste 04): os textos do IMPLAUSIVEL, das regras de lote (ADR-091), da troca de
+                   # analito (ADR-093) e da substituicao (ADR-082). Palavras curtas entre espacos (nao pegam janela/soro)
+                   ('implausivel', 'implausível'), ('estatistica', 'estatística'), ('grafico', 'gráfico'),
+                   ('lancado', 'lançado'), ('catalogo', 'catálogo'), ('substituido', 'substituído'),
+                   (' nao ', ' não '), (' ja ', ' já '), (' so ', ' só ')]
+# ADR-095: formas sem acento que nao podem sobrar no DETALHE (trava do qa_adr095: texto novo sem acento reprova)
+SEM_ACENTO_PROIBIDO = ['nao', 'ja', 'so', 'estatistica', 'grafico', 'implausivel', 'lancado', 'catalogo', 'substituido',
+                       'periodo', 'nivel', 'codigo', 'numero', 'historico', 'obrigatorio', 'invalido', 'lancamento',
+                       'ambiguo', 'virgula', 'padrao', 'numerico', 'retransmissao']
 
 
 def _formula_detalhe():
@@ -500,18 +509,28 @@ def montar_entrada(wb, produto, nome):
         except Exception as e:     # Excel sem checkbox nativo: lista SIM/NAO como alternativa
             log('  checkbox nativo indisponivel, usando lista SIM/NÃO:', e)
             caixa.Validation.Delete()
-            caixa.Validation.Add(3, 1, 1, 'SIM,NÃO')
+            caixa.Validation.Add(3, 1, 1, sep_lista(wb.Application).join(('SIM', 'NÃO')))   # ADR-095
         caixa.HorizontalAlignment = -4108
     log(f'  {nome}: {"criada" if criada else "existia"} · {lo.ListRows.Count} linhas · {len(cab)} colunas')
     return lo
 
 
+def sep_lista(app):
+    """ADR-095 (R4-01, 14/11/2026): o separador de lista do Excel (xlListSeparator; ';' no pt-BR). Lista literal montada
+    com ',' fixa vira UM item so no Excel pt-BR (gravado como x12ac:list, item com virgula): o menu oferecia
+    'DIMENSION 1,DIMENSION 2' e recusava 'DIMENSION 1'. Mesma forma do instalar_adr064/075/090."""
+    return app.International[5 - 1]
+
+
 def validacoes(wb, produto, nome, lo):
+    sep = sep_lista(wb.Application)
+
     def lista(col, itens_ou_formula, msg, estilo=1, titulo=None):
         # estilo: 1 = Parar (xlValidAlertStop), 2 = Aviso (xlValidAlertWarning: o usuario pode confirmar)
+        # itens_ou_formula: '=nome' ou uma LISTA de itens (juntados com o separador do Excel, ADR-095)
         r = lo.ListColumns(col).DataBodyRange
         r.Validation.Delete()
-        src = itens_ou_formula if itens_ou_formula.startswith('=') else itens_ou_formula
+        src = itens_ou_formula if isinstance(itens_ou_formula, str) else sep.join(itens_ou_formula)
         r.Validation.Add(3, estilo, 1, src)
         r.Validation.IgnoreBlank = True
         if titulo:
@@ -529,12 +548,13 @@ def validacoes(wb, produto, nome, lo):
 
     if nome == 'tblResultados_Manuais':
         p = cp.PRODUTOS[produto]
-        lista('EQUIPAMENTO', ','.join(p['equipamentos']), 'Escolha o equipamento da lista.')
+        lista('EQUIPAMENTO', list(p['equipamentos']), 'Escolha o equipamento na seta da célula.')
         matrizes = sorted({m for m, *_ in p['depara'] if m}) or [p['cfg']['MATRIZ_PADRAO'][0]]
-        lista('MATRIZ', ','.join(matrizes), 'Escolha a matriz da lista.')
+        lista('MATRIZ', matrizes, 'Escolha a matriz na seta da célula.')
         lista('LOTE', '=lstLotes', 'Use um lote cadastrado (aba Configuração).')
         lista('ANALITO', '=lstAnalitos', 'Use o nome do analito como está no cadastro (aba Analitos).')
-        lista('MOTIVO', ','.join(MOTIVOS_MANUAL), 'Escolha o motivo da lista.')
+        lista('MOTIVO', list(MOTIVOS_MANUAL),
+              'Escolha o motivo na seta da célula. Ele é obrigatório quando o manual substitui um resultado.')
         n = lo.ListColumns('NIVEL').DataBodyRange
         n.Validation.Delete()
         n.Validation.Add(1, 1, 1, '1', str(p['cfg']['NIVEIS'][0]))          # inteiro entre 1 e NIVEIS

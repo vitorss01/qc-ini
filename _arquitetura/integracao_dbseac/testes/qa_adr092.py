@@ -254,6 +254,9 @@ def executar(produto, caminho, saida):
         # ------------------------------------------------------------ K05 OC-0040 (Bio)
         if bio:
             d4f, d4, k3 = str(e.Range('D4').Formula), e.Range('D4').Value, p.Range('K3').Value
+            # ADR-095 (reteste 04): sem De/Ate no Painel ("Tudo"), o D4 fica vazio (o periodo e o historico inteiro)
+            sem_deate = p.Range('G3').Value in (None, '') and p.Range('G4').Value in (None, '')
+            d4_esperado = '' if sem_deate else txt(p.Range('K3').Text)
             a4 = txt(e.Range('A4').Value)
             xl.EnableEvents = False
             p.Unprotect(ii.SENHA)
@@ -275,10 +278,11 @@ def executar(produto, caminho, saida):
                 xl.EnableEvents = True
             reg('K05 OC-0040: Estatística D4 = ano do Painel (K3; vazio, nunca "0"), rótulo "Visão (segue o Painel)", '
                 'período efetivo vazio = "histórico inteiro do lote"',
-                bool(re.search(r'Painel!\$?K\$?3', d4f)) and txt(e.Range('D4').Text) == txt(p.Range('K3').Text)
-                and txt(d4) not in ('0', '') and d4_vazio != '0' and not ano0
+                bool(re.search(r'Painel!\$?K\$?3', d4f)) and txt(e.Range('D4').Text) == d4_esperado
+                and txt(d4) != '0' and (sem_deate or txt(d4) != '') and d4_vazio != '0' and not ano0
                 and a4 == 'Visão (segue o Painel)' and per.strip() == 'histórico inteiro do lote',
-                {'D4': [d4f, d4], 'Painel_K3': k3, 'D4_com_K3_vazio': d4_vazio, 'A4': a4, 'periodo_vazio': per})
+                {'D4': [d4f, d4], 'Painel_K3': k3, 'sem_DeAte': sem_deate, 'D4_esperado': d4_esperado,
+                 'D4_com_K3_vazio': d4_vazio, 'A4': a4, 'periodo_vazio': per})
         # ------------------------------------------------------------ K06 OC-0049 (Hema)
         else:
             v = e.Range('A14:T133').Value

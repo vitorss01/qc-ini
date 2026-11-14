@@ -83,7 +83,8 @@ sozinho), marque ou não **Registrar-LJ** (X vermelho), escreva o **motivo** e c
 
 1. Na aba **Digitar Resultados**, preencha data, hora, **equipamento**, lote, nível, analito, resultado e motivo. O ID
    (MAN_0001…) é gerado sozinho. Equipamento vazio recebe o do Painel e fica em **âmbar**, com a nota "Preenchido pelo
-   Painel com …: confira": na Bioquímica há dois DIMENSION, então confira (ou digite o certo) antes de atualizar
+   Painel com …: confira": na Bioquímica há dois DIMENSION, então confira (ou escolha o certo na seta da célula)
+   antes de atualizar. Equipamento, matriz e motivo se escolhem na seta da célula (um item por linha, ADR-095)
    (ADR-090).
 2. Atualize e confira o STATUS (e a coluna DETALHE):
    - **ATIVO** = entrou na estatística;

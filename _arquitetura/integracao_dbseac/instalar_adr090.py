@@ -44,6 +44,8 @@ MUDANCAS = []
 A39_ANTIGO = '"⚠ "&engCortadas&" corrida(s) antigas do período fora do gráfico (máx. 180). "'
 A39_NOVO = ('"⚠ "&engCortadas&" corrida(s) antigas do período fora do gráfico e dos indicadores do Painel (máx. 180). '
             'Período inteiro: "&Eng_Saida!$AF$1&" — veja a aba Estatística. "')
+A39_NOVO_HEMA = ('"⚠ "&engCortadas&" corrida(s) antigas do período fora do gráfico e dos indicadores do Painel (máx. 180). '
+                 'Período inteiro"&IF(engTodos,')
 ABAS_CEQ = {'EQA.CAP_Dados': 'CAP', 'EQA.Controllab_Dados': 'Controllab'}
 COLS_FORMULA = ['O', 'P', 'S', 'T', 'U', 'V', 'W', 'X']       # Bias, |Bias| e as de apoio (montar_modulo_eqa + ADR-071)
 VAL_RECUSA = '=1=0'                                          # personalizada que recusa toda digitacao (sem funcao: lingua neutra)
@@ -108,7 +110,7 @@ def text_para_fixed(f):
 def painel(wb):
     p = wb.Worksheets('Painel')
     f = str(p.Range('A39').Formula)
-    if A39_NOVO not in f:
+    if A39_NOVO not in f and A39_NOVO_HEMA not in f:     # ADR-095: na Hema o fim do aviso e outro (instalar_adr078)
         if f.count(A39_ANTIGO) != 1:
             raise SystemExit(f'Painel!A39 sem o aviso de corte esperado: {f[-400:]!r} -- nada foi salvo')
         p.Range('A39').Formula = f.replace(A39_ANTIGO, A39_NOVO)

@@ -26,6 +26,7 @@ sys.path.insert(0, AQUI)
 sys.path.insert(0, os.path.join(AQUI, '..', 'etapa1_multilote'))
 import xlh  # noqa: E402
 import instalar_integracao as ii  # noqa: E402
+import camada_dados as cd  # noqa: E402
 import visual_telas  # noqa: E402
 import codigo_atual  # noqa: E402
 import instalar_adr078 as a78  # noqa: E402
@@ -173,7 +174,12 @@ def filtros(wb):
     if str(ws.Range('A3').Value or '') != 'FILTROS':
         ws.Range('A3').Value = 'FILTROS'
         MUDANCAS.append('Registros filtros (rotulos)')
+    sep = cd.sep_lista(wb.Application)
     for col, rot, lst in FILTROS:
+        if lst and not lst.startswith('='):
+            # ADR-095 (R4-01): lista literal com o separador do Excel; com ',' fixa o pt-BR a gravava como UM item
+            # ("Sim,Não"), e o filtro Calibrado? nao aceitava Sim nem Não
+            lst = sep.join(lst.split(','))
         c_rot, c_val = ws.Cells(3, col), ws.Cells(4, col)
         if str(c_rot.Value or '') != rot:
             c_rot.Value = rot

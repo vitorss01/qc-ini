@@ -179,7 +179,11 @@ def executar(produto, caminho, saida):
         n_jan = [ps[k][1] for k in range(q.nlv)] if ps and len(ps[0]) > 1 else []
         reg('O12 Mais de 180 corridas no período: o A39 diz que o corte vale para os indicadores do Painel e mostra o n do '
             'período inteiro por nível (= contagem independente na tblCQ_Final); o n da janela continua o de antes (menor)',
-            cort > 0 and 'indicadores do Painel' in a39 and f'Período inteiro: {af1}' in a39 and af1 == indep,
+            # ADR-095: na Hema a Estatistica tem lote/ano proprios -- o aviso nao aponta para ela e diz o recorte
+            cort > 0 and 'indicadores do Painel' in a39 and af1 == indep
+            and ((bio and f'Período inteiro: {af1}' in a39 and 'veja a aba Estatística' in a39)
+                 or (not bio and 'Estatística' not in a39
+                     and f'Período inteiro{" (todos os lotes)" if bool(eng.Range("AD1").Value) else " do lote"}: {af1} resultados.' in a39)),
             {'cortadas': cort, 'AF1': af1, 'independente': indep, 'engPainel': ps, 'A39': a39[-260:],
              'filtro': [str(de), str(ate)], 'lote': lote, 'todos': todos, 'n_janela': n_jan})
 

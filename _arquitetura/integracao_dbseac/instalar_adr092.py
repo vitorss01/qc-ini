@@ -34,8 +34,12 @@ from instalar_seguranca_usuarios import foto_protecao, devolver_protecao  # noqa
 MUDANCAS = []
 CONSULTAS = ['DB_CQ_FINAL', 'QA_INTEGRACAO']
 SEM_MEDIA = (0x007A9C, 0xCEF4FF)            # fonte e fundo da regra "SEM MÉDIA/DP" do painel.py
-D4 = '=IF(Painel!K3="","",Painel!K3)'
-D4_ANTIGO = '=Painel!I3'
+# ADR-095 (reteste 04, P-09): sem De/Ate no Painel ("Tudo"), o D4 fica vazio -- dizia "Ano 2026" ao lado do "historico
+# inteiro do lote". So exibicao: com o B4 = PERSONALIZADO o motor (mEstatistica, linha ~2132) le B5/D5, nunca o D4
+D4 = '=IF(OR(Painel!K3="",AND(Painel!$G$3="",Painel!$G$4="")),"",Painel!K3)'
+D4_ANTIGO = ('=Painel!I3', '=IF(Painel!K3="","",Painel!K3)')     # o de antes do ADR-092 e o do ADR-092
+# ADR-095: B5/D5 (=Painel!G3/G4) com o Painel em "Tudo" mostravam "00/01/1900"; so o formato (o zero fica em branco)
+FMT_B5D5 = 'dd/mm/yyyy;;'
 A4 = 'Visão (segue o Painel)'
 HIST = 'histórico inteiro do lote'
 H5_ANTIGO = '=JanelaInicio($B$4,$D$4,$F$4,$B$5,$D$5)'
@@ -80,7 +84,8 @@ def setf(rng, f, antigo, oque):
     atual = str(rng.Formula)
     if norm(atual) == norm(f):
         return
-    if norm(atual) != norm(antigo):                     # 'a' (constante do I5) tambem passa por aqui
+    antigos = antigo if isinstance(antigo, tuple) else (antigo,)
+    if norm(atual) not in [norm(x) for x in antigos]:   # 'a' (constante do I5) tambem passa por aqui
         raise SystemExit(f'{oque}: formula inesperada {atual[:160]!r} -- nada foi salvo')
     rng.Formula = f
     MUDANCAS.append(oque)
@@ -105,7 +110,13 @@ def painel(wb):
 
 def estatistica_bio(wb):
     e = wb.Worksheets('Estatística')
-    setf(e.Range('D4'), D4, D4_ANTIGO, 'Estatística D4 (ano do Painel K3)')
+    setf(e.Range('D4'), D4, D4_ANTIGO, 'Estatística D4 (ano do Painel K3; vazio sem De/Até)')
+    for c in ('B5', 'D5'):                                  # ADR-095: so o formato (formula e valor intactos)
+        if str(e.Range(c).NumberFormat) != FMT_B5D5:
+            if not re.fullmatch(r'=Painel!\$?G\$?[34]', str(e.Range(c).Formula)):
+                raise SystemExit(f'Estatística {c} inesperada: {e.Range(c).Formula!r} -- nada foi salvo')
+            e.Range(c).NumberFormat = FMT_B5D5
+            MUDANCAS.append(f'Estatística {c} formato (zero em branco)')
     if str(e.Range('A4').Value or '') != A4:
         if str(e.Range('A4').Value or '').strip() != 'Visão':
             raise SystemExit(f'Estatística A4 inesperada: {e.Range("A4").Value!r} -- nada foi salvo')
@@ -142,7 +153,8 @@ def fumaca(ex, wb, produto):
     e = wb.Worksheets('Estatística')
     if produto.startswith('Bio'):
         d4, k3 = e.Range('D4').Text, p.Range('K3').Text
-        if str(d4) != str(k3) or str(d4) == '0':
+        sem = p.Range('G3').Value in (None, '') and p.Range('G4').Value in (None, '')
+        if str(d4) != ('' if sem else str(k3)) or str(d4) == '0' or '1900' in str(e.Range('B5').Text + e.Range('D5').Text):
             raise SystemExit(f'fumaca: Estatística D4 = {d4!r}, Painel K3 = {k3!r} -- nada foi salvo')
         log(f'   Estatística D4 = {d4!r} (Painel K3), H5 = {e.Range("H5").Text!r}')
     else:

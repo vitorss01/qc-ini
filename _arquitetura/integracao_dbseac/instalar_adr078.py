@@ -293,6 +293,15 @@ def q4(nlv):
             f'IF(COUNTIF({J},"OK*")>0,"OK","—")))))))))')
 
 
+def corte_periodo(nlv):
+    """O fim do aviso do corte de 180 corridas (dentro de uma string da formula). Bio: aponta a Estatistica, que segue o
+    Painel (ADR-092). ADR-095 (reteste 04, efeito colateral da OC-0012): na Hematologia a Estatistica tem lote e ano
+    proprios e nunca mostra o mesmo recorte; o aviso diz so o n do periodo inteiro (todos os lotes com o H3 vazio)."""
+    if nlv == 2:
+        return 'Período inteiro: "&Eng_Saida!$AF$1&" — veja a aba Estatística. '
+    return 'Período inteiro"&IF(engTodos," (todos os lotes)"," do lote")&": "&Eng_Saida!$AF$1&" resultados. '
+
+
 def a39(m, nlv):
     Ms = ['Calc!' + n['M'] for n in m['niveis']]
     Ss = ['Calc!' + n['S'] for n in m['niveis']]
@@ -312,7 +321,7 @@ def a39(m, nlv):
             '&IF(engAviso<>"","FILTRO: "&engAviso&" ","")'
             # ADR-090 (OC-0012): o corte vale tambem para os indicadores do Painel; n do periodo inteiro em Eng_Saida!AF1
             '&IF(N(engCortadas)>0,"⚠ "&engCortadas&" corrida(s) antigas do período fora do gráfico e dos indicadores do '
-            'Painel (máx. 180). Período inteiro: "&Eng_Saida!$AF$1&" — veja a aba Estatística. ","")'
+            'Painel (máx. 180). ' + corte_periodo(nlv) + '","")'
             '&IF(OR($G$3<>"",$G$4<>""),"Filtro "&IF($G$3<>"",TEXT($G$3,"dd/mm/aa"),"início")&" a "&IF($G$4<>"",TEXT($G$4,"dd/mm/aa"),"hoje"),"Sem filtro de data")')
 
 
