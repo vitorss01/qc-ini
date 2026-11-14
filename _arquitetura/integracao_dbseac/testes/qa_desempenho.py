@@ -12,6 +12,8 @@ Mede pelo caminho do usuario (medir_spinner.py, Excel oculto) e reprova acima do
   troca da selecao de rodadas (P4) e dos meses do Sigma (ADR-071) <= 10 s cada
 Reprova tambem se uma formula nova ou uma varredura do banco voltar ao clique (o erro do
 eqProvedor no ADR-050): e exatamente o que estes tetos pegam.
+14/11/2026: as medidas esperam a tarefa agendada DB_SEAC (Excel a cada 2 min, ~42 s) estar parada
+(medir_spinner.esperar_db_seac_livre): dentro da janela dela a propria producao passava do teto.
 """
 import json
 import os

@@ -45,6 +45,7 @@ sys.path.insert(0, AQUI)
 from qa_final import QA, reg, RES, NAO, sha256_arquivo  # noqa: E402
 sys.path.insert(0, os.path.join(AQUI, '..'))
 import instalar_integracao as ii  # noqa: E402
+import medir_spinner  # noqa: E402
 
 SIM = 'SIM'
 TB = 'tblInativacao_NaoConformes'
@@ -563,6 +564,8 @@ def executar(produto, caminho, saida):
         inat10c = L.inativar()
         mot10 = 'QA ADR-081: falha de equipamento ou de calibração'
         run('mUI.DefinirRespostaTeste', f'CONFIRMAR|{mot10}|1', teto=60)
+        # 14/11: fora da janela da tarefa DB_SEAC (Excel a cada 2 min, ~42 s): senao mede a CPU disputada
+        tempos['U10_espera_db_seac'] = medir_spinner.esperar_db_seac_livre(folga_s=40)
         t0 = time.time()
         r10 = run('mUI.InativarPontoUI', 1, s_res, lin_p10, teto=900)
         tempos['U10_inativar_UI'] = round(time.time() - t0, 1)
@@ -577,6 +580,7 @@ def executar(produto, caminho, saida):
         r10r, r15 = '', ''
         if sx10 is not None:
             run('mUI.DefinirRespostaTeste', 'CONFIRMAR|QA ADR-081: investigação concluída|0', teto=60)
+            tempos['U10r_espera_db_seac'] = medir_spinner.esperar_db_seac_livre(folga_s=40)
             t0 = time.time()
             r10r = run('mUI.InativarPontoUI', 1, s_x[sx10], depois10[rnx10]['linha'] + 1, teto=900)
             tempos['U10_reativar_UI'] = round(time.time() - t0, 1)

@@ -41,6 +41,37 @@ def resumo(ts):
             'max_ms': round(max(ts) * 1000), 'n': len(ts)}
 
 
+PS_TAREFA = ("$t = Get-ScheduledTask -TaskName 'DB_SEAC*' -ErrorAction SilentlyContinue | Select-Object -First 1; "
+             "if ($t) { $i = $t | Get-ScheduledTaskInfo; "
+             "'' + $t.State + '|' + [int](($i.NextRunTime - (Get-Date)).TotalSeconds) } else { 'SEM_TAREFA|0' }")
+
+
+def esperar_db_seac_livre(folga_s=25, teto_s=180):
+    """14/11/2026: a tarefa agendada do laboratorio ('DB_SEAC - Atualizacao Automatica') abre um Excel a cada 2 min
+    por ~42 s. Medida em ms dentro dessa janela mede a CPU disputada, nao o codigo: a PRODUCAO tambem passou do teto
+    (371 ms) quando a medida caiu nela, e nenhuma medida fora dela passou (desemp41/43). Espera a tarefa parada e com
+    pelo menos folga_s ate a proxima execucao. Sem a tarefa (outra maquina), nao espera. Devolve a evidencia."""
+    import subprocess
+    t0 = time.time()
+    estado = None
+    while True:
+        try:
+            r = subprocess.run(['powershell', '-NoProfile', '-Command', PS_TAREFA], capture_output=True, text=True,
+                               timeout=30).stdout.strip().splitlines()
+            estado, prox = (r[-1].split('|') + ['0'])[:2] if r else ('?', '0')
+            prox = int(prox)
+        except Exception as e:                              # noqa: BLE001
+            return {'tarefa': f'nao consultada ({type(e).__name__})', 'esperou_s': round(time.time() - t0, 1)}
+        if estado == 'SEM_TAREFA':
+            return {'tarefa': 'nao existe nesta maquina', 'esperou_s': 0}
+        if estado != 'Running' and prox >= folga_s:
+            return {'tarefa': estado, 'proxima_em_s': prox, 'esperou_s': round(time.time() - t0, 1)}
+        if time.time() - t0 > teto_s:
+            return {'tarefa': estado, 'proxima_em_s': prox, 'esperou_s': round(time.time() - t0, 1),
+                    'aviso': 'janela livre nao encontrada: medido assim mesmo'}
+        time.sleep(2)
+
+
 def medir(produto, caminho, n=12, visivel=False):
     ex = xlh.Excel(visivel=visivel)
     out = {'produto': produto, 'visivel': visivel}
@@ -87,11 +118,13 @@ def medir(produto, caminho, n=12, visivel=False):
             return t1 - t0, t2 - t1, t2 - t0
 
         prox = lambda k: 1 + ((v0 - 1 + k) % na)
+        out['db_seac_frio'] = esperar_db_seac_livre()
         a, b, tot = clique(prox(1))
         out['frio'] = {'link_ms': round(a * 1000), 'macro_ms': round(b * 1000), 'total_ms': round(tot * 1000),
                        'analito': str(p.Range('C3').Value)}
         print(f'  frio : {tot * 1000:6.0f} ms (link {a * 1000:.0f} + macro {b * 1000:.0f})  {p.Range("C3").Value}', flush=True)
         tl, tm, tt = [], [], []
+        out['db_seac_quente'] = esperar_db_seac_livre()
         for k in range(2, n + 2):
             a, b, tot = clique(prox(k))
             tl.append(a); tm.append(b); tt.append(tot)
