@@ -81,7 +81,7 @@ def executar(produto, caminho, saida):
             ws, lo = i94.achar_tabela(wb, tab)
             ws.Unprotect(ii.SENHA)
             n = lo.ListRows.Count
-            lo.Resize(lo.HeaderRowRange.Resize(n + 2, lo.ListColumns.Count))
+            lo.Resize(lo.HeaderRowRange.GetResize(n + 2, lo.ListColumns.Count))   # pywin32: .Resize(a, b) vira Item(a, b) = 1 celula
             for c in cols:
                 fmt = [f for t_, c_, f in i94.COLUNAS if t_ == tab and c_ == c][0]
                 cel = lo.ListColumns(c).DataBodyRange.Cells(n + 1, 1)
@@ -91,8 +91,8 @@ def executar(produto, caminho, saida):
                 f02[f'{tab}[{c}]'] = t
                 okf2 = okf2 and t == e
             # desfaz (o F05 roda um ATUALIZAR: linha de teste na tabela entraria na carga)
-            lo.DataBodyRange.Rows(n + 1).Resize(2).ClearContents()
-            lo.Resize(lo.HeaderRowRange.Resize(n + 1, lo.ListColumns.Count))
+            lo.DataBodyRange.Rows(n + 1).GetResize(2).ClearContents()
+            lo.Resize(lo.HeaderRowRange.GetResize(n + 1, lo.ListColumns.Count))
             if lo.ListRows.Count != n:
                 raise RuntimeError(f'F02: {tab} nao voltou a {n} linhas')
         reg('F02 Linha nova da tabela (como a carga faz: lo.Resize) herda o formato da coluna: 13/11/2026 08:23:52 nas de '
