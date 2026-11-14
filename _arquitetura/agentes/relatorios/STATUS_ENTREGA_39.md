@@ -79,7 +79,7 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
 - **A que falhou, qa_adr094 (data-hora com segundos):**
   - a 1ª verificação passou: 572 datas conferidas nas tabelas, todas com o formato certo;
   - a 2ª parou: o teste tentou acrescentar uma linha numa tabela e o Excel recusou.
-- **Causa:** defeito do teste, não do sistema. Pelo Python, `Resize(linhas, colunas)` não redimensiona; devolve uma única célula. O teste pediu para a tabela encolher para 1 coluna, e o Excel recusou. O sistema faz o mesmo passo em VBA, onde funciona; é assim que toda carga grava as tabelas. Corrigi o teste (`GetResize`, como os outros testes já fazem). Commit `d184bfb` no GitHub.
+- **Causa:** defeito do teste, não do sistema. Pelo Python, `Resize(linhas, colunas)` não redimensiona; devolve uma única célula. O teste pediu para a tabela encolher para 1 coluna, e o Excel recusou. O sistema faz o mesmo passo em VBA, onde funciona; é assim que toda carga grava as tabelas. Corrigi o teste com `GetResize`, a forma do Python que de fato redimensiona. (Correção de 14/11: antes eu escrevi aqui que os outros testes já faziam assim; não é verdade, eles montam o intervalo com `Range(Cells, Cells)`. O resultado é o mesmo.) Commit `d184bfb` no GitHub.
 - **Produções intactas:** a entrega só troca quando tudo passa.
 - **Hematologia:** instalação em andamento desde 5h02. Ela vai cair no mesmo teste, porque a cadeia usa a versão antiga dele.
 - **Retomada já armada:** quando a Hematologia terminar, as duas cópias instaladas rodam de novo o qa_adr094 corrigido, a comparação do QA entre os motores e as versões mais rigorosas da varredura de lotes e do Westgard (revisão de ontem à noite). Só se tudo passar: troca da produção (backup + SHA) e ATUALIZAR.
