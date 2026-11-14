@@ -120,7 +120,35 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
 - **Para o CQ conferir (dado real, não defeito):** na Bioquímica, `BIO-366164` (Lactato, nível 2, 13/10/2026 15:54:01) está inativado sem motivo e sem comentário. Escrever o motivo na aba Inativar.
 - **Documentação (b1c9812):** os limites de tempo da troca de analito valem com a tarefa DB_SEAC parada (ADR-062, QUALITY_GATE; OC-0065). OC-0067 aberta: a senha de proteção das abas está em 125 arquivos do repositório público; trocar com você depois da validação.
 
-## Próximas etapas (15h25)
+## 14/11, 21h: reteste feito; 1 defeito Alto achado e já corrigido no código; entrega 42 esta noite
+- **Reteste do Usuário Simulado (15h30–17h20), nas cópias das produções novas:**
+  - quase tudo **RESOLVIDA** nos dois produtos: ADR-090, ADR-091, ADR-093 (urina), ADR-094 (segundos, sem ####), OC-0040/0043/0049/0056..0059 e OC-0066;
+  - os testes do CEQ (incluir, corrigir, excluir; bias, ET e Sigma conferidos por calculadora independente) passaram.
+- **Defeito novo, Alto, reproduzido pelo Tester (OC-0068):**
+  - na aba Digitar Resultados, as listas de equipamento, matriz e motivo tinham **um item só** ("DIMENSION 1,DIMENSION 2");
+  - o valor certo era recusado, e o item do menu gravava um equipamento que não existe, que entrava na estatística fora das séries do Painel;
+  - nas produções **não há** nenhum registro assim (conferido);
+  - causa: o instalador montava a lista com vírgula, e o Excel em português usa ";";
+  - corrigido no código (ADR-095), com um teste que reprova se o defeito voltar.
+- **Também corrigidos no ADR-095:**
+  - acentos que faltavam no DETALHE (OC-0021);
+  - "00/01/1900" e "Ano 2026" na Estatística com o Painel em "Tudo";
+  - o aviso de 180 corridas da Hema, que mandava olhar a Estatística (que mostra outro recorte).
+- **Ficam para depois (Médio, só texto de aviso, não mexem em números):**
+  - OC-0069: a janela do CEQ diz "entra no bias" para um Controllab mapeado quando o bias usa o CAP;
+  - OC-0070: o Painel não cita a regra do lote FORA_DO_CQ.
+- **Para o CQ conferir (dado real):** na Bioquímica há 4 resultados de Lactato N2 inativados sem motivo (`BIO-366027`, `BIO-366033`, `BIO-366054` e `BIO-366164`). Escreva o motivo na aba Inativar.
+- O limite de uso interrompeu o Tester às 17h40; ele retomou às 20h20 a validação dos itens resolvidos.
+
+## Próximas etapas (21h)
+1. **Tester:** validação dos itens resolvidos (em andamento). Uma revisão independente do código do ADR-095 também está rodando.
+2. **Teste do ADR-095 nas cópias:** ~1 h, depois do Tester.
+3. **Entrega 42 completa:** Bio ~3h10 e Hema ~4h, na madrugada. Depois, ATUALIZAR nas produções.
+4. **Reteste e validação** dos itens do ADR-095 na manhã de domingo.
+
+**Previsão:** produções com o ADR-095 por volta das **7h de domingo**; tudo validado por volta das **11h de domingo** (~14 h). Meta mantida: pronto para uso na segunda, 16/11.
+
+## Etapas de 15h25 (substituídas)
 1. **Reteste do Usuário Simulado** nas cópias das produções novas (ADR-090/091/093/094, OC-0066 e as anteriores): começa agora; previsão por volta das 18h30 (~3 h).
 2. **Tester VALIDAR** em seguida (nunca quem corrigiu): previsão por volta das 21h30 (~3 h). Só fica VALIDADA com os dois.
 3. Se aparecer defeito: causa raiz, correção e nova entrega; aviso na hora com a nova previsão.
