@@ -1027,7 +1027,12 @@ def executar(produto, caminho):
                            and txt(r['LOTE']) == lote and hasattr(r['DATA_HORA'], 'year'))
         ocup = da[an.upper()]
         livres = []
-        d_ = min(dias_lote[-1] + dt.timedelta(days=30), hoje - dt.timedelta(days=1))
+        # 14/11/2026: o dia livre tem de estar DENTRO do que a copia ja carregou. O q.atualizar() abaixo le a origem ao
+        # vivo: a copia da entrega 39 tinha dados ate 10/11 e, rodando depois da meia-noite, o teste escolheu 13/11
+        # (ontem) como livre -- a origem ja tinha Proteina total 8977 N1 naquela manha e o manual virou CONFLITO_MANUAL
+        # (a regra certa). Dia depois da ultima data carregada pode receber resultado novo na carga.
+        ult_carga = max((r['DATA_HORA'].date() for r in fin if hasattr(r['DATA_HORA'], 'year')), default=hoje)
+        d_ = min(dias_lote[-1] + dt.timedelta(days=30), hoje - dt.timedelta(days=1), ult_carga - dt.timedelta(days=1))
         while d_ >= dias_lote[0] - dt.timedelta(days=400) and len(livres) < 2:
             if d_ not in ocup:
                 livres.append(d_)
@@ -1084,7 +1089,10 @@ def executar(produto, caminho):
         for (rot, nv), i_ in ids.items():
             r = f0.get(i_)
             if r is None or r['PARTICIPA_ESTATISTICA'] != 'SIM':
-                ruins20.append((rot, nv, i_, None if r is None else r['PARTICIPA_ESTATISTICA']))
+                ruins20.append((rot, nv, i_, None if r is None else r['PARTICIPA_ESTATISTICA'],
+                                None if r is None else txt(r.get('STATUS_ANALITICO')),
+                                None if r is None else txt(r.get('MOTIVO_EXCLUSAO_AUTOMATICA'))[:120],
+                                None if r is None else str(r.get('DATA_HORA'))))
                 continue
             run_de.setdefault(rot, set()).add(iint(r['RUN']))
         estrutura = {k: sorted(v) for k, v in run_de.items()}
@@ -1326,7 +1334,8 @@ def executar(produto, caminho):
         ocup2 = {r['DATA_HORA'].date() for r in fin2 if txt(r['ANALITO']).upper() == AN2 and hasattr(r['DATA_HORA'], 'year')}
         dias2 = sorted(r['DATA_HORA'].date() for r in fin2 if txt(r['ANALITO']).upper() == AN2
                        and mesmo_lote(txt(r['LOTE']), L2) and hasattr(r['DATA_HORA'], 'year'))
-        d_ = min(dias2[-1] + dt.timedelta(days=30), hoje - dt.timedelta(days=1))
+        ult_carga2 = max((r['DATA_HORA'].date() for r in fin2 if hasattr(r['DATA_HORA'], 'year')), default=hoje)
+        d_ = min(dias2[-1] + dt.timedelta(days=30), hoje - dt.timedelta(days=1), ult_carga2 - dt.timedelta(days=1))
         D3 = None
         while d_ >= dias2[0] - dt.timedelta(days=400):
             if d_ not in ocup2:

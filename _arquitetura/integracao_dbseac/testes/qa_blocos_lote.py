@@ -189,11 +189,21 @@ def executar(produto, caminho, saida):
         dp_ = [(txt(r_.get('MATRIZ')).upper(), txt(r_.get('ANALITO_QCINI')), txt(r_.get('ANALITO_ORIGEM')))
                for r_ in q.ler('tblDeParaAnalitos')] if regras_mz else []
 
-        def nome_na_foto(lote_u, an_, orig_):
+        # 14/11/2026: so o resultado que CHEGOU como soro tinha o nome de soro em 16/10. A matriz de entao vinha do sufixo
+        # do idAmostra (LLLLN-EE: 01/02 SORO, 03/04 URINA; ADR-091 "revisao da carga inicial"). Contar todo CRE2 do 6354
+        # como "Creatinina" misturava os 03/04 (que ja eram CRE2/URINA naquela data) e a foto do N2 (4 resultados) nao
+        # batia (176,55 x 238,83).
+        MZ_SUFIXO = {'01': 'SORO', '02': 'SORO', '03': 'URINA', '04': 'URINA'}
+
+        def nome_na_foto(lote_u, an_, orig_, id_amostra):
             mz_ = regras_mz.get(lote_u)
             if not mz_ or not orig_ or an_ != orig_:
                 return None
-            return next((qc for m_, qc, o_ in dp_ if o_ == orig_ and qc and m_ != mz_), None)
+            ida_ = txt(id_amostra)
+            mz_entao = MZ_SUFIXO.get(ida_.rsplit('-', 1)[-1]) if '-' in ida_ else None
+            if not mz_entao or mz_entao == mz_:
+                return None
+            return next((qc for m_, qc, o_ in dp_ if o_ == orig_ and qc and m_ == mz_entao), None)
 
         apelidos = collections.Counter()
         for r_ in rows:
@@ -205,7 +215,7 @@ def executar(produto, caminho, saida):
             rec_ = r_.get('RECEBIDO_EM')
             par_ = (rec_.timestamp() if hasattr(rec_, 'timestamp') else 0.0, float(r_['RESULTADO']))
             grupos.setdefault(k_, []).append(par_)
-            ap_ = nome_na_foto(k_[0], txt(r_['ANALITO']), txt(r_.get('ANALITO_ORIGEM')))
+            ap_ = nome_na_foto(k_[0], txt(r_['ANALITO']), txt(r_.get('ANALITO_ORIGEM')), r_.get('ID_AMOSTRA'))
             if ap_ and ap_.upper() != k_[1]:
                 grupos.setdefault((k_[0], ap_.upper(), k_[2]), []).append(par_)
                 apelidos[f'{k_[0]}: {txt(r_["ANALITO"])} -> {ap_}'] += 1

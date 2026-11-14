@@ -66,9 +66,18 @@ def executar(produto, caminho, saida):
         com_dado, na_base = {}, {}
         for r in rows:                                     # V03: a mesma contagem do Painel (engNLoteBase: toda linha)
             na_base[txt(r['LOTE'])] = na_base.get(txt(r['LOTE']), 0) + 1
+        # 14/11/2026: so conta o que o Painel PODE mostrar -- analito do catalogo (aba Especificacoes, A4:A43; a mesma
+        # lista do AjustarPainelAoLote). Desde o 1o ATUALIZAR com as regras do ADR-091 (11/11), os lotes de URINA (6353,
+        # 6354, 5659) tem os resultados com o codigo do aparelho (CRE2, MALB, GLUC...): "analitos de urina sem cadastro
+        # (fora do Painel)", como o ADR-091 decidiu. Eles participam da base, mas nao ha bloco do Painel para eles.
+        catalogo = {txt(v[0]).upper() for v in q.espec().Range('A4:A43').Value if txt(v[0])}
+        fora_painel = {}
         for r in rows:
             if str(r.get('PARTICIPA_ESTATISTICA', '')).upper() == 'SIM':
-                com_dado[txt(r['LOTE'])] = com_dado.get(txt(r['LOTE']), 0) + 1
+                if txt(r.get('ANALITO')).upper() in catalogo:
+                    com_dado[txt(r['LOTE'])] = com_dado.get(txt(r['LOTE']), 0) + 1
+                else:
+                    fora_painel[txt(r['LOTE'])] = fora_painel.get(txt(r['LOTE']), 0) + 1
         cad = []
         for v in q.nome('regLoteCol').Value:
             s = txt(v[0])
@@ -140,7 +149,8 @@ def executar(produto, caminho, saida):
             'nível com Média/DP, a média e as linhas -3DP..+3DP com 2 pontos cada na série do gráfico; sem "SEM MÉDIA/DP" '
             'no nível que tem ponto; a média/DP do gráfico são as do lote escolhido',
             not ruins and sum(1 for l in linhas_tab if l['resultados'] > 0) > 0,
-            {'lotes_com_resultado': sum(1 for l in cad if com_dado.get(l, 0) > 0), 'lotes_com_problema': ruins[:8]})
+            {'lotes_com_resultado': sum(1 for l in cad if com_dado.get(l, 0) > 0), 'lotes_com_problema': ruins[:8],
+             'participantes_sem_analito_do_catalogo_por_lote': fora_painel})
         reg('V02 O lote em uso, que tem dado no filtro atual, não teve o filtro mexido (período e equipamento como estavam)',
             lote0_ok is True, {'lote': lote0, 'filtro_antes': filtro0,
                                'filtro_depois': linhas_tab[0]['filtro_de_ate_equip'] if linhas_tab else None})

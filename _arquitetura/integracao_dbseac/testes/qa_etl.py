@@ -901,7 +901,10 @@ def dia_livre(ctx, fin, analito, evitar=()):
     """Dia mais recente ANTES de hoje sem nenhum resultado (interface ou manual) do analito."""
     ocup = {r['DATA_HORA'].date() for r in fin if up(r['ANALITO']) == analito.upper()
             and isinstance(r['DATA_HORA'], dt.datetime)}
-    d = ctx.hoje - dt.timedelta(days=1)
+    # 14/11/2026 (qa_westgard_sequencia W20): o dia livre fica DENTRO do que a copia ja carregou -- o ATUALIZAR le a
+    # origem ao vivo e um dia depois da ultima data carregada pode receber resultado real (o manual vira CONFLITO_MANUAL)
+    ult = max((r['DATA_HORA'].date() for r in fin if isinstance(r['DATA_HORA'], dt.datetime)), default=ctx.hoje)
+    d = min(ctx.hoje, ult) - dt.timedelta(days=1)
     for _ in range(800):
         if d not in ocup and d not in evitar:
             return d
