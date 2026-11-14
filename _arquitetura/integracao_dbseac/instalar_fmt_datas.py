@@ -49,7 +49,11 @@ def main(produto, caminho, salvar=True):
                     # por esta automacao o formato volta na lingua local: 'yyyy' num Excel cujo ano e 'a' = texto
                     nf = str(rng.Cells(1, 1).NumberFormatLocal)
                     if ano != 'y' and 'y' in nf.lower():
-                        fmt = FMT.get(col.Name, 'dd/mm/yyyy hh:mm' if 'h' in nf else 'dd/mm/yyyy')
+                        # ADR-094: por TABELA + coluna (a DATA dos comentarios e data-hora); fallback com segundos
+                        if (lo.Name, col.Name) == ('tblComentariosTecnicos', 'DATA'):
+                            fmt = 'dd/mm/yyyy hh:mm:ss'
+                        else:
+                            fmt = FMT.get(col.Name, 'dd/mm/yyyy hh:mm:ss' if 'h' in nf else 'dd/mm/yyyy')
                         fmt_data(rng, fmt)
                         if '#' in str(rng.Cells(1, 1).Text):              # data com hora mais larga que a coluna
                             rng.EntireColumn.ColumnWidth = max(rng.EntireColumn.ColumnWidth, 19)

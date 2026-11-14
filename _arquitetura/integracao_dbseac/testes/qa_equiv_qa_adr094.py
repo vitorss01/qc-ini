@@ -7,8 +7,8 @@ Uso: python qa_equiv_qa_adr094.py <Bioquimica|Hematologia> <copia_instalada.xlsm
 
   Q01 conjunto de achados igual nos dois motores (as 8 colunas), mesma ordem das partes, e os casos das fixtures do
       ADR-082/088/091 conferidos (ok) -- a regra de sempre, agora com os textos novos
-  Q02 achados com data-hora no DETALHE (E01, A03, E06, A07): quantos foram comparados e com segundos nos dois motores
-      (0 = nao exercitado nesta base: o teste diz isso em vez de passar calado)
+  Q02 achados com data-hora no DETALHE (E01, A03, E06, A07): existem (0 = FAIL: nao exercitado), mesma contagem nos
+      dois motores e todos com segundos no PQ e no VBA
   Y00 seguranca do teste: arquivo de entrada intacto
 """
 import json
@@ -53,13 +53,15 @@ def executar(produto, caminho, saida):
              'ok': {k: (d.get(k) or {}).get('ok') for k in ('adr082', 'adr088', 'adr091')}})
         n_pq = {c: d.get('por_codigo_pq', {}).get(c, 0) for c in COD_DH}
         n_vba = {c: d.get('por_codigo_vba', {}).get(c, 0) for c in COD_DH}
-        # o texto e o MESMO nos dois motores (Q01 compara o DETALHE); o formato com segundos do texto do VBA e do
-        # qa_adr094 F05 -- juntos: o do PQ tambem
         total = sum(n_pq.values())
-        reg('Q02 Achados com data-hora no DETALHE (E01/A03/E06/A07): mesma contagem nos dois motores'
-            + ('' if total else ' -- NÃO EXERCITADO nesta base (nenhum desses achados): o texto novo do PQ fica sem '
-                                 'comparação direta'),
-            n_pq == n_vba, {'por_codigo_pq': n_pq, 'por_codigo_vba': n_vba, 'comparados': total})
+        dets = d.get('detalhes_dh') or {}
+        ruins = {m_: [x[:160] for x in dets.get(m_, []) if RX_SEM.search(x) or not RX_DH.search(x)] for m_ in ('pq', 'vba')}
+        # 0 achados com data-hora = o texto novo nao foi exercitado: FAIL (nao passar calado)
+        reg('Q02 Achados com data-hora no DETALHE (E01/A03/E06/A07): existem nesta base, mesma contagem nos dois motores e '
+            'TODOS com dd/mm/aaaa hh:mm:ss (nenhum sem segundos), no PQ e no VBA',
+            total > 0 and n_pq == n_vba and not ruins['pq'] and not ruins['vba'],
+            {'por_codigo_pq': n_pq, 'por_codigo_vba': n_vba, 'conferidos': {m_: len(dets.get(m_, [])) for m_ in ('pq', 'vba')},
+             'fora_do_formato': {m_: v[:5] for m_, v in ruins.items()}, 'exemplo': (dets.get('pq') or [''])[0][:200]})
     shutil.rmtree(tmp, ignore_errors=True)
     hash1 = sha256_arquivo(caminho)
     reg('Y00 Segurança do teste: arquivo de entrada intacto (SHA-256 igual antes e depois; nada salvo nele)', hash0 == hash1,

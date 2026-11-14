@@ -125,6 +125,9 @@ def main(produto, arq, saida, fix=False):
         partes = lambda xs: [k for k, _ in __import__('itertools').groupby(x[1] for x in xs)]
         res['ordem_das_partes_igual'] = partes(pq) == partes(vba)
         res['tempo_qa_vba_s'] = r.split('|')[2]
+        # ADR-094: os DETALHEs com data-hora (para conferir o formato, nao so a igualdade)
+        res['detalhes_dh'] = {m_: [str(x[7]) for x in lst if x[1] in ('E01', 'A03', 'E06', 'A07')][:400]
+                              for m_, lst in (('pq', pq), ('vba', vba))}
         if fix:
             # ADR-082: os casos do SUBSTITUI_ID tem de aparecer (e iguais) nos dois motores
             cods = ('E04', 'E09', 'E12', 'A01', 'A06', 'A09', 'I04')

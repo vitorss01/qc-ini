@@ -124,10 +124,29 @@ def executar(produto, caminho, saida):
         xl.EnableEvents = True
         r_at = str(q.run('mIntegracao.AtualizarSoEntradas', teto=1500))
         qa = q.ler('tblQA_Integracao')
-        sem = [(x.get('CODIGO'), str(x.get('DETALHE'))[:160]) for x in qa if RX_SEM_SEG.search(str(x.get('DETALHE') or ''))]
-        com = sum(1 for x in qa if RX_DH.search(str(x.get('DETALHE') or '')))
-        reg('F05 Depois de um ATUALIZAR: nenhum DETALHE do QA_INTEGRACAO com data-hora sem segundos', r_at.startswith('OK|')
-            and not sem, {'atualizar': r_at[:80], 'detalhes_com_data_hora': com, 'sem_segundos': sem[:8]})
+        # o ATUALIZAR "so entradas" (ADR-081) NAO le a origem: A03/E06/E07 "na origem" vem copiados da carga anterior
+        # (mEtlSync.JuntarAchadosDaOrigem), com o texto de antes; o texto novo deles e conferido pelo qa_equiv_qa_adr094
+        DA_ORIGEM = ('A03', 'E06', 'E07')
+        sem = [(x.get('CODIGO'), str(x.get('DETALHE'))[:160]) for x in qa if x.get('CODIGO') not in DA_ORIGEM
+               and RX_SEM_SEG.search(str(x.get('DETALHE') or ''))]
+        com = sum(1 for x in qa if x.get('CODIGO') not in DA_ORIGEM and RX_DH.search(str(x.get('DETALHE') or '')))
+        copiados = sum(1 for x in qa if x.get('CODIGO') in DA_ORIGEM)
+        reg('F05 Depois de um ATUALIZAR (só entradas): nenhum DETALHE recalculado do QA_INTEGRACAO com data-hora sem '
+            'segundos (A03/E06/E07 vêm da carga anterior: qa_equiv_qa_adr094)', r_at.startswith('OK|') and not sem,
+            {'atualizar': r_at[:80], 'detalhes_com_data_hora': com, 'sem_segundos': sem[:8], 'copiados_da_origem': copiados})
+
+        # ------------------------------------------------------------ F06 linha nova do Sync_Log (o ATUALIZAR acima)
+        _, lo_s = i94.achar_tabela(wb, 'tblSyncLog')
+        f06 = {}
+        ok6 = lo_s.ListRows.Count > 0
+        if ok6:
+            for c in ('INICIO', 'FIM', 'DATA_MIN', 'DATA_MAX'):
+                cel = lo_s.ListColumns(c).DataBodyRange.Cells(lo_s.ListRows.Count, 1)
+                v = cel.Value
+                f06[c] = str(cel.Text)
+                if v is not None and hasattr(v, 'strftime'):
+                    ok6 = ok6 and str(cel.Text) == esperado(v, i94.DH)
+        reg('F06 Linha do Sync_Log gravada por este ATUALIZAR: INICIO/FIM/DATA_MIN/DATA_MAX com segundos', ok6, f06)
     except Exception as e:                                     # noqa: BLE001
         reg('F99 Execução interrompida: os testes seguintes a este ponto não rodaram', False,
             {'erro': f'{type(e).__name__}: {e}', 'traceback': traceback.format_exc()[-1500:]})

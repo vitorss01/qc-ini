@@ -12,7 +12,8 @@ Idempotente (a 2a execucao registra 0 mudancas). Passos:
   3. planilhas -- formato por TABELA + COLUNA (nunca so pelo nome: a DATA dos comentarios e data-hora), na coluna
      inteira (as linhas novas da carga herdam o formato da coluna da tabela). Corrige junto o defeito da Bioquimica:
      DATA/RECEBIDO_EM/DATA_INATIVACAO com 'm/d/yyyy' nas linhas da carga de 11/11 (mes na frente);
-     Westgard_Fotos F, LotesStore REGISTRADO_EM, Eventos_Westgard 'Data'; formulas DB A5 e Inicio "Ultimo resultado";
+     Westgard_Fotos F, LotesStore REGISTRADO_EM (coluna inteira: o mLotes grava Now sem formatar); formulas DB A5 e
+     Inicio "Ultimo resultado";
      coluna alargada so se a data-hora nao couber (####);
   4. fumaca (texto exibido = valor, dia antes do mes); 5. devolve a protecao e salva com os eventos desligados.
 """
@@ -120,6 +121,8 @@ def colunas(app, wb):
                 log(f'   {tab}[{c}]: tabela vazia sem linha de insercao (formato fica para a 1a linha)')
                 continue
             rng = lo.InsertRowRange.Cells(1, col.Index)
+        if tab == 'tblSyncLog':                             # = instalar_adr079: lin .. lin + 4000
+            rng = ws.Range(rng.Cells(1, 1), rng.Cells(4001, 1))
         formatar(app, ws, rng, fmt, f'{ws.Name}!{tab}[{c}]')
 
 
@@ -131,7 +134,6 @@ def coluna_cab(ws, col, cab, linhas=range(1, 13)):
 
 
 def avulsas(app, wb):
-    nomes = [w.Name for w in wb.Worksheets]
     # Westgard_Fotos F (o VBA reaplica o mesmo formato a cada foto: mEstatistica)
     ws = wb.Worksheets('Westgard_Fotos')
     r = coluna_cab(ws, 6, 'DATA_FOTO')
@@ -149,18 +151,9 @@ def avulsas(app, wb):
     if cu is None:
         raise SystemExit('LotesStore: coluna REGISTRADO_EM nao achada -- nada foi salvo')
     r = coluna_cab(ws, cu, 'REGISTRADO_EM')
-    ult = max(r + 1, ws.Cells(ws.Rows.Count, cu).End(-4162).Row)
-    formatar(app, ws, ws.Range(ws.Cells(r + 1, cu), ws.Cells(ult + 200, cu)), DH, 'LotesStore!REGISTRADO_EM')
-    # Eventos_Westgard 'Data' (formatos misturados: so data / data-hora sem segundos)
-    if 'Eventos_Westgard' in nomes:
-        ws = wb.Worksheets('Eventos_Westgard')
-        r = coluna_cab(ws, 1, 'Data')
-        if r is None:
-            log('   Eventos_Westgard: cabecalho "Data" nao achado na coluna A (nao mexido)')
-        else:
-            ult = ws.Cells(ws.Rows.Count, 1).End(-4162).Row
-            if ult > r:
-                formatar(app, ws, ws.Range(ws.Cells(r + 1, 1), ws.Cells(ult, 1)), DH, 'Eventos_Westgard!A')
+    formatar(app, ws, ws.Range(ws.Cells(r + 1, cu), ws.Cells(ws.Rows.Count, cu)), DH, 'LotesStore!REGISTRADO_EM')
+    # Eventos_Westgard NAO: o instante do evento vem do texto da descricao de Westgard (ISO ao minuto, lido de volta
+    # pelas fotos); mostrar ':00' seria precisao falsa (revisao independente, 13/11)
 
 
 def formulas(wb):
