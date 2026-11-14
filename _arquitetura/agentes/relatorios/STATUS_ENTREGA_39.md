@@ -109,7 +109,25 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
 - **Por que outra entrega completa:** o instalador mudou, então o arquivo entregue é outro. A regra é que todas as suítes rodem sobre o arquivo exato que vai para a produção. Retomar só parte delas não vale.
 - **Produções intactas:** Bio `8b1cda13…`, Hema `f1907656…`.
 
-## Próximas etapas (7h20): o horário atrasou
+## 14/11, 15h25: entrega 41 concluída; as duas produções estão com a versão nova e atualizadas
+- **Bioquímica:** 34 suítes passaram, nenhuma falha. Em produção desde 10h23; ATUALIZAR às 14h35 (35.323 → 35.763 resultados ativos; nenhum outro status mudou). Produção conferida: sha256 `8ec815ab653db405`.
+- **Hematologia:** 34 suítes passaram. A última (equivalência do QA entre os dois motores) reprovou primeiro por defeito **do teste**, não do sistema:
+  - o teste precisa de um achado "inativado sem justificativa" para conferir a data-hora com segundos;
+  - o caso que o teste montava tinha comentário técnico, e pela regra comentário conta como justificativa; por isso nunca gerou o achado (na Bio passou só por causa de um caso real da produção);
+  - conferido numa cópia antes de corrigir; o teste agora monta um caso próprio (commit `22c27f3`); refeito sobre o mesmo arquivo: 3 PASS / 0 FAIL.
+- Troca da Hema às 15h19 (backup antes) e ATUALIZAR às 15h21 (47.399 → 47.709 ativos). Produção conferida: sha256 `aab0a54f464e0232`.
+- O atraso em relação às 14h30: a Hema é ~30% mais lenta que a Bio (eu tinha estimado igual) e a falha do teste custou ~50 min. Um defeito no meu script de acompanhamento (leu "0 FALHOU" do resumo como falha) atrasou a troca em 2 min.
+- **Para o CQ conferir (dado real, não defeito):** na Bioquímica, `BIO-366164` (Lactato, nível 2, 13/10/2026 15:54:01) está inativado sem motivo e sem comentário. Escrever o motivo na aba Inativar.
+- **Documentação (b1c9812):** os limites de tempo da troca de analito valem com a tarefa DB_SEAC parada (ADR-062, QUALITY_GATE; OC-0065). OC-0067 aberta: a senha de proteção das abas está em 125 arquivos do repositório público; trocar com você depois da validação.
+
+## Próximas etapas (15h25)
+1. **Reteste do Usuário Simulado** nas cópias das produções novas (ADR-090/091/093/094, OC-0066 e as anteriores): começa agora; previsão por volta das 18h30 (~3 h).
+2. **Tester VALIDAR** em seguida (nunca quem corrigiu): previsão por volta das 21h30 (~3 h). Só fica VALIDADA com os dois.
+3. Se aparecer defeito: causa raiz, correção e nova entrega; aviso na hora com a nova previsão.
+
+**Previsão:** validação completa por volta das **21h30 de hoje** (~6 h). Meta mantida: pronto para uso na segunda, 16/11.
+
+## Etapas de 7h20 (substituídas)
 1. **Entrega 41**, Bioquímica e depois Hematologia, com todas as suítes: começou às 7h15. Previsão: Bio por volta de 10h30, Hema por volta de 13h30.
 2. ATUALIZAR nas produções logo em seguida: por volta das 14h.
 3. Usuário Simulado (reteste) e depois Tester VALIDAR, no fim de semana. Meta: pronto para uso na segunda, 16/11.
