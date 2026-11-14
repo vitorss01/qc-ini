@@ -99,7 +99,22 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
   2. Hematologia: do qa_desempenho até o fim (29 suítes). Se tudo passar: troca e ATUALIZAR.
 - **Revisão independente** das duas correções de teste em andamento: agentes que só leem o código, sem Excel.
 
-## Próximas etapas (6h45)
+## 14/11, 7h20: um defeito real do ADR-094 apareceu e foi corrigido; entrega 41 completa em andamento (o horário mudou)
+- **O que a retomada mostrou:** com o defeito do teste corrigido, a verificação do ADR-094 rodou inteira pela primeira vez. Ela achou um **defeito real**, que é só de apresentação (nenhum valor, cálculo ou regra muda):
+  - colunas de data-hora que hoje estão **vazias** iam aparecer como `####` assim que recebessem o primeiro valor. São elas: data da inativação na tabela de resultados; registrado em, dos manuais; e, na Hematologia, as colunas de inativação e de comentários. O instalador só alargava a coluna quando já havia data nela;
+  - na aba Sync_Log, INÍCIO e FIM de cada ATUALIZAR apareciam `####` desde o ADR-079: com segundos, a data-hora não cabe na largura 12. A aba é visível a todos.
+- **Correção:** o instalador testa a coluna vazia com uma data de exemplo, alarga e apaga a data em seguida. Testado nas cópias: verificação do ADR-094 **7 PASS / 0 FAIL** na Bioquímica e na Hematologia. Commit `1a72892`.
+- **Também conferido na retomada (Bioquímica):** comparação do QA entre os motores 3/0, varredura de lotes 4/0 e Westgard 29/0, já com os oráculos mais rigorosos da revisão de ontem.
+- **Revisão independente** (agentes que só leem o código) das correções de teste de hoje: confirmou a causa do erro no Python e a espera da tarefa DB_SEAC. Também apontou ajustes pequenos, já feitos, e um ponto em aberto: os limites de tempo agora valem com a máquina sem a tarefa rodando, e você sente a janela da tarefa. Registrado como OC-0065.
+- **Por que outra entrega completa:** o instalador mudou, então o arquivo entregue é outro. A regra é que todas as suítes rodem sobre o arquivo exato que vai para a produção. Retomar só parte delas não vale.
+- **Produções intactas:** Bio `8b1cda13…`, Hema `f1907656…`.
+
+## Próximas etapas (7h20): o horário atrasou
+1. **Entrega 41**, Bioquímica e depois Hematologia, com todas as suítes: começou às 7h15. Previsão: Bio por volta de 10h30, Hema por volta de 13h30.
+2. ATUALIZAR nas produções logo em seguida: por volta das 14h.
+3. Usuário Simulado (reteste) e depois Tester VALIDAR, no fim de semana. Meta: pronto para uso na segunda, 16/11.
+
+## Etapas de 6h45 (substituídas)
 1. Bioquímica entregue e atualizada: por volta das 7h15.
 2. Hematologia, suítes até cerca de 9h; troca e ATUALIZAR até cerca de 9h30.
 3. Usuário Simulado (reteste) e depois Tester VALIDAR.
