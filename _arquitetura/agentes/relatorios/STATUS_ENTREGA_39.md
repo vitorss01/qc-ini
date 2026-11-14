@@ -85,7 +85,26 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
 - **Retomada já armada:** quando a Hematologia terminar, as duas cópias instaladas rodam de novo o qa_adr094 corrigido, a comparação do QA entre os motores e as versões mais rigorosas da varredura de lotes e do Westgard (revisão de ontem à noite). Só se tudo passar: troca da produção (backup + SHA) e ATUALIZAR.
 - **Parecer de UX sobre a lentidão da inativação (OC-0060):** APROVADO_PROVISORIO até 30/11. Meta: ≤ 8 s na Bio e ≤ 10 s na Hema, com resultado idêntico ao ATUALIZAR completo. Também ficaram registradas a estimativa fixa do "aguarde" (OC-0063) e o guia que diz "Etapa k de 7" (OC-0064).
 
-## Próximas etapas (5h15)
+## 14/11, 6h45: Hematologia parou no teste de desempenho; causa achada (interferência externa, não o código); retomada em andamento
+- **Hematologia na entrega 40:** instalação completa OK (todos os instaladores, blindagem TRAVADO). As primeiras 6 suítes passaram. O qa_desempenho reprovou por pouco: 1ª troca de analito 641 ms (limite 600) e mediana 305 ms (limite 300). As suítes seguintes não rodaram.
+- **Investigação:** medi a produção atual, a cópia da entrega 39 e a da entrega 40, alternadas, 3 vezes cada:
+  - fora de uma certa janela de tempo, as três dão o mesmo: cerca de 250 ms;
+  - dentro dela, qualquer uma fica lenta, **inclusive a produção**, que chegou a 371 ms e também reprovaria.
+- **Causa:** a tarefa agendada do laboratório "DB_SEAC - Atualização Automática" abre um Excel a cada 2 minutos, por cerca de 42 s. Quando a medida cai nesses 42 s, ela mede a disputa pela CPU, não o sistema. A falha da entrega caiu exatamente numa dessas janelas (6h14). Provavelmente a falha de ontem às 18h27 também; na hora, culpei a minha leitura em paralelo.
+- **Correção (só no teste):** as medidas de tempo agora esperam a tarefa estar parada e com folga até a próxima execução, sem mudar nenhum limite. Isso vale para a troca de analito (P01/P02) e para o tempo de inativar (U13). Commit `ae89471`.
+- **Para você saber:** durante esses ~42 s a cada 2 min, trocar de analito leva cerca de 370 ms em vez de 250. É imperceptível no uso normal.
+- **Um erro meu no script da retomada (6h14):** o `tar` do Git não extraiu a cópia limpa. Nada rodou e nada foi trocado. Corrigido; o script agora para se a cópia não estiver completa.
+- **Retomada em andamento desde 6h39**, de uma cópia limpa do `ae89471`:
+  1. Bioquímica: qa_adr094 (corrigido), comparação do QA entre os motores, varredura de lotes e Westgard (oráculos novos). Se tudo passar: troca da produção e ATUALIZAR;
+  2. Hematologia: do qa_desempenho até o fim (29 suítes). Se tudo passar: troca e ATUALIZAR.
+- **Revisão independente** das duas correções de teste em andamento: agentes que só leem o código, sem Excel.
+
+## Próximas etapas (6h45)
+1. Bioquímica entregue e atualizada: por volta das 7h15.
+2. Hematologia, suítes até cerca de 9h; troca e ATUALIZAR até cerca de 9h30.
+3. Usuário Simulado (reteste) e depois Tester VALIDAR.
+
+## Etapas de 5h15 (substituídas)
 1. Hematologia: suítes até cerca de 8h.
 2. Retomada das duas (4 suítes cada), troca das produções e ATUALIZAR: até cerca de 9h.
 3. Usuário Simulado (reteste) e depois Tester VALIDAR.
