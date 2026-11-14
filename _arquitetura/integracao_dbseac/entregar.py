@@ -49,6 +49,9 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 # entrega pegou do src/ alteracoes em andamento de outro ADR e falhou -- a producao nao foi tocada)
 RAIZ = os.environ.get('QC_RAIZ') or os.path.abspath(os.path.join(AQUI, '..', '..'))
 ARQ = {'Hematologia': 'QC_Hematologia.xlsm', 'Bioquimica': 'QC_Bioquimica.xlsm'}
+# 14/11/2026: as suites do lote em entrega vem logo depois da seguranca -- o entregar para na 1a falha, e o defeito
+# novo aparece em minutos, nao 6 h depois (a ordem nao muda o resultado: cada suite roda na sua propria copia)
+SUITES_DO_LOTE = ['qa_adr095.py', 'qa_adr092.py', 'qa_adr090.py', 'qa_adr087.py']
 SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lotes_auto.py',
           'qa_graficos.py', 'qa_incerteza.py', 'qa_desempenho.py', 'qa_final.py',
           'qa_etl_recebimento.py', 'qa_etl.py',          # ADR-066: QA-ETL-001, gate obrigatorio da camada de dados
@@ -77,6 +80,7 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_adr094.py',                                # ADR-094: data-hora com segundos (so apresentacao)
           'qa_equiv_qa_adr094.py',                       # ADR-094: QA do VBA = QA do PQ (textos com segundos)
           'qa_adr095.py']                                # ADR-095: listas com o separador do Excel, acentos, Estatistica
+SUITES = SUITES[:1] + SUITES_DO_LOTE + [x for x in SUITES[1:] if x not in SUITES_DO_LOTE]
 
 
 def sha(p):
