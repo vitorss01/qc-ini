@@ -85,13 +85,15 @@ def executar(produto, caminho, saida):
             for c in cols:
                 fmt = [f for t_, c_, f in i94.COLUNAS if t_ == tab and c_ == c][0]
                 cel = lo.ListColumns(c).DataBodyRange.Cells(n + 1, 1)
-                cel.Value = teste_v
+                # Value2 = serial OLE, como o motor grava; .Value com datetime ingenuo passa pelo fuso no pywin32
+                # (08:23:52 virava 11:23:52 -- 1a execucao completa, 14/11)
+                cel.Value2 = (teste_v - dt.datetime(1899, 12, 30)).total_seconds() / 86400
                 t = str(cel.Text)
                 e = esperado(teste_v, fmt)
                 f02[f'{tab}[{c}]'] = t
                 okf2 = okf2 and t == e
             # desfaz (o F05 roda um ATUALIZAR: linha de teste na tabela entraria na carga)
-            lo.DataBodyRange.Rows(n + 1).GetResize(2).ClearContents()
+            lo.DataBodyRange.Rows(n + 1).ClearContents()                  # so a linha de teste (a tabela cresceu 1)
             lo.Resize(lo.HeaderRowRange.GetResize(n + 1, lo.ListColumns.Count))
             if lo.ListRows.Count != n:
                 raise RuntimeError(f'F02: {tab} nao voltou a {n} linhas')

@@ -78,11 +78,11 @@ def executar(produto, caminho, saida):
     sel = medir_selecao(produto, caminho)
     r = medir_spinner.medir(produto, caminho, 12, False)
     reg('P01 1ª troca de analito depois do login (motor aquecido no login) dentro do teto',
-        r['frio']['total_ms'] <= TETOS['frio_ms'], {'frio_ms': r['frio']['total_ms'], 'aquecer_no_login_s': r.get('aquecer_s'),
+        r['frio']['total_ms'] <= TETOS['frio_ms'], {'frio_ms': r['frio']['total_ms'], 'db_seac': r.get('db_seac_frio'), 'aquecer_no_login_s': r.get('aquecer_s'),
                                                      'teto_ms': TETOS['frio_ms']})
     reg('P02 Trocas seguintes pelo spinner: mediana e máximo dentro do teto',
         r['quente_total']['mediana_ms'] <= TETOS['quente_mediana_ms'] and r['quente_total']['max_ms'] <= TETOS['quente_max_ms'],
-        {'quente': r['quente_total'], 'componentes_ms': r['componentes_ms'],
+        {'quente': r['quente_total'], 'db_seac': r.get('db_seac_quente'), 'componentes_ms': r['componentes_ms'],
          'tetos': [TETOS['quente_mediana_ms'], TETOS['quente_max_ms']]})
     reg('P03 Escolha do analito pela lista (C3) dentro do teto',
         r['lista']['mediana_ms'] <= TETOS['lista_mediana_ms'], {'lista': r['lista'], 'teto_ms': TETOS['lista_mediana_ms']})

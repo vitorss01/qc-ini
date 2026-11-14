@@ -43,14 +43,18 @@ def resumo(ts):
 
 PS_TAREFA = ("$t = Get-ScheduledTask -TaskName 'DB_SEAC*' -ErrorAction SilentlyContinue | Select-Object -First 1; "
              "if ($t) { $i = $t | Get-ScheduledTaskInfo; "
-             "'' + $t.State + '|' + [int](($i.NextRunTime - (Get-Date)).TotalSeconds) } else { 'SEM_TAREFA|0' }")
+             "$p = if ($i.NextRunTime) { [int](($i.NextRunTime - (Get-Date)).TotalSeconds) } else { 99999 }; "
+             "'' + $t.State + '|' + $p } else { 'SEM_TAREFA|0' }")
 
 
 def esperar_db_seac_livre(folga_s=25, teto_s=180):
     """14/11/2026: a tarefa agendada do laboratorio ('DB_SEAC - Atualizacao Automatica') abre um Excel a cada 2 min
-    por ~42 s. Medida em ms dentro dessa janela mede a CPU disputada, nao o codigo: a PRODUCAO tambem passou do teto
-    (371 ms) quando a medida caiu nela, e nenhuma medida fora dela passou (desemp41/43). Espera a tarefa parada e com
-    pelo menos folga_s ate a proxima execucao. Sem a tarefa (outra maquina), nao espera. Devolve a evidencia."""
+    por ~40-57 s. Medida em ms dentro dessa janela mede a CPU disputada, nao o codigo: a PRODUCAO tambem passou do
+    teto do quente (371 ms) quando a medida caiu nela; fora dela as tres (producao, entrega 39, entrega 40) deram
+    245-262 ms (desemp41/43). O frio (1a troca) varia por outro motivo ainda nao fechado (368-641 ms). Espera a
+    tarefa parada e com pelo menos folga_s ate a proxima execucao. Sem a tarefa (outra maquina) ou desabilitada, nao
+    espera. Os tetos valem para a maquina sem a tarefa rodando; dentro da janela o usuario sente ~+120 ms (OC-0065).
+    Devolve a evidencia."""
     import subprocess
     t0 = time.time()
     estado = None
@@ -62,7 +66,7 @@ def esperar_db_seac_livre(folga_s=25, teto_s=180):
             prox = int(prox)
         except Exception as e:                              # noqa: BLE001
             return {'tarefa': f'nao consultada ({type(e).__name__})', 'esperou_s': round(time.time() - t0, 1)}
-        if estado == 'SEM_TAREFA':
+        if estado in ('SEM_TAREFA', 'Disabled'):
             return {'tarefa': 'nao existe nesta maquina', 'esperou_s': 0}
         if estado != 'Running' and prox >= folga_s:
             return {'tarefa': estado, 'proxima_em_s': prox, 'esperou_s': round(time.time() - t0, 1)}

@@ -46,6 +46,9 @@ COLUNAS = [
     ('tblInativacao_NaoConformes', 'DATA_INATIVACAO', DH),
     ('tblComentariosTecnicos', 'DATA', DH),                  # carimbo com Now: data-hora, apesar do nome
     ('tblSyncLog', 'DATA_MIN', DH), ('tblSyncLog', 'DATA_MAX', DH),
+    # INICIO/FIM ja tinham segundos desde o ADR-079, mas na largura 12 (19 caracteres nao cabem: '####'); a aba
+    # Sync_Log e visivel a todos depois do login (mSeguranca.UnlockApp) -- achado do qa_adr094 F06, 14/11
+    ('tblSyncLog', 'INICIO', DH), ('tblSyncLog', 'FIM', DH),
 ]
 INICIO_ANTIGO = 'TEXT(MAX(tblCQ_Final[DATA_HORA]),"dd/mm/aaaa hh:mm")'
 INICIO_NOVO = 'TEXT(MAX(tblCQ_Final[DATA_HORA]),"dd/mm/aaaa hh:mm:ss")'
@@ -89,23 +92,42 @@ def local(app, fmt):
     return fmt.replace('y', str(app.International[19 - 1] or 'y'))          # xlYearCode (ver camada_dados.fmt_data)
 
 
-def caber(ws, rng, oque):
-    """Alarga a coluna (nunca estreita) ate a data-hora caber: '####' e o que o auditoria_abas acusa."""
+SONDA = 46384.99999                                     # 28/12/2026 23:59:59 (serial OLE, sem fuso: Value2)
+
+
+LARG_DH = [0.0]                                         # largura em que a data-hora coube nesta execucao
+
+
+def caber(ws, rng, oque, pode_sondar=True):
+    """Alarga a coluna (nunca estreita) ate a data-hora caber: '####' e o que o auditoria_abas acusa.
+    14/11/2026 (entrega 40, qa_adr094 F02/F06): coluna VAZIA hoje (DATA_INATIVACAO, REGISTRADO_EM dos manuais) nunca
+    mostrava '#' na amostra e ficava estreita -- o 1o valor gravado depois aparecia '####'. Coluna vazia: sonda
+    temporaria (SONDA) na 1a celula, devolvida vazia em seguida."""
     col = rng.EntireColumn
-    for _ in range(12):
-        amostra = [rng.Cells(1, 1), rng.Cells(rng.Rows.Count, 1)]
-        if not any(str(c.Text).startswith('#') for c in amostra if c.Value is not None):
-            return
-        col.ColumnWidth = float(col.ColumnWidth) + 1
-        MUDANCAS.append(f'{oque}: coluna alargada para {col.ColumnWidth}')
+    c1 = rng.Cells(1, 1)
+    sonda = pode_sondar and c1.Value is None and not c1.HasFormula
+    if sonda:
+        c1.Value2 = SONDA
+    try:
+        for _ in range(16):
+            amostra = [c1, rng.Cells(rng.Rows.Count, 1)]
+            if not any(str(c.Text).startswith('#') for c in amostra if c.Value is not None):
+                if c1.Value is not None and str(c1.NumberFormat).endswith('ss'):
+                    LARG_DH[0] = max(LARG_DH[0], float(col.ColumnWidth))
+                return
+            col.ColumnWidth = float(col.ColumnWidth) + 1
+            MUDANCAS.append(f'{oque}: coluna alargada para {col.ColumnWidth}' + (' (sonda: coluna vazia)' if sonda else ''))
+    finally:
+        if sonda:
+            c1.ClearContents()
 
 
-def formatar(app, ws, rng, fmt, oque):
+def formatar(app, ws, rng, fmt, oque, pode_sondar=True):
     alvo = local(app, fmt)
     if str(rng.NumberFormatLocal or '') != alvo:          # Null (formatos misturados) tambem cai aqui
         rng.NumberFormatLocal = alvo
         MUDANCAS.append(f'{oque} -> {fmt}')
-    caber(ws, rng, oque)
+    caber(ws, rng, oque, pode_sondar)
 
 
 def colunas(app, wb):
@@ -116,14 +138,20 @@ def colunas(app, wb):
         except Exception:                                   # noqa: BLE001
             raise SystemExit(f'{tab}[{c}] nao existe -- nada foi salvo')
         rng = col.DataBodyRange
-        if rng is None:                                     # tabela vazia: a linha de insercao guarda o formato
+        vazia = rng is None
+        if vazia:                                           # tabela vazia: a linha de insercao guarda o formato
             if lo.InsertRowRange is None:
                 log(f'   {tab}[{c}]: tabela vazia sem linha de insercao (formato fica para a 1a linha)')
                 continue
             rng = lo.InsertRowRange.Cells(1, col.Index)
         if tab == 'tblSyncLog':                             # = instalar_adr079: lin .. lin + 4000
             rng = ws.Range(rng.Cells(1, 1), rng.Cells(4001, 1))
-        formatar(app, ws, rng, fmt, f'{ws.Name}!{tab}[{c}]')
+        # tabela vazia: escrever na linha de insercao criaria uma linha -- sem sonda; a coluna recebe a largura em
+        # que a data-hora ja coube nesta execucao (tblCQ_Final[DATA_HORA] vem antes na lista e tem dados)
+        formatar(app, ws, rng, fmt, f'{ws.Name}!{tab}[{c}]', pode_sondar=not vazia)
+        if vazia and fmt == DH and LARG_DH[0] > float(rng.EntireColumn.ColumnWidth):
+            rng.EntireColumn.ColumnWidth = LARG_DH[0]
+            MUDANCAS.append(f'{ws.Name}!{tab}[{c}]: tabela vazia, coluna alargada para {LARG_DH[0]}')
 
 
 def coluna_cab(ws, col, cab, linhas=range(1, 13)):
