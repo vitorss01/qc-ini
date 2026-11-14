@@ -20,6 +20,7 @@ escolher o lote no Painel, trocar o ano de referencia):
   BJ Regressao: ETp da Estatistica = ETp em uso do motor; LotesStore integra; arquivo de entrada intacto
 Bioquimica e Hematologia (esta depois do ADR-075).
 """
+import collections
 import datetime as dt
 import json
 import os
@@ -176,6 +177,25 @@ def executar(produto, caminho, saida):
         # resultados da estatistica sem apagar a foto: ADR-088 (<=0 -> IMPLAUSIVEL) e ADR-091 (material pelo lote:
         # LOTE_OUTRO_MATERIAL, LOTE_FORA_DO_CQ). Para recalcular a foto, esses resultados contam como contavam entao.
         DEPOIS_DA_FOTO = ('IMPLAUSIVEL', 'LOTE_OUTRO_MATERIAL', 'LOTE_FORA_DO_CQ')
+        # 13/11/2026: a regra MATRIZ do ADR-091 tambem trocou o NOME. Em 16/10 o resultado de urina do lote 6353 chegava
+        # pela linha de SORO do de/para (CA -> "Calcio") e entrou na foto com esse nome. Desde o ATUALIZAR de 11/11, o
+        # mesmo resultado vem com o codigo (ANALITO = ANALITO_ORIGEM = CA), porque nao ha de/para em URINA. Para recalcular
+        # a foto, ele conta tambem com o nome de entao: a 1a linha do de/para com esse codigo, fora da matriz da regra.
+        try:
+            regras_mz = {txt(r_.get('LOTE')).upper(): txt(r_.get('MATRIZ')).upper() for r_ in q.ler('tblLotesMaterial')
+                         if txt(r_.get('REGRA')).upper() == 'MATRIZ' and txt(r_.get('LOTE'))}
+        except Exception:                                                   # noqa: BLE001 (copia sem a tabela)
+            regras_mz = {}
+        dp_ = [(txt(r_.get('MATRIZ')).upper(), txt(r_.get('ANALITO_QCINI')), txt(r_.get('ANALITO_ORIGEM')))
+               for r_ in q.ler('tblDeParaAnalitos')] if regras_mz else []
+
+        def nome_na_foto(lote_u, an_, orig_):
+            mz_ = regras_mz.get(lote_u)
+            if not mz_ or not orig_ or an_ != orig_:
+                return None
+            return next((qc for m_, qc, o_ in dp_ if o_ == orig_ and qc and m_ != mz_), None)
+
+        apelidos = collections.Counter()
         for r_ in rows:
             st_ = str(r_.get('STATUS_ANALITICO', '')).upper()
             if (str(r_.get('PARTICIPA_ESTATISTICA', '')).upper() != 'SIM' and st_ not in DEPOIS_DA_FOTO) \
@@ -183,8 +203,12 @@ def executar(produto, caminho, saida):
                 continue
             k_ = (txt(r_['LOTE']).upper(), txt(r_['ANALITO']).upper(), int(r_['NIVEL']))
             rec_ = r_.get('RECEBIDO_EM')
-            grupos.setdefault(k_, []).append((rec_.timestamp() if hasattr(rec_, 'timestamp') else 0.0,
-                                              float(r_['RESULTADO'])))
+            par_ = (rec_.timestamp() if hasattr(rec_, 'timestamp') else 0.0, float(r_['RESULTADO']))
+            grupos.setdefault(k_, []).append(par_)
+            ap_ = nome_na_foto(k_[0], txt(r_['ANALITO']), txt(r_.get('ANALITO_ORIGEM')))
+            if ap_ and ap_.upper() != k_[1]:
+                grupos.setdefault((k_[0], ap_.upper(), k_[2]), []).append(par_)
+                apelidos[f'{k_[0]}: {txt(r_["ANALITO"])} -> {ap_}'] += 1
         import statistics as stt
         conf_n, dif_n, lotes_n = 0, [], set()
         sem_limite = []
@@ -227,7 +251,8 @@ def executar(produto, caminho, saida):
             'do próprio lote ou 1,5 x 5% da média); todo par preenchido tem média e DP (limites); origem "TESTE"',
             bool(marca) and conf_n > 0 and not dif_n and not sem_limite,
             {'marca': marca, 'lote_referencia_DP': ref, 'pares_conferidos': conf_n, 'lotes': len(lotes_n),
-             'divergencias': dif_n[:6], 'pares_sem_limite': sem_limite[:6]})
+             'divergencias': dif_n[:6], 'pares_sem_limite': sem_limite[:6],
+             'nome_na_foto_ADR091': dict(sorted(apelidos.items()))})
 
         # ------------------------------------------------------------ BM largura X = W
         wx, ww = float(b.Columns('X').ColumnWidth), float(b.Columns('W').ColumnWidth)
