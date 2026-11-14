@@ -50,7 +50,21 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
 
 **Observação para o CQ (não bloqueia):** os blocos "Cálcio", "Creatinina" etc. do lote de urina 6353 na aba Analitos têm médias de urina gravadas em 16/10 com o nome do soro. Com a regra do ADR-091, nenhum resultado novo cai neles. Os resultados de urina desse lote estão nos códigos (CA, CRE2…). Vale o laboratório revisar esses blocos depois.
 
+## 13/11, 22h10: chave avaliada, ADR-094 (data-hora com segundos) escrito, entrega 39 retomada
+- **Chave:** medi nas duas produções. A data-hora até o segundo não é única: até 62 resultados no mesmo segundo na Bioquímica e 93 na Hematologia. Uma corrida gera todos os analitos no mesmo instante. Mesmo somando equipamento + lote + nível + analito, ainda sobram 3.570 repetidos na Bio e 1.116 na Hema. Você decidiu manter o ID: ele é o número sequencial do SIPEC, único por resultado.
+- **ADR-094 escrito**, em commit, ainda não entregue:
+  - data-hora com segundos em tudo o que você vê: gráfico, janela, colunas, assinatura, mensagens e textos do QA;
+  - campos só de data continuam dd/mm/aaaa;
+  - **defeito corrigido junto:** na Bioquímica, as linhas da carga de 11/11 mostravam a data com o mês na frente (10/28/2026).
+  - Revisão independente do código em andamento.
+- **Entrega 39:** a Hematologia parou no teste de desempenho por culpa minha. Eu rodava uma leitura pesada em paralelo, e a troca pelo spinner foi de 200 para 335 ms. O sistema não tem defeito. Retomei com a máquina livre, a partir de uma cópia limpa do código.
+
 ## Próximas etapas (novos horários)
+1. Entrega 39: Hematologia (do qa_final até o fim) e Bioquímica (do qa_blocos_lote até o fim), com troca das produções, por volta de 1h30.
+2. ATUALIZAR nas duas produções, por volta de 2h.
+3. Entrega 40 (ADR-094) completa, com todas as suítes e mais a comparação do QA entre os motores, das 2h até cerca de 9h.
+
+## Etapas anteriores (substituídas)
 1. Hematologia: término das suítes e troca da produção por volta da meia-noite.
 2. Bioquímica: retomo as suítes que faltam na mesma cópia instalada, a partir do qa_blocos_lote, cerca de 1h. A troca da produção segue as mesmas checagens da entrega: backup, SHA e ninguém ter salvo a produção durante os testes. Término por volta de 1h15.
 2. ATUALIZAR na produção, com backup e conferência do SHA, logo depois.
