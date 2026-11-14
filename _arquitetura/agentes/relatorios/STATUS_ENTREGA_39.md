@@ -74,7 +74,23 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
   - **Aviso honesto:** inativar um ponto leva ~20 a 27 s para você. Funciona, mas é lento. Deixo proposta a otimização como trabalho separado.
 - **Entrega 40 começou às 1h54.** Ela já contém tudo da 39 e mais o ADR-094 (data-hora com segundos), a partir de uma cópia limpa do commit `1b453a0`. Depois dela vem o ATUALIZAR nas produções entregues, com backup e conferência do SHA.
 
-## Próximas etapas (novos horários)
+## 14/11, 5h15: Bioquímica passou em tudo, menos num teste com defeito (corrigido); Hematologia em andamento
+- **Bioquímica, 34 de 35 suítes OK** na entrega 40. Entre elas: segurança 20/0, ETL 64/0, Westgard 29/0, inativar UX 16/0, ADR-091 7/0 e ADR-092 7/0.
+- **A que falhou, qa_adr094 (data-hora com segundos):**
+  - a 1ª verificação passou: 572 datas conferidas nas tabelas, todas com o formato certo;
+  - a 2ª parou: o teste tentou acrescentar uma linha numa tabela e o Excel recusou.
+- **Causa:** defeito do teste, não do sistema. Pelo Python, `Resize(linhas, colunas)` não redimensiona; devolve uma única célula. O teste pediu para a tabela encolher para 1 coluna, e o Excel recusou. O sistema faz o mesmo passo em VBA, onde funciona; é assim que toda carga grava as tabelas. Corrigi o teste (`GetResize`, como os outros testes já fazem). Commit `d184bfb` no GitHub.
+- **Produções intactas:** a entrega só troca quando tudo passa.
+- **Hematologia:** instalação em andamento desde 5h02. Ela vai cair no mesmo teste, porque a cadeia usa a versão antiga dele.
+- **Retomada já armada:** quando a Hematologia terminar, as duas cópias instaladas rodam de novo o qa_adr094 corrigido, a comparação do QA entre os motores e as versões mais rigorosas da varredura de lotes e do Westgard (revisão de ontem à noite). Só se tudo passar: troca da produção (backup + SHA) e ATUALIZAR.
+- **Parecer de UX sobre a lentidão da inativação (OC-0060):** APROVADO_PROVISORIO até 30/11. Meta: ≤ 8 s na Bio e ≤ 10 s na Hema, com resultado idêntico ao ATUALIZAR completo. Também ficaram registradas a estimativa fixa do "aguarde" (OC-0063) e o guia que diz "Etapa k de 7" (OC-0064).
+
+## Próximas etapas (5h15)
+1. Hematologia: suítes até cerca de 8h.
+2. Retomada das duas (4 suítes cada), troca das produções e ATUALIZAR: até cerca de 9h.
+3. Usuário Simulado (reteste) e depois Tester VALIDAR.
+
+## Etapas de 2h (substituídas)
 1. Entrega 40, Bioquímica e depois Hematologia, com todas as suítes: de 1h54 até cerca de 8h30.
 2. ATUALIZAR nas duas produções logo em seguida, por volta de 9h.
 3. Usuário Simulado (reteste) e depois Tester VALIDAR.
