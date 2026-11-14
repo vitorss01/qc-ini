@@ -103,7 +103,7 @@ def main(produto, arq, saida, fix=False):
         if ii.compilar_vba(q.ex, q.wb, teto=20) is False:
             raise SystemExit('VBA nao compilou')
         if fix:
-            fixtures(q)                                   # ja refaz a tblCQ_Final pelo PQ
+            fixtures(q, e01=True)                         # ja refaz a tblCQ_Final pelo PQ; e01: ADR-094, Q02 sempre exercitado
         else:
             q.run('mIntegracao.Refrescar', 'tblCQ_Final', teto=3600)
         q.run('mIntegracao.Refrescar', 'tblQA_Integracao', teto=3600)

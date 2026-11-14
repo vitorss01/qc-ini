@@ -85,9 +85,26 @@ def escrever(q, tabela, linhas):
                 lo.DataBodyRange.Cells(i, cab.index(k) + 1).Value = v
 
 
-def fixtures(q):
+def _fixture_e01(cab, ativos, ocupados, manuais):
+    """ADR-094 (14/11/2026): uma inativacao SEM motivo e SEM comentario tecnico = E01 garantido (o DETALHE leva a
+    data-hora com segundos). A inativacao de b nao serve: b tem comentario, e comentario conta como justificativa
+    (TEM_JUSTIFICATIVA = comentario ou motivo); na Bio o E01 so aparecia por um caso real da producao, na Hema nenhum.
+    Escolhe um ATIVO do meio da tabela que nenhuma outra fixture usa (nem como alvo de SUBSTITUI_ID)."""
+    col = lambda r, n: r[cab.index(n)]                                          # noqa: E731
+    sub = {str(m.get('SUBSTITUI_ID') or '').strip().upper().split('-')[-1] for m in manuais}
+    usados = {str(x).strip().upper() for x in ocupados}
+    meio = len(ativos) // 2
+    for r in ativos[meio:] + ativos[:meio]:
+        idr = str(col(r, 'ID_REGISTRO')).strip().upper()
+        if idr not in usados and idr.split('-')[-1] not in sub and hasattr(col(r, 'DATA_HORA'), 'year'):
+            return r
+    raise SystemExit('fixture E01: nenhum resultado ATIVO livre')
+
+
+def fixtures(q, e01=False):
     """Casos de cada regra da spec (manual, inativacao, comentario) sobre linhas reais da tabela; depois o PQ refaz a
-    tblCQ_Final (a referencia) com essas entradas."""
+    tblCQ_Final (a referencia) com essas entradas. e01=True (so o equivalencia_qa): mais uma inativacao sem motivo e sem
+    comentario, para o QA ter sempre um E01 (as outras suites que usam as fixtures nao mudam)."""
     import datetime as _dt
     lo = q.wb.Worksheets('Principal - Resultados').ListObjects('tblCQ_Final')
     cab = [str(c.Name) for c in lo.ListColumns]
@@ -104,7 +121,13 @@ def fixtures(q):
     subs = fixture_substitui(cab, d, a)
     m25 = next(x for x in subs if x['ID_REGISTRO'] == 'MAN_0025')
     fim, a88 = fixture_fim_do_dia(cab, d), fixture_adr088(cab, a, d)
-    a91 = fixture_adr091(q, cab, d, [a, b, c], subs + fim + a88)        # ADR-091: grava a tblLotesMaterial
+    reais = [a, b, c]
+    if e01:
+        e = _fixture_e01(cab, ativos, [col(x, 'ID_REGISTRO') for x in (a, b, c)], subs + fim + a88)
+        reais.append(e)                                  # o lote dele fica fora das regras de teste do ADR-091
+    a91 = fixture_adr091(q, cab, d, reais, subs + fim + a88)            # ADR-091: grava a tblLotesMaterial
+    extra = [{'ID_REGISTRO': col(e, 'ID_REGISTRO'), 'ANALITO': col(e, 'ANALITO'), 'REGISTRAR - LJ': True, 'MOTIVO': None,
+              'USUARIO': 'QA'}] if e01 else []
     escrever(q, 'tblInativacao_NaoConformes', [
         {'ID_REGISTRO': col(a, 'ID_REGISTRO'), 'ANALITO': col(a, 'ANALITO'), 'REGISTRAR - LJ': True, 'MOTIVO': 'QA motivo 1',
          'DATA_INATIVACAO': _dt.datetime(2026, 10, 20, 9, 0, 0), 'USUARIO': 'QA'},
@@ -115,7 +138,7 @@ def fixtures(q):
         # ADR-082 (revisao): o 1o manual de dois para o mesmo ID, inativado, continua substituindo (E12 do 2o diz isso)
         {'ID_REGISTRO': 'MAN_0025', 'ANALITO': m25['ANALITO'], 'REGISTRAR - LJ': True, 'MOTIVO': 'QA manual substituto inativado',
          'USUARIO': 'QA'},
-    ] + a91['inat'])
+    ] + a91['inat'] + extra)
     escrever(q, 'tblComentariosTecnicos', [
         {'ID_REGISTRO': col(b, 'ID_REGISTRO'), 'COMENTARIO_TECNICO': 'coment 1'},
         {'ID_REGISTRO': num(b), 'COMENTARIO_TECNICO': 'coment 2'},

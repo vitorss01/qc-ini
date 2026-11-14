@@ -7,7 +7,8 @@ Uso: python qa_equiv_qa_adr094.py <Bioquimica|Hematologia> <copia_instalada.xlsm
 
   Q01 conjunto de achados igual nos dois motores (as 8 colunas), mesma ordem das partes, e os casos das fixtures do
       ADR-082/088/091 conferidos (ok) -- a regra de sempre, agora com os textos novos
-  Q02 achados com data-hora no DETALHE (E01, A03, E06, A07): existem (0 = FAIL: nao exercitado), mesma contagem nos
+  Q02 achados com data-hora no DETALHE (E01, A03, E06, A07): existem (0 = FAIL: nao exercitado; desde 14/11 a fixture
+      e01 garante um E01 nos dois produtos), mesma contagem nos
       dois motores e todos com segundos no PQ e no VBA
   Y00 seguranca do teste: arquivo de entrada intacto
 """
