@@ -41,8 +41,18 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
 - Commits enviados ao GitHub (a502b4b).
 - **Entrega 39 completa começou às 18h30:** Bioquímica e depois Hematologia, com todas as suítes. Previsão de término **entre 1h e 2h da madrugada**.
 
-## Próximas etapas
-1. A entrega 39 completa termina entre 1h e 2h.
+## 13/11, 21h15: Bioquímica parou num teste; causa encontrada e corrigida
+- **O que falhou:** o teste BN (qa_blocos_lote), na Bioquímica. Ele recalcula os "valores de TESTE" gravados em 16/10 e não achou os resultados do lote de urina 6353 (Cálcio e Creatinina).
+- **Causa:** em 16/10 esses resultados de urina chegavam com nome de soro (CA → "Cálcio"). Desde o ATUALIZAR de 11/11, a regra do ADR-091 faz o mesmo resultado chegar com o código de urina (CA, CRE2). Os valores batem exatamente: Cálcio N1 = 4,6 e Creatinina N1 = 77,075. Os dados e as regras estão certos; o teste é que procurava pelo nome antigo.
+- **Correção:** o teste agora conta esses resultados com o nome que tinham na data da foto. Nada no sistema mudou. Commit enviado ao GitHub.
+- **Produção da Bioquímica:** intacta. A entrega só troca a produção quando tudo passa.
+- **Hematologia:** segue normalmente. Até agora, tudo OK.
+
+**Observação para o CQ (não bloqueia):** os blocos "Cálcio", "Creatinina" etc. do lote de urina 6353 na aba Analitos têm médias de urina gravadas em 16/10 com o nome do soro. Com a regra do ADR-091, nenhum resultado novo cai neles. Os resultados de urina desse lote estão nos códigos (CA, CRE2…). Vale o laboratório revisar esses blocos depois.
+
+## Próximas etapas (novos horários)
+1. Hematologia: término das suítes e troca da produção por volta da meia-noite.
+2. Bioquímica: retomo as suítes que faltam na mesma cópia instalada, a partir do qa_blocos_lote, cerca de 1h. A troca da produção segue as mesmas checagens da entrega: backup, SHA e ninguém ter salvo a produção durante os testes. Término por volta de 1h15.
 2. ATUALIZAR na produção, com backup e conferência do SHA, logo depois.
 3. Usuário Simulado (reteste) e depois Tester VALIDAR.
 4. Meta: o sistema validado e pronto para uso na segunda, 16/11.
