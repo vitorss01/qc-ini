@@ -59,7 +59,27 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
   - Revisão independente do código em andamento.
 - **Entrega 39:** a Hematologia parou no teste de desempenho por culpa minha. Eu rodava uma leitura pesada em paralelo, e a troca pelo spinner foi de 200 para 335 ms. O sistema não tem defeito. Retomei com a máquina livre, a partir de uma cópia limpa do código.
 
+## 14/11, 2h: entrega 39 não trocou as produções; causas achadas; entrega 40 em andamento
+- **Produções intactas:** a entrega só troca quando tudo passa. Bio continua `8b1cda13…` e Hema `f1907656…`.
+- **Bioquímica, 3 falhas: o sistema estava certo; eram os testes:**
+  - **BN (valores de TESTE de 16/10):** o teste contava todo CRE2 do lote de urina 6354 como "Creatinina". Em 16/10, só os resultados que chegaram com sufixo de soro (01/02) tinham esse nome. Corrigido.
+  - **V01 (varredura de lotes):** nos lotes de urina 6353, 6354 e 5659, os resultados ficam com o código do aparelho (CRE2, MALB, GLUC…), como o ADR-091 decidiu ("fora do Painel"). O teste exigia gráfico com pontos nesses lotes. Agora conta só o que o Painel pode mostrar.
+  - **W20 (Westgard):** depois da meia-noite, o teste escolheu 13/11 como dia livre. A cópia só tinha dados até 10/11, mas o ATUALIZAR do teste lê a origem ao vivo, que já tinha resultado real naquela manhã. O manual virou CONFLITO_MANUAL, que é a regra certa. Agora o dia livre fica dentro do que a cópia já carregou. Corrigi o mesmo risco no qa_etl.
+  - Conferido numa cópia: BN 14/0, varredura 4/0, Westgard 29/0.
+- **U13 (tempo da inativação), nos dois produtos: limite ajustado com medição:**
+  - com a máquina livre, a **produção de hoje** (código antigo) já passa do limite na Hematologia: 25,1 s, para um limite de 25;
+  - a cópia nova deu Hema 27,3 s e Bio 19,1 s;
+  - o ATUALIZAR interno é o mesmo de 10/11. O que cresceu foi a base, e a medida varia ±3 s entre execuções;
+  - novo limite: Bio 22 s, Hema 30 s.
+  - **Aviso honesto:** inativar um ponto leva ~20 a 27 s para você. Funciona, mas é lento. Deixo proposta a otimização como trabalho separado.
+- **Entrega 40 começou às 1h54.** Ela já contém tudo da 39 e mais o ADR-094 (data-hora com segundos), a partir de uma cópia limpa do commit `1b453a0`. Depois dela vem o ATUALIZAR nas produções entregues, com backup e conferência do SHA.
+
 ## Próximas etapas (novos horários)
+1. Entrega 40, Bioquímica e depois Hematologia, com todas as suítes: de 1h54 até cerca de 8h30.
+2. ATUALIZAR nas duas produções logo em seguida, por volta de 9h.
+3. Usuário Simulado (reteste) e depois Tester VALIDAR.
+
+## Etapas de 22h10 (substituídas)
 1. Entrega 39: Hematologia (do qa_final até o fim) e Bioquímica (do qa_blocos_lote até o fim), com troca das produções, por volta de 1h30.
 2. ATUALIZAR nas duas produções, por volta de 2h.
 3. Entrega 40 (ADR-094) completa, com todas as suítes e mais a comparação do QA entre os motores, das 2h até cerca de 9h.
