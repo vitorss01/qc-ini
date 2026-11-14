@@ -55,9 +55,11 @@ TETO_S = {'bio': 22.0, 'hema': 30.0}      # Bio 15 -> 18 s em 27/10/2026: ADR-08
                                           # mudado) + folga para a maquina do laboratorio com o Excel agendado aberto
 # 14/11/2026: Bio 18 -> 22 s, Hema 25 -> 30 s. Medido com a maquina livre: a PRODUCAO de hoje (codigo da entrega 38,
 # dados de 11/11) ja da Hema 23,6/25,1 s (reativar > 25); a copia da entrega 39, Hema 27,3/24,1 e Bio 19,1/16,6. O
-# ATUALIZAR "so entradas" (o miolo) e o mesmo de 10/11 (Hema U03 26,5 -> 27,2 s); o que cresce e a base (Hema ~48 mil
-# linhas) e a variacao entre execucoes e de +-3 s. Nao e defeito novo; a inativacao continua lenta para o usuario
-# (~20-27 s) e a otimizacao ficou registrada como trabalho separado.
+# ATUALIZAR "so entradas" (o miolo) e o mesmo de 10/11 (Hema U03 26,5 -> 27,2 s) e a variacao entre execucoes e de
+# +-3 s: a entrega 39 nao trouxe piora mensuravel. CORRECAO da revisao independente (14/11): NAO e "so a base". De 21/10
+# a 13/11 a base cresceu 5,6% (Hema 45.818 -> 48.391) e 8% (Bio), mas o U10 subiu 40-59% (Hema 18,0/16,6 -> 28,6/23,2 s)
+# e 58-74% (Bio 11,3/12,5 -> 19,7/19,8 s): lentidao ACUMULADA entre entregas (ADR-083 em diante). Teto provisorio, com
+# OC-0060 aberta (otimizar a inativacao; parecer do UX/UI sobre o teto e sobre um criterio relativo a producao).
 BLOQUEIO_S = 2.0                              # mUI.BLOQUEIO_SEG: cliques ignorados depois de terminar
 USUARIO_QA = 'QA_INATIVAR_UX'
 SENHA_QA = 'QaInativarUx#2026'                # valor de teste: o usuario so existe nesta copia, nunca salva

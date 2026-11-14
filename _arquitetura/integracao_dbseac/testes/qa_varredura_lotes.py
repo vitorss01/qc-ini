@@ -70,14 +70,26 @@ def executar(produto, caminho, saida):
         # lista do AjustarPainelAoLote). Desde o 1o ATUALIZAR com as regras do ADR-091 (11/11), os lotes de URINA (6353,
         # 6354, 5659) tem os resultados com o codigo do aparelho (CRE2, MALB, GLUC...): "analitos de urina sem cadastro
         # (fora do Painel)", como o ADR-091 decidiu. Eles participam da base, mas nao ha bloco do Painel para eles.
+        # Revisao independente (14/11): a dispensa vale SO para lote com regra MATRIZ na tblLotesMaterial. Num lote sem
+        # regra (soro), resultado com o codigo do aparelho e quebra do de/para: continua contando e o V01 reprova o Painel
+        # vazio, e a lista vai para a evidencia (fora_painel_sem_regra).
         catalogo = {txt(v[0]).upper() for v in q.espec().Range('A4:A43').Value if txt(v[0])}
-        fora_painel = {}
+        try:
+            lotes_mz = {txt(r_.get('LOTE')).upper() for r_ in q.ler('tblLotesMaterial')
+                        if txt(r_.get('REGRA')).upper() == 'MATRIZ' and txt(r_.get('LOTE'))}
+        except Exception:                                                   # noqa: BLE001 (copia sem a tabela)
+            lotes_mz = set()
+        fora_painel, fora_sem_regra = {}, {}
         for r in rows:
             if str(r.get('PARTICIPA_ESTATISTICA', '')).upper() == 'SIM':
+                lt_ = txt(r['LOTE'])
                 if txt(r.get('ANALITO')).upper() in catalogo:
-                    com_dado[txt(r['LOTE'])] = com_dado.get(txt(r['LOTE']), 0) + 1
+                    com_dado[lt_] = com_dado.get(lt_, 0) + 1
+                elif lt_.upper() in lotes_mz:
+                    fora_painel[lt_] = fora_painel.get(lt_, 0) + 1
                 else:
-                    fora_painel[txt(r['LOTE'])] = fora_painel.get(txt(r['LOTE']), 0) + 1
+                    fora_sem_regra[lt_] = fora_sem_regra.get(lt_, 0) + 1
+                    com_dado[lt_] = com_dado.get(lt_, 0) + 1
         cad = []
         for v in q.nome('regLoteCol').Value:
             s = txt(v[0])
@@ -150,7 +162,7 @@ def executar(produto, caminho, saida):
             'no nível que tem ponto; a média/DP do gráfico são as do lote escolhido',
             not ruins and sum(1 for l in linhas_tab if l['resultados'] > 0) > 0,
             {'lotes_com_resultado': sum(1 for l in cad if com_dado.get(l, 0) > 0), 'lotes_com_problema': ruins[:8],
-             'participantes_sem_analito_do_catalogo_por_lote': fora_painel})
+             'fora_do_painel_por_regra_MATRIZ': fora_painel, 'fora_painel_sem_regra': fora_sem_regra})
         reg('V02 O lote em uso, que tem dado no filtro atual, não teve o filtro mexido (período e equipamento como estavam)',
             lote0_ok is True, {'lote': lote0, 'filtro_antes': filtro0,
                                'filtro_depois': linhas_tab[0]['filtro_de_ate_equip'] if linhas_tab else None})
