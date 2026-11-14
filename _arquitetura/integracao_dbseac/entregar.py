@@ -74,7 +74,8 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_adr090.py',                                # ADR-090: lote 3 da auditoria (avisos, rotulos, formatos, trilha, protecao)
           'qa_adr091.py',                                # ADR-091: regras de material por lote (tblLotesMaterial)
           'qa_adr092.py',                                # ADR-092: reteste 03 (N-01..N-03, OC-0040/0043/0049)
-          'qa_adr094.py']                                # ADR-094: data-hora com segundos (so apresentacao)
+          'qa_adr094.py',                                # ADR-094: data-hora com segundos (so apresentacao)
+          'qa_equiv_qa_adr094.py']                       # ADR-094: QA do VBA = QA do PQ (textos com segundos)
 
 
 def sha(p):
