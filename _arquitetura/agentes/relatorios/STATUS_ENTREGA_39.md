@@ -169,6 +169,36 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
     - Testado no arquivo que falhava: compila nos dois caminhos.
 - Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
 
+## 15/11, 16h: entrega 43 começou (suítes direcionadas, como você decidiu)
+- **Suas decisões de hoje** (já valendo):
+  - começar a usar o QC depois da entrega 43 validada;
+  - todo achado continua sendo corrigido e entregue na hora;
+  - entrega de correção roda só as suítes afetadas e as essenciais (16 de 35); as 35 rodam depois, numa cópia, sem bloquear;
+  - ocorrências Baixas e Médias são validadas só pelo Tester. Críticas e Altas passam pelo Usuário Simulado e pelo Tester.
+- **A revisão independente achou 4 problemas na minha correção, antes de chegar à produção.** Os quatro foram corrigidos:
+  - a troca automática de ID valia até para ID inválido, o que mudaria uma regra. Agora só o ID `MAN_` repetido é trocado; o inválido continua recusado;
+  - a coluna de IDs era relida a cada linha colada, o que poderia travar uma colagem grande. Agora é lida uma vez por colagem;
+  - a mensagem do equipamento do Painel estava num instalador fora da entrega;
+  - a trava do teste de acentos não reprovava nada.
+- **Teste na cópia (instaladores e suítes afetadas):**
+  - Bio: ADR-095 10/0, ETL 64/0, manual substitui 20/0;
+  - Hema: ADR-095 8/0, ETL 63/0, manual substitui 20/0;
+  - produções intactas.
+  - Na Bio, a 1ª rodada do "manual substitui" caiu no teste M15. O motor do Power Query encerrou sozinho (registro do Windows; já aconteceu 83 vezes desde outubro). Rodada de novo, sozinha: 20/0, inclusive o M15, que compara os dois motores linha a linha. Não era defeito do código.
+- **Código no GitHub:** commit `81b04a4`.
+- **Entrega 43 começou às 15h55,** Bio e depois Hema, de uma cópia limpa do commit. A produção só é trocada se todas as 16 suítes passarem.
+
+## Próximas etapas (16h)
+1. Entrega 43 nas duas produções, com ATUALIZAR: até cerca de **21h**.
+2. Reteste da OC-0073 (Alta): Usuário Simulado e Tester. OC-0021, 0074, 0075 e 0076: só o Tester. Até cerca de **23h**.
+
+**Previsão:** tudo validado por volta das **23h de domingo** (~7 h). Meta mantida: pronto para uso na segunda, 16/11.
+
+## Etapas de 7h40 (substituídas)
+1. Testes na cópia e revisão: até cerca de 10h.
+2. Entrega 43, as duas produções (Bio e depois Hema), com todas as suítes: até cerca de 19h.
+3. Reteste (Usuário Simulado) e Tester VALIDAR das OC-0021, 0073, 0074, 0075, 0076: até cerca de 22h.
+
 ## 15/11, 7h40: reteste feito; 4 ocorrências VALIDADAS; 1 resíduo e defeitos antigos em correção para a entrega 43
 - **VALIDADAS** (Usuário Simulado RESOLVIDA + Tester VALIDADA, sem efeito colateral nos números):
   - OC-0012: aviso do corte na Hematologia;
@@ -186,12 +216,6 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
 - **OC-0069 e OC-0070 (Médio):** ficam para uma entrega própria nesta semana.
 - **Em andamento:** os instaladores e 8 suítes numa cópia (Bio, depois Hema) e a revisão independente do código, sem Excel.
 
-## Próximas etapas (7h40)
-1. Testes na cópia e revisão: até cerca de 10h.
-2. Entrega 43, as duas produções (Bio e depois Hema), com todas as suítes: até cerca de **19h**.
-3. Reteste (Usuário Simulado) e Tester VALIDAR das OC-0021, 0073, 0074, 0075, 0076: até cerca de **22h**.
-
-**Previsão:** tudo validado por volta das **22h de domingo** (~14 h). Meta mantida: pronto para uso na segunda, 16/11.
 
 ## 15/11, 5h05: as duas produções estão com o ADR-095 e atualizadas
 - **Hematologia:**
