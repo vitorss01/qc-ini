@@ -169,6 +169,30 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
     - Testado no arquivo que falhava: compila nos dois caminhos.
 - Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
 
+## 15/11, 7h40: reteste feito; 4 ocorrências VALIDADAS; 1 resíduo e defeitos antigos em correção para a entrega 43
+- **VALIDADAS** (Usuário Simulado RESOLVIDA + Tester VALIDADA, sem efeito colateral nos números):
+  - OC-0012: aviso do corte na Hematologia;
+  - OC-0068: listas com um item só;
+  - OC-0071: Estatística da Bio em "Tudo";
+  - OC-0072: ano "yyyy" nas datas.
+- **Regressão do Tester:** Bio 70/0, Hema 71/0. Produções intactas (hash igual antes e depois).
+- **OC-0021 persiste só num resíduo:** o verbo "é" sem acento no DETALHE ("MAN_0002 e resultado manual"). Corrigido com pares de contexto e uma trava no teste.
+- **Defeitos antigos achados no reteste** (já existiam na entrega 41), todos corrigidos no código:
+  - **OC-0073 (Alto):** copiar e colar uma linha na Digitar Resultados levava o ID junto. A linha aparecia ATIVA, mas ficava fora da estatística sem aviso. Agora a linha colada ganha um ID novo na hora, com aviso. A regra do motor ("vale a 1ª linha do ID") **não muda**: a correção só faz valer a regra de ID único que já existia;
+  - **OC-0076 (Médio):** na Bio, com todos os lotes, o aviso do corte mandava ver a Estatística, que mostra outro recorte. Agora diz o recorte, como na Hema;
+  - **OC-0074 (Baixo):** a recusa genérica do Excel nos filtros agora diz "na seta da célula";
+  - **OC-0075 (Baixo):** a Estatística mostrava "00/01/1900" com só o De; agora mostra "último dado". O Tester conferiu que o cálculo vai mesmo até o último dado.
+- **OC-0077 (informativo):** um bloco antigo por ano que nada lê. Fica registrado para o Especialista em CQ.
+- **OC-0069 e OC-0070 (Médio):** ficam para uma entrega própria nesta semana.
+- **Em andamento:** os instaladores e 8 suítes numa cópia (Bio, depois Hema) e a revisão independente do código, sem Excel.
+
+## Próximas etapas (7h40)
+1. Testes na cópia e revisão: até cerca de 10h.
+2. Entrega 43, as duas produções (Bio e depois Hema), com todas as suítes: até cerca de **19h**.
+3. Reteste (Usuário Simulado) e Tester VALIDAR das OC-0021, 0073, 0074, 0075, 0076: até cerca de **22h**.
+
+**Previsão:** tudo validado por volta das **22h de domingo** (~14 h). Meta mantida: pronto para uso na segunda, 16/11.
+
 ## 15/11, 5h05: as duas produções estão com o ADR-095 e atualizadas
 - **Hematologia:**
   - entrega 42 refeita do zero com a correção da 1h: 35 suítes passaram, nenhuma falha; em produção desde 4h58;
@@ -177,7 +201,7 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
 - **Bioquímica:** sem mudança desde 0h18 (sha256 `b20fe00f7e51503b`).
 - A revisão independente da correção da 1h achou 2 pontos que não afetam esta entrega (comparação de texto dentro de aspas e um caso de módulo recriado). Já corrigidos no código (`0f29dac`); serão testados numa cópia antes da próxima entrega.
 
-## Próximas etapas (5h05)
+## Etapas de 5h05 (substituídas)
 1. **Reteste agora:** o Usuário Simulado refaz nos dois produtos os fluxos de OC-0012 (Hema), OC-0021, OC-0068, OC-0071 e OC-0072, em cópias das produções novas.
 2. **Tester VALIDAR** em seguida (nunca quem corrigiu). Só fica VALIDADA com os dois.
 3. Se aparecer defeito: causa raiz, correção e aviso na hora com a nova previsão.
