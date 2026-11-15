@@ -140,7 +140,26 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
 - **Para o CQ conferir (dado real):** na Bioquímica há 4 resultados de Lactato N2 inativados sem motivo (`BIO-366027`, `BIO-366033`, `BIO-366054` e `BIO-366164`). Escreva o motivo na aba Inativar.
 - O limite de uso interrompeu o Tester às 17h40; ele retomou às 20h20 a validação dos itens resolvidos.
 
-## Próximas etapas (21h)
+## 14/11, 21h35: 22 ocorrências VALIDADAS; entrega 42 começou às 21h25
+- **Tester (validação independente):** os 43 itens resolvidos no reteste saíram **VALIDADA** (Bio 25, Hema 18), cada um numa cópia nova e com números próprios.
+  - Nenhum efeito colateral: comparando antes e depois da entrega 41, nenhum número de estatística mudou.
+  - Regressão: Bio 52/0; Hema 53/1. O 1 é o texto novo do aviso da Hema (ADR-095), que ainda não está instalado.
+- **Ocorrências VALIDADAS** (Usuário Simulado RESOLVIDA e Tester VALIDADA):
+  - OC-0019, 0023, 0024, 0031, 0033, 0034, 0035, 0036, 0040, 0041, 0043, 0044;
+  - OC-0049, 0050, 0052, 0054, 0055, 0056, 0057, 0058, 0059 e 0066.
+- **Revisão independente do código do ADR-095,** antes da entrega:
+  - achou um defeito que pararia a entrega: o formato de data com "yyyy" vira texto no Excel em português;
+  - mostrou que esse defeito já existe nas produções, só na exibição, em várias abas (ex.: datas dos eventos de Westgard da Hema, filtros De/Até de Registros);
+  - corrigido, com uma varredura no fim da instalação e um teste que trava (OC-0072).
+- **Entrega 42** (ADR-095 completo): começou às 21h25. As suítes do lote rodam primeiro, para uma falha aparecer em minutos.
+
+## Próximas etapas (21h35)
+1. Entrega 42: Bioquímica até ~0h40, Hematologia até ~4h40; depois o ATUALIZAR nas produções, até ~5h.
+2. Domingo de manhã: reteste e validação de OC-0012 (Hema), OC-0021, OC-0068, OC-0071 e OC-0072.
+
+**Previsão:** produções corrigidas por volta das **5h de domingo** (~7h30); tudo validado por volta das **9h de domingo** (~11h30).
+
+## Etapas de 21h (substituídas)
 1. **Tester:** validação dos itens resolvidos (em andamento). Uma revisão independente do código do ADR-095 também está rodando.
 2. **Teste do ADR-095 nas cópias:** ~1 h, depois do Tester.
 3. **Entrega 42 completa:** Bio ~3h10 e Hema ~4h, na madrugada. Depois, ATUALIZAR nas produções.
