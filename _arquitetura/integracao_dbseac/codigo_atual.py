@@ -68,7 +68,7 @@ def _trocar(wb, comp, fonte, criar):
     ii.substituir_codigo(wb.VBProject, comp, texto, criar=criar)
     cm = wb.VBProject.VBComponents(comp).CodeModule
     # VBA e insensivel a maiusculas e o VBE reescreve a caixa de identificador ja conhecido
-    if normalizar(cm.Lines(1, cm.CountOfLines)).lower() != normalizar(texto).lower():
+    if ii._norm_vba(cm.Lines(1, cm.CountOfLines)) != ii._norm_vba(texto):     # caixa so fora das aspas
         raise SystemExit(f'{comp} no arquivo difere da fonte {fonte}')
 
 
@@ -121,5 +121,5 @@ def instalar(ex, wb, produto, log=print):
 
 def _conferir(wb, comp, fonte):
     cm = wb.VBProject.VBComponents(comp).CodeModule
-    if normalizar(cm.Lines(1, cm.CountOfLines)).lower() != normalizar(ii.codigo(fonte)).lower():
+    if ii._norm_vba(cm.Lines(1, cm.CountOfLines)) != ii._norm_vba(ii.codigo(fonte)):
         raise SystemExit(f'{comp} no arquivo difere da fonte {fonte}')

@@ -78,9 +78,20 @@ def substituir_codigo(vbp, comp, texto, criar=True):
     return True
 
 
+def _linha_sem_caixa(l):
+    """Minusculas so FORA dos textos entre aspas: o VBE reescreve a caixa de identificador, nunca a de um literal
+    (revisao do 51bffc2: um literal que muda so de caixa -- "SIM" -> "Sim" num modulo Option Compare Binary -- nao
+    pode passar como igual). Comentario (depois de ' fora de aspas) vai sem caixa: nao muda o programa."""
+    out, dentro = [], False
+    for parte in l.split('"'):
+        out.append(parte if dentro else parte.lower())
+        dentro = not dentro
+    return '"'.join(out)
+
+
 def _norm_vba(t):
     linhas = str(t).replace('\r\n', '\n').replace('\r', '\n').strip().split('\n')
-    return '\n'.join(l.rstrip() for l in linhas).lower()
+    return '\n'.join(_linha_sem_caixa(l.rstrip()) for l in linhas)
 
 
 def recriar_modulo(vbp, comp, texto):
@@ -93,7 +104,10 @@ def recriar_modulo(vbp, comp, texto):
         raise SystemExit(f'{comp}: remocao adiada pelo VBE -- nada foi salvo')
     novo = vbp.VBComponents.Add(1)
     novo.Name = comp
-    novo.CodeModule.AddFromString(texto)
+    cm = novo.CodeModule
+    if cm.CountOfLines:                     # "Requerer declaracao de variavel" ligado: o VBE poe Option Explicit
+        cm.DeleteLines(1, cm.CountOfLines)
+    cm.AddFromString(texto)
     return True
 
 
