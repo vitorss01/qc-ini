@@ -1,0 +1,1397 @@
+{
+ "producao_sha256": "8ec815ab653d",
+ "copia": {
+  "arquivo": "Bioquimica_repro_listas_170706.xlsm",
+  "sha256": "8ec815ab653d"
+ },
+ "EXCEL_PID": 20196,
+ "idioma": {
+  "xlListSeparator": ";",
+  "xlDecimalSeparator": ",",
+  "LanguageID_UI": 1046
+ },
+ "varredura_abas_sem_validacao_ou_erro": {
+  "Início": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "LotesStore": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Calc": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Cfg_Westgard_Escopo": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Eng_Saida": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Eventos_Westgard": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "DB": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "DB_ORGANIZADO": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "COMENTARIOS_TECNICOS": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Principal - Resultados": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "QA_INTEGRACAO": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Cfg_Integracao": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Cfg_PlanoQC": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "EQA.CAP_Resumo": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "EQA.CAP_Nao_Aceitaveis": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "EQA.Controllab_Resumo": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "EQA.Controllab_Desvios": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "EQA_Base": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Liberação": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "LiberStore": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "RegistrosStore": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Login": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Audit_Legenda": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Audit_Log": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "BI_Data": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Sync_Log": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Westgard_Fotos": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada.",
+  "Usuarios_Central": "(-2147352567, 'Exceção.', (0, 'Microsoft Excel', 'Nenhuma célula foi encontrada."
+ },
+ "varredura_listas": [
+  {
+   "aba": "Configuração",
+   "intervalo": "C20",
+   "formula1": "=lstLotes",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D47",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E47",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J1181",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K1181",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D1181",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E1181",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J1127",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K1127",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D1127",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E1127",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J1073",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K1073",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D1073",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E1073",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J1019",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K1019",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D1019",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E1019",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J965",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K965",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D965",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E965",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J911",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K911",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D911",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E911",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J857",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K857",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D857",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E857",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J803",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K803",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D803",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E803",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J749",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K749",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D749",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E749",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J695",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K695",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D695",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E695",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J641",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K641",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D641",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E641",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J587",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K587",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D587",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E587",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J533",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K533",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D533",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E533",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J479",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K479",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D479",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E479",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J425",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K425",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D425",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E425",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J371",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K371",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D371",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E371",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J317",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K317",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D317",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E317",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J263",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K263",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D263",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E263",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J209",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K209",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D209",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E209",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J155",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K155",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D155",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E155",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J101",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K101",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "D101",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "E101",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "J47",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Analitos",
+   "intervalo": "K47",
+   "formula1": "=lstAnosEspec",
+   "estilo": 1,
+   "msg": "Escolha um ano da lista: são os anos que a biblioteca de especificações (aba Especificações) tem.",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Especificações",
+   "intervalo": "Q4:Q43",
+   "formula1": "ÓTI;DES;MIN",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "OK"
+  },
+  {
+   "aba": "Especificações",
+   "intervalo": "S4:S43",
+   "formula1": "CLIA;VB;FAB",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "OK"
+  },
+  {
+   "aba": "Especificações",
+   "intervalo": "AR4:AR43",
+   "formula1": "CAP;Controllab",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "OK"
+  },
+  {
+   "aba": "Especificações",
+   "intervalo": "J1",
+   "formula1": "=lstLotes",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Painel",
+   "intervalo": "H3",
+   "formula1": "=lstLotes",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Painel",
+   "intervalo": "K3",
+   "formula1": "=lstAnosCIQ",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Painel",
+   "intervalo": "C3",
+   "formula1": "=lstAnalitos",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Painel",
+   "intervalo": "K4",
+   "formula1": "Tudo (sem filtro);Ano inteiro;T1;T2;T3;T4;S1;S2;Jan;Fev;Mar;Abr;Mai;Jun;Jul;Ago;Set;Out;Nov;Dez;Personalizado",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "OK"
+  },
+  {
+   "aba": "Painel",
+   "intervalo": "L4",
+   "formula1": "DIMENSION 1;DIMENSION 2",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "OK"
+  },
+  {
+   "aba": "Painel",
+   "intervalo": "M4",
+   "formula1": "CAP;Controllab",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "OK"
+  },
+  {
+   "aba": "Registros",
+   "intervalo": "D7:D9",
+   "formula1": "1;2",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "OK"
+  },
+  {
+   "aba": "Registros",
+   "intervalo": "F7:F9",
+   "formula1": "Sim;Não",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "OK"
+  },
+  {
+   "aba": "Registros",
+   "intervalo": "J7:J9",
+   "formula1": "Aberto;Em análise;Encerrado",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "OK"
+  },
+  {
+   "aba": "Registros",
+   "intervalo": "B4",
+   "formula1": "=lstRegLote",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Registros",
+   "intervalo": "C4",
+   "formula1": "=lstRegAnalito",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Registros",
+   "intervalo": "G4",
+   "formula1": "=lstRegEquip",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Registros",
+   "intervalo": "H4",
+   "formula1": "Sim,Não",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "UM_ITEM_SO"
+  },
+  {
+   "aba": "Registros",
+   "intervalo": "J4",
+   "formula1": "=lstRegStatus",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Digitar Resultados",
+   "intervalo": "K7:K306",
+   "formula1": "Falha do interfaceamento,Resultado não transmitido,Equipamento em contingência,Outro",
+   "estilo": 1,
+   "msg": "Escolha o motivo da lista.",
+   "veredito": "UM_ITEM_SO"
+  },
+  {
+   "aba": "Digitar Resultados",
+   "intervalo": "D7:D306",
+   "formula1": "DIMENSION 1,DIMENSION 2",
+   "estilo": 1,
+   "msg": "Escolha o equipamento da lista.",
+   "veredito": "UM_ITEM_SO"
+  },
+  {
+   "aba": "Digitar Resultados",
+   "intervalo": "E7:E306",
+   "formula1": "SORO,URINA",
+   "estilo": 1,
+   "msg": "Escolha a matriz da lista.",
+   "veredito": "UM_ITEM_SO"
+  },
+  {
+   "aba": "Digitar Resultados",
+   "intervalo": "F7:F306",
+   "formula1": "=lstLotes",
+   "estilo": 1,
+   "msg": "Use um lote cadastrado (aba Configuração).",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Digitar Resultados",
+   "intervalo": "H7:H306",
+   "formula1": "=lstAnalitos",
+   "estilo": 1,
+   "msg": "Use o nome do analito como está no cadastro (aba Analitos).",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Inativar",
+   "intervalo": "B7:B506",
+   "formula1": "=lstAnalitos",
+   "estilo": 2,
+   "msg": "Nome fora do cadastro. Analito sem cadastro: digite como na coluna ANALITO da Principal - Resultados (ex.: FERR) e clique Sim. O ATUALIZAR confere o ID com o analito (E10/E11).",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Estatística",
+   "intervalo": "F4",
+   "formula1": "1;2;3;4;5;6;7;8;9;10;11;12",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "OK"
+  },
+  {
+   "aba": "Estatística",
+   "intervalo": "N4",
+   "formula1": "=lstAnosCEQ",
+   "estilo": 2,
+   "msg": "Texto fora da lista: confira em K5 se foi lido (conjunto = ano|rodada separados por ;).",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Estatística",
+   "intervalo": "P4",
+   "formula1": "=lstRodadasEQA",
+   "estilo": 2,
+   "msg": "Texto fora da lista: confira em K5 se foi lido (conjunto = ano|rodada separados por ;).",
+   "veredito": "NOME/INTERVALO"
+  },
+  {
+   "aba": "Usuarios",
+   "intervalo": "C4:C53",
+   "formula1": "ANALISTA;TÉCNICO;ADM",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "OK"
+  },
+  {
+   "aba": "Usuarios",
+   "intervalo": "H8",
+   "formula1": "ANALISTA;TÉCNICO;ADM",
+   "estilo": 1,
+   "msg": "",
+   "veredito": "OK"
+  }
+ ],
+ "manuais_cabecalho": [
+  "ID_REGISTRO",
+  "DATA",
+  "HORA",
+  "EQUIPAMENTO",
+  "MATRIZ",
+  "LOTE",
+  "NIVEL",
+  "ANALITO",
+  "RESULTADO",
+  "UNIDADE",
+  "MOTIVO",
+  "USUARIO",
+  "REGISTRADO_EM",
+  "RUN",
+  "STATUS",
+  "DETALHE",
+  "SUBSTITUI_ID"
+ ],
+ "manuais_linhas_preenchidas_antes": 0,
+ "validacao_por_coluna": {
+  "EQUIPAMENTO": {
+   "celula": "D7",
+   "tipo": 3,
+   "formula1": "DIMENSION 1,DIMENSION 2",
+   "estilo": 1,
+   "msg": "Escolha o equipamento da lista.",
+   "mostra_erro": true,
+   "menu": true,
+   "aceita": {
+    "DIMENSION 1": false,
+    "DIMENSION 2": false,
+    "DIMENSION 1,DIMENSION 2": true
+   }
+  },
+  "MATRIZ": {
+   "celula": "E7",
+   "tipo": 3,
+   "formula1": "SORO,URINA",
+   "estilo": 1,
+   "msg": "Escolha a matriz da lista.",
+   "mostra_erro": true,
+   "menu": true,
+   "aceita": {
+    "SORO": false,
+    "URINA": false,
+    "SORO,URINA": true
+   }
+  },
+  "MOTIVO": {
+   "celula": "K7",
+   "tipo": 3,
+   "formula1": "Falha do interfaceamento,Resultado não transmitido,Equipamento em contingência,Outro",
+   "estilo": 1,
+   "msg": "Escolha o motivo da lista.",
+   "mostra_erro": true,
+   "menu": true,
+   "aceita": {
+    "Falha do interfaceamento": false,
+    "Resultado não transmitido": false,
+    "Equipamento em contingência": false,
+    "Outro": false,
+    "Falha do interfaceamento,Resultado não transmitido,Equipamento em contingência,Outro": true
+   }
+  },
+  "LOTE": {
+   "celula": "F7",
+   "tipo": 3,
+   "formula1": "=lstLotes",
+   "estilo": 1,
+   "msg": "Use um lote cadastrado (aba Configuração).",
+   "mostra_erro": true,
+   "menu": true,
+   "aceita": {
+    "8974": true,
+    "LOTE-INEXISTENTE-TESTE": false
+   }
+  },
+  "ANALITO": {
+   "celula": "H7",
+   "tipo": 3,
+   "formula1": "=lstAnalitos",
+   "estilo": 1,
+   "msg": "Use o nome do analito como está no cadastro (aba Analitos).",
+   "mostra_erro": true,
+   "menu": true,
+   "aceita": {
+    "Lactato": true,
+    "ANALITO-INEXISTENTE-TESTE": false
+   }
+  }
+ },
+ "validacao_ultima_linha": {
+  "EQUIPAMENTO": {
+   "celula": "D306",
+   "tipo": 3,
+   "formula1": "DIMENSION 1,DIMENSION 2",
+   "estilo": 1,
+   "msg": "Escolha o equipamento da lista.",
+   "mostra_erro": true,
+   "menu": true,
+   "aceita": {
+    "DIMENSION 1": false
+   }
+  },
+  "MATRIZ": {
+   "celula": "E306",
+   "tipo": 3,
+   "formula1": "SORO,URINA",
+   "estilo": 1,
+   "msg": "Escolha a matriz da lista.",
+   "mostra_erro": true,
+   "menu": true,
+   "aceita": {
+    "SORO": false
+   }
+  },
+  "MOTIVO": {
+   "celula": "K306",
+   "tipo": 3,
+   "formula1": "Falha do interfaceamento,Resultado não transmitido,Equipamento em contingência,Outro",
+   "estilo": 1,
+   "msg": "Escolha o motivo da lista.",
+   "mostra_erro": true,
+   "menu": true,
+   "aceita": {
+    "Falha do interfaceamento": false
+   }
+  }
+ },
+ "painel_L4": {
+  "tipo": 3,
+  "formula1": "DIMENSION 1;DIMENSION 2",
+  "estilo": 1,
+  "msg": "",
+  "mostra_erro": true,
+  "menu": true,
+  "valor": "DIMENSION 2",
+  "aceita_valor_atual": true
+ },
+ "painel_selecao": {
+  "B3": 13.0,
+  "C3": "Glicose",
+  "loteAnalise": "8977",
+  "L4": "DIMENSION 1"
+ },
+ "manuais_digitados": {
+  "A_menu": {
+   "linha": 1,
+   "valores": {
+    "ID_REGISTRO": "MAN_0001",
+    "DATA": "2026-11-14 03:00:00+00:00",
+    "HORA": 0.14791666666666667,
+    "EQUIPAMENTO": "DIMENSION 1,DIMENSION 2",
+    "MATRIZ": "SORO,URINA",
+    "LOTE": "8977",
+    "NIVEL": 1.0,
+    "ANALITO": "Glicose",
+    "RESULTADO": 123.4567,
+    "UNIDADE": null,
+    "MOTIVO": "Falha do interfaceamento,Resultado não transmitido,Equipamento em contingência,Outro",
+    "USUARIO": "(sem login)",
+    "REGISTRADO_EM": "2026-11-14 17:07:31+00:00",
+    "RUN": "—",
+    "STATUS": "—",
+    "DETALHE": "atualize os dados",
+    "SUBSTITUI_ID": null
+   },
+   "validacao_ok": {
+    "EQUIPAMENTO": true,
+    "MATRIZ": true,
+    "MOTIVO": true
+   }
+  },
+  "B_controle": {
+   "linha": 2,
+   "valores": {
+    "ID_REGISTRO": "MAN_0002",
+    "DATA": "2026-11-14 03:00:00+00:00",
+    "HORA": 0.1486111111111111,
+    "EQUIPAMENTO": "DIMENSION 1",
+    "MATRIZ": "SORO",
+    "LOTE": "8977",
+    "NIVEL": 1.0,
+    "ANALITO": "Glicose",
+    "RESULTADO": 123.4568,
+    "UNIDADE": null,
+    "MOTIVO": "Outro",
+    "USUARIO": "(sem login)",
+    "REGISTRADO_EM": "2026-11-14 17:07:32+00:00",
+    "RUN": "—",
+    "STATUS": "—",
+    "DETALHE": "atualize os dados",
+    "SUBSTITUI_ID": null
+   },
+   "validacao_ok": {
+    "EQUIPAMENTO": false,
+    "MATRIZ": false,
+    "MOTIVO": false
+   }
+  }
+ },
+ "atualizar": {
+  "retorno": "Atualização concluída.\r\n\r\nResultados recebidos: 35.906 (novos nesta atualização: 0)\r\nResultado mais recente recebido: 13/11/2026 08:39:01\r\nPrincipal - Resultados: 35.908 resultados\r\nQA da integração: 4 erro(s), 132 alerta(s), 12 informativo(s).\r\n• 4 erro(s) de governança: veja a aba QA_INTEGRACAO (e",
+  "segundos": 20.6
+ },
+ "manuais_depois": {
+  "A_menu": {
+   "ID_REGISTRO": "MAN_0001",
+   "DATA": "2026-11-14 03:00:00+00:00",
+   "HORA": 0.14791666666666667,
+   "EQUIPAMENTO": "DIMENSION 1,DIMENSION 2",
+   "MATRIZ": "SORO,URINA",
+   "LOTE": "8977",
+   "NIVEL": 1.0,
+   "ANALITO": "Glicose",
+   "RESULTADO": 123.4567,
+   "UNIDADE": null,
+   "MOTIVO": "Falha do interfaceamento,Resultado não transmitido,Equipamento em contingência,Outro",
+   "USUARIO": "(sem login)",
+   "REGISTRADO_EM": "2026-11-14 17:07:31+00:00",
+   "RUN": 26111401.0,
+   "STATUS": "ATIVO",
+   "DETALHE": "",
+   "SUBSTITUI_ID": null
+  },
+  "B_controle": {
+   "ID_REGISTRO": "MAN_0002",
+   "DATA": "2026-11-14 03:00:00+00:00",
+   "HORA": 0.1486111111111111,
+   "EQUIPAMENTO": "DIMENSION 1",
+   "MATRIZ": "SORO",
+   "LOTE": "8977",
+   "NIVEL": 1.0,
+   "ANALITO": "Glicose",
+   "RESULTADO": 123.4568,
+   "UNIDADE": null,
+   "MOTIVO": "Outro",
+   "USUARIO": "(sem login)",
+   "REGISTRADO_EM": "2026-11-14 17:07:32+00:00",
+   "RUN": 26111401.0,
+   "STATUS": "ATIVO",
+   "DETALHE": "",
+   "SUBSTITUI_ID": null
+  }
+ },
+ "cq_final": [
+  {
+   "ID_REGISTRO": "MAN_0001",
+   "ORIGEM_RESULTADO": "MANUAL",
+   "SETOR": "BIOQUIMICA",
+   "EQUIPAMENTO": "DIMENSION 1,DIMENSION 2",
+   "MATRIZ": "SORO,URINA",
+   "BLOCO": null,
+   "DATA": "2026-11-14 00:00:00",
+   "HORA": 0.14791666666666667,
+   "DATA_HORA": "2026-11-14 03:33:00",
+   "CORRIDA_NO_DIA": 1.0,
+   "RUN": 26111401.0,
+   "NIVEL": 1.0,
+   "NIVEL_DESC": "1 - NORMAL",
+   "LOTE": "8977",
+   "ANALITO": "Glicose",
+   "ANALITO_ORIGEM": "Glicose",
+   "ANALITO_CADASTRADO": "SIM",
+   "RESULTADO": 123.4567,
+   "UNIDADE": null,
+   "FLAG": null,
+   "STATUS_ANALITICO": "ATIVO",
+   "PARTICIPA_ESTATISTICA": "SIM",
+   "REGISTRAR_RESULTADO_NO_LJ": "SIM",
+   "TIPO_PLOTAGEM_LJ": "NORMAL",
+   "INATIVACAO_REGISTRADA": "NÃO",
+   "COMENTARIO_TECNICO": null,
+   "TEM_JUSTIFICATIVA": "NÃO",
+   "GOVERNANCA": "OK",
+   "DATA_INATIVACAO": null,
+   "USUARIO_INATIVACAO": null,
+   "MOTIVO_INATIVACAO": null,
+   "MOTIVO_EXCLUSAO_AUTOMATICA": null,
+   "ID_RELACIONADO": null,
+   "ID_ORIGEM": null,
+   "ID_AMOSTRA": null,
+   "ITEM_ID": null,
+   "PRIMEIRO_DO_DIA": null,
+   "MOTIVO_MANUAL": "Falha do interfaceamento,Resultado não transmitido,Equipamento em contingência,Outro",
+   "USUARIO_MANUAL": "(sem login)",
+   "RECEBIDO_EM": "2026-11-14 17:07:31"
+  },
+  {
+   "ID_REGISTRO": "MAN_0002",
+   "ORIGEM_RESULTADO": "MANUAL",
+   "SETOR": "BIOQUIMICA",
+   "EQUIPAMENTO": "DIMENSION 1",
+   "MATRIZ": "SORO",
+   "BLOCO": "PAINEL",
+   "DATA": "2026-11-14 00:00:00",
+   "HORA": 0.1486111111111111,
+   "DATA_HORA": "2026-11-14 03:34:00",
+   "CORRIDA_NO_DIA": 1.0,
+   "RUN": 26111401.0,
+   "NIVEL": 1.0,
+   "NIVEL_DESC": "1 - NORMAL",
+   "LOTE": "8977",
+   "ANALITO": "Glicose",
+   "ANALITO_ORIGEM": "GLUC",
+   "ANALITO_CADASTRADO": "SIM",
+   "RESULTADO": 123.4568,
+   "UNIDADE": null,
+   "FLAG": null,
+   "STATUS_ANALITICO": "ATIVO",
+   "PARTICIPA_ESTATISTICA": "SIM",
+   "REGISTRAR_RESULTADO_NO_LJ": "SIM",
+   "TIPO_PLOTAGEM_LJ": "NORMAL",
+   "INATIVACAO_REGISTRADA": "NÃO",
+   "COMENTARIO_TECNICO": null,
+   "TEM_JUSTIFICATIVA": "NÃO",
+   "GOVERNANCA": "OK",
+   "DATA_INATIVACAO": null,
+   "USUARIO_INATIVACAO": null,
+   "MOTIVO_INATIVACAO": null,
+   "MOTIVO_EXCLUSAO_AUTOMATICA": null,
+   "ID_RELACIONADO": null,
+   "ID_ORIGEM": null,
+   "ID_AMOSTRA": null,
+   "ITEM_ID": null,
+   "PRIMEIRO_DO_DIA": null,
+   "MOTIVO_MANUAL": "Outro",
+   "USUARIO_MANUAL": "(sem login)",
+   "RECEBIDO_EM": "2026-11-14 17:07:32"
+  }
+ ],
+ "qa_integracao_com_os_ids": [],
+ "qa_integracao_total": 148,
+ "series_painel": {
+  "DIMENSION 1": {
+   "L4": "DIMENSION 1",
+   "C3": "Glicose",
+   "engAnalito": "Glicose",
+   "engEquip": "DIMENSION 1",
+   "eng_n": 107,
+   "eng_ultimos_runs": [
+    26103002,
+    26103003,
+    26103004
+   ],
+   "eng_ultimos_val": [
+    [
+     76.0,
+     null
+    ],
+    [
+     null,
+     277.0
+    ],
+    [
+     null,
+     263.0
+    ]
+   ],
+   "achados": {
+    "Eng_Saida": {
+     "A_menu": [],
+     "B_controle": []
+    },
+    "Calc": {
+     "A_menu": [],
+     "B_controle": []
+    }
+   }
+  },
+  "DIMENSION 2": {
+   "L4": "DIMENSION 2",
+   "C3": "Glicose",
+   "engAnalito": "Glicose",
+   "engEquip": "DIMENSION 2",
+   "eng_n": 119,
+   "eng_ultimos_runs": [
+    26102902,
+    26102903,
+    26102904
+   ],
+   "eng_ultimos_val": [
+    [
+     76.0,
+     272.0
+    ],
+    [
+     76.0,
+     null
+    ],
+    [
+     76.0,
+     null
+    ]
+   ],
+   "achados": {
+    "Eng_Saida": {
+     "A_menu": [],
+     "B_controle": []
+    },
+    "Calc": {
+     "A_menu": [],
+     "B_controle": []
+    }
+   }
+  }
+ }
+}

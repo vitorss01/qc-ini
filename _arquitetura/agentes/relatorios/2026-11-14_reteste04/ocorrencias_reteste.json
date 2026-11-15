@@ -1,0 +1,274 @@
+[
+ {
+  "id": "OC-0012",
+  "frente": "F1",
+  "titulo": "Painel janela 180: \"Tudo\"/período longo: indicadores do Painel só das 180 corridas mais recentes; o aviso fala só do gráfico",
+  "prioridade": "Alto",
+  "como_reproduzir": "\"Tudo\"/período longo: indicadores do Painel só das 180 corridas mais recentes; o aviso fala só do gráfico",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_cq G11",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0019",
+  "frente": "F1",
+  "titulo": "Digitar Resultados: EQUIPAMENTO vazio recebe o do Painel sem aviso; as instruções não pedem o equipamento",
+  "prioridade": "Alto",
+  "como_reproduzir": "EQUIPAMENTO vazio recebe o do Painel sem aviso; as instruções não pedem o equipamento",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G01",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo.",
+  "produto": "Bioquimica"
+ },
+ {
+  "id": "OC-0021",
+  "frente": "F1",
+  "titulo": "Digitar Resultados: RUN/DETALHE mostram 0; DETALHE sem acento",
+  "prioridade": "Baixo",
+  "como_reproduzir": "RUN/DETALHE mostram 0; DETALHE sem acento",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G03",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0023",
+  "frente": "F1",
+  "titulo": "Audit_Log: RESULTADO_MANUAL_INCLUIDO gravado para manuais incompletos e em conflito",
+  "prioridade": "Baixo",
+  "como_reproduzir": "RESULTADO_MANUAL_INCLUIDO gravado para manuais incompletos e em conflito",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G05",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0024",
+  "frente": "F1",
+  "titulo": "ResumoQA: E04 de manual aparece como \"ERRO DE GOVERNANÇA\"",
+  "prioridade": "Médio",
+  "como_reproduzir": "E04 de manual aparece como \"ERRO DE GOVERNANÇA\"",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G06",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0031",
+  "frente": "F1",
+  "titulo": "frmCEQ alvo: CEQ sem valor-alvo aceito sem aviso (só aviso: obrigatório não autorizado)",
+  "prioridade": "Médio",
+  "como_reproduzir": "CEQ sem valor-alvo aceito sem aviso (só aviso: obrigatório não autorizado)",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G13",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0033",
+  "frente": "F1",
+  "titulo": "frmCEQ sessão: SalvarCEQ grava sem sessão (papel mínimo não autorizado)",
+  "prioridade": "Médio",
+  "como_reproduzir": "SalvarCEQ grava sem sessão (papel mínimo não autorizado)",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G15",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0034",
+  "frente": "F1",
+  "titulo": "frmCEQ listas: Listas da janela misturam nomes da simulação",
+  "prioridade": "Baixo",
+  "como_reproduzir": "Listas da janela misturam nomes da simulação",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G16",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0035",
+  "frente": "F1",
+  "titulo": "GUIA §5–6: GUIA manda digitar CEQ nas abas bloqueadas; não cita a janela nem o Consolidar",
+  "prioridade": "Médio",
+  "como_reproduzir": "GUIA manda digitar CEQ nas abas bloqueadas; não cita a janela nem o Consolidar",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G17",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0036",
+  "frente": "F1",
+  "titulo": "Estatística AT: Coluna AT mostra \"004 / 000\" (TEXT gravado pelo COM em pt-BR)",
+  "prioridade": "Médio",
+  "como_reproduzir": "Coluna AT mostra \"004 / 000\" (TEXT gravado pelo COM em pt-BR)",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G18",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0040",
+  "frente": "F2",
+  "titulo": "Estatística MENSAL/TRIM: Visões MENSAL/TRIMESTRAL inalcançáveis e \"Ano 0\"",
+  "prioridade": "Médio",
+  "como_reproduzir": "Visões MENSAL/TRIMESTRAL inalcançáveis e \"Ano 0\"",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G22",
+  "correcao": "AGUARDA RETESTE (ADR-092, entrega 39)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo.",
+  "produto": "Bioquimica"
+ },
+ {
+  "id": "OC-0041",
+  "frente": "F1",
+  "titulo": "Painel K3/K4: K3/K4 com rótulo antigo após De/Até",
+  "prioridade": "Médio",
+  "como_reproduzir": "K3/K4 com rótulo antigo após De/Até",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G23",
+  "correcao": "AGUARDA RETESTE (ADR-090 a corrigiu com o rótulo OC-0040; N-05)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0043",
+  "frente": "F2",
+  "titulo": "Painel J7:J8: \"REJEITADO\" cortado",
+  "prioridade": "Baixo",
+  "como_reproduzir": "\"REJEITADO\" cortado",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G25",
+  "correcao": "AGUARDA RETESTE (ADR-092, entrega 39)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo.",
+  "produto": "Bioquimica"
+ },
+ {
+  "id": "OC-0044",
+  "frente": "F1",
+  "titulo": "Estatística: Nome do analito desalinhado na vertical",
+  "prioridade": "Baixo",
+  "como_reproduzir": "Nome do analito desalinhado na vertical",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G26",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo.",
+  "produto": "Bioquimica"
+ },
+ {
+  "id": "OC-0049",
+  "frente": "F2",
+  "titulo": "Estatística: Linhas vazias mostram 0 e SEM EP",
+  "prioridade": "Baixo",
+  "como_reproduzir": "Linhas vazias mostram 0 e SEM EP",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G31",
+  "correcao": "AGUARDA RETESTE (ADR-092, entrega 39)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo.",
+  "produto": "Hematologia"
+ },
+ {
+  "id": "OC-0050",
+  "frente": "F1",
+  "titulo": "tblCQ_Final cabeçalho: \"Total: 44392,0\" (TEXT pelo COM)",
+  "prioridade": "Baixo",
+  "como_reproduzir": "\"Total: 44392,0\" (TEXT pelo COM)",
+  "evidencia_original": "relatorios/2026-10-31_ciclo01/parecer_ux G32",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0052",
+  "frente": "F1",
+  "titulo": "frmCEQ mapa: \"MCH\" é prefixo de \"MCHC\", mas o aviso do par não dispara (ParDoMapa exige nome + espaço); a confirmação de unidade dispara",
+  "prioridade": "Baixo",
+  "como_reproduzir": "\"MCH\" é prefixo de \"MCHC\", mas o aviso do par não dispara (ParDoMapa exige nome + espaço); a confirmação de unidade dispara",
+  "evidencia_original": "relatorios/2026-11-04_reteste02/tester_validar.md",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0054",
+  "frente": "F1",
+  "titulo": "Audit_Log CEQ: Edição direta sem selecionar antes registra \"? → mesmo valor\" e marca uma pendência que não existe",
+  "prioridade": "Baixo",
+  "como_reproduzir": "Edição direta sem selecionar antes registra \"? → mesmo valor\" e marca uma pendência que não existe",
+  "evidencia_original": "relatorios/2026-11-04_reteste02/usuario_reteste.md",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0055",
+  "frente": "F1",
+  "titulo": "frmCEQ descrição: A descrição do registro repete o ano (\"C-A 2025 2025\")",
+  "prioridade": "Baixo",
+  "como_reproduzir": "A descrição do registro repete o ano (\"C-A 2025 2025\")",
+  "evidencia_original": "relatorios/2026-11-04_reteste02/usuario_reteste.md",
+  "correcao": "AGUARDA RETESTE (ADR-090, entrega 37)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0056",
+  "frente": "F2",
+  "titulo": "ETL manual / tblLotesMaterial: Manual num lote de regra MATRIZ (urina) com o nome de um analito de soro entra na estatística do soro (N-01). ADR-092 recusava (LOTE_OUTRO_M",
+  "prioridade": "Alto",
+  "como_reproduzir": "Manual num lote de regra MATRIZ (urina) com o nome de um analito de soro entra na estatística do soro (N-01). ADR-092 recusava (LOTE_OUTRO_MATERIAL + A13). **Decisão do usuário em 13/11/2026 (ADR-093): aceitar como urina** — o manual vai para o analito que o interfaceamento usa na matriz do lote (código de origem único, ex.: Creatinina → CRE2), com nota no DETALHE e achado I05; código ambíguo continua recusado",
+  "evidencia_original": "relatorios/2026-11-11_reteste03/tester_validar.md N-01",
+  "correcao": "AGUARDA RETESTE (ADR-092 + ADR-093, entrega 39)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo.",
+  "produto": "Bioquimica"
+ },
+ {
+  "id": "OC-0057",
+  "frente": "F2",
+  "titulo": "CEQ Corrigir/Excluir: CorrigirCEQ e ExcluirCEQ gravavam sem sessão (N-02)",
+  "prioridade": "Médio",
+  "como_reproduzir": "CorrigirCEQ e ExcluirCEQ gravavam sem sessão (N-02)",
+  "evidencia_original": "relatorios/2026-11-11_reteste03/tester_validar.md N-02",
+  "correcao": "AGUARDA RETESTE (ADR-092, entrega 39)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0058",
+  "frente": "F2",
+  "titulo": "Audit_Log manual: Trilha RESULTADO_MANUAL_INCLUIDO para manual fora da estatística (IMPLAUSIVEL, LOTE_*) (N-03)",
+  "prioridade": "Baixo",
+  "como_reproduzir": "Trilha RESULTADO_MANUAL_INCLUIDO para manual fora da estatística (IMPLAUSIVEL, LOTE_*) (N-03)",
+  "evidencia_original": "relatorios/2026-11-11_reteste03/tester_validar.md N-03",
+  "correcao": "AGUARDA RETESTE (ADR-092, entrega 39)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "OC-0059",
+  "frente": "F2",
+  "titulo": "Documentação ADR-090: ADR-090 chamava de OC-0040 a correção do G23 (OC-0041) (N-05); N-04 = OC-0043",
+  "prioridade": "Baixo",
+  "como_reproduzir": "ADR-090 chamava de OC-0040 a correção do G23 (OC-0041) (N-05); N-04 = OC-0043",
+  "evidencia_original": "relatorios/2026-11-11_reteste03/tester_validar.md N-05",
+  "correcao": "AGUARDA RETESTE (ADR-092, entrega 39) (ADR-090.md corrigido)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo.",
+  "produto": "Bioquimica"
+ },
+ {
+  "id": "OC-0066",
+  "frente": "F2",
+  "titulo": "ADR-094: data-hora com segundos em coluna vazia e no Sync_Log: Na 1ª execução completa do qa_adr094 (depois da correção do GetResize): F02 mostrou \"####\" em tblCQ_Final[DATA_INATIVACAO] (coluna vazia: o ",
+  "prioridade": "Médio",
+  "como_reproduzir": "Na 1ª execução completa do qa_adr094 (depois da correção do GetResize): F02 mostrou \"####\" em tblCQ_Final[DATA_INATIVACAO] (coluna vazia: o instalador só alargava se a amostra já tivesse valor) e F06 mostrou \"####\" em Sync_Log INICIO/FIM (segundos desde o ADR-079 na largura 12; aba visível a todos). Correção no instalar_adr094: sonda temporária na coluna vazia (devolvida vazia) ou largura já provada nesta execução para tabela vazia; INICIO/FIM na lista COLUNAS (o F01 passa a conferir). O F02 também tinha um defeito do teste: datetime ingênuo pelo pywin32 passa pelo fuso (08:23 → 11:23); agora grava Value2",
+  "evidencia_original": "testes/qa_adr094.py F02/F06; _entrega_2026-11-14_0154/Bioquimica/retomada42",
+  "correcao": "CORRIGIDA (em produção desde a entrega 41, 14/11; aguarda reteste e VALIDAR)",
+  "criterio_aceite": "O comportamento descrito como defeito não ocorre mais na cópia da produção atual (entrega 41); o fluxo vizinho continua correto; nenhum valor de estatística muda sem motivo."
+ },
+ {
+  "id": "ADR-091",
+  "frente": "F2",
+  "titulo": "Material definido pelo lote (tblLotesMaterial): lote de urina/soro, SO_ANALITOS, FORA_DO_CQ",
+  "prioridade": "Alto",
+  "correcao": "ADR-091 (entrega 38+, em produção)",
+  "criterio_aceite": "Resultados de lote com regra MATRIZ/SO_ANALITOS/FORA_DO_CQ ficam com o status e o material certos no Painel e na Principal; estatística só com os ativos do material certo."
+ },
+ {
+  "id": "ADR-093",
+  "produto": "Bioquimica",
+  "frente": "F2",
+  "titulo": "Manual num lote de urina com nome de analito de soro é aceito como urina (ex.: Creatinina -> CRE2)",
+  "prioridade": "Alto",
+  "correcao": "ADR-093, entrega 41 (commit 1a72892)",
+  "criterio_aceite": "Digitar um manual (TESTE-AUDITORIA) num lote de urina com o nome do soro: entra no analito de urina único do de/para, o DETALHE mostra a troca, o QA tem I05; sem analito de urina único, fica fora da estatística com o motivo."
+ },
+ {
+  "id": "ADR-094",
+  "frente": "F2",
+  "titulo": "Data-hora com segundos (dd/mm/aaaa hh:mm:ss) onde há horário; dd/mm/aaaa só data; nenhuma coluna com ####",
+  "prioridade": "Medio",
+  "correcao": "ADR-094 + OC-0066, entrega 41 (commit 1a72892)",
+  "criterio_aceite": "Principal, Registros, Inativar, Comentários, Sync_Log (INICIO/FIM), QA e manuais mostram segundos onde há hora; datas sem hora sem hora; inativar um ponto e rodar ATUALIZAR na cópia não deixa nenhuma coluna com ####."
+ }
+]
