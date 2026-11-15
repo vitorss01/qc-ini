@@ -153,7 +153,29 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
   - corrigido, com uma varredura no fim da instalação e um teste que trava (OC-0072).
 - **Entrega 42** (ADR-095 completo): começou às 21h25. As suítes do lote rodam primeiro, para uma falha aparecer em minutos.
 
-## Próximas etapas (21h35)
+## 15/11, 1h05: Bioquímica com o ADR-095 em produção; Hematologia parou na instalação, causa achada e corrigida, entrega dela recomeçou
+- **Bioquímica:**
+  - entrega 42: 35 suítes passaram, nenhuma falha; em produção desde 0h11;
+  - ATUALIZAR às 0h18, sem dado novo (sábado à noite);
+  - produção conferida: sha256 `b20fe00f7e51503b`, com backup.
+- **Hematologia:** parou no 7º passo da instalação ("VBA não compilou"). A produção não foi tocada.
+  - **Causa (reproduzida 4 vezes numa cópia):**
+    - o instalador reescreve todo o código VBA a cada passo, mesmo quando o texto é igual;
+    - depois que o passo "desempenho" roda as macros e salva, essa reescrita deixa o projeto sem compilar (erro no módulo de senha);
+    - o código em si está igual ao da produção.
+  - **Correção:**
+    - não reescrever módulo com texto igual;
+    - se mesmo assim não compilar, recriar o módulo do erro e compilar de novo.
+    - Testado no arquivo que falhava: compila nos dois caminhos.
+- Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
+
+## Próximas etapas (1h05)
+1. Hematologia: instalação e 35 suítes até ~5h; ATUALIZAR até ~5h10.
+2. Domingo de manhã: reteste e validação de OC-0012 (Hema), OC-0021, OC-0068, OC-0071 e OC-0072, nos dois produtos.
+
+**Previsão:** Hematologia corrigida em produção por volta das **5h10** (~4 h); tudo validado por volta das **9h de domingo** (~8 h).
+
+## Etapas de 21h35 (substituídas)
 1. Entrega 42: Bioquímica até ~0h40, Hematologia até ~4h40; depois o ATUALIZAR nas produções, até ~5h.
 2. Domingo de manhã: reteste e validação de OC-0012 (Hema), OC-0021, OC-0068, OC-0071 e OC-0072.
 
