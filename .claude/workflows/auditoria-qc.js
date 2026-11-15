@@ -154,8 +154,14 @@ async function rodar(tipo, prompt, opts) {
   }
 }
 
+// "Ambos" (como no registro OCORRENCIAS.md) vale para os dois produtos. 15/11/2026: o filtro só aceitava o nome exato
+// e as ocorrências "Ambos" do reteste05 não chegaram a nenhuma frente, sem aviso.
+const doProduto = (o, produto) => !o.produto || /ambos|bio\s*\+\s*hema/i.test(o.produto) || o.produto === produto
+const semFrente = OCORR.filter(o => !PRODUTOS.some(p => doProduto(o, p)) || (o.frente && !FRENTES.includes(o.frente)))
+if (semFrente.length) log(`ATENÇÃO: ${semFrente.length} ocorrência(s) não caem em nenhuma frente pedida: ${semFrente.map(o => o.id).join(', ')}`)
+
 function promptFrente(produto, frente) {
-  const reteste = OCORR.filter(o => !o.produto || o.produto === produto)
+  const reteste = OCORR.filter(o => doProduto(o, produto))
   const alvo = MODO === 'reteste'
     ? `RETESTE. Refaça exatamente o fluxo de cada ocorrência abaixo numa cópia NOVA da produção atual e diga RESOLVIDA, `
       + `PERSISTE ou EFEITO_COLATERAL (estado do teste com id = ID da ocorrência), refazendo também o fluxo vizinho. `
