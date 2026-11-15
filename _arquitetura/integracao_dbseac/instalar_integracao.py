@@ -242,6 +242,9 @@ def instalar_calc(wb, produto):
             l4.Value = cp.PRODUTOS['Bioquimica']['cfg']['EQUIPAMENTO_PADRAO'][0]
         l4.Validation.Delete()
         l4.Validation.Add(3, 1, 1, cd.sep_lista(wb.Application).join(cp.PRODUTOS['Bioquimica']['equipamentos']))   # ADR-095
+        l4.Validation.ErrorTitle = 'Equipamento'                                  # reteste 05 (P-02)
+        l4.Validation.ErrorMessage = 'Escolha o equipamento na seta da célula.'
+        l4.Validation.ShowError = True
         l4.Interior.Color = tema.CAMPO
         l4.Font.Bold = True
         l4.Locked = False

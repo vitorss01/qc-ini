@@ -85,7 +85,8 @@ sozinho), marque ou não **Registrar-LJ** (X vermelho), escreva o **motivo** e c
    (MAN_0001…) é gerado sozinho. Equipamento vazio recebe o do Painel e fica em **âmbar**, com a nota "Preenchido pelo
    Painel com …: confira": na Bioquímica há dois DIMENSION, então confira (ou escolha o certo na seta da célula)
    antes de atualizar. Equipamento, matriz e motivo se escolhem na seta da célula (um item por linha, ADR-095)
-   (ADR-090).
+   (ADR-090). Pode copiar uma linha e colar embaixo para aproveitar a digitação: a linha colada **ganha um ID novo**
+   sozinha (um aviso diz qual) — troque o que for diferente (nível, hora, resultado) antes de atualizar (ADR-096).
 2. Atualize e confira o STATUS (e a coluna DETALHE):
    - **ATIVO** = entrou na estatística;
    - **CONFLITO_MANUAL** = o mesmo resultado já veio pelo interfaceamento (mesma chave, até 30 min) e vale o

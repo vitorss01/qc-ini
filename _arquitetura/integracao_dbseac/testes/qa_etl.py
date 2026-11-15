@@ -486,8 +486,11 @@ class Ctx:
                 if prot:
                     ws.Protect('qcini2025', False, True, True, True)   # senha, desenhos, conteudo, cenarios, UI only
 
-    def manual(self, quando, analito, lote, nivel, resultado, equip, matriz=None, id_=None, omitir=()):
-        """Uma linha na aba Digitar Resultados. Devolve (linha da tabela, ID que o evento deixou na celula)."""
+    def manual(self, quando, analito, lote, nivel, resultado, equip, matriz=None, id_=None, omitir=(), repetir_id=False):
+        """Uma linha na aba Digitar Resultados. Devolve (linha da tabela, ID que o evento deixou na celula).
+        repetir_id: o ID repetido de outra linha entra com os eventos DESLIGADOS -- reteste 05 (P-03, ADR-096): com o
+        evento ligado, a linha que repete um MAN_ ganha ID novo e a repeticao nunca chega ao motor; E09d/e/f testam a
+        regra do MOTOR (vale a 1a linha) para a repeticao que ja existe ou entrou sem o evento."""
         v = {}
         if id_ is not None:
             v['ID_REGISTRO'] = id_
@@ -505,6 +508,12 @@ class Ctx:
         for c in omitir:
             v.pop(c, None)
         r = self.q.escrever_linha(TB_MAN, v)
+        if repetir_id and id_ is not None:
+            self.q.ex.xl.EnableEvents = False
+            try:
+                self.cel(TB_MAN, 'ID_REGISTRO', r).Value = id_
+            finally:
+                self.q.ex.xl.EnableEvents = True
         return r, self.valor(TB_MAN, 'ID_REGISTRO', r)
 
     def analito_de(self, id_):
@@ -1062,19 +1071,19 @@ def e09(ctx, fin0):
     k50 = proximo_livre(usados0, 50)
     id50 = f'MAN_{k50:04d}'
     rd1, _ = man(5, id_=id50)
-    rd2, _ = man(6, id_=id50)
+    rd2, _ = man(6, id_=id50, repetir_id=True)
     # (e) MAN_001 alem de um MAN_0001 existente
     # alvo = o ID automatico do (a) (com D05 nao e mais necessariamente MAN_0001); digitado com 3 digitos
     alvo_e = id_a if (isinstance(id_a, str) and id_a.startswith('MAN_') and id_a[4:].isdigit()) else 'MAN_0001'
     curto_e = 'MAN_' + str(int(alvo_e[4:])).zfill(3)
     man_tab = q.ler(TB_MAN)
     lin_0001 = [n for n, r in enumerate(man_tab, 1) if norm_id(r.get('ID_REGISTRO'), ctx.pref) == alvo_e]
-    re_, id_e = man(7, id_=curto_e)
+    re_, id_e = man(7, id_=curto_e, repetir_id=True)
     # (f) MAN_0060 incompleto na linha k e completo na linha k+1
     k60 = proximo_livre(usados0 | {f'MAN_{k50:04d}'}, 60)
     id60 = f'MAN_{k60:04d}'
     rf1, _ = man(8, id_=id60, omitir=('RESULTADO',))
-    rf2, _ = man(9, id_=id60)
+    rf2, _ = man(9, id_=id60, repetir_id=True)
     # (g) MAN_k como ultimo, inativado com comentario
     rg, id_g = man(10)
     ctx.inativar(id_g, 'QA ETL E09g: manual inativado antes de a linha ser apagada.')
@@ -1108,7 +1117,7 @@ def e09(ctx, fin0):
         ok_e = alvo_e in f1 and f'{alvo_e}~L{tarde}' in f1 and \
             f1[f'{alvo_e}~L{tarde}']['STATUS_ANALITICO'] == 'CONFLITO_MANUAL'
         reg('E09e "MAN_001" além de um MAN_0001 existente: o mesmo ID; a linha posterior vira MAN_0001~L<n> '
-            'CONFLITO_MANUAL', ok_e and id_e == alvo_e,
+            'CONFLITO_MANUAL', ok_e and norm_id(id_e, ctx.pref) == alvo_e,
             {'celula': id_e, 'linha_existente': lin_0001[0], 'linha_nova': re_,
              'sufixado': resumo(f1.get(f'{alvo_e}~L{tarde}')), 'alvo': alvo_e, 'digitado': curto_e})
     else:

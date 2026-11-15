@@ -1,6 +1,6 @@
 {
  "produto": "Hematologia",
- "gerado_em": "2026-11-05T10:34:37",
+ "gerado_em": "2026-11-15T15:26:06",
  "nota": "Só os IDs dos cenários do qa_etl e uma amostra fixa (semente 57) -- nunca a base inteira.",
  "recorte_estatistica": {
   "produto": "Hematologia",
@@ -519,28 +519,6 @@
    "CENARIOS": []
   },
   {
-   "ID": "HEM-228321",
-   "ORIGEM": "INTERFACEAMENTO",
-   "NO_RECEBIMENTO": true,
-   "LINHA_MANUAL": null,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 25121602,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": []
-  },
-  {
    "ID": "HEM-235102",
    "ORIGEM": "INTERFACEAMENTO",
    "NO_RECEBIMENTO": true,
@@ -838,28 +816,6 @@
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
    "RUN": 26052701,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": []
-  },
-  {
-   "ID": "HEM-303516",
-   "ORIGEM": "INTERFACEAMENTO",
-   "NO_RECEBIMENTO": true,
-   "LINHA_MANUAL": null,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26061501,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
@@ -1201,7 +1157,51 @@
    "CENARIOS": []
   },
   {
-   "ID": "HEM-374052",
+   "ID": "HEM-375350",
+   "ORIGEM": "INTERFACEAMENTO",
+   "NO_RECEBIMENTO": true,
+   "LINHA_MANUAL": null,
+   "INATIVADO": false,
+   "LINHA_INAT": [],
+   "REGISTRAR_LJ": "SIM",
+   "STATUS": "ATIVO",
+   "PARTICIPA": "SIM",
+   "TIPO_PLOTAGEM": "NORMAL",
+   "RUN": 26110901,
+   "NA_ESTATISTICA": "NÃO",
+   "NO_RECORTE_ESTATISTICA": false,
+   "NO_LJ": "FORA_DA_TELA",
+   "ACHADOS_QA": [],
+   "DESTINO": [
+    "PARTICIPA"
+   ],
+   "MOTIVO": null,
+   "CENARIOS": []
+  },
+  {
+   "ID": "HEM-378261",
+   "ORIGEM": "INTERFACEAMENTO",
+   "NO_RECEBIMENTO": true,
+   "LINHA_MANUAL": null,
+   "INATIVADO": false,
+   "LINHA_INAT": [],
+   "REGISTRAR_LJ": "SIM",
+   "STATUS": "ATIVO",
+   "PARTICIPA": "SIM",
+   "TIPO_PLOTAGEM": "NORMAL",
+   "RUN": 26111202,
+   "NA_ESTATISTICA": "NÃO",
+   "NO_RECORTE_ESTATISTICA": false,
+   "NO_LJ": "FORA_DA_TELA",
+   "ACHADOS_QA": [],
+   "DESTINO": [
+    "PARTICIPA"
+   ],
+   "MOTIVO": null,
+   "CENARIOS": []
+  },
+  {
+   "ID": "HEM-378930",
    "ORIGEM": "INTERFACEAMENTO",
    "NO_RECEBIMENTO": true,
    "LINHA_MANUAL": null,
@@ -1213,7 +1213,7 @@
    "STATUS": "INATIVADO",
    "PARTICIPA": "NÃO",
    "TIPO_PLOTAGEM": "X_VERMELHO",
-   "RUN": 26110406,
+   "RUN": 26111303,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
@@ -1254,7 +1254,7 @@
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26110201,
+   "RUN": 26110801,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
@@ -1305,7 +1305,7 @@
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26110202,
+   "RUN": 26110802,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
@@ -1329,7 +1329,7 @@
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26110203,
+   "RUN": 26110803,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
@@ -1379,7 +1379,7 @@
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26110204,
+   "RUN": 26110804,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
@@ -1432,7 +1432,7 @@
    ]
   },
   {
-   "ID": "MAN_0061",
+   "ID": "MAN_0062",
    "ORIGEM": null,
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": null,
@@ -1450,7 +1450,7 @@
    ]
   },
   {
-   "ID": "MAN_0062",
+   "ID": "MAN_0063",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 10,
@@ -1460,7 +1460,7 @@
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26110205,
+   "RUN": 26110805,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
@@ -1474,7 +1474,7 @@
    ]
   },
   {
-   "ID": "MAN_0063",
+   "ID": "MAN_0064",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 11,
@@ -1498,7 +1498,7 @@
    ]
   },
   {
-   "ID": "MAN_0064",
+   "ID": "MAN_0065",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 12,
@@ -1522,7 +1522,7 @@
    ]
   },
   {
-   "ID": "MAN_0065",
+   "ID": "MAN_0066",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 13,
@@ -1546,7 +1546,7 @@
    ]
   },
   {
-   "ID": "MAN_0066",
+   "ID": "MAN_0067",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 14,
@@ -1570,7 +1570,7 @@
    ]
   },
   {
-   "ID": "MAN_0067",
+   "ID": "MAN_0068",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 15,
@@ -1594,7 +1594,7 @@
    ]
   },
   {
-   "ID": "MAN_0068",
+   "ID": "MAN_0069",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 16,
@@ -1618,7 +1618,7 @@
    ]
   },
   {
-   "ID": "MAN_0069",
+   "ID": "MAN_0070",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 17,
@@ -1642,7 +1642,7 @@
    ]
   },
   {
-   "ID": "MAN_0070",
+   "ID": "MAN_0071",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 18,
@@ -1666,7 +1666,7 @@
    ]
   },
   {
-   "ID": "MAN_0071",
+   "ID": "MAN_0072",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 19,
@@ -1690,7 +1690,7 @@
    ]
   },
   {
-   "ID": "MAN_0072",
+   "ID": "MAN_0073",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 20,
@@ -1714,7 +1714,7 @@
    ]
   },
   {
-   "ID": "MAN_0073",
+   "ID": "MAN_0074",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 21,
@@ -1738,7 +1738,7 @@
    ]
   },
   {
-   "ID": "MAN_0074",
+   "ID": "MAN_0075",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 22,
@@ -1762,7 +1762,7 @@
    ]
   },
   {
-   "ID": "MAN_0075",
+   "ID": "MAN_0076",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 23,
@@ -1786,7 +1786,7 @@
    ]
   },
   {
-   "ID": "MAN_0076",
+   "ID": "MAN_0077",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 24,
@@ -1810,7 +1810,7 @@
    ]
   },
   {
-   "ID": "MAN_0077",
+   "ID": "MAN_0078",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 25,
@@ -1834,7 +1834,7 @@
    ]
   },
   {
-   "ID": "MAN_0078",
+   "ID": "MAN_0079",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 26,
@@ -1858,7 +1858,7 @@
    ]
   },
   {
-   "ID": "MAN_0079",
+   "ID": "MAN_0080",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 27,
@@ -1882,7 +1882,7 @@
    ]
   },
   {
-   "ID": "MAN_0080",
+   "ID": "MAN_0081",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 28,
@@ -1906,7 +1906,7 @@
    ]
   },
   {
-   "ID": "MAN_0081",
+   "ID": "MAN_0082",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 29,
@@ -1930,7 +1930,7 @@
    ]
   },
   {
-   "ID": "MAN_0082",
+   "ID": "MAN_0083",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 30,
@@ -1954,7 +1954,7 @@
    ]
   },
   {
-   "ID": "MAN_0083",
+   "ID": "MAN_0084",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 31,
@@ -1978,7 +1978,7 @@
    ]
   },
   {
-   "ID": "MAN_0084",
+   "ID": "MAN_0085",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 32,
@@ -2002,7 +2002,7 @@
    ]
   },
   {
-   "ID": "MAN_0085",
+   "ID": "MAN_0086",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 33,
@@ -2026,7 +2026,7 @@
    ]
   },
   {
-   "ID": "MAN_0086",
+   "ID": "MAN_0087",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 34,
@@ -2050,7 +2050,7 @@
    ]
   },
   {
-   "ID": "MAN_0087",
+   "ID": "MAN_0088",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 35,
@@ -2074,7 +2074,7 @@
    ]
   },
   {
-   "ID": "MAN_0088",
+   "ID": "MAN_0089",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 36,
@@ -2098,7 +2098,7 @@
    ]
   },
   {
-   "ID": "MAN_0089",
+   "ID": "MAN_0090",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 37,
@@ -2122,7 +2122,7 @@
    ]
   },
   {
-   "ID": "MAN_0090",
+   "ID": "MAN_0091",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 38,
@@ -2146,7 +2146,7 @@
    ]
   },
   {
-   "ID": "MAN_0091",
+   "ID": "MAN_0092",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 39,
@@ -2170,7 +2170,7 @@
    ]
   },
   {
-   "ID": "MAN_0092",
+   "ID": "MAN_0093",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 40,
@@ -2194,7 +2194,7 @@
    ]
   },
   {
-   "ID": "MAN_0093",
+   "ID": "MAN_0094",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 41,
@@ -2218,7 +2218,7 @@
    ]
   },
   {
-   "ID": "MAN_0094",
+   "ID": "MAN_0095",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 42,
@@ -2242,7 +2242,7 @@
    ]
   },
   {
-   "ID": "MAN_0095",
+   "ID": "MAN_0096",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 43,
@@ -2266,7 +2266,7 @@
    ]
   },
   {
-   "ID": "MAN_0096",
+   "ID": "MAN_0097",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 44,
@@ -2290,7 +2290,7 @@
    ]
   },
   {
-   "ID": "MAN_0097",
+   "ID": "MAN_0098",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 45,
@@ -2314,7 +2314,7 @@
    ]
   },
   {
-   "ID": "MAN_0098",
+   "ID": "MAN_0099",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 46,
@@ -2338,7 +2338,7 @@
    ]
   },
   {
-   "ID": "MAN_0099",
+   "ID": "MAN_0100",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 47,
@@ -2362,7 +2362,7 @@
    ]
   },
   {
-   "ID": "MAN_0100",
+   "ID": "MAN_0101",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 48,
@@ -2386,7 +2386,7 @@
    ]
   },
   {
-   "ID": "MAN_0101",
+   "ID": "MAN_0102",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 49,
@@ -2410,7 +2410,7 @@
    ]
   },
   {
-   "ID": "MAN_0102",
+   "ID": "MAN_0103",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 50,
@@ -2434,7 +2434,7 @@
    ]
   },
   {
-   "ID": "MAN_0103",
+   "ID": "MAN_0104",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 51,
@@ -2458,7 +2458,7 @@
    ]
   },
   {
-   "ID": "MAN_0104",
+   "ID": "MAN_0105",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 52,
@@ -2482,7 +2482,7 @@
    ]
   },
   {
-   "ID": "MAN_0105",
+   "ID": "MAN_0106",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 53,
@@ -2506,7 +2506,7 @@
    ]
   },
   {
-   "ID": "MAN_0106",
+   "ID": "MAN_0107",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 54,
@@ -2530,7 +2530,7 @@
    ]
   },
   {
-   "ID": "MAN_0107",
+   "ID": "MAN_0108",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 55,
@@ -2554,7 +2554,7 @@
    ]
   },
   {
-   "ID": "MAN_0108",
+   "ID": "MAN_0109",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 56,
@@ -2578,7 +2578,7 @@
    ]
   },
   {
-   "ID": "MAN_0109",
+   "ID": "MAN_0110",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 57,
@@ -2602,7 +2602,7 @@
    ]
   },
   {
-   "ID": "MAN_0110",
+   "ID": "MAN_0111",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 58,
@@ -2626,7 +2626,7 @@
    ]
   },
   {
-   "ID": "MAN_0111",
+   "ID": "MAN_0112",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 59,
@@ -2650,7 +2650,7 @@
    ]
   },
   {
-   "ID": "MAN_0112",
+   "ID": "MAN_0113",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 60,
@@ -2674,7 +2674,7 @@
    ]
   },
   {
-   "ID": "MAN_0113",
+   "ID": "MAN_0114",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 61,
@@ -2698,7 +2698,7 @@
    ]
   },
   {
-   "ID": "MAN_0114",
+   "ID": "MAN_0115",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 62,
@@ -2722,7 +2722,7 @@
    ]
   },
   {
-   "ID": "MAN_0115",
+   "ID": "MAN_0116",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 63,
@@ -2746,7 +2746,7 @@
    ]
   },
   {
-   "ID": "MAN_0116",
+   "ID": "MAN_0117",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 64,
@@ -2770,7 +2770,7 @@
    ]
   },
   {
-   "ID": "MAN_0117",
+   "ID": "MAN_0118",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 65,
@@ -2794,7 +2794,7 @@
    ]
   },
   {
-   "ID": "MAN_0118",
+   "ID": "MAN_0119",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 66,
@@ -2818,7 +2818,7 @@
    ]
   },
   {
-   "ID": "MAN_0119",
+   "ID": "MAN_0120",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 67,
@@ -2842,7 +2842,7 @@
    ]
   },
   {
-   "ID": "MAN_0120",
+   "ID": "MAN_0121",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 68,
@@ -2866,7 +2866,7 @@
    ]
   },
   {
-   "ID": "MAN_0121",
+   "ID": "MAN_0122",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 69,
@@ -2890,7 +2890,7 @@
    ]
   },
   {
-   "ID": "MAN_0122",
+   "ID": "MAN_0123",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 70,
@@ -2914,7 +2914,7 @@
    ]
   },
   {
-   "ID": "MAN_0123",
+   "ID": "MAN_0124",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 71,
@@ -2938,7 +2938,7 @@
    ]
   },
   {
-   "ID": "MAN_0124",
+   "ID": "MAN_0125",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 72,
@@ -2962,7 +2962,7 @@
    ]
   },
   {
-   "ID": "MAN_0125",
+   "ID": "MAN_0126",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 73,
@@ -2986,7 +2986,7 @@
    ]
   },
   {
-   "ID": "MAN_0126",
+   "ID": "MAN_0127",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 74,
@@ -3010,7 +3010,7 @@
    ]
   },
   {
-   "ID": "MAN_0127",
+   "ID": "MAN_0128",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 75,
@@ -3034,7 +3034,7 @@
    ]
   },
   {
-   "ID": "MAN_0128",
+   "ID": "MAN_0129",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 76,
@@ -3058,7 +3058,7 @@
    ]
   },
   {
-   "ID": "MAN_0129",
+   "ID": "MAN_0130",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 77,
@@ -3082,7 +3082,7 @@
    ]
   },
   {
-   "ID": "MAN_0130",
+   "ID": "MAN_0131",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 78,
@@ -3106,7 +3106,7 @@
    ]
   },
   {
-   "ID": "MAN_0131",
+   "ID": "MAN_0132",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 79,
@@ -3130,7 +3130,7 @@
    ]
   },
   {
-   "ID": "MAN_0132",
+   "ID": "MAN_0133",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 80,
@@ -3154,7 +3154,7 @@
    ]
   },
   {
-   "ID": "MAN_0133",
+   "ID": "MAN_0134",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 81,
@@ -3178,7 +3178,7 @@
    ]
   },
   {
-   "ID": "MAN_0134",
+   "ID": "MAN_0135",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 82,
@@ -3202,7 +3202,7 @@
    ]
   },
   {
-   "ID": "MAN_0135",
+   "ID": "MAN_0136",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 83,
@@ -3226,7 +3226,7 @@
    ]
   },
   {
-   "ID": "MAN_0136",
+   "ID": "MAN_0137",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 84,
@@ -3250,7 +3250,7 @@
    ]
   },
   {
-   "ID": "MAN_0137",
+   "ID": "MAN_0138",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 85,
@@ -3274,7 +3274,7 @@
    ]
   },
   {
-   "ID": "MAN_0138",
+   "ID": "MAN_0139",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 86,
@@ -3298,7 +3298,7 @@
    ]
   },
   {
-   "ID": "MAN_0139",
+   "ID": "MAN_0140",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 87,
@@ -3322,7 +3322,7 @@
    ]
   },
   {
-   "ID": "MAN_0140",
+   "ID": "MAN_0141",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 88,
@@ -3346,7 +3346,7 @@
    ]
   },
   {
-   "ID": "MAN_0141",
+   "ID": "MAN_0142",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 89,
@@ -3370,7 +3370,7 @@
    ]
   },
   {
-   "ID": "MAN_0142",
+   "ID": "MAN_0143",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 90,
@@ -3394,7 +3394,7 @@
    ]
   },
   {
-   "ID": "MAN_0143",
+   "ID": "MAN_0144",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 91,
@@ -3418,7 +3418,7 @@
    ]
   },
   {
-   "ID": "MAN_0144",
+   "ID": "MAN_0145",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 92,
@@ -3442,7 +3442,7 @@
    ]
   },
   {
-   "ID": "MAN_0145",
+   "ID": "MAN_0146",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 93,
@@ -3466,7 +3466,7 @@
    ]
   },
   {
-   "ID": "MAN_0146",
+   "ID": "MAN_0147",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 94,
@@ -3490,7 +3490,7 @@
    ]
   },
   {
-   "ID": "MAN_0147",
+   "ID": "MAN_0148",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 95,
@@ -3514,7 +3514,7 @@
    ]
   },
   {
-   "ID": "MAN_0148",
+   "ID": "MAN_0149",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 96,
@@ -3538,7 +3538,7 @@
    ]
   },
   {
-   "ID": "MAN_0149",
+   "ID": "MAN_0150",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 97,
@@ -3562,7 +3562,7 @@
    ]
   },
   {
-   "ID": "MAN_0150",
+   "ID": "MAN_0151",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 98,
@@ -3586,7 +3586,7 @@
    ]
   },
   {
-   "ID": "MAN_0151",
+   "ID": "MAN_0152",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 99,
@@ -3610,7 +3610,7 @@
    ]
   },
   {
-   "ID": "MAN_0152",
+   "ID": "MAN_0153",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 100,
@@ -3634,7 +3634,7 @@
    ]
   },
   {
-   "ID": "MAN_0153",
+   "ID": "MAN_0154",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 101,
@@ -3658,7 +3658,7 @@
    ]
   },
   {
-   "ID": "MAN_0154",
+   "ID": "MAN_0155",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 102,
@@ -3682,7 +3682,7 @@
    ]
   },
   {
-   "ID": "MAN_0155",
+   "ID": "MAN_0156",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 103,
@@ -3706,7 +3706,7 @@
    ]
   },
   {
-   "ID": "MAN_0156",
+   "ID": "MAN_0157",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 104,
@@ -3730,7 +3730,7 @@
    ]
   },
   {
-   "ID": "MAN_0157",
+   "ID": "MAN_0158",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 105,
@@ -3754,7 +3754,7 @@
    ]
   },
   {
-   "ID": "MAN_0158",
+   "ID": "MAN_0159",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 106,
@@ -3778,7 +3778,7 @@
    ]
   },
   {
-   "ID": "MAN_0159",
+   "ID": "MAN_0160",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 107,
@@ -3802,7 +3802,7 @@
    ]
   },
   {
-   "ID": "MAN_0160",
+   "ID": "MAN_0161",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 108,
@@ -3826,7 +3826,7 @@
    ]
   },
   {
-   "ID": "MAN_0161",
+   "ID": "MAN_0162",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 109,
@@ -3850,7 +3850,7 @@
    ]
   },
   {
-   "ID": "MAN_0162",
+   "ID": "MAN_0163",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 110,
@@ -3874,7 +3874,7 @@
    ]
   },
   {
-   "ID": "MAN_0163",
+   "ID": "MAN_0164",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 111,
@@ -3898,7 +3898,7 @@
    ]
   },
   {
-   "ID": "MAN_0164",
+   "ID": "MAN_0165",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 112,
@@ -3922,7 +3922,7 @@
    ]
   },
   {
-   "ID": "MAN_0165",
+   "ID": "MAN_0166",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 113,
@@ -3946,7 +3946,7 @@
    ]
   },
   {
-   "ID": "MAN_0166",
+   "ID": "MAN_0167",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 114,
@@ -3970,7 +3970,7 @@
    ]
   },
   {
-   "ID": "MAN_0167",
+   "ID": "MAN_0168",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 115,
@@ -3994,7 +3994,7 @@
    ]
   },
   {
-   "ID": "MAN_0168",
+   "ID": "MAN_0169",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 116,
@@ -4018,7 +4018,7 @@
    ]
   },
   {
-   "ID": "MAN_0169",
+   "ID": "MAN_0170",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 117,
@@ -4042,7 +4042,7 @@
    ]
   },
   {
-   "ID": "MAN_0170",
+   "ID": "MAN_0171",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 118,
@@ -4066,7 +4066,7 @@
    ]
   },
   {
-   "ID": "MAN_0171",
+   "ID": "MAN_0172",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 119,
@@ -4090,7 +4090,7 @@
    ]
   },
   {
-   "ID": "MAN_0172",
+   "ID": "MAN_0173",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 120,
@@ -4114,7 +4114,7 @@
    ]
   },
   {
-   "ID": "MAN_0173",
+   "ID": "MAN_0174",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 121,
@@ -4138,7 +4138,7 @@
    ]
   },
   {
-   "ID": "MAN_0174",
+   "ID": "MAN_0175",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 122,
@@ -4162,7 +4162,7 @@
    ]
   },
   {
-   "ID": "MAN_0175",
+   "ID": "MAN_0176",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 123,
@@ -4186,7 +4186,7 @@
    ]
   },
   {
-   "ID": "MAN_0176",
+   "ID": "MAN_0177",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 124,
@@ -4210,7 +4210,7 @@
    ]
   },
   {
-   "ID": "MAN_0177",
+   "ID": "MAN_0178",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 125,
@@ -4234,7 +4234,7 @@
    ]
   },
   {
-   "ID": "MAN_0178",
+   "ID": "MAN_0179",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 126,
@@ -4258,7 +4258,7 @@
    ]
   },
   {
-   "ID": "MAN_0179",
+   "ID": "MAN_0180",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 127,
@@ -4282,7 +4282,7 @@
    ]
   },
   {
-   "ID": "MAN_0180",
+   "ID": "MAN_0181",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 128,
@@ -4306,7 +4306,7 @@
    ]
   },
   {
-   "ID": "MAN_0181",
+   "ID": "MAN_0182",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 129,
@@ -4330,7 +4330,7 @@
    ]
   },
   {
-   "ID": "MAN_0182",
+   "ID": "MAN_0183",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 130,
@@ -4354,7 +4354,7 @@
    ]
   },
   {
-   "ID": "MAN_0183",
+   "ID": "MAN_0184",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 131,
@@ -4378,7 +4378,7 @@
    ]
   },
   {
-   "ID": "MAN_0184",
+   "ID": "MAN_0185",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 132,
@@ -4402,7 +4402,7 @@
    ]
   },
   {
-   "ID": "MAN_0185",
+   "ID": "MAN_0186",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 133,
@@ -4426,7 +4426,7 @@
    ]
   },
   {
-   "ID": "MAN_0186",
+   "ID": "MAN_0187",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 134,
@@ -4450,7 +4450,7 @@
    ]
   },
   {
-   "ID": "MAN_0187",
+   "ID": "MAN_0188",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 135,
@@ -4474,7 +4474,7 @@
    ]
   },
   {
-   "ID": "MAN_0188",
+   "ID": "MAN_0189",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 136,
@@ -4498,7 +4498,7 @@
    ]
   },
   {
-   "ID": "MAN_0189",
+   "ID": "MAN_0190",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 137,
@@ -4522,7 +4522,7 @@
    ]
   },
   {
-   "ID": "MAN_0190",
+   "ID": "MAN_0191",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 138,
@@ -4548,7 +4548,7 @@
    ]
   },
   {
-   "ID": "MAN_0191",
+   "ID": "MAN_0192",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 139,
@@ -4574,7 +4574,7 @@
    ]
   },
   {
-   "ID": "MAN_0192",
+   "ID": "MAN_0193",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 140,
@@ -4602,7 +4602,7 @@
    ]
   },
   {
-   "ID": "MAN_0193",
+   "ID": "MAN_0194",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 141,
@@ -4628,7 +4628,7 @@
    ]
   },
   {
-   "ID": "MAN_0194",
+   "ID": "MAN_0195",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 142,
@@ -4654,7 +4654,7 @@
    ]
   },
   {
-   "ID": "MAN_0195",
+   "ID": "MAN_0196",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 143,
@@ -4680,7 +4680,7 @@
    ]
   },
   {
-   "ID": "MAN_0196",
+   "ID": "MAN_0197",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 144,
@@ -4690,34 +4690,10 @@
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26110201,
+   "RUN": 26110801,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_JANELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": [
-    "E14"
-   ]
-  },
-  {
-   "ID": "MAN_0197",
-   "ORIGEM": "MANUAL",
-   "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 145,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26110201,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_TELA",
    "ACHADOS_QA": [],
    "DESTINO": [
     "PARTICIPA"
@@ -4731,38 +4707,14 @@
    "ID": "MAN_0198",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 146,
+   "LINHA_MANUAL": 145,
    "INATIVADO": false,
    "LINHA_INAT": [],
    "REGISTRAR_LJ": "SIM",
    "STATUS": "ATIVO",
    "PARTICIPA": "SIM",
    "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26110201,
-   "NA_ESTATISTICA": "NÃO",
-   "NO_RECORTE_ESTATISTICA": false,
-   "NO_LJ": "FORA_DA_JANELA",
-   "ACHADOS_QA": [],
-   "DESTINO": [
-    "PARTICIPA"
-   ],
-   "MOTIVO": null,
-   "CENARIOS": [
-    "E14"
-   ]
-  },
-  {
-   "ID": "MAN_0199",
-   "ORIGEM": "MANUAL",
-   "NO_RECEBIMENTO": false,
-   "LINHA_MANUAL": 147,
-   "INATIVADO": false,
-   "LINHA_INAT": [],
-   "REGISTRAR_LJ": "SIM",
-   "STATUS": "ATIVO",
-   "PARTICIPA": "SIM",
-   "TIPO_PLOTAGEM": "NORMAL",
-   "RUN": 26110201,
+   "RUN": 26110801,
    "NA_ESTATISTICA": "NÃO",
    "NO_RECORTE_ESTATISTICA": false,
    "NO_LJ": "FORA_DA_TELA",
@@ -4776,7 +4728,55 @@
    ]
   },
   {
+   "ID": "MAN_0199",
+   "ORIGEM": "MANUAL",
+   "NO_RECEBIMENTO": false,
+   "LINHA_MANUAL": 146,
+   "INATIVADO": false,
+   "LINHA_INAT": [],
+   "REGISTRAR_LJ": "SIM",
+   "STATUS": "ATIVO",
+   "PARTICIPA": "SIM",
+   "TIPO_PLOTAGEM": "NORMAL",
+   "RUN": 26110801,
+   "NA_ESTATISTICA": "NÃO",
+   "NO_RECORTE_ESTATISTICA": false,
+   "NO_LJ": "FORA_DA_JANELA",
+   "ACHADOS_QA": [],
+   "DESTINO": [
+    "PARTICIPA"
+   ],
+   "MOTIVO": null,
+   "CENARIOS": [
+    "E14"
+   ]
+  },
+  {
    "ID": "MAN_0200",
+   "ORIGEM": "MANUAL",
+   "NO_RECEBIMENTO": false,
+   "LINHA_MANUAL": 147,
+   "INATIVADO": false,
+   "LINHA_INAT": [],
+   "REGISTRAR_LJ": "SIM",
+   "STATUS": "ATIVO",
+   "PARTICIPA": "SIM",
+   "TIPO_PLOTAGEM": "NORMAL",
+   "RUN": 26110801,
+   "NA_ESTATISTICA": "NÃO",
+   "NO_RECORTE_ESTATISTICA": false,
+   "NO_LJ": "FORA_DA_TELA",
+   "ACHADOS_QA": [],
+   "DESTINO": [
+    "PARTICIPA"
+   ],
+   "MOTIVO": null,
+   "CENARIOS": [
+    "E14"
+   ]
+  },
+  {
+   "ID": "MAN_0201",
    "ORIGEM": "MANUAL",
    "NO_RECEBIMENTO": false,
    "LINHA_MANUAL": 148,

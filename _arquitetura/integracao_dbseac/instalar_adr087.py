@@ -46,6 +46,33 @@ A2 = ('Uma linha por registro (todos os lotes). Calibração: digite na coluna "
       'logo depois da calibração -- data, analito, RUN, equipamento e valor são preenchidos. Assinar: duplo clique em '
       '"Assinatura". A próxima linha aparece sozinha. Os filtros abaixo só mudam a vista.')
 AZUL, CINZA_CLARO, CINZA = 0x79481F, 0xF7F3F0, 0x666666        # BGR
+# reteste 05 (P-02): recusa com a mensagem do sistema (como na Digitar Resultados), nao a caixa generica do Excel
+_LIMPAR = ' Para ver todos, apague o filtro (tecla Delete) ou clique em Limpar filtros.'
+MSG_FILTRO = {2: ('Filtro de lote', 'Escolha o lote na seta da célula.' + _LIMPAR),
+              3: ('Filtro de analito', 'Escolha o analito na seta da célula.' + _LIMPAR),
+              7: ('Filtro de equipamento', 'Escolha o equipamento na seta da célula.' + _LIMPAR),
+              8: ('Filtro Calibrado?', 'Escolha Sim ou Não na seta da célula.' + _LIMPAR),
+              10: ('Filtro de status', 'Escolha o status na seta da célula.' + _LIMPAR)}
+MSG_TABELA = {4: ('Nível', 'Escolha o nível na seta da célula.'),
+              6: ('Foi calibrado?', 'Escolha Sim ou Não na seta da célula.'),
+              10: ('Status', 'Escolha o status na seta da célula.')}
+MSG_L4 = ('Equipamento', 'Escolha o equipamento na seta da célula.')     # Painel L4 (Bio)
+
+
+def mensagem(v, titulo, msg):
+    """Grava titulo e mensagem de erro de uma validacao de lista que ja existe (sem Delete/Add, sem tocar na lista).
+    Devolve True se mudou. Idempotente: roda a cada entrega, inclusive na producao que ja tem a lista certa."""
+    try:
+        if int(v.Type) != 3:                           # so lista
+            return False
+        if str(v.ErrorTitle or '') == titulo and str(v.ErrorMessage or '') == msg and bool(v.ShowError):
+            return False
+        v.ErrorTitle = titulo
+        v.ErrorMessage = msg
+        v.ShowError = True
+        return True
+    except Exception:                                  # noqa: BLE001  (sem validacao na celula)
+        return False
 
 
 def log(m):
@@ -202,6 +229,12 @@ def filtros(wb):
             cd.fmt_data(c_val, 'dd/mm/yyyy')           # ADR-095: 'yyyy' por NumberFormat vira texto no pt-BR
             MUDANCAS.append(f'Registros validacao {rot}')
         c_val.Locked = False
+        if col in MSG_FILTRO and mensagem(c_val.Validation, *MSG_FILTRO[col]):
+            MUDANCAS.append(f'Registros mensagem {rot}')
+    lo = ws.ListObjects(TB)
+    for idx, (tit, msg) in MSG_TABELA.items():         # colunas da tblRegistros com lista (a linha nova herda)
+        if lo.ListColumns(idx).DataBodyRange is not None and mensagem(lo.ListColumns(idx).DataBodyRange.Validation, tit, msg):
+            MUDANCAS.append(f'tblRegistros mensagem {tit}')
     # aparencia: rotulos pequenos cinza, campos com borda e fundo claro
     rot = ws.Range('A3:L3')
     rot.Font.Size = 8
@@ -383,6 +416,10 @@ def main(produto, caminho, salvar=True):
         log(f'2. Registros: tabela {TB} ' + ('criada (registros migrados e conferidos)' if conv else 'ja existia'))
         wb.Application.Run(f"'{wb.Name}'!mCalibracao.AtualizarListasFiltro")      # os nomes lstReg* antes das validacoes
         filtros(wb)
+        # reteste 05 (P-02): o Painel L4 (equipamento, Bio) recusa com a mensagem do sistema. Aqui, e nao so no
+        # instalar_integracao.instalar_calc, que a entrega nao roda (revisao independente 15/11)
+        if produto.startswith('Bio') and mensagem(wb.Worksheets('Painel').Range('L4').Validation, *MSG_L4):
+            MUDANCAS.append('Painel L4 mensagem')
         log('3. filtros da vista (linhas 3:4), botao Limpar filtros, listas ocultas')
         nomes_reg(wb)
         log('4. nomes reg* -> colunas da tabela')

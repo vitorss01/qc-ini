@@ -2,12 +2,15 @@
 """entregar.py -- instala, TESTA e so entao entrega os .xlsm de producao (ADR-057/058/059).
 
 Uso:  python entregar.py [Hematologia] [Bioquimica] [--modo SEAC|HISTORICO] [--caminho <DB_SEAC.xlsm>] [--sem-testes]
+              [--direcionada [--com qa_x.py,qa_y.py]]
 
   --caminho ......... grava CAMINHO_DB_SEAC nos QCs (o DB_SEAC do laboratorio).
 
   --modo SEAC ....... rede do laboratorio (DB_SEAC acessivel). Padrao.
   --modo HISTORICO .. fora da rede: reprocessa so o historico ja recebido (ADR-058).
   --sem-testes ...... instala e blinda sem rodar as suites (NAO entrega na producao).
+  --direcionada ..... correcao: roda so o NUCLEO + SUITES_DO_LOTE + as do --com (decisao do usuario 15/11/2026:
+                      ~2-3 h em vez de ~8 h; as 35 suites completas rodam periodicamente, sem --direcionada).
 
 Para cada produto:
   1. copia o .xlsm de producao para _entrega_<data>/<produto>/ (a producao nao e tocada);
@@ -81,6 +84,19 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_equiv_qa_adr094.py',                       # ADR-094: QA do VBA = QA do PQ (textos com segundos)
           'qa_adr095.py']                                # ADR-095: listas com o separador do Excel, acentos, Estatistica
 SUITES = SUITES[:1] + SUITES_DO_LOTE + [x for x in SUITES[1:] if x not in SUITES_DO_LOTE]
+# --direcionada (15/11/2026): o gate minimo de toda entrega -- seguranca/protecao, ATUALIZAR completo (qa_final),
+# camada de dados e equivalencia VBA x PQ (qa_etl, qa_sync), inativacoes reais preservadas (qa_migracao_adr070)
+NUCLEO = ['qa_seguranca.py', 'qa_final.py', 'qa_etl.py', 'qa_sync.py', 'qa_migracao_adr070.py']
+EM_USO = list(SUITES)
+
+
+def direcionadas(extras):
+    """NUCLEO + SUITES_DO_LOTE + extras, na ordem de SUITES (nome desconhecido = erro, nada roda)."""
+    desconhecidas = [x for x in extras if x not in SUITES]
+    if desconhecidas:
+        raise SystemExit(f'suites desconhecidas: {desconhecidas}')
+    quero = set(NUCLEO) | set(SUITES_DO_LOTE) | set(extras)
+    return [x for x in SUITES if x in quero]
 
 
 def sha(p):
@@ -163,7 +179,7 @@ def entregar(produto, modo, testar, pasta, origem=None):
     if not testar:
         return False, 'instalado e blindado SEM testes: producao nao foi tocada'
 
-    for suite in SUITES:
+    for suite in EM_USO:
         copia = os.path.join(trab, 'teste_' + suite.replace('.py', ''), ARQ[produto])
         os.makedirs(os.path.dirname(copia), exist_ok=True)
         shutil.copy2(alvo, copia)
@@ -228,6 +244,11 @@ def main(argv):
     produtos = [a for a in argv if a in ARQ] or ['Hematologia', 'Bioquimica']
     pasta = os.path.join(RAIZ, '_entrega_' + time.strftime('%Y-%m-%d_%H%M'))
     origem = argv[argv.index('--caminho') + 1] if '--caminho' in argv else None
+    if '--direcionada' in argv:
+        extras = [x.strip() for x in argv[argv.index('--com') + 1].split(',') if x.strip()] if '--com' in argv else []
+        EM_USO[:] = direcionadas(extras)
+    print(f'SUITES: {len(EM_USO)} de {len(SUITES)}' + (' (DIRECIONADA): ' + ', '.join(EM_USO) if len(EM_USO) < len(SUITES) else ''),
+          flush=True)
     res = {p: entregar(p, modo, '--sem-testes' not in argv, pasta, origem) for p in produtos}
     print(f'\nMODO_FONTE = {modo}. Logs e evidencias em {pasta}')
     for p, (ok, msg) in res.items():

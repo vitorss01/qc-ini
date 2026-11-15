@@ -306,7 +306,7 @@ Public Function CalcularQA(ByRef F As Variant, ByRef rec As Variant, ByVal nRec 
                 If substPor.Exists(F(i, Q_REL)) Then spMan = substPor(F(i, Q_REL))
             End If
             If Vazio(F(i, Q_MOTEX)) Then s = Empty Else s = F(i, Q_MOTEX) & IIf(Vazio(F(i, Q_REL)), "", " -> " & F(i, Q_REL)) & _
-                ". O manual ficou FORA da estatistica" & TextoA01(F(i, Q_MOTEX), F(i, Q_REL), spMan)
+                ". O manual ficou FORA da estatistica" & TextoA01(F(i, Q_MOTEX), F(i, Q_REL), spMan, F(i, Q_ID))
             Achado "ALERTA", "A01", "Possivel duplicidade de resultado manual", F(i, Q_ID), F(i, Q_AN), F(i, Q_NV), F(i, Q_DH), IIf(Vazio(F(i, Q_MOTEX)), Empty, s)
         End If
     Next i
@@ -754,7 +754,8 @@ End Function
 ' ---------------------------------------------------------------- apoio
 ' ADR-082: fim do texto do A01. Conflito com o interfaceamento: como fazer o manual valer no lugar do automatico; se o
 ' automatico (rel) ja esta substituido pelo manual spMan, quem vale e aquele manual.
-Private Function TextoA01(ByVal motivo As Variant, ByVal rel As Variant, ByVal spMan As String) As String
+Private Function TextoA01(ByVal motivo As Variant, ByVal rel As Variant, ByVal spMan As String, _
+                          Optional ByVal idLinha As Variant) As String
     If Left$(CStr(motivo), 8) = "coincide" Then
         If Len(spMan) > 0 Then
             TextoA01 = " (vale o manual " & spMan & ", que ja substitui o automatico " & CStr(rel) & _
@@ -763,6 +764,13 @@ Private Function TextoA01(ByVal motivo As Variant, ByVal rel As Variant, ByVal s
             TextoA01 = " (vale o automatico). Para o manual valer no lugar do automatico, informe o ID dele em " & _
                        "SUBSTITUI_ID (com MOTIVO); se for o mesmo resultado repetido, apague o manual."
         End If
+    ElseIf Left$(CStr(motivo), 27) = "ID_REGISTRO manual repetido" Then
+        ' Reteste 05 (P-03): os dois tem o mesmo ID -- inativar o ID tiraria o resultado que vale (a 1a linha).
+        ' O mesmo texto no QA_INTEGRACAO.m
+        Dim base As String, p As Long
+        base = CStr(idLinha): p = InStr(base, "~")
+        If p > 0 Then base = Left$(base, p - 1)
+        TextoA01 = "; ID repetido na aba Digitar Resultados: apague o ID da linha repetida (um novo sera gerado) ou a linha. Nao inative o " & base & ": isso tiraria o resultado que vale."
     Else
         TextoA01 = "; confirme e inative um deles ou corrija o manual."
     End If

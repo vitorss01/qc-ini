@@ -296,9 +296,12 @@ def q4(nlv):
 def corte_periodo(nlv):
     """O fim do aviso do corte de 180 corridas (dentro de uma string da formula). Bio: aponta a Estatistica, que segue o
     Painel (ADR-092). ADR-095 (reteste 04, efeito colateral da OC-0012): na Hematologia a Estatistica tem lote e ano
-    proprios e nunca mostra o mesmo recorte; o aviso diz so o n do periodo inteiro (todos os lotes com o H3 vazio)."""
+    proprios e nunca mostra o mesmo recorte; o aviso diz so o n do periodo inteiro (todos os lotes com o H3 vazio).
+    ADR-096 (reteste 05, R5V-01): na Bio com o H3 vazio a Estatistica segue o lote em analise (H4 = loteAnalise), nao
+    todos os lotes -- o aviso so aponta a Estatistica quando ha lote no H3; sem lote, diz o recorte, como na Hema."""
     if nlv == 2:
-        return 'Período inteiro: "&Eng_Saida!$AF$1&" — veja a aba Estatística. '
+        return ('Período inteiro"&IF(engTodos," (todos os lotes): "&Eng_Saida!$AF$1&" resultados. ",'
+                '": "&Eng_Saida!$AF$1&" — veja a aba Estatística. ")&"')
     return 'Período inteiro"&IF(engTodos," (todos os lotes)"," do lote")&": "&Eng_Saida!$AF$1&" resultados. '
 
 

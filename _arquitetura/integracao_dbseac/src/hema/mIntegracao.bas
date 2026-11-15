@@ -402,7 +402,38 @@ Public Function ResumoQA() As String
         If nDad > 0 Then s = s & b & nDad & " erro(s) nos dados recebidos: veja a aba QA_INTEGRACAO."
         If nOut > 0 Then s = s & b & nOut & " outro(s) erro(s): veja a aba QA_INTEGRACAO."
     End If
+    ' Reteste 05 (P-03): ID_REGISTRO repetido na Digitar Resultados fica fora da estatistica como ALERTA (A01), que esta
+    ' contagem de ERRO nao mostrava. Cobre a repeticao que ja existia ou que entrou com os eventos desligados.
+    Dim nRep As Long, exRep As String
+    nRep = ContarIdManualRepetido(exRep)
+    If nRep > 0 Then s = s & vbCrLf & ChrW$(8226) & " " & nRep & " linha(s) da Digitar Resultados repete(m) o ID de " & _
+                         "outra (ex.: " & exRep & ") e ficou(aram) fora da estatística. Apague o ID da linha repetida " & _
+                         "(um novo é gerado) e atualize de novo."
     ResumoQA = s
+End Function
+
+' Reteste 05 (P-03): manuais fora da estatistica por ID_REGISTRO repetido (MOTIVO do motor, os dois motores iguais).
+' exemplo = o ID repetido (sem o sufixo ~L<n>).
+Private Function ContarIdManualRepetido(ByRef exemplo As String) As Long
+    Dim lo As ListObject, vM As Variant, vI As Variant, i As Long, p As Long
+    On Error GoTo sai
+    Set lo = AcharTabela(FONTE_CQ)
+    If lo Is Nothing Then Exit Function
+    If lo.ListRows.Count = 0 Then Exit Function
+    vM = lo.ListColumns("MOTIVO_EXCLUSAO_AUTOMATICA").DataBodyRange.Value
+    vI = lo.ListColumns("ID_REGISTRO").DataBodyRange.Value
+    If Not IsArray(vM) Then Exit Function
+    For i = 1 To UBound(vM, 1)
+        If Left$(CStr(vM(i, 1)), 27) = "ID_REGISTRO manual repetido" Then
+            ContarIdManualRepetido = ContarIdManualRepetido + 1
+            If Len(exemplo) = 0 Then
+                exemplo = CStr(vI(i, 1))
+                p = InStr(exemplo, "~")
+                If p > 0 Then exemplo = Left$(exemplo, p - 1)
+            End If
+        End If
+    Next i
+sai:
 End Function
 
 Private Function ContarQACodigo(ByVal codigo As String) As Long
@@ -1785,10 +1816,42 @@ Private Sub GravarMarcaIdManual(ByVal n As Long)
     ThisWorkbook.Names.Add Name:="qcUltimoIdManual", RefersTo:="=" & CStr(n), Visible:=False
 End Sub
 
+' Reteste 05 (P-03): ID manual no padrao do motor (MAN_ + digitos), normalizado como o NormalizarId (sem Cfg); vazio
+' para qualquer outro texto -- um ID invalido repetido continua indo ao motor como esta (MAN_INVALIDO_L<n>, E04): a regra
+' nao muda (revisao independente 15/11).
+Private Function IdManualPadrao(ByVal v As Variant) As String
+    Dim t As String, resto As String
+    If IsError(v) Then Exit Function
+    t = UCase$(Replace(Replace(Trim$(CStr(v)), " ", ""), ChrW$(160), ""))
+    If Left$(t, 4) <> "MAN_" Then Exit Function
+    resto = Mid$(t, 5)
+    If Not SoDigitos(resto) Then Exit Function
+    IdManualPadrao = "MAN_" & Right$(String$(4, "0") & resto, IIf(Len(resto) > 4, Len(resto), 4))
+End Function
+
+' Reteste 05 (P-03): o ID MAN_ (ja normalizado) esta em outra linha da tabela que fica com ele -- uma linha FORA do que
+' mudou agora, ou uma linha de cima do mesmo bloco colado (a de cima fica com o ID; as de baixo ganham ID novo).
+' v = a coluna ID_REGISTRO lida UMA vez por evento (o chamador guarda; colagem grande nao rele a coluna a cada linha).
+Private Function IdEmOutraLinha(ByVal lo As ListObject, ByVal r As Long, ByVal id As String, ByVal Target As Range, _
+                                ByRef v As Variant) As Boolean
+    Dim k As Long
+    If lo.ListRows.Count < 2 Then Exit Function
+    If IsEmpty(v) Then v = lo.ListColumns("ID_REGISTRO").DataBodyRange.Value
+    If Not IsArray(v) Then Exit Function
+    For k = 1 To UBound(v, 1)
+        If k <> r Then
+            If IdManualPadrao(v(k, 1)) = id Then
+                If k < r Or Intersect(Target, lo.ListRows(k).Range) Is Nothing Then IdEmOutraLinha = True: Exit Function
+            End If
+        End If
+    Next k
+End Function
+
 ' Chamado pelo Worksheet_Change das abas de entrada.
 Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
     Dim lo As ListObject, cel As Range, ar As Range, r As Long, prot As Boolean, an As String
     Dim idDig As String, celAviso As Range, txtAviso As String, tituloAviso As String, aviso As String
+    Dim nNovoId As Long, idAntigo As String, idPrim As String, idUlt As String, idNovo As String, celNovoId As Range, vIdCol As Variant
     If mApp.Ocupado() Then Exit Sub
     Set lo = Nothing
     On Error Resume Next
@@ -1855,6 +1918,23 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
                 End If
             End If
         ElseIf ws.Name = ABA_MANUAL Then
+            ' Reteste 05 (P-03): linha colada (ou ID digitado) com o ID_REGISTRO MAN_ de OUTRA linha -> ID novo (D05: o ID e
+            ' unico e gerado sozinho). Sem isto a linha aparecia ATIVA na tela (o XLOOKUP acha a 1a linha do ID) e ficava
+            ' fora da estatistica como "ID_REGISTRO manual repetido". Mover (recortar e colar) nao repete: a origem fica
+            ' vazia. A regra do motor (vale a 1a linha; as outras ficam CONFLITO_MANUAL) nao muda.
+            If Not Intersect(Target, Celula(lo, r, "ID_REGISTRO")) Is Nothing Then
+                idDig = IdManualPadrao(Celula(lo, r, "ID_REGISTRO").Value)
+                If Len(idDig) > 0 Then
+                    If IdEmOutraLinha(lo, r, idDig, Target, vIdCol) Then
+                        idNovo = ProximoIdManual(lo)
+                        Celula(lo, r, "ID_REGISTRO").Value = idNovo
+                        If IsArray(vIdCol) Then vIdCol(r, 1) = idNovo
+                        nNovoId = nNovoId + 1
+                        If nNovoId = 1 Then idAntigo = idDig: idPrim = idNovo: Set celNovoId = Celula(lo, r, "ID_REGISTRO")
+                        idUlt = idNovo
+                    End If
+                End If
+            End If
             ' ADR-090 (OC-0019): o usuario digitou o EQUIPAMENTO -> sai o ambar do preenchimento pelo Painel (vazio: o
             ' PrepararLinha abaixo preenche e marca de novo)
             If Not Intersect(Target, Celula(lo, r, "EQUIPAMENTO")) Is Nothing Then DesmarcarEquipAutomatico Celula(lo, r, "EQUIPAMENTO")
@@ -1880,6 +1960,19 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
     ' tabela crescer sozinha)
     If lo.ListRows.Count - (Intersect(Target, lo.DataBodyRange).Row - lo.DataBodyRange.Row + 1) < 10 Then
         lo.Resize lo.Range.Resize(lo.Range.rows.Count + FOLGA)
+    End If
+    If nNovoId > 0 And Application.Interactive And celAviso Is Nothing Then
+        Set celAviso = celNovoId
+        tituloAviso = "Digitar Resultados"
+        If nNovoId = 1 Then
+            txtAviso = "A linha trazia o ID " & idAntigo & ", que já existe em outra linha. Ela recebeu o ID novo " & _
+                       idPrim & " (o ID é único e gerado pelo sistema)."
+        Else
+            txtAviso = "As " & nNovoId & " linhas coladas traziam IDs que já existem em outras linhas e receberam IDs " & _
+                       "novos (" & idPrim & " a " & idUlt & ")."
+        End If
+        txtAviso = txtAviso & vbCrLf & vbCrLf & "Mude o que for diferente (nível, hora, resultado) antes de clicar em " & _
+                   "ATUALIZAR DADOS."
     End If
 fim:
     RestaurarProtecao ws, prot

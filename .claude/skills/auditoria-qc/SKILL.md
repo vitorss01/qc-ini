@@ -92,11 +92,17 @@ Siga o processo do projeto, sem atalhos:
 
 ## Passos 7–8: retestar e validar (outros agentes, nunca você)
 
-1. Chame o workflow com `modo: 'reteste'` e as ocorrências em `AGUARDA RETESTE`.
+1. Chame o workflow com `modo: 'reteste'` e as ocorrências **Crítico e Alto** em `AGUARDA RETESTE`. As de prioridade
+   Médio e Baixo vão só para o Tester (decisão do usuário, 15/11/2026).
 2. Para cada uma, chame também o `tester-qa` no modo VALIDAR (`Agent`, `subagent_type: 'tester-qa'`), com o commit, o
    critério de aceite e as suítes de regressão.
-3. **O status só fica `VALIDADA`** quando o Usuário Simulado diz `RESOLVIDA` **e** o Tester diz `VALIDADA`, sem
-   efeito colateral. A palavra de quem implementou não vale como validação.
+3. **O status só fica `VALIDADA`** quando, sem efeito colateral:
+   - Crítico e Alto: o Usuário Simulado diz `RESOLVIDA` **e** o Tester diz `VALIDADA`;
+   - Médio e Baixo: o Tester diz `VALIDADA` (decisão do usuário, 15/11/2026).
+
+   A palavra de quem implementou nunca vale como validação.
+4. **Entrega de correção:** `entregar.py ... --direcionada --com <suítes afetadas>` (núcleo, suítes do lote e as
+   afetadas, cerca de 2–3 h). As 35 suítes completas rodam periodicamente, sem `--direcionada`.
 
 ## Passo 9: registrar
 

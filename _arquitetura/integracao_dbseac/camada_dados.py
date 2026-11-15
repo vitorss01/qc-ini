@@ -108,11 +108,19 @@ ACENTOS_DETALHE = [('obrigatorio', 'obrigatório'), ('invalido', 'inválido'), (
                    # analito (ADR-093) e da substituicao (ADR-082). Palavras curtas entre espacos (nao pegam janela/soro)
                    ('implausivel', 'implausível'), ('estatistica', 'estatística'), ('grafico', 'gráfico'),
                    ('lancado', 'lançado'), ('catalogo', 'catálogo'), ('substituido', 'substituído'),
-                   (' nao ', ' não '), (' ja ', ' já '), (' so ', ' só ')]
+                   (' nao ', ' não '), (' ja ', ' já '), (' so ', ' só '),
+                   # reteste 05 (OC-0021): o verbo "é" so com contexto -- " e " sozinho quebraria a conjuncao
+                   # ("da estatística e do gráfico"). Os dois motores so tem esses trechos (mEtlCQ 808/816/1244, DB_CQ_FINAL)
+                   (' e resultado manual', ' é resultado manual'), (' e retransmiss', ' é retransmiss'),
+                   (' 1a linha', ' 1ª linha')]
 # ADR-095: formas sem acento que nao podem sobrar no DETALHE (trava do qa_adr095: texto novo sem acento reprova)
 SEM_ACENTO_PROIBIDO = ['nao', 'ja', 'so', 'estatistica', 'grafico', 'implausivel', 'lancado', 'catalogo', 'substituido',
                        'periodo', 'nivel', 'codigo', 'numero', 'historico', 'obrigatorio', 'invalido', 'lancamento',
                        'ambiguo', 'virgula', 'padrao', 'numerico', 'retransmissao']
+# reteste 05: padroes GENERICOS que nao podem sobrar depois dos pares (a trava do qa_adr095 D01 os procura em todos os
+# literais dos motores): o verbo "é" num trecho que comeca com " e " (vem logo depois de um ID concatenado -- a conjuncao
+# fica no meio do texto) e o ordinal "1a"/"2a". Revisao independente 15/11: a lista fixa de trechos nunca reprovava.
+SEM_ACENTO_PADROES = [r'^\s*e\s+[a-z]', r'(?<![A-Za-z0-9_])\d+a(?![A-Za-z0-9_])']
 
 
 def _formula_detalhe():

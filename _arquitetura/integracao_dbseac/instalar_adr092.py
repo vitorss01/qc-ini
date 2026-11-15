@@ -41,6 +41,9 @@ D4 = '=IF(OR(Painel!K3="",AND(Painel!$G$3="",Painel!$G$4="")),"",Painel!K3)'
 D4_ANTIGO = ('=Painel!I3', '=IF(Painel!K3="","",Painel!K3)')     # o de antes do ADR-092 e o do ADR-092
 # ADR-095: B5/D5 (=Painel!G3/G4) com o Painel em "Tudo" mostravam "00/01/1900"; so o formato (o zero fica em branco)
 FMT_B5D5 = 'dd/mm/yyyy;;'
+# ADR-096 (R5-01): H5/J5 com valor 0 (so o Ate / so o De) dizem o lado aberto da janela; sem 'y' no texto (fmt_data)
+FMT_H5 = 'dd/mm/yyyy;;"primeiro dado"'
+FMT_J5 = 'dd/mm/yyyy;;"último dado"'
 A4 = 'Visão (segue o Painel)'
 HIST = 'histórico inteiro do lote'
 H5_ANTIGO = '=JanelaInicio($B$4,$D$4,$F$4,$B$5,$D$5)'
@@ -130,6 +133,14 @@ def estatistica_bio(wb):
     setf(e.Range('H5'), H5, H5_ANTIGO, 'Estatística H5 (histórico inteiro sem De/Até)')
     setf(e.Range('J5'), J5, J5_ANTIGO, 'Estatística J5')
     setf(e.Range('I5'), I5, 'a', 'Estatística I5 (sem o "a" quando é o histórico inteiro)')
+    # ADR-096 (reteste 05, R5-01): com so o De (ou so o Ate) no Painel, JanelaFim (JanelaInicio) devolve 0 = sem limite
+    # e a celula mostrava "00/01/1900". So o formato: o zero diz o que a janela e (o Tester conferiu em 15/11 que o
+    # motor vai do De ao ultimo dado); formula e Value2 intactos (o setf acima garante a formula do ADR-092)
+    for c, fmt in (('H5', FMT_H5), ('J5', FMT_J5)):
+        local = fmt.replace('y', str(e.Application.International[19 - 1] or 'y'))
+        if str(e.Range(c).NumberFormatLocal) != local:
+            cd.fmt_data(e.Range(c), fmt)
+            MUDANCAS.append(f'Estatística {c} formato (zero = {fmt.split(";")[-1]})')
 
 
 def estatistica_hema(wb):

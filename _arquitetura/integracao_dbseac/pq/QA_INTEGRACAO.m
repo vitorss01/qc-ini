@@ -135,6 +135,10 @@ let
                              "). Se este for o mesmo resultado repetido, apague-o."
                         else " (vale o automatico). Para o manual valer no lugar do automatico, informe o ID dele em " &
                              "SUBSTITUI_ID (com MOTIVO); se for o mesmo resultado repetido, apague o manual.")
+                  // reteste 05 (P-03): mesmo ID nas duas linhas -- inativar o ID tiraria o resultado que vale (o mesmo texto no mEtlQA)
+                  else if Text.StartsWith(_[MOTIVO_EXCLUSAO_AUTOMATICA] ?? "", "ID_REGISTRO manual repetido")
+                  then "; ID repetido na aba Digitar Resultados: apague o ID da linha repetida (um novo sera gerado) ou a linha. Nao inative o " & Text.BeforeDelimiter(_[ID_REGISTRO], "~") &
+                       ": isso tiraria o resultado que vale."
                   else "; confirme e inative um deles ou corrija o manual.")),
 
     // E12 (ADR-082) -- SUBSTITUI_ID invalido: nada foi substituido. O motivo exato vem do DB_CQ_FINAL
