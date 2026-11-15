@@ -97,5 +97,29 @@ def instalar(ex, wb, produto, log=print):
     # Compilar e OBRIGATORIO: com Interactive=False um erro de compilacao nao abre modal na
     # instalacao -- o comando so continua habilitado; o modal apareceria no 1o uso.
     if ii.compilar_vba(ex, wb) is not True:
-        raise SystemExit('VBA NAO COMPILOU (Depurar > Compilar continua habilitado) -- nada foi salvo')
+        # 15/11/2026: o modulo do erro (painel ativo do VBE) recriado do zero, uma vez -- o texto ja e o da fonte e
+        # foi conferido; so o estado compilado guardado no arquivo estava ruim. Erro de verdade continua falhando.
+        comp = None
+        try:
+            cp = wb.VBProject.VBE.ActiveCodePane
+            comp = cp.CodeModule.Parent.Name if cp is not None else None
+        except Exception:                                   # noqa: BLE001
+            comp = None
+        fonte = None
+        if comp:
+            for m in MODULOS + NOVOS:
+                if m == comp:
+                    fonte = _fonte(d, m + '.bas')
+        if not fonte or not ii.recriar_modulo(wb.VBProject, comp, ii.codigo(fonte)):
+            raise SystemExit(f'VBA NAO COMPILOU (Depurar > Compilar continua habilitado; erro em {comp}) -- nada foi salvo')
+        log(f'   {comp}: recriado do zero (estado compilado do arquivo) -- compilando de novo')
+        _conferir(wb, comp, fonte)
+        if ii.compilar_vba(ex, wb) is not True:
+            raise SystemExit(f'VBA NAO COMPILOU nem com {comp} recriado -- nada foi salvo')
     return feitos
+
+
+def _conferir(wb, comp, fonte):
+    cm = wb.VBProject.VBComponents(comp).CodeModule
+    if normalizar(cm.Lines(1, cm.CountOfLines)).lower() != normalizar(ii.codigo(fonte)).lower():
+        raise SystemExit(f'{comp} no arquivo difere da fonte {fonte}')

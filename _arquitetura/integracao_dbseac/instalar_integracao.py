@@ -67,9 +67,34 @@ def substituir_codigo(vbp, comp, texto, criar=True):
         novo.Name = comp
     cm = vbp.VBComponents(comp).CodeModule
     n = cm.CountOfLines
+    # 15/11/2026 (entrega 42, Hema): reescrever um modulo IDENTICO depois que o instalar_adr062 rodou as macros e
+    # salvou deixou o projeto sem compilar (mSenha, Declare do bcrypt) -- de forma reproduzivel. Texto igual (o VBE
+    # muda a caixa de identificador conhecido: compara sem caixa) = nada a fazer, e o estado compilado fica.
+    if n and _norm_vba(cm.Lines(1, n)) == _norm_vba(texto):
+        return False
     if n:
         cm.DeleteLines(1, n)
     cm.AddFromString(texto)
+    return True
+
+
+def _norm_vba(t):
+    linhas = str(t).replace('\r\n', '\n').replace('\r', '\n').strip().split('\n')
+    return '\n'.join(l.rstrip() for l in linhas).lower()
+
+
+def recriar_modulo(vbp, comp, texto):
+    """Modulo padrao (Type 1) removido e criado de novo com o texto: limpa o estado compilado guardado no arquivo."""
+    c = vbp.VBComponents(comp)
+    if c.Type != 1:
+        return False
+    vbp.VBComponents.Remove(c)
+    if comp in [x.Name for x in vbp.VBComponents]:   # remocao adiada pelo VBE: nao arrisca um 'mSenha1'
+        raise SystemExit(f'{comp}: remocao adiada pelo VBE -- nada foi salvo')
+    novo = vbp.VBComponents.Add(1)
+    novo.Name = comp
+    novo.CodeModule.AddFromString(texto)
+    return True
 
 
 def nome(wb, n, ref):
@@ -535,13 +560,17 @@ def compilar_vba(ex, wb, teto=120):
     # o estado do comando nao muda no mesmo instante do Execute: com mais modulos trocados
     # a leitura imediata via "habilitado" num projeto que compila. Erro de verdade deixa o
     # comando habilitado para sempre (e abre o modal que o cao de guarda pega).
+    # 15/11/2026 (entrega 42, Hema): 8 s nao bastaram uma vez (o mesmo VBA tinha compilado na entrega 41). A espera
+    # agora vai ate 30 s e o log diz quanto levou (medido: 0,0-0,3 s quando compila; a falha da Hema nao era tempo,
+    # era o estado compilado do arquivo -- ver substituir_codigo e codigo_atual.instalar).
     ok = False
-    for _ in range(40):
+    t0 = time.time()
+    while time.time() - t0 < 30:
         if not ctl.Enabled:
             ok = True
             break
         time.sleep(0.2)
-    log(f'  VBA compilado: {"OK" if ok else "comando ainda habilitado (conferir)"}')
+    log(f'  VBA compilado: {"OK" if ok else "comando ainda habilitado (conferir)"} ({time.time() - t0:.1f} s)')
     return ok
 
 
