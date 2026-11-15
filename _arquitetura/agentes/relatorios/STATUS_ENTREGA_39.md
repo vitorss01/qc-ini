@@ -169,7 +169,22 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
     - Testado no arquivo que falhava: compila nos dois caminhos.
 - Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
 
-## Próximas etapas (1h05)
+## 15/11, 5h05: as duas produções estão com o ADR-095 e atualizadas
+- **Hematologia:**
+  - entrega 42 refeita do zero com a correção da 1h: 35 suítes passaram, nenhuma falha; em produção desde 4h58;
+  - ATUALIZAR às 5h, sem dado novo (ATIVO 47.709 = 47.709);
+  - produção conferida: sha256 `7bab8fc008f618cf`, com backups da versão anterior e da pré-atualização.
+- **Bioquímica:** sem mudança desde 0h18 (sha256 `b20fe00f7e51503b`).
+- A revisão independente da correção da 1h achou 2 pontos que não afetam esta entrega (comparação de texto dentro de aspas e um caso de módulo recriado). Já corrigidos no código (`0f29dac`); serão testados numa cópia antes da próxima entrega.
+
+## Próximas etapas (5h05)
+1. **Reteste agora:** o Usuário Simulado refaz nos dois produtos os fluxos de OC-0012 (Hema), OC-0021, OC-0068, OC-0071 e OC-0072, em cópias das produções novas.
+2. **Tester VALIDAR** em seguida (nunca quem corrigiu). Só fica VALIDADA com os dois.
+3. Se aparecer defeito: causa raiz, correção e aviso na hora com a nova previsão.
+
+**Previsão:** tudo validado por volta das **9h de domingo** (~4 h). Meta mantida: pronto para uso na segunda, 16/11.
+
+## Etapas de 1h05 (substituídas)
 1. Hematologia: instalação e 35 suítes até ~5h; ATUALIZAR até ~5h10.
 2. Domingo de manhã: reteste e validação de OC-0012 (Hema), OC-0021, OC-0068, OC-0071 e OC-0072, nos dois produtos.
 
