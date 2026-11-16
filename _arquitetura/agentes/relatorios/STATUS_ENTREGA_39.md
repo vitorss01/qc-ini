@@ -169,6 +169,33 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
     - Testado no arquivo que falhava: compila nos dois caminhos.
 - Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
 
+## 16/11, 10h10: entrega 44 (ADR-097) em produção nas duas; reteste 07 em andamento
+- **O que a entrega 44 corrige:**
+  - **OC-0078 (Alta):** o carimbo (quem digitou e quando) não fica mais na linha manual apagada ou recortada.
+    - O próximo manual digitado nessa linha ganha ID e carimbo novos.
+    - Preencher para baixo (Ctrl+D) não muda o dono da linha de origem.
+  - **OC-0079:** o GUIA e o aviso orientam copiar só de ID até MOTIVO e usar a hora real.
+  - **OC-0080:** o DETALHE de um ID fora do padrão manda apagar o ID, em vez de "atualize os dados".
+  - **OC-0081:** a linha repetida (mesma data, hora, nível e analito) agora explica o que fazer: corrigir a hora ou apagar a linha. Ela não manda mais inativar o resultado que vale. A regra do motor não mudou.
+  - **OC-0082 e OC-0083:** filtros do Registros sem lista vazia, e o lote digitado só com números é aceito.
+  - **OC-0048 (Hema):** a Estatística recusa Ano Até menor que Ano De. A célula A5 avisa quando o lote não está no intervalo. Os números não mudam.
+- **Revisão independente, antes da entrega:** confirmou 9 achados.
+  - 8 foram corrigidos, entre eles 2 Altos: o Delete sem a coluna do ID e o preencher para baixo.
+  - O 9º ficou registrado no ADR-097, sem mudança: só acontece com a macro interrompida.
+- **Teste na cópia** das duas produções: tudo passou, sem falha.
+- **Entrega 44** (das 5h20 às 10h): 18 de 18 suítes aprovadas em cada produto. As produções foram trocadas com backup.
+- **ATUALIZAR DADOS** às 10h01 e às 10h03:
+
+  | Produto | Ativos antes | Ativos depois | Dados novos | sha256 |
+  |---|---|---|---|---|
+  | Bioquímica | 35.763 | 35.913 | +150 | `fdc173906fff6985` |
+  | Hematologia | 47.709 | 47.802 | +93 | `5b0e78ace7b98421` |
+
+- **Reteste 07:**
+  1. O Usuário Simulado refaz a OC-0078 nos dois produtos.
+  2. Depois, o Tester valida as 7 ocorrências e roda a regressão (8 suítes por produto).
+- **Previsão:** validação até cerca de **16h30** de hoje.
+
 ## 16/11, 2h45: entrega 43 VALIDADA; o QC pode ser usado hoje (com 2 cuidados na digitação manual)
 - **Entrega 43 nas duas produções** (15/11, 18h e 21h): 16 de 16 suítes aprovadas em cada produto. O ATUALIZAR DADOS rodou sem dado novo e com os números iguais (Bio 35.763 ativos; Hema 47.709).
 - **VALIDADAS no reteste 06:**
