@@ -169,6 +169,36 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
     - Testado no arquivo que falhava: compila nos dois caminhos.
 - Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
 
+## 16/11, 2h45: entrega 43 VALIDADA; o QC pode ser usado hoje (com 2 cuidados na digitação manual)
+- **Entrega 43 nas duas produções** (15/11, 18h e 21h): 16 de 16 suítes aprovadas em cada produto. O ATUALIZAR DADOS rodou sem dado novo e com os números iguais (Bio 35.763 ativos; Hema 47.709).
+- **VALIDADAS no reteste 06:**
+  - OC-0073 (Alta), linha colada: o Usuário Simulado deu RESOLVIDA e o Tester VALIDADA, nos dois produtos. A linha colada ganha ID novo e entra na estatística, no LJ e no Westgard. O n e a média batem com a calculadora independente.
+  - OC-0021, 0074, 0075 e 0076: o Tester deu VALIDADA (Baixa e Média, como você decidiu).
+  - Regressão do Tester sem nenhuma falha. Produções intactas durante os testes.
+- **O reteste achou 6 problemas, todos já existentes antes da entrega 43** (a entrega 42 tem o mesmo comportamento). Nenhum muda número de cálculo:
+  - **OC-0078 (Alta):** apagar uma linha manual deixa o carimbo (usuário e hora) na linha. O próximo manual digitado nela é recusado ("DATA/HORA posterior ao lançamento") ou fica no nome de quem apagou.
+  - **OC-0079 (Média):** o GUIA manda copiar "a linha", mas a linha inteira esbarra na proteção. Só de ID até MOTIVO funciona.
+  - **OC-0080 (Média):** um ID fora do padrão mostra "atualize os dados" mesmo depois de atualizar.
+  - **OC-0081 (Média):** colar e trocar só o resultado deixa a linha repetida. O aviso e o alerta A01 não explicam direito.
+  - **OC-0082 e OC-0083 (Baixas):** dois filtros do Registros.
+  - A Estatística da Hema abre no ano de 2025 (OC-0048, já registrada) e entra na mesma correção.
+- **Para usar hoje, até a entrega 44:**
+  1. Para corrigir um manual digitado errado, **corrija os campos na mesma linha. Não apague a linha.** Se precisar apagar, digite o próximo manual numa linha nunca usada, abaixo da última preenchida.
+  2. Para aproveitar uma linha, copie **de ID até MOTIVO** (não a linha inteira) e **use a hora real** da nova dosagem.
+- **Em andamento:** a correção dos 6 problemas (ADR-097), com revisão independente, teste em cópia e a entrega 44.
+
+## Próximas etapas (2h45)
+1. Correção e revisão independente: até cerca de **7h**.
+2. Teste na cópia: até cerca de **9h**.
+3. Entrega 44 nas duas produções, com ATUALIZAR: até cerca de **14h30**.
+4. Reteste: a OC-0078 pelo Usuário Simulado e pelo Tester; as outras só pelo Tester. Até cerca de **19h**.
+
+**Previsão:** entrega 44 validada por volta das **19h de segunda** (~16 h). O sistema já pode ser usado hoje com os 2 cuidados acima.
+
+## Etapas de 16h de 15/11 (substituídas)
+1. Entrega 43 nas duas produções, com ATUALIZAR: até cerca de 21h. **Feito às 21h03.**
+2. Reteste e validação: até cerca de 23h. **Feito às 2h25.**
+
 ## 15/11, 16h: entrega 43 começou (suítes direcionadas, como você decidiu)
 - **Suas decisões de hoje** (já valendo):
   - começar a usar o QC depois da entrega 43 validada;
@@ -187,12 +217,6 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
   - Na Bio, a 1ª rodada do "manual substitui" caiu no teste M15. O motor do Power Query encerrou sozinho (registro do Windows; já aconteceu 83 vezes desde outubro). Rodada de novo, sozinha: 20/0, inclusive o M15, que compara os dois motores linha a linha. Não era defeito do código.
 - **Código no GitHub:** commit `81b04a4`.
 - **Entrega 43 começou às 15h55,** Bio e depois Hema, de uma cópia limpa do commit. A produção só é trocada se todas as 16 suítes passarem.
-
-## Próximas etapas (16h)
-1. Entrega 43 nas duas produções, com ATUALIZAR: até cerca de **21h**.
-2. Reteste da OC-0073 (Alta): Usuário Simulado e Tester. OC-0021, 0074, 0075 e 0076: só o Tester. Até cerca de **23h**.
-
-**Previsão:** tudo validado por volta das **23h de domingo** (~7 h). Meta mantida: pronto para uso na segunda, 16/11.
 
 ## Etapas de 7h40 (substituídas)
 1. Testes na cópia e revisão: até cerca de 10h.
