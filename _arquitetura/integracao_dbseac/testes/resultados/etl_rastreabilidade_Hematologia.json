@@ -1,6 +1,6 @@
 {
  "produto": "Hematologia",
- "gerado_em": "2026-11-15T15:26:06",
+ "gerado_em": "2026-11-16T03:30:26",
  "nota": "Só os IDs dos cenários do qa_etl e uma amostra fixa (semente 57) -- nunca a base inteira.",
  "recorte_estatistica": {
   "produto": "Hematologia",

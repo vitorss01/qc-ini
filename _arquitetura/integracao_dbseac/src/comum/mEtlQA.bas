@@ -771,6 +771,17 @@ Private Function TextoA01(ByVal motivo As Variant, ByVal rel As Variant, ByVal s
         base = CStr(idLinha): p = InStr(base, "~")
         If p > 0 Then base = Left$(base, p - 1)
         TextoA01 = "; ID repetido na aba Digitar Resultados: apague o ID da linha repetida (um novo sera gerado) ou a linha. Nao inative o " & base & ": isso tiraria o resultado que vale."
+    ElseIf Left$(CStr(motivo), 25) = "resultado manual repetido" Then
+        ' ADR-097 (OC-0081): mesma data, hora, nivel e analito de outro manual (vale o 1o) -- inativar o outro tiraria o
+        ' resultado que vale. O mesmo texto no QA_INTEGRACAO.m
+        Dim baseL As String, vale As String, pL As Long
+        baseL = CStr(idLinha): pL = InStr(baseL, "~")
+        If pL > 0 Then baseL = Left$(baseL, pL - 1)
+        vale = CStr(rel)
+        If Len(vale) = 0 Then vale = "outra linha"
+        TextoA01 = "; resultado repetido na aba Digitar Resultados (mesma data, hora, nivel e analito de " & vale & _
+                   "): se for outra dosagem, corrija a HORA da linha " & baseL & " para a hora real; se for digitacao " & _
+                   "dobrada, apague a linha " & baseL & ". Nao inative o " & vale & ": isso tiraria o resultado que vale."
     Else
         TextoA01 = "; confirme e inative um deles ou corrija o manual."
     End If

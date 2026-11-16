@@ -139,6 +139,13 @@ let
                   else if Text.StartsWith(_[MOTIVO_EXCLUSAO_AUTOMATICA] ?? "", "ID_REGISTRO manual repetido")
                   then "; ID repetido na aba Digitar Resultados: apague o ID da linha repetida (um novo sera gerado) ou a linha. Nao inative o " & Text.BeforeDelimiter(_[ID_REGISTRO], "~") &
                        ": isso tiraria o resultado que vale."
+                  // ADR-097 (OC-0081): mesma data, hora, nivel e analito de outro manual (vale o 1o) -- o mesmo texto no mEtlQA
+                  else if Text.StartsWith(_[MOTIVO_EXCLUSAO_AUTOMATICA] ?? "", "resultado manual repetido")
+                  then "; resultado repetido na aba Digitar Resultados (mesma data, hora, nivel e analito de " &
+                       (_[ID_RELACIONADO] ?? "outra linha") & "): se for outra dosagem, corrija a HORA da linha " &
+                       Text.BeforeDelimiter(_[ID_REGISTRO], "~") & " para a hora real; se for digitacao dobrada, apague a linha " &
+                       Text.BeforeDelimiter(_[ID_REGISTRO], "~") & ". Nao inative o " & (_[ID_RELACIONADO] ?? "outra linha") &
+                       ": isso tiraria o resultado que vale."
                   else "; confirme e inative um deles ou corrija o manual.")),
 
     // E12 (ADR-082) -- SUBSTITUI_ID invalido: nada foi substituido. O motivo exato vem do DB_CQ_FINAL

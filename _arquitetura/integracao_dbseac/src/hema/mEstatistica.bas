@@ -2128,6 +2128,7 @@ Public Sub AtualizarEstatisticaAba()
     Dim alvoM As Double, alvoS As Double, etp As Double, bias As Double, et As Double, sg As Double
     Dim outp() As Variant, linhas As Long
     Dim protEstava As Boolean
+    Dim nDentro As Long, nFora As Long, aMin As Long, aMax As Long   ' ADR-097 (OC-0048)
 
     Set ws = ThisWorkbook.Sheets("Estatística")
     Set wa = ThisWorkbook.Sheets(mLotes.AbaEspec())
@@ -2137,6 +2138,9 @@ Public Sub AtualizarEstatisticaAba()
     anoDe = CLng(Val(ws.Range("B3").Value))
     anoAte = CLng(Val(ws.Range("D3").Value))
     loteF = Trim$(CStr(ws.Range("B4").Value))
+    ' ADR-097 (revisao): o B3 subido acima do D3 continua valendo so o Ano De (como sempre), mas agora o A5 diz isso
+    Dim anoAteDig As Long
+    anoAteDig = anoAte
     If anoAte < anoDe Then anoAte = anoDe
 
     linhas = 40 * NLV
@@ -2144,6 +2148,7 @@ Public Sub AtualizarEstatisticaAba()
     er = 0
     For i = AR0 To ARN
         analito = Trim$(CStr(wa.Cells(i, 1).Value))
+        If analito <> "" And loteF <> "" And anoDe > 0 Then ContarAnosLote analito, loteF, anoDe, anoAte, nDentro, nFora, aMin, aMax
         For t = 1 To NLV
             er = er + 1
             If analito = "" Then
@@ -2181,6 +2186,13 @@ Public Sub AtualizarEstatisticaAba()
     eng.Range(eng.Cells(LINHA_EST, 3), eng.Cells(LINHA_EST + linhas - 1, 13)).Value = outp
     RestaurarProtecao eng, protEstava
     On Error GoTo 0
+    Dim avisoAno As String
+    avisoAno = TextoAvisoAno(loteF, anoDe, anoAte, nDentro, nFora, aMin, aMax)
+    If anoAteDig > 0 And anoAteDig < anoDe Then
+        avisoAno = Trim$(ChrW$(9888) & " Ano Até (" & anoAteDig & ") menor que o Ano De (" & anoDe & "): a Estatística usa só " & _
+                   anoDe & "." & IIf(Len(avisoAno) > 0, " " & Mid$(avisoAno, 3), ""))
+    End If
+    EscreverAvisoAno ws, avisoAno
 
     ' Fora do bloco protegido de proposito: RegistrarEventosWestgard cuida da
     ' PROPRIA aba (Eventos_Westgard). Chama-la com Eng_Saida ainda destrancada
@@ -2197,6 +2209,62 @@ restaura:
 End Sub
 
 
+
+' ADR-097 (OC-0048, G30 itens 1 e 2): o filtro de ano cortava o lote em analise sem aviso -- o arquivo abria com
+' Ano De/Ate = 2025 e o lote de 2026 mostrava n 0. Conta, so para o aviso, os resultados do lote dentro e fora do
+' intervalo (as mesmas linhas elegiveis do EstatBasica, todos os niveis). Nenhum numero da grade muda.
+Private Sub ContarAnosLote(ByVal analito As String, ByVal loteCore As String, ByVal anoDe As Long, ByVal anoAte As Long, _
+                           ByRef nDentro As Long, ByRef nFora As Long, ByRef aMin As Long, ByRef aMax As Long)
+    Dim linhas As Collection, x As Variant, i As Long, a As Long
+    On Error GoTo fim                          ' o aviso nunca derruba a Estatistica
+    GarantirDB
+    If IsEmpty(mDB) Then Exit Sub
+    Set linhas = LinhasDe(analito, loteCore)
+    For Each x In linhas
+        i = x
+        If IsNumeric(mDB(i, COL_RESULT)) Then
+            If IsDate(mDB(i, COL_DATA)) Then
+                a = Year(mDB(i, COL_DATA))
+                If a >= anoDe And a <= anoAte Then
+                    nDentro = nDentro + 1
+                Else
+                    nFora = nFora + 1
+                    If aMin = 0 Or a < aMin Then aMin = a
+                    If a > aMax Then aMax = a
+                End If
+            End If
+        End If
+    Next x
+fim:
+End Sub
+
+Private Function TextoAvisoAno(ByVal lote As String, ByVal anoDe As Long, ByVal anoAte As Long, ByVal nDentro As Long, _
+                               ByVal nFora As Long, ByVal aMin As Long, ByVal aMax As Long) As String
+    Dim fa As String, fx As String
+    If nFora = 0 Or Len(lote) = 0 Or anoDe = 0 Then Exit Function
+    fa = CStr(anoDe): If anoAte <> anoDe Then fa = fa & ChrW$(8211) & CStr(anoAte)
+    fx = CStr(aMin): If aMax <> aMin Then fx = fx & ChrW$(8211) & CStr(aMax)
+    If nDentro = 0 Then
+        TextoAvisoAno = ChrW$(9888) & " O lote " & lote & " não tem resultado em " & fa & " (tem em " & fx & _
+                        "). Ajuste o Ano De/Até (B3/D3)."
+    Else
+        TextoAvisoAno = ChrW$(9888) & " O lote " & lote & " também tem resultado em " & fx & _
+                        ", fora do Ano De/Até: os números abaixo não são o lote inteiro."
+    End If
+End Function
+
+' A5 da Estatistica (a celula e as vizinhas B5:J5 ficam livres; o texto transborda). So escreve quando muda.
+Private Sub EscreverAvisoAno(ByVal ws As Worksheet, ByVal txt As String)
+    Dim prot As Boolean
+    On Error GoTo fim
+    If CStr(ws.Range("A5").Value) = txt Then Exit Sub
+    prot = LiberarEscrita(ws)
+    If Len(txt) = 0 Then ws.Range("A5").ClearContents Else ws.Range("A5").Value = txt
+    RestaurarProtecao ws, prot
+    Exit Sub
+fim:
+    RestaurarProtecao ws, prot
+End Sub
 
 ' ============================================================================
 '  EVENTOS_WESTGARD -- historico auditavel, granularidade de EVENTO

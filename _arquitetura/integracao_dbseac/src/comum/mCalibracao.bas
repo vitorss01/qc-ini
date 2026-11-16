@@ -45,6 +45,7 @@ Private Const F_LIN As Long = 4                 ' ADR-087: linha dos campos de f
 ' ADR-087: os filtros -- (coluna do campo na linha F_LIN, coluna da tabela filtrada, rotulo)
 Private Const F_LOTE As Long = 2, F_ANALITO As Long = 3, F_DE As Long = 5, F_ATE As Long = 6
 Private Const F_EQUIP As Long = 7, F_CALIB As Long = 8, F_STATUS As Long = 10, F_INFO As Long = 11
+Private Const ITEM_LISTA_VAZIA As String = "(nenhum registrado)"   ' ADR-097 (OC-0082): item da lista sem dado
 Private Const C_DATA As Long = 2
 Private Const C_ANALITO As Long = 3
 Private Const C_NIVEL As Long = 4
@@ -400,6 +401,11 @@ Public Function AplicarFiltrosRegistros() As String
     vEq = Trim$(CStr(ws.Cells(F_LIN, F_EQUIP).Value))
     vCal = Trim$(CStr(ws.Cells(F_LIN, F_CALIB).Value))
     vSt = Trim$(CStr(ws.Cells(F_LIN, F_STATUS).Value))
+    ' ADR-097 (OC-0082): o item da lista vazia nao filtra nada
+    If vLote = ITEM_LISTA_VAZIA Then vLote = ""
+    If vAn = ITEM_LISTA_VAZIA Then vAn = ""
+    If vEq = ITEM_LISTA_VAZIA Then vEq = ""
+    If vSt = ITEM_LISTA_VAZIA Then vSt = ""
     ev = Application.EnableEvents
     Application.EnableEvents = False
     prot = mSeguranca.LiberarEscrita(ws)
@@ -587,7 +593,10 @@ Private Sub EscreverLista(ByVal ws As Worksheet, ByVal c As Long, ByVal d As Obj
     n = d.Count
     ws.Range(ws.Cells(2, c), ws.Cells(ws.Rows.Count, c).End(xlUp).Offset(1, 0)).ClearContents
     If n = 0 Then
-        ws.Cells(2, c).Value = ""
+        ' ADR-097 (OC-0082): lista de origem vazia aceitava qualquer texto (a validacao de lista com origem vazia nao
+        ' recusa nada) e o filtro ficava com um valor que nao existe. Agora a lista tem um item que diz que nao ha nada;
+        ' escolhido, ele vale como "sem filtro" (AplicarFiltrosRegistros)
+        ws.Cells(2, c).Value = "'" & ITEM_LISTA_VAZIA
         ThisWorkbook.Names.Add Name:=nome, RefersTo:="=" & ws.Cells(2, c).Address(True, True, xlA1, True)
         Exit Sub
     End If

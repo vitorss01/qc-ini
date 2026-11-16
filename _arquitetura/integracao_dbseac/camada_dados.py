@@ -127,7 +127,14 @@ def _formula_detalhe():
     x = 'XLOOKUP([@ID_REGISTRO],tblCQ_Final[ID_REGISTRO],tblCQ_Final[MOTIVO_EXCLUSAO_AUTOMATICA])&""'
     for a, b in ACENTOS_DETALHE:
         x = f'SUBSTITUTE({x},"{a}","{b}")'
-    return '=IF([@ID_REGISTRO]="","",IFERROR(' + x + ',"atualize os dados"))'
+    # ADR-097 (OC-0080): o ID fora do padrao MAN_<digitos> nunca chega a tblCQ_Final com o texto digitado (o motor grava
+    # MAN_INVALIDO_L<n>, E04): "atualize os dados" mandava o usuario num ciclo sem saida. So a tela muda.
+    # Valido = MAN_ e SO digitos, como o SoDigitos do motor: o numero refeito com os mesmos digitos tem de dar o mesmo
+    # texto ("MAN_1,5", "MAN_1E3", "MAN_-12" e "MAN_12%" viram numero no Excel, mas o motor os recusa -- revisao 16/11)
+    m = 'MID(TRIM([@ID_REGISTRO]),5,20)'
+    return ('=IF([@ID_REGISTRO]="","",IFERROR(' + x + ',IF(AND(LEFT(UPPER(TRIM([@ID_REGISTRO])),4)="MAN_",'
+            f'IFERROR(TEXT(--{m},REPT("0",LEN({m})))={m},FALSE)),"atualize os dados",'
+            '"ID fora do padrão: apague-o (um novo é gerado)")))')
 
 
 FORMULA_DETALHE = _formula_detalhe()

@@ -143,6 +143,10 @@ def estatistica_bio(wb):
             MUDANCAS.append(f'Estatística {c} formato (zero = {fmt.split(";")[-1]})')
 
 
+MSG_D3 = 'Ano Até deve ser igual ou maior que Ano De.'
+VERMELHO = 192                                          # RGB(192, 0, 0) no Font.Color do Excel
+
+
 def estatistica_hema(wb):
     e = wb.Worksheets('Estatística')
     n = 0
@@ -159,6 +163,27 @@ def estatistica_hema(wb):
             n += 1
     if n:
         MUDANCAS.append(f'Estatística B (Hematologia): nível vazio sem analito ({n} linha(s))')
+    # ADR-097 (OC-0048, G30 itens 1 e 2): Ano Até menor que o Ano De era aceito e o VBA o trocava calado pelo Ano De.
+    # Validação por referência (sem nome de função: o Formula1 da validação é lido na língua do Excel)
+    v = e.Range('D3').Validation
+    try:
+        tipo, f1, msg = int(v.Type), str(v.Formula1), str(v.ErrorMessage)
+    except Exception:                                   # noqa: BLE001 (sem validação)
+        tipo, f1, msg = -1, '', ''
+    if (tipo, f1.replace('$', ''), msg) != (1, '=B3', MSG_D3):
+        v.Delete()
+        v.Add(1, 1, 7, '=$B$3')                         # xlValidateWholeNumber, xlValidAlertStop, xlGreaterEqual
+        v.IgnoreBlank = True
+        v.ErrorTitle = 'Ano Até'
+        v.ErrorMessage = MSG_D3
+        v.ShowError = True
+        MUDANCAS.append('Estatística D3: Ano Até >= Ano De')
+    # A5: aviso do lote fora do Ano De/Até (o VBA escreve o texto em AtualizarEstatisticaAba)
+    a5 = e.Range('A5')
+    if int(a5.Font.Color) != VERMELHO or not a5.Font.Bold:
+        a5.Font.Color = VERMELHO
+        a5.Font.Bold = True
+        MUDANCAS.append('Estatística A5: aviso do ano em vermelho')
 
 
 def fumaca(ex, wb, produto):

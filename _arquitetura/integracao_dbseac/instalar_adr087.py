@@ -229,6 +229,11 @@ def filtros(wb):
             cd.fmt_data(c_val, 'dd/mm/yyyy')           # ADR-095: 'yyyy' por NumberFormat vira texto no pt-BR
             MUDANCAS.append(f'Registros validacao {rot}')
         c_val.Locked = False
+        if col == 2 and str(c_val.NumberFormat) != '@':
+            # ADR-097 (OC-0083): o lote digitado (8977) entra como TEXTO, como os itens da lista (lstRegLote); como
+            # numero, a validacao o recusava e so a seta funcionava
+            c_val.NumberFormat = '@'
+            MUDANCAS.append('Registros filtro Lote em texto')
         if col in MSG_FILTRO and mensagem(c_val.Validation, *MSG_FILTRO[col]):
             MUDANCAS.append(f'Registros mensagem {rot}')
     lo = ws.ListObjects(TB)

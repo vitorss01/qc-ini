@@ -85,13 +85,22 @@ sozinho), marque ou não **Registrar-LJ** (X vermelho), escreva o **motivo** e c
    (MAN_0001…) é gerado sozinho. Equipamento vazio recebe o do Painel e fica em **âmbar**, com a nota "Preenchido pelo
    Painel com …: confira": na Bioquímica há dois DIMENSION, então confira (ou escolha o certo na seta da célula)
    antes de atualizar. Equipamento, matriz e motivo se escolhem na seta da célula (um item por linha, ADR-095)
-   (ADR-090). Pode copiar uma linha e colar embaixo para aproveitar a digitação: a linha colada **ganha um ID novo**
-   sozinha (um aviso diz qual) — troque o que for diferente (nível, hora, resultado) antes de atualizar (ADR-096).
+   (ADR-090). Para aproveitar a digitação, selecione a linha **de ID até MOTIVO** (arraste do ID ao MOTIVO), copie
+   (Ctrl+C) e cole (Ctrl+V) na coluna ID da próxima linha livre. A linha colada **ganha um ID novo** sozinha (um aviso
+   diz qual). Troque o que for diferente antes de atualizar e **use a hora real** da nova dosagem: com a mesma data,
+   hora, nível e analito de outra linha, ela fica repetida (CONFLITO_MANUAL), mesmo com outro resultado (ADR-096 e
+   ADR-097). Não copie a linha inteira (clicando no número da linha): as colunas de USUARIO a DETALHE são do sistema, e
+   o Excel recusa com um aviso de planilha protegida. Não é preciso senha: basta copiar de ID até MOTIVO.
+   Para corrigir um manual, corrija os campos na própria linha. Uma linha apagada pode ser usada de novo: o próximo
+   manual digitado nela fica com o seu nome e a sua hora (ADR-097).
 2. Atualize e confira o STATUS (e a coluna DETALHE):
    - **ATIVO** = entrou na estatística;
    - **CONFLITO_MANUAL** = o mesmo resultado já veio pelo interfaceamento (mesma chave, até 30 min) e vale o
      automático. O manual fica guardado, fora do cálculo. Para o manual valer no lugar dele, use o SUBSTITUI_ID
-     (abaixo);
+     (abaixo). Também fica CONFLITO_MANUAL o manual que repete data, hora, nível e analito de outro manual (vale o
+     primeiro): corrija a HORA se for outra dosagem, ou apague a linha repetida. Não inative o outro (ADR-097);
+   - **DETALHE "ID fora do padrão"** = o ID não é MAN_ e um número (por exemplo, o número do interfaceamento digitado
+     no ID). Apague o ID: um novo é gerado (ADR-097);
    - **MANUAL_INCOMPLETO** = falta campo (o DETALHE diz qual). Data ou hora que não existe (31/02, 25:00), mesmo
      colada, também cai aqui (ADR-088);
    - **IMPLAUSIVEL** = resultado ≤ 0 (manual ou do interfaceamento): fica fora da estatística, do gráfico, do

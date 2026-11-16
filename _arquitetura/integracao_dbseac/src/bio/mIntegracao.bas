@@ -405,16 +405,24 @@ Public Function ResumoQA() As String
     ' Reteste 05 (P-03): ID_REGISTRO repetido na Digitar Resultados fica fora da estatistica como ALERTA (A01), que esta
     ' contagem de ERRO nao mostrava. Cobre a repeticao que ja existia ou que entrou com os eventos desligados.
     Dim nRep As Long, exRep As String
-    nRep = ContarIdManualRepetido(exRep)
+    nRep = ContarMotivoManual("ID_REGISTRO manual repetido", exRep)
     If nRep > 0 Then s = s & vbCrLf & ChrW$(8226) & " " & nRep & " linha(s) da Digitar Resultados repete(m) o ID de " & _
                          "outra (ex.: " & exRep & ") e ficou(aram) fora da estatística. Apague o ID da linha repetida " & _
                          "(um novo é gerado) e atualize de novo."
+    ' ADR-097 (OC-0081): manual com a mesma data, hora, nivel e analito de outro (o motor fica com o primeiro) -- tambem e
+    ' ALERTA (A01), fora da contagem de ERRO
+    exRep = ""
+    nRep = ContarMotivoManual("resultado manual repetido", exRep)
+    If nRep > 0 Then s = s & vbCrLf & ChrW$(8226) & " " & nRep & " linha(s) da Digitar Resultados repete(m) data, hora, " & _
+                         "nível e analito de outra (ex.: " & exRep & ") e ficou(aram) fora da estatística. Se for outra " & _
+                         "dosagem, corrija a HORA; se for digitação dobrada, apague a linha. Não inative a outra."
     ResumoQA = s
 End Function
 
-' Reteste 05 (P-03): manuais fora da estatistica por ID_REGISTRO repetido (MOTIVO do motor, os dois motores iguais).
-' exemplo = o ID repetido (sem o sufixo ~L<n>).
-Private Function ContarIdManualRepetido(ByRef exemplo As String) As Long
+' Reteste 05 (P-03) / ADR-097: manuais fora da estatistica por um MOTIVO do motor que comeca com prefixo (os dois
+' motores gravam o mesmo texto): "ID_REGISTRO manual repetido" e "resultado manual repetido".
+' exemplo = o ID da 1a linha achada (sem o sufixo ~L<n>).
+Private Function ContarMotivoManual(ByVal prefixo As String, ByRef exemplo As String) As Long
     Dim lo As ListObject, vM As Variant, vI As Variant, i As Long, p As Long
     On Error GoTo sai
     Set lo = AcharTabela(FONTE_CQ)
@@ -424,8 +432,8 @@ Private Function ContarIdManualRepetido(ByRef exemplo As String) As Long
     vI = lo.ListColumns("ID_REGISTRO").DataBodyRange.Value
     If Not IsArray(vM) Then Exit Function
     For i = 1 To UBound(vM, 1)
-        If Left$(CStr(vM(i, 1)), 27) = "ID_REGISTRO manual repetido" Then
-            ContarIdManualRepetido = ContarIdManualRepetido + 1
+        If Left$(CStr(vM(i, 1)), Len(prefixo)) = prefixo Then
+            ContarMotivoManual = ContarMotivoManual + 1
             If Len(exemplo) = 0 Then
                 exemplo = CStr(vI(i, 1))
                 p = InStr(exemplo, "~")
@@ -797,7 +805,18 @@ Private Sub PrepararLinha(ByVal lo As ListObject, ByVal r As Long)
                 If Len(Trim$(CStr(Celula(lo, r, CStr(c)).Value))) > 0 Then temDado = True: Exit For
             Next c
             id = CStr(Celula(lo, r, "ID_REGISTRO").Value)
-            If Not temDado And Len(Trim$(id)) = 0 Then Exit Sub
+            If Not temDado And Len(Trim$(id)) = 0 Then
+                ' ADR-097 (OC-0078): linha apagada (ou origem de um recorte) -> sai o carimbo dela, como na aba Inativar
+                ' (ADR-070). Sem isto o proximo manual digitado ali herdava USUARIO/REGISTRADO_EM de quem apagou e era
+                ' recusado ("DATA/HORA posterior ao lancamento") ou ficava no nome de outra pessoa. O motor ja trata o
+                ' REGISTRADO_EM vazio como "agora". Com SUBSTITUI_ID preenchido a linha nao esta vazia.
+                If TemColuna(lo, COL_SUBST) Then
+                    If Len(TextoCel(lo, r, COL_SUBST)) = 0 Then LimparCarimboManual lo, r
+                Else
+                    LimparCarimboManual lo, r
+                End If
+                Exit Sub
+            End If
             If Len(Trim$(id)) = 0 Then
                 Celula(lo, r, "ID_REGISTRO").Value = ProximoIdManual(lo)
             Else
@@ -935,6 +954,49 @@ Private Function TemColuna(ByVal lo As ListObject, ByVal coluna As String) As Bo
     Dim c As ListColumn
     For Each c In lo.ListColumns
         If c.Name = coluna Then TemColuna = True: Exit Function
+    Next c
+End Function
+
+' ADR-097 (OC-0078): tira USUARIO e REGISTRADO_EM da linha manual (so escreve quando ha o que limpar: a passada do
+' ATUALIZAR pelas linhas vazias nao regrava nada)
+Private Sub LimparCarimboManual(ByVal lo As ListObject, ByVal r As Long)
+    Dim c As Variant
+    For Each c In Array("REGISTRADO_EM", "USUARIO")
+        If Not IsEmpty(Celula(lo, r, CStr(c)).Value) Then Celula(lo, r, CStr(c)).ClearContents
+    Next c
+End Sub
+
+' ADR-097 (OC-0078): a mudanca e um lancamento NOVO nesta linha (o carimbo antigo nao e dela):
+' - a linha colada trouxe o ID MAN_ de outra e ganhou ID novo agora (idRep);
+' - digitou ou colou numa linha SEM ID (o ID vai ser gerado agora) -- menos quando o que se apagou foi o proprio ID de
+'   uma linha com dado (ganha ID novo, mas o lancamento e o mesmo: o carimbo fica);
+' - numa linha sem dado (so o ID).
+' NAO e novo: corrigir um campo de um manual que ja tem ID; colar de volta ou preencher para baixo (Ctrl+D) a partir da
+' propria linha, com o ID dela (revisao independente: o carimbo legitimo da linha de origem nao pode mudar de dono).
+Private Function LancamentoNovo(ByVal lo As ListObject, ByVal r As Long, ByVal Target As Range, ByVal idRep As Boolean) As Boolean
+    Dim tocaId As Boolean
+    If idRep Then LancamentoNovo = True: Exit Function
+    tocaId = Not Intersect(Target, Celula(lo, r, "ID_REGISTRO")) Is Nothing
+    If Len(TextoCel(lo, r, "ID_REGISTRO")) = 0 Then
+        LancamentoNovo = Not (tocaId And LinhaTemDado(lo, r))
+    ElseIf tocaId Then
+        LancamentoNovo = Not LinhaTemDado(lo, r)
+    End If
+End Function
+
+' A mudanca atingiu algum dos campos do resultado da linha
+Private Function TocaDado(ByVal lo As ListObject, ByVal r As Long, ByVal Target As Range) As Boolean
+    Dim c As Variant
+    For Each c In Array("DATA", "HORA", "LOTE", "NIVEL", "ANALITO", "RESULTADO")
+        If Not Intersect(Target, Celula(lo, r, CStr(c))) Is Nothing Then TocaDado = True: Exit Function
+    Next c
+End Function
+
+' A linha manual tem algum dos campos do resultado (os mesmos do PrepararLinha)
+Private Function LinhaTemDado(ByVal lo As ListObject, ByVal r As Long) As Boolean
+    Dim c As Variant
+    For Each c In Array("DATA", "HORA", "LOTE", "NIVEL", "ANALITO", "RESULTADO")
+        If Len(TextoCel(lo, r, CStr(c))) > 0 Then LinhaTemDado = True: Exit Function
     Next c
 End Function
 
@@ -1852,6 +1914,7 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
     Dim lo As ListObject, cel As Range, ar As Range, r As Long, prot As Boolean, an As String
     Dim idDig As String, celAviso As Range, txtAviso As String, tituloAviso As String, aviso As String
     Dim nNovoId As Long, idAntigo As String, idPrim As String, idUlt As String, idNovo As String, celNovoId As Range, vIdCol As Variant
+    Dim idRep As Boolean
     If mApp.Ocupado() Then Exit Sub
     Set lo = Nothing
     On Error Resume Next
@@ -1918,6 +1981,7 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
                 End If
             End If
         ElseIf ws.Name = ABA_MANUAL Then
+            idRep = False
             ' Reteste 05 (P-03): linha colada (ou ID digitado) com o ID_REGISTRO MAN_ de OUTRA linha -> ID novo (D05: o ID e
             ' unico e gerado sozinho). Sem isto a linha aparecia ATIVA na tela (o XLOOKUP acha a 1a linha do ID) e ficava
             ' fora da estatistica como "ID_REGISTRO manual repetido". Mover (recortar e colar) nao repete: a origem fica
@@ -1928,6 +1992,7 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
                     If IdEmOutraLinha(lo, r, idDig, Target, vIdCol) Then
                         idNovo = ProximoIdManual(lo)
                         Celula(lo, r, "ID_REGISTRO").Value = idNovo
+                        idRep = True
                         If IsArray(vIdCol) Then vIdCol(r, 1) = idNovo
                         nNovoId = nNovoId + 1
                         If nNovoId = 1 Then idAntigo = idDig: idPrim = idNovo: Set celNovoId = Celula(lo, r, "ID_REGISTRO")
@@ -1935,6 +2000,29 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
                     End If
                 End If
             End If
+            ' ADR-097 (OC-0078, revisao independente): registro apagado sem a coluna do ID ou do SUBSTITUI_ID (Delete
+            ' de DATA..MOTIVO, ou de ID..MOTIVO com o SUBSTITUI_ID la no fim) -- o que sobrou sai junto: um ID sem dado
+            ' nao e registro e seria reaproveitado pelo proximo manual (D05: nunca reaproveitar um ID), e o SUBSTITUI_ID
+            ' esquecido faria o proximo manual substituir um resultado que ninguem escolheu
+            ' So quando a mudanca atingiu o ID ou os campos do resultado (o registro foi apagado agora): digitar o
+            ' EQUIPAMENTO/MOTIVO numa linha que so tem o SUBSTITUI_ID (ADR-082, ainda sem dado) nao apaga nada
+            If Not LinhaTemDado(lo, r) And (TocaDado(lo, r, Target) Or _
+                                            Not Intersect(Target, Celula(lo, r, "ID_REGISTRO")) Is Nothing) Then
+                If TemColuna(lo, COL_SUBST) Then
+                    If Intersect(Target, Celula(lo, r, COL_SUBST)) Is Nothing And Len(TextoCel(lo, r, COL_SUBST)) > 0 Then _
+                        Celula(lo, r, COL_SUBST).ClearContents
+                End If
+                If Intersect(Target, Celula(lo, r, "ID_REGISTRO")) Is Nothing And Len(TextoCel(lo, r, "ID_REGISTRO")) > 0 Then
+                    If Not TemColuna(lo, COL_SUBST) Then
+                        Celula(lo, r, "ID_REGISTRO").ClearContents
+                    ElseIf Len(TextoCel(lo, r, COL_SUBST)) = 0 Then
+                        Celula(lo, r, "ID_REGISTRO").ClearContents
+                    End If
+                End If
+            End If
+            ' ADR-097 (OC-0078): lancamento novo -> sai o carimbo que a linha tinha (de uma linha apagada ou da linha
+            ' onde se colou); o PrepararLinha abaixo carimba com quem digita, agora
+            If LancamentoNovo(lo, r, Target, idRep) Then LimparCarimboManual lo, r
             ' ADR-090 (OC-0019): o usuario digitou o EQUIPAMENTO -> sai o ambar do preenchimento pelo Painel (vazio: o
             ' PrepararLinha abaixo preenche e marca de novo)
             If Not Intersect(Target, Celula(lo, r, "EQUIPAMENTO")) Is Nothing Then DesmarcarEquipAutomatico Celula(lo, r, "EQUIPAMENTO")
@@ -1971,8 +2059,11 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
             txtAviso = "As " & nNovoId & " linhas coladas traziam IDs que já existem em outras linhas e receberam IDs " & _
                        "novos (" & idPrim & " a " & idUlt & ")."
         End If
-        txtAviso = txtAviso & vbCrLf & vbCrLf & "Mude o que for diferente (nível, hora, resultado) antes de clicar em " & _
-                   "ATUALIZAR DADOS."
+        ' ADR-097 (OC-0081): trocar so o resultado nao basta -- a mesma data, hora, nivel e analito de outra linha e
+        ' resultado repetido (regra do motor, que nao muda)
+        txtAviso = txtAviso & vbCrLf & vbCrLf & "Mude o que for diferente antes de clicar em ATUALIZAR DADOS. Atenção: " & _
+                   "com a mesma data, hora, nível e analito de outra linha, ela fica como repetida (CONFLITO_MANUAL), " & _
+                   "mesmo com outro resultado. Se for uma nova dosagem, use a hora real dela."
     End If
 fim:
     RestaurarProtecao ws, prot
