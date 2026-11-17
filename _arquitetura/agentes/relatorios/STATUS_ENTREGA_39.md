@@ -169,6 +169,23 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
     - Testado no arquivo que falhava: compila nos dois caminhos.
 - Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
 
+## 17/11, 9h50: OC-0078 RESOLVIDA também na Hematologia; Tester validando; correção do recorte revisada
+- **Usuário Simulado, Hematologia: OC-0078 RESOLVIDA.**
+  - Os critérios 1, 2, 3 (origem), 4, 5 e 6 foram aprovados.
+  - O ATUALIZAR, o LJ e o Painel batem com a calculadora.
+  - Tem a mesma ressalva do recorte (OC-0084) que a Bioquímica.
+- **O parecer consolidado e o de UX terminaram.** O Tester está validando as 7 ocorrências e rodando 8 suítes por produto.
+- **Correção do recorte (ADR-098), ainda não entregue:**
+  - **1ª versão:** recuperava o carimbo de quem lançou quando o manual integrado chegava a uma linha vazia.
+  - **Revisão independente:** confirmou 3 pontos (Médios) que a 1ª versão não cobria:
+    - subir ou descer um bloco de linhas para fechar um buraco; o manual podia até ser recusado;
+    - o SUBSTITUI_ID se perdia no recorte;
+    - um teste fraco.
+  - **2ª versão:** cobre os três. O teste ganhou 5 casos de recorte e de colar (R01 a R05). Uma 2ª revisão independente está rodando.
+- **Previsão:**
+  - validação da entrega 44 por volta das **12h15**;
+  - entrega 45 validada por volta das **18h30**.
+
 ## 17/11, 8h45: reteste 07 retomado; Bioquímica RESOLVIDA; 1 achado novo (Médio)
 - **Interrupção:** a sessão caiu ontem às 10h26 e o reteste ficou parado até hoje às 8h40.
   - Nada foi perdido: a parte pronta ficou guardada.
