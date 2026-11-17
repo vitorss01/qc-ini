@@ -169,6 +169,22 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
     - Testado no arquivo que falhava: compila nos dois caminhos.
 - Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
 
+## 17/11, 18h50: Tester na regressão; correção do recorte na 6ª revisão; plano da noite
+- **Quedas da sessão:** a sessão caiu por volta das 9h50 e o Tester recomeçou duas vezes.
+  - As produções continuam intactas: sha256 conferido, sem mudança desde a entrega 44.
+  - O Tester está agora na regressão da Bioquímica (manual substitui) e ainda falta a Hematologia.
+- **Correção do recorte (ADR-098, entrega 45):** 5 revisões independentes, cada uma com verificação adversarial. Cada achado foi corrigido na hora.
+  - **Causa raiz:** o sistema não sabia se o ID tinha **chegado** à linha (recorte) ou só tinha sido **tocado** (F2+Enter, Ctrl+D).
+  - **Solução:** a aba guarda um retrato dos IDs e do SUBSTITUI_ID de cada linha. Ao recortar, inclusive sobre uma linha ocupada ou subindo um bloco, o manual leva junto quem lançou e o SUBSTITUI_ID dele.
+  - **Retirado:** uma regra que faria o motor aceitar um manual que ele deve recusar, porque mudaria o efeito de uma regra de negócio.
+  - **Teste:** 9 casos de recorte e colar (R01 a R09). O R09 controla a ordem em que o Excel dispara os eventos.
+  - **Agora:** a 6ª revisão está rodando, sem Excel.
+- **Mudança de plano para ganhar tempo:** a entrega 45 já testa tudo numa cópia antes de trocar a produção. Por isso o teste separado na cópia sai do caminho, e a entrega 45 começa logo depois do Tester.
+- **Previsão:**
+  - Tester termina por volta das **21h**;
+  - entrega 45 (suítes do lote), das 21h até cerca de **1h30**. **Feche os dois arquivos do QC antes das 21h;**
+  - validação da entrega 45 pelo Tester até cerca de **3h30** de quarta, 18/11.
+
 ## 17/11, 9h50: OC-0078 RESOLVIDA também na Hematologia; Tester validando; correção do recorte revisada
 - **Usuário Simulado, Hematologia: OC-0078 RESOLVIDA.**
   - Os critérios 1, 2, 3 (origem), 4, 5 e 6 foram aprovados.
