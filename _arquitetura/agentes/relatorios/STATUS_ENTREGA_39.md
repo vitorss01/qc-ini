@@ -169,6 +169,29 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
     - Testado no arquivo que falhava: compila nos dois caminhos.
 - Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
 
+## 17/11, 8h45: reteste 07 retomado; Bioquímica RESOLVIDA; 1 achado novo (Médio)
+- **Interrupção:** a sessão caiu ontem às 10h26 e o reteste ficou parado até hoje às 8h40.
+  - Nada foi perdido: a parte pronta ficou guardada.
+  - As produções não mudaram desde a entrega 44 (sha256 conferido hoje às 8h40).
+- **Usuário Simulado, Bioquímica: OC-0078 RESOLVIDA.**
+  - Apagar a linha deixa ela realmente vazia; o manual digitado depois fica com o nome e a hora de quem digitou.
+  - O Ctrl+D preserva a linha de origem; corrigir na própria linha mantém o dono; o SUBSTITUI_ID funciona.
+  - Glicose DIMENSION 1, lote 8977, conferida com a calculadora independente, sem diferença:
+    - N1: n 17, média 78,0135;
+    - N2: n 16, média 273,2411.
+  - O mesmo roteiro na versão anterior (entrega 43) falha, o que prova que o teste pega o defeito.
+- **Achado novo, Médio (vai virar a OC-0084):** recortar um manual que já entrou no sistema e colar em outra linha troca o dono do resultado para quem moveu, sem registro na auditoria.
+  - Os números não mudam.
+  - Já acontecia antes da entrega 44.
+  - **Até a correção:** não recorte linhas manuais; corrija na própria linha.
+- **Falta:**
+  1. Usuário Simulado na Hematologia: cerca de 30 minutos.
+  2. Tester: valida as 7 ocorrências e roda 8 suítes por produto, cerca de 3 horas.
+  3. Correção do recorte (entrega 45), feita em paralelo, sem Excel, até a validação acabar.
+- **Previsão:**
+  - validação da entrega 44 por volta das **12h15**;
+  - com a entrega 45 validada, tudo fechado por volta das **18h30**.
+
 ## 16/11, 10h10: entrega 44 (ADR-097) em produção nas duas; reteste 07 em andamento
 - **O que a entrega 44 corrige:**
   - **OC-0078 (Alta):** o carimbo (quem digitou e quando) não fica mais na linha manual apagada ou recortada.
