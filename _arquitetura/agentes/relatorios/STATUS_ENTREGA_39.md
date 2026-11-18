@@ -169,6 +169,35 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
     - Testado no arquivo que falhava: compila nos dois caminhos.
 - Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
 
+## 18/11, 1h: entrega 44 VALIDADA por completo; entrega 45 em andamento
+- **Reteste 07 concluído: as 7 ocorrências estão VALIDADAS.**
+  - OC-0078 (Alta): o Usuário Simulado deu RESOLVIDA e o Tester VALIDADA, nos dois produtos. As Médias e as Baixas foram validadas pelo Tester.
+  - Ocorrências: OC-0048, OC-0078, OC-0079, OC-0080, OC-0081, OC-0082 e OC-0083.
+- **Regressão do Tester:** 8 de 8 suítes sem falha, na Bioquímica e na Hematologia.
+
+  | Suíte | Bioquímica | Hematologia |
+  |---|---|---|
+  | ADR-097 | 18/18 | 19/19 |
+  | ADR-095 | 10/10 | 8/8 |
+  | ADR-090 | 21/21 | 23/23 |
+  | Manual substitui | 20/20 | 20/20 |
+  | ETL | 64/64 | 63/63 |
+  | QA VBA = PQ | 3/3 | 3/3 |
+  | ADR-087 | 14/14 | 14/14 |
+  | Inativar | 12/12 | 12/12 |
+
+  - O Painel e a Estatística batem com a calculadora do Tester.
+  - O motor VBA e o Power Query dão o mesmo resultado.
+  - As produções ficaram intactas.
+- **Achados novos do Tester:**
+  - **T7V-01 (Médio):** o arquivo de trava do Office (`~$...`) não estava no `.gitignore`, e um commit descuidado o mandaria ao GitHub com o nome de quem abriu. **Corrigido:** `~$*` está no `.gitignore`.
+  - **T7V-02 (Baixo):** os resultados do teste de ETL ficavam como mudança na pasta do repositório. Foram descartados antes do commit.
+- **OC-0084 (recorte):** em correção pelo ADR-098, na **entrega 45**, que começou à 0h48.
+- **O que muda no uso:** o cuidado de "corrigir o manual na própria linha" continua valendo. "Não recortar linhas manuais" vale até a entrega 45 ser validada.
+- **Previsão:**
+  - entrega 45 até cerca de **5h15**;
+  - validação pelo Tester até cerca de **7h**.
+
 ## 18/11, 0h: limite de uso parou o Tester às 19h26; retomado às 23h50; ADR-098 no GitHub (sem entregar)
 - **O que parou:** às 19h26 a conta bateu no limite de uso de 5 horas, que só renovou às 23h30, e o Tester parou.
   - Até ali, ele já tinha **executado** a validação das 7 ocorrências nos dois produtos.
