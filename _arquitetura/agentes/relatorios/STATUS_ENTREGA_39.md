@@ -169,6 +169,28 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
     - Testado no arquivo que falhava: compila nos dois caminhos.
 - Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
 
+## 18/11, 7h45: entrega 45 VALIDADA; o QC está pronto para uso, sem cuidados especiais na digitação manual
+- **OC-0084 (recorte) VALIDADA pelo Tester, nos dois produtos.**
+  - Os 6 critérios passaram com os eventos ligados e a aba protegida, como depois do login.
+  - O recorte foi feito do jeito do usuário (Selection.Cut/Paste).
+  - Controle negativo: o mesmo roteiro, rodado na versão anterior (entrega 44), reprova em 5 casos. Ou seja, o roteiro pega o defeito.
+  - Números conferidos com a calculadora independente: Lactato N1, n 28, média 4,4647; BASO# N1, n 53.
+  - Produções intactas.
+- **Regressão:**
+  - na entrega 45, 18 de 18 suítes em cada produto;
+  - no Tester, as do recorte, manual substitui, ADR-095 e inativar, sem falha de produto.
+  - O R06 da Bioquímica falhou por causa do teste, não do sistema (OC-0085). O teste foi corrigido e deu 29 de 29.
+  - O M15 da Hematologia caiu duas vezes pelo Power Query (falha ambiental). Rodado de novo com a máquina parada: 20 de 20.
+- **Resumo das entregas 43, 44 e 45:** todas as ocorrências Críticas e Altas estão VALIDADAS. Ficam abertas só ocorrências Baixas ou que dependem de você:
+  - **OC-0086 (sua decisão; regra do motor):** dois resultados automáticos no mesmo segundo, com valores diferentes, não podem ser substituídos os dois por manuais. Exemplo: Albumina N1 com 3,56 e 3,89. Hoje o 2º manual é recusado como repetido. Mudar isso mexe na regra; não faço nada sem a sua autorização.
+  - **OC-0085:** a correção do teste R06 falta ser confirmada pelo Tester no próximo ciclo.
+  - **OC-0087:** teste automático do retrato tirado na seleção (o Tester já conferiu à mão).
+  - Antigas, sem urgência: OC-0069/0070, OC-0077, OC-0065, OC-0060 a OC-0064 e OC-0067. Também a regra de equipamento fora do catálogo (precisa de autorização).
+- **Para usar:**
+  - corrija o manual na própria linha;
+  - recortar e colar uma linha manual agora leva junto quem lançou e o SUBSTITUI_ID;
+  - se for mover em duas etapas, mova primeiro de ID até MOTIVO.
+
 ## 18/11, 5h45: entrega 45 (recorte, ADR-098) em produção nas duas; Tester validando a OC-0084
 - **Bioquímica:** 18 de 18 suítes aprovadas. O ADR-097 deu 29/29, já com os casos de recorte R01 a R09c.
 - **Hematologia:** 18 de 18 suítes aprovadas.
