@@ -35,7 +35,8 @@ ABAS = [('Painel', 'Painel.cls'), ('Configuração', 'Configuracao.cls'),
         ('Registros', 'Registros.cls'),                  # ADR-084: ID do resultado -> calibracao
         ('Estatística', 'Estatistica.cls'),              # ADR-088: Hema Ano De/Ate refaz C:F; Bio versionado (src/<produto>)
         ('EQA.CAP_Dados', 'EQADados.cls'),               # ADR-089: edicao direta = marca pendente + CEQ_ALTERADO
-        ('EQA.Controllab_Dados', 'EQADados.cls')]
+        ('EQA.Controllab_Dados', 'EQADados.cls'),
+        ('Digitar Resultados', 'DigitarResultados.cls')]   # ADR-098: Change + SelectionChange (retrato dos IDs)
 ESPEC = 'Especificações'
 
 

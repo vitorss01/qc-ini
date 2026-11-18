@@ -176,6 +176,9 @@ def instalar_vba(wb, produto):
     # eventos das abas de entrada
     for nm in ENTRADA_ABAS:
         ws = sheet(wb, nm)
+        if nm == 'Digitar Resultados':          # ADR-098: modulo versionado (Change + SelectionChange do retrato dos IDs)
+            substituir_codigo(vbp, ws.CodeName, codigo(os.path.join(AQUI, 'src', 'comum', 'DigitarResultados.cls')), criar=False)
+            continue
         substituir_codigo(vbp, ws.CodeName, (
             "Option Explicit\r\n"
             "' ADR-057: aba de ENTRADA da camada de dados. O evento so prepara a linha\r\n"

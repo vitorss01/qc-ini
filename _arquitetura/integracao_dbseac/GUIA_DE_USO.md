@@ -92,7 +92,11 @@ sozinho), marque ou não **Registrar-LJ** (X vermelho), escreva o **motivo** e c
    ADR-097). Não copie a linha inteira (clicando no número da linha): as colunas de USUARIO a DETALHE são do sistema, e
    o Excel recusa com um aviso de planilha protegida. Não é preciso senha: basta copiar de ID até MOTIVO.
    Para corrigir um manual, corrija os campos na própria linha. Uma linha apagada pode ser usada de novo: o próximo
-   manual digitado nela fica com o seu nome e a sua hora (ADR-097).
+   manual digitado nela fica com o seu nome e a sua hora (ADR-097). Recortar (Ctrl+X) de ID até MOTIVO e colar em
+   outra linha (vazia ou não, inclusive subir um bloco para fechar um buraco) leva o manual junto: um manual que já
+   entrou no sistema continua no nome de quem o lançou, com o SUBSTITUI_ID dele (ADR-098). O SUBSTITUI_ID vai junto
+   (não o recorte sozinho antes: mova ID até MOTIVO primeiro). Um manual recortado antes do ATUALIZAR DADOS fica no
+   nome de quem moveu.
 2. Atualize e confira o STATUS (e a coluna DETALHE):
    - **ATIVO** = entrou na estatística;
    - **CONFLITO_MANUAL** = o mesmo resultado já veio pelo interfaceamento (mesma chave, até 30 min) e vale o

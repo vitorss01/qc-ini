@@ -38,6 +38,12 @@ Private Const COL_LJ As String = "REGISTRAR - LJ"
 Private Const FOLGA As Long = 100              ' linhas acrescentadas quando a tabela de entrada enche
 Private Const TXT_FALHA As String = "Nada foi alterado. Tente de novo ou clique em ATUALIZAR DADOS."   ' ADR-081
 Private Const COL_SUBST As String = "SUBSTITUI_ID"                      ' ADR-082: coluna opcional da tblResultados_Manuais
+Private mIdxMan As Object                  ' ADR-098: indice dos manuais integrados (ManuaisIntegrados)
+Private mIdxManT0 As Double
+Private mIdsAntes As Variant               ' ADR-098: retrato da coluna ID_REGISTRO da aba Digitar Resultados (antes da mudanca)
+Private mSubstAntes As Object              ' ADR-098: ID (IdBase) -> SUBSTITUI_ID que a linha dele tinha no retrato
+Private mFolgaPropria As Boolean           ' ADR-098: a tabela cresceu pela FOLGA do EntradaMudou (o retrato e estendido)
+Private mFolgaN0 As Long                   ' ADR-098: linhas da tabela logo antes dessa FOLGA
 ' ADR-084: quantas vezes o AtualizarDadosCore chama mCarregando.Etapa (o total da barra "Etapa k de n")
 Public Const ETAPAS_ATUALIZAR As Long = 6
 
@@ -128,6 +134,7 @@ Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False,
 
     etapa = "conferir a DB_CQ_FINAL"
     If Linhas(FONTE_CQ) = 0 Then Err.Raise vbObjectError + 571, , "a tabela Principal - Resultados voltou vazia"
+    Set mIdxMan = Nothing                    ' ADR-098: a tblCQ_Final mudou -> o indice dos manuais e refeito
 
     etapa = "registrar a auditoria"
     mCarregando.Etapa "Conferindo os resultados e registrando a auditoria"
@@ -770,6 +777,7 @@ Public Sub PrepararEntradas()
             Next r
             On Error GoTo 0
             RestaurarProtecao ws, prot
+            If lo.Name = TB_MANUAL Then GuardarIdsManual lo  ' ADR-098: retrato inteiro (IDs gerados aqui)
         End If
     Next nome
     Application.EnableEvents = ev
@@ -783,7 +791,7 @@ End Sub
 
 ' Uma linha de uma tabela de entrada. Idempotente: so preenche o que falta.
 Private Sub PrepararLinha(ByVal lo As ListObject, ByVal r As Long)
-    Dim rg As Range, id As String, idN As String, temDado As Boolean, c As Variant
+    Dim rg As Range, id As String, idN As String, temDado As Boolean, c As Variant, idGerado As Boolean
     Set rg = lo.ListRows(r).Range
     Select Case lo.Name
         Case TB_INAT, TB_COMENT
@@ -819,6 +827,7 @@ Private Sub PrepararLinha(ByVal lo As ListObject, ByVal r As Long)
             End If
             If Len(Trim$(id)) = 0 Then
                 Celula(lo, r, "ID_REGISTRO").Value = ProximoIdManual(lo)
+                idGerado = True
             Else
                 idN = NormalizarId(id)
                 If idN <> id Then Celula(lo, r, "ID_REGISTRO").Value = idN
@@ -846,9 +855,307 @@ Private Sub PrepararLinha(ByVal lo As ListObject, ByVal r As Long)
                     If idN <> CStr(Celula(lo, r, COL_SUBST).Value) Then Celula(lo, r, COL_SUBST).Value = idN
                 End If
             End If
+            ' ADR-098 (OC-0084): o destino de um recorte chega sem carimbo (USUARIO e REGISTRADO_EM ficam fora de
+            ' ID..MOTIVO). Se a linha e um manual que ja entrou na tblCQ_Final, o carimbo volta de la, em vez de ir
+            ' para quem moveu (o USUARIO_MANUAL do resultado mudava sem registro no Audit_Log).
+            ' (ID gerado agora: e maior que todos os integrados -- nada a procurar)
+            If Not idGerado And Len(TextoCel(lo, r, "REGISTRADO_EM")) = 0 And Len(TextoCel(lo, r, "USUARIO")) = 0 Then _
+                RecuperarCarimboIntegrado lo, r
             Carimbar Celula(lo, r, "REGISTRADO_EM"), Celula(lo, r, "USUARIO")
     End Select
 End Sub
+
+' ADR-098 (OC-0084): o lancamento integrado que esta linha manual e -- o mesmo ID MAN_ (sem o sufixo ~ do motor), o
+' mesmo RESULTADO e, quando as duas existem, a mesma data. Devolve Array(USUARIO_MANUAL, RECEBIDO_EM, DATA_HORA,
+' SUBSTITUI) -- SUBSTITUI = o ID do interfaceamento que esse manual substitui ("" se nenhum) -- ou Empty. Nunca levanta
+' erro.
+Private Function LancamentoIntegrado(ByVal lo As ListObject, ByVal r As Long) As Variant
+    Dim id As String, d As Object, k As String, x As Variant, vRes As Variant, vDt As Variant
+    On Error GoTo fim
+    id = IdBase(TextoCel(lo, r, "ID_REGISTRO"))
+    If Left$(id, 4) <> "MAN_" Then Exit Function
+    vRes = Celula(lo, r, "RESULTADO").Value
+    If IsError(vRes) Or IsEmpty(vRes) Then Exit Function
+    If Not IsNumeric(vRes) Then Exit Function
+    k = ChaveManualIntegrado(id, vRes)
+    Set d = ManuaisIntegrados()
+    If Not d.Exists(k) Then Exit Function
+    x = d(k)
+    vDt = Celula(lo, r, "DATA").Value
+    If IsDate(vDt) And IsDate(x(2)) Then
+        If Int(CDbl(CDate(vDt))) <> Int(CDbl(CDate(x(2)))) Then Exit Function
+    End If
+    LancamentoIntegrado = x
+fim:
+End Function
+
+' ADR-098 (OC-0084): linha manual SEM carimbo (destino de um recorte: USUARIO e REGISTRADO_EM ficam fora de ID..MOTIVO)
+' que e um lancamento ja integrado -> volta o carimbo dele e, com a coluna vazia, o SUBSTITUI_ID (ADR-082). Sem
+' correspondencia, nada: o Carimbar carimba agora, como antes.
+Private Sub RecuperarCarimboIntegrado(ByVal lo As ListObject, ByVal r As Long)
+    Dim x As Variant, sv As String
+    x = LancamentoIntegrado(lo, r)
+    If Not IsArray(x) Then Exit Sub
+    On Error GoTo fim
+    Celula(lo, r, "REGISTRADO_EM").Value = CDate(x(1))
+    Celula(lo, r, "USUARIO").Value = CStr(x(0))
+    If TemColuna(lo, COL_SUBST) Then
+        If Len(TextoCel(lo, r, COL_SUBST)) = 0 Then
+            sv = SubstDoRetrato(TextoCel(lo, r, "ID_REGISTRO"), CStr(x(3)))
+            If Len(sv) > 0 Then Celula(lo, r, COL_SUBST).Value = sv
+        End If
+    End If
+fim:
+End Sub
+
+' ADR-098 (revisoes independentes): o ID MAN_ desta linha CHEGOU agora (IdChegou: era outro no retrato de antes da
+' mudanca) -- recorte ou colar sobre uma linha (subir ou descer um bloco, um manual por cima de outro). O carimbo e o
+' SUBSTITUI_ID que a linha tinha sao do registro que estava ali (ficam fora de ID..MOTIVO):
+' - lancamento integrado: volta o carimbo dele (tblCQ_Final);
+' - nao integrado: o carimbo do registro anterior sai (o PrepararLinha carimba agora);
+' - SUBSTITUI_ID: o que a linha de ORIGEM tinha no retrato (mesmo vazio); sem retrato, o da tblCQ_Final.
+' Tocar o ID da propria linha (F2+Enter, colar de volta, Ctrl+D a partir dela) nao chega aqui: o ID e o mesmo.
+Private Sub AjustarCarimboMovido(ByVal lo As ListObject, ByVal r As Long, ByVal carimboVeio As Boolean, _
+                                 ByVal substVeio As Boolean)
+    Dim x As Variant, regL As Variant, alheio As Boolean, sv As String
+    On Error GoTo fim
+    If Left$(IdBase(TextoCel(lo, r, "ID_REGISTRO")), 4) <> "MAN_" Then Exit Sub
+    If Not LinhaTemDado(lo, r) Then Exit Sub
+    x = LancamentoIntegrado(lo, r)
+    If IsArray(x) Then
+        regL = Celula(lo, r, "REGISTRADO_EM").Value
+        alheio = (TextoCel(lo, r, "USUARIO") <> CStr(x(0)))
+        If Not alheio Then
+            If IsDate(regL) Then alheio = (Abs(CDbl(CDate(regL)) - CDbl(CDate(x(1)))) > 1# / 86400#) Else alheio = True
+        End If
+        If alheio And Not carimboVeio Then
+            Celula(lo, r, "REGISTRADO_EM").Value = CDate(x(1))
+            Celula(lo, r, "USUARIO").Value = CStr(x(0))
+        End If
+        sv = SubstDoRetrato(TextoCel(lo, r, "ID_REGISTRO"), CStr(x(3)))
+        ' (6a revisao) o SUBSTITUI_ID movido ANTES de ID..MOTIVO ja esta no destino e e o deste lancamento: fica
+        If Len(sv) = 0 And Len(CStr(x(3))) > 0 Then
+            If UCase$(TextoCel(lo, r, COL_SUBST)) = UCase$(CStr(x(3))) Then sv = CStr(x(3))
+        End If
+    Else
+        If Not carimboVeio Then LimparCarimboManual lo, r
+        sv = SubstDoRetrato(TextoCel(lo, r, "ID_REGISTRO"), "")
+    End If
+    If substVeio Then Exit Sub
+    If TemColuna(lo, COL_SUBST) Then
+        If UCase$(TextoCel(lo, r, COL_SUBST)) <> UCase$(sv) Then
+            If Len(sv) = 0 Then Celula(lo, r, COL_SUBST).ClearContents Else Celula(lo, r, COL_SUBST).Value = sv
+        End If
+    End If
+fim:
+End Sub
+
+' ADR-098: o ID MAN_ da linha e outro que o do retrato de antes da mudanca (chegou agora). Sem retrato (nenhuma selecao
+' nem mudanca desde que a pasta abriu): False -- nada se ajusta, como antes do ADR-098.
+Private Function IdChegou(ByVal lo As ListObject, ByVal r As Long) As Boolean
+    Dim antes As String, agora As String
+    On Error GoTo fim
+    If Not IsArray(mIdsAntes) Then Exit Function
+    agora = IdBase(TextoCel(lo, r, "ID_REGISTRO"))
+    If Left$(agora, 4) <> "MAN_" Then Exit Function
+    If r <= UBound(mIdsAntes, 1) Then
+        If Not IsError(mIdsAntes(r, 1)) Then antes = IdBase(CStr(mIdsAntes(r, 1)))
+    End If
+    IdChegou = (antes <> agora)
+fim:
+End Function
+
+' ADR-098: o retrato INTEIRO da aba manual -- a coluna ID_REGISTRO e, por ID, o SUBSTITUI_ID da linha dele. Tirado no
+' fim do PrepararEntradas, na 1a selecao depois de abrir a pasta e quando a tabela cresceu. Nunca levanta erro.
+Private Sub GuardarIdsManual(ByVal lo As ListObject)
+    Dim v As Variant, a(1 To 1, 1 To 1) As Variant, r As Long
+    On Error GoTo fim
+    mIdsAntes = Empty
+    Set mSubstAntes = CreateObject("Scripting.Dictionary")
+    If lo Is Nothing Then Exit Sub
+    If lo.DataBodyRange Is Nothing Then Exit Sub
+    v = lo.ListColumns("ID_REGISTRO").DataBodyRange.Value
+    If IsArray(v) Then
+        mIdsAntes = v
+    Else
+        a(1, 1) = v
+        mIdsAntes = a
+    End If
+    For r = 1 To UBound(mIdsAntes, 1)
+        GuardarSubstDaLinha lo, r
+    Next r
+fim:
+End Sub
+
+' ADR-098: o retrato so das linhas que a mudanca atingiu (no fim do EntradaMudou). A origem e o destino de um recorte
+' podem chegar em eventos separados, em qualquer ordem: cada linha so sai do retrato "de antes" quando o evento DELA
+' termina. Tabela que cresceu (FOLGA, no meio de um recorte): o retrato e ESTENDIDO -- as linhas novas eram vazias --,
+' nunca refeito, para nao apagar o "antes" de um destino que ainda nao teve o evento dele.
+Private Sub AtualizarRetrato(ByVal lo As ListObject, ByVal Target As Range)
+    On Error GoTo fim
+    AtualizarRetratoLinhas lo, Target
+fim:
+    mFolgaPropria = False
+End Sub
+
+Private Sub AtualizarRetratoLinhas(ByVal lo As ListObject, ByVal Target As Range)
+    Dim ar As Range, cel As Range, r As Long, n As Long, novo() As Variant
+    On Error GoTo fim
+    If Not IsArray(mIdsAntes) Or mSubstAntes Is Nothing Then GuardarIdsManual lo: Exit Sub
+    n = lo.ListRows.Count
+    If n > UBound(mIdsAntes, 1) And Not (mFolgaPropria And mFolgaN0 = UBound(mIdsAntes, 1)) Then
+        ' linha inserida ou excluida por quem tem a aba liberada (ADM), com ou sem a FOLGA no mesmo evento: o retrato
+        ' desalinhou -> inteiro (7a revisao)
+        GuardarIdsManual lo: Exit Sub
+    ElseIf n > UBound(mIdsAntes, 1) Then
+        ReDim novo(1 To n, 1 To 1)
+        For r = 1 To UBound(mIdsAntes, 1)
+            novo(r, 1) = mIdsAntes(r, 1)
+        Next r
+        mIdsAntes = novo
+    ElseIf n < UBound(mIdsAntes, 1) Then
+        GuardarIdsManual lo: Exit Sub          ' a tabela encolheu (so por macro): retrato inteiro
+    End If
+    For Each ar In Intersect(Target, lo.DataBodyRange).Areas
+        For Each cel In ar.Rows
+            r = cel.Row - lo.DataBodyRange.Row + 1
+            mIdsAntes(r, 1) = Celula(lo, r, "ID_REGISTRO").Value
+            GuardarSubstDaLinha lo, r
+        Next cel
+    Next ar
+fim:
+End Sub
+
+' ADR-098: ID da linha -> SUBSTITUI_ID dela (vazio tambem conta: o SUBSTITUI_ID apagado de proposito vai assim no
+' recorte). Linha sem ID: nada (a entrada de um ID que saiu dali continua, para o destino do recorte).
+Private Sub GuardarSubstDaLinha(ByVal lo As ListObject, ByVal r As Long)
+    Dim id As String
+    On Error GoTo fim
+    id = IdBase(TextoCel(lo, r, "ID_REGISTRO"))
+    If Left$(id, 4) <> "MAN_" Then Exit Sub
+    If TemColuna(lo, COL_SUBST) Then mSubstAntes(id) = TextoCel(lo, r, COL_SUBST) Else mSubstAntes(id) = ""
+fim:
+End Sub
+
+' ADR-098: o SUBSTITUI_ID que este ID tinha no retrato; padrao quando o ID nao estava la (sem retrato, ou colado de
+' fora)
+Private Function SubstDoRetrato(ByVal id As String, ByVal padrao As String) As String
+    SubstDoRetrato = padrao
+    On Error GoTo fim
+    If mSubstAntes Is Nothing Then Exit Function
+    id = IdBase(id)
+    If mSubstAntes.Exists(id) Then SubstDoRetrato = CStr(mSubstAntes(id))
+fim:
+End Function
+
+' A mudanca atingiu o SUBSTITUI_ID da linha (tabela sem a coluna: False)
+Private Function TocaSubst(ByVal lo As ListObject, ByVal r As Long, ByVal Target As Range) As Boolean
+    On Error GoTo fim
+    If Not TemColuna(lo, COL_SUBST) Then Exit Function
+    TocaSubst = Not Intersect(Target, Celula(lo, r, COL_SUBST)) Is Nothing
+fim:
+End Function
+
+' ADR-098 (6a revisao): a linha colada (que ganhou ID novo) ficou com o SUBSTITUI_ID do manual que estava ali antes --
+' o mesmo que o retrato guardava para o ID anterior da linha. Esse SUBSTITUI_ID nao e da copia.
+Private Function SubstHerdado(ByVal lo As ListObject, ByVal r As Long, ByVal Target As Range) As Boolean
+    Dim s As String, antes As String
+    On Error GoTo fim
+    If TocaSubst(lo, r, Target) Then Exit Function
+    s = UCase$(TextoCel(lo, r, COL_SUBST))
+    If Len(s) = 0 Or Not IsArray(mIdsAntes) Then Exit Function
+    If r > UBound(mIdsAntes, 1) Then Exit Function
+    If IsError(mIdsAntes(r, 1)) Then Exit Function
+    antes = IdBase(CStr(mIdsAntes(r, 1)))
+    If Left$(antes, 4) <> "MAN_" Then Exit Function
+    SubstHerdado = (s = UCase$(SubstDoRetrato(antes, "~")))
+fim:
+End Function
+
+' ADR-098: SelectionChange da aba Digitar Resultados (DigitarResultados.cls) -- so o 1o retrato depois de abrir a pasta;
+' depois, cada mudanca atualiza as linhas dela (a selecao que o Excel faz ao colar nao apaga o "antes")
+Public Sub EntradaSelecionada(ByVal ws As Worksheet)
+    On Error Resume Next
+    If mApp.Ocupado() Then Exit Sub
+    If ws.Name <> ABA_MANUAL Then Exit Sub
+    If IsArray(mIdsAntes) Then Exit Sub
+    GuardarIdsManual ws.ListObjects(TB_MANUAL)
+End Sub
+
+' ID MAN_ (sem o sufixo ~ do motor) + resultado arredondado: a mesma chave no indice e na busca
+Private Function ChaveManualIntegrado(ByVal id As String, ByVal res As Variant) As String
+    ChaveManualIntegrado = IdBase(id) & "|" & Format$(Round(CDbl(res), 9), "0.000000000")
+End Function
+
+' ID sem o sufixo ~ do motor e, quando e MAN_+digitos, na grafia do sistema (IdManualPadrao: "man_5" = "MAN_0005",
+' sem espaco nem NBSP) -- a mesma comparacao em todo o ADR-098
+Private Function IdBase(ByVal id As String) As String
+    Dim p As Long, m As String
+    id = UCase$(Trim$(id))
+    p = InStr(1, id, "~", vbBinaryCompare)
+    If p > 0 Then id = Left$(id, p - 1)
+    m = IdManualPadrao(id)
+    If Len(m) > 0 Then id = m
+    IdBase = id
+End Function
+
+' ADR-098: indice dos manuais da tblCQ_Final que tem quem lancou e quando (chave ChaveManualIntegrado), com o
+' interfaceamento que cada um substitui (ID_RELACIONADO do interfaceamento, como no EstadoAuditavel). Guardado por 5 s
+' (colar muitas linhas le a tabela uma vez so) e refeito depois de cada ATUALIZAR. Sem a tabela ou sem as colunas:
+' vazio.
+Private Function ManuaisIntegrados() As Object
+    Dim d As Object, substPor As Object, lo As ListObject, n As Long, i As Long, k As String, rel As String
+    Dim vId As Variant, vOr As Variant, vRes As Variant, vUsr As Variant, vReg As Variant, vDt As Variant
+    Dim vRel As Variant, vSt As Variant
+    If Not mIdxMan Is Nothing Then
+        If Abs(Timer - mIdxManT0) < 5 Then Set ManuaisIntegrados = mIdxMan: Exit Function
+    End If
+    Set d = CreateObject("Scripting.Dictionary")
+    Set substPor = CreateObject("Scripting.Dictionary")
+    Set ManuaisIntegrados = d
+    On Error GoTo fim
+    Set lo = AcharTabela(FONTE_CQ)
+    If lo Is Nothing Then GoTo fim
+    n = lo.ListRows.Count
+    If n < 2 Then GoTo fim                     ' com 1 linha o .Value nao e matriz
+    vId = lo.ListColumns("ID_REGISTRO").DataBodyRange.Value
+    vOr = lo.ListColumns("ORIGEM_RESULTADO").DataBodyRange.Value
+    vRes = lo.ListColumns("RESULTADO").DataBodyRange.Value
+    vSt = lo.ListColumns("STATUS_ANALITICO").DataBodyRange.Value
+    vUsr = lo.ListColumns("USUARIO_MANUAL").DataBodyRange.Value
+    vReg = lo.ListColumns("RECEBIDO_EM").DataBodyRange.Value
+    vDt = lo.ListColumns("DATA_HORA").DataBodyRange.Value
+    vRel = Empty
+    On Error Resume Next                       ' ID_RELACIONADO: so depois do ADR-070
+    vRel = lo.ListColumns("ID_RELACIONADO").DataBodyRange.Value
+    On Error GoTo fim
+    If IsArray(vRel) Then
+        For i = 1 To n
+            If CStr(vOr(i, 1)) = "INTERFACEAMENTO" And CStr(vSt(i, 1)) <> "DUPLICIDADE_ORIGEM" Then
+                rel = IdBase(CStr(vRel(i, 1)))
+                If Left$(rel, 4) = "MAN_" Then
+                    If Not substPor.Exists(rel) Then substPor.Add rel, CStr(vId(i, 1))
+                End If
+            End If
+        Next i
+    End If
+    For i = 1 To n
+        If CStr(vOr(i, 1)) = "MANUAL" Then
+            If Not IsError(vRes(i, 1)) And Not IsError(vUsr(i, 1)) And Not IsError(vReg(i, 1)) Then
+                If IsNumeric(vRes(i, 1)) And Not IsEmpty(vRes(i, 1)) And IsDate(vReg(i, 1)) _
+                   And Len(Trim$(CStr(vUsr(i, 1)))) > 0 Then
+                    k = ChaveManualIntegrado(CStr(vId(i, 1)), vRes(i, 1))
+                    rel = ""
+                    If substPor.Exists(IdBase(CStr(vId(i, 1)))) Then rel = substPor(IdBase(CStr(vId(i, 1))))
+                    If Not d.Exists(k) Then d.Add k, Array(Trim$(CStr(vUsr(i, 1))), vReg(i, 1), vDt(i, 1), rel)
+                End If
+            End If
+        End If
+    Next i
+fim:
+    Set mIdxMan = d
+    mIdxManT0 = Timer
+End Function
 
 ' ADR-088 (OC-0001): troca o texto da celula pela grafia do cadastro quando ele so difere em maiusculas/minusculas ou em
 ' espacos nas pontas. Nao inventa nada: sem correspondencia unica no cadastro, a celula fica como esta.
@@ -1993,6 +2300,7 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
                         idNovo = ProximoIdManual(lo)
                         Celula(lo, r, "ID_REGISTRO").Value = idNovo
                         idRep = True
+                        If SubstHerdado(lo, r, Target) Then Celula(lo, r, COL_SUBST).ClearContents   ' ADR-098
                         If IsArray(vIdCol) Then vIdCol(r, 1) = idNovo
                         nNovoId = nNovoId + 1
                         If nNovoId = 1 Then idAntigo = idDig: idPrim = idNovo: Set celNovoId = Celula(lo, r, "ID_REGISTRO")
@@ -2023,6 +2331,15 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
             ' ADR-097 (OC-0078): lancamento novo -> sai o carimbo que a linha tinha (de uma linha apagada ou da linha
             ' onde se colou); o PrepararLinha abaixo carimba com quem digita, agora
             If LancamentoNovo(lo, r, Target, idRep) Then LimparCarimboManual lo, r
+            ' ADR-098 (revisao independente): o ID chegou agora numa linha que ja tinha carimbo (recorte sobre linha
+            ' ocupada) -> o carimbo passa a ser o do lancamento que chegou
+            If Not idRep And Not Intersect(Target, Celula(lo, r, "ID_REGISTRO")) Is Nothing Then
+                ' (6a revisao) o que veio JUNTO com o ID na mudanca (ordenar, mover a linha inteira -- so com a aba
+                ' liberada, sessao ADM) e do proprio registro: fica
+                If IdChegou(lo, r) Then AjustarCarimboMovido lo, r, _
+                    Not (Intersect(Target, Celula(lo, r, "REGISTRADO_EM")) Is Nothing And _
+                         Intersect(Target, Celula(lo, r, "USUARIO")) Is Nothing), TocaSubst(lo, r, Target)
+            End If
             ' ADR-090 (OC-0019): o usuario digitou o EQUIPAMENTO -> sai o ambar do preenchimento pelo Painel (vazio: o
             ' PrepararLinha abaixo preenche e marca de novo)
             If Not Intersect(Target, Celula(lo, r, "EQUIPAMENTO")) Is Nothing Then DesmarcarEquipAutomatico Celula(lo, r, "EQUIPAMENTO")
@@ -2047,6 +2364,7 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
     ' tabela quase cheia: acrescenta FOLGA linhas (a aba protegida nao deixa a
     ' tabela crescer sozinha)
     If lo.ListRows.Count - (Intersect(Target, lo.DataBodyRange).Row - lo.DataBodyRange.Row + 1) < 10 Then
+        If ws.Name = ABA_MANUAL Then mFolgaPropria = True: mFolgaN0 = lo.ListRows.Count   ' ADR-098: retrato estendido
         lo.Resize lo.Range.Resize(lo.Range.rows.Count + FOLGA)
     End If
     If nNovoId > 0 And Application.Interactive And celAviso Is Nothing Then
@@ -2056,7 +2374,7 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
             txtAviso = "A linha trazia o ID " & idAntigo & ", que já existe em outra linha. Ela recebeu o ID novo " & _
                        idPrim & " (o ID é único e gerado pelo sistema)."
         Else
-            txtAviso = "As " & nNovoId & " linhas coladas traziam IDs que já existem em outras linhas e receberam IDs " & _
+            txtAviso = "As " & nNovoId & " linhas coladas ou preenchidas traziam IDs que já existem em outras linhas e receberam IDs " & _
                        "novos (" & idPrim & " a " & idUlt & ")."
         End If
         ' ADR-097 (OC-0081): trocar so o resultado nao basta -- a mesma data, hora, nivel e analito de outra linha e
@@ -2067,6 +2385,7 @@ Public Sub EntradaMudou(ByVal ws As Worksheet, ByVal Target As Range)
     End If
 fim:
     RestaurarProtecao ws, prot
+    If ws.Name = ABA_MANUAL Then AtualizarRetrato lo, Target   ' ADR-098: o retrato de antes da proxima mudanca
     Application.EnableEvents = True
     If Not celAviso Is Nothing Then
         On Error Resume Next
