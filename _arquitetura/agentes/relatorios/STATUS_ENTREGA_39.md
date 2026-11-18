@@ -169,6 +169,30 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
     - Testado no arquivo que falhava: compila nos dois caminhos.
 - Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
 
+## 18/11, 5h45: entrega 45 (recorte, ADR-098) em produção nas duas; Tester validando a OC-0084
+- **Bioquímica:** 18 de 18 suítes aprovadas. O ADR-097 deu 29/29, já com os casos de recorte R01 a R09c.
+- **Hematologia:** 18 de 18 suítes aprovadas.
+  - Às 05h19 o contêiner do Power Query derrubou o Excel. O Windows registrou a falha (FailFast). É a mesma falha ambiental de sempre, não o código.
+  - A produção **não** foi trocada nesse momento.
+  - As 3 suítes que faltavam rodaram sozinhas na mesma cópia: manual substitui 20/20, ADR-086 11/11 e ADR-088 14/14.
+  - Depois disso a troca foi feita com as mesmas conferências da entrega:
+    - as 18 suítes;
+    - o sha do instalado;
+    - ninguém ter salvo a produção nesse meio-tempo;
+    - backup antes da troca.
+- **ATUALIZAR DADOS** às 5h38 e às 5h40:
+
+  | Produto | Ativos antes | Ativos depois | Novos |
+  |---|---|---|---|
+  | Bioquímica | 35.913 | 36.131 | +218 |
+  | Hematologia | 47.802 | 47.988 | +186 |
+
+- **O que muda no uso:** recortar (Ctrl+X) uma linha manual para outra linha leva junto quem lançou e o SUBSTITUI_ID. Isso vale também para subir um bloco para fechar um buraco. Ficam dois cuidados:
+  - para mover em duas etapas, mova primeiro de ID até MOTIVO e depois o SUBSTITUI_ID;
+  - um manual recortado antes do ATUALIZAR fica no nome de quem moveu.
+- **Agora:** o Tester valida a OC-0084 nos dois produtos e roda a regressão. Pela sua decisão de 15/11, ocorrência Média é validada só pelo Tester.
+- **Previsão:** validação até cerca de **8h15**.
+
 ## 18/11, 1h: entrega 44 VALIDADA por completo; entrega 45 em andamento
 - **Reteste 07 concluído: as 7 ocorrências estão VALIDADAS.**
   - OC-0078 (Alta): o Usuário Simulado deu RESOLVIDA e o Tester VALIDADA, nos dois produtos. As Médias e as Baixas foram validadas pelo Tester.
