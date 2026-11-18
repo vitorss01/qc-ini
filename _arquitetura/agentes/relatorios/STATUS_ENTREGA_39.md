@@ -169,6 +169,37 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
     - Testado no arquivo que falhava: compila nos dois caminhos.
 - Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
 
+## 18/11, 0h: limite de uso parou o Tester às 19h26; retomado às 23h50; ADR-098 no GitHub (sem entregar)
+- **O que parou:** às 19h26 a conta bateu no limite de uso de 5 horas, que só renovou às 23h30, e o Tester parou.
+  - Até ali, ele já tinha **executado** a validação das 7 ocorrências nos dois produtos.
+  - Já tinha rodado a regressão completa da Bioquímica, **8 de 8 suítes sem falha**:
+
+    | Suíte | Resultado |
+    |---|---|
+    | ADR-097 | 18/18 |
+    | ADR-095 | 10/10 |
+    | ADR-090 | 21/21 |
+    | Manual substitui | 20/20 |
+    | ETL | 64/64 |
+    | QA VBA = PQ | 3/3 |
+    | ADR-087 | 14/14 |
+    | Inativar | 12/12 |
+
+  - Na Hematologia, rodou só o ADR-097 (19/19). As outras 7 suítes caíram junto com a sessão, em 0 segundos e com os logs vazios: não é falha de teste.
+- **Agora (desde 23h50):**
+  - o Tester está rodando de novo essas 7 suítes da Hematologia;
+  - depois ele confere as evidências que já tinha e escreve o relatório de validação.
+- **Correção do recorte (ADR-098):**
+  - está no GitHub (commit 21c8ebd), **ainda não entregue**;
+  - passou por 7 revisões independentes; nas duas últimas, só sobraram casos raros (Baixos);
+  - as revisões param aqui, e o próximo passo é a entrega 45, que roda todas as suítes numa cópia antes de trocar a produção.
+- **Produções:** intactas desde a entrega 44, com o sha256 conferido agora.
+  - A trava `~$QC_Bioquimica.xlsm`, das 10h29, é de quando você abriu o QC hoje. Ela ficou para trás, e não há Excel seu aberto.
+- **Previsão:**
+  - Tester termina por volta de **1h15**;
+  - entrega 45 de 1h15 até cerca de **5h45**. **Deixe os dois arquivos do QC fechados;**
+  - validação da entrega 45 até cerca de **7h30** de quarta, 18/11.
+
 ## 17/11, 18h50: Tester na regressão; correção do recorte na 6ª revisão; plano da noite
 - **Quedas da sessão:** a sessão caiu por volta das 9h50 e o Tester recomeçou duas vezes.
   - As produções continuam intactas: sha256 conferido, sem mudança desde a entrega 44.
