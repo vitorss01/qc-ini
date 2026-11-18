@@ -338,7 +338,17 @@ def executar(produto, caminho, saida):
         car_s5 = carimbo(rS5)
         # R06 (dados): A substitui um 2o interfaceamento, B nao; os dois com o MESMO carimbo (colados juntos)
         r6v, r6a, r6b = r0 + 29, r0 + 30, r0 + 31
-        reais_ord = sorted(reais, key=lambda r: r['DATA_HORA'], reverse=True)
+        # T08-01 (reteste08): o interfaceamento a substituir tem a chave (DATA_HORA, ANALITO, NIVEL, EQUIPAMENTO) so dele --
+        # dois resultados no mesmo segundo fariam o 2o manual cair em "resultado manual repetido" (regra do ADR-097 Q01)
+        def chave_i(r):
+            return (str(r.get('DATA_HORA')), txt(r.get('ANALITO')).upper(), txt(r.get('NIVEL')), txt(r.get('EQUIPAMENTO')).upper())
+
+        cont_ch = {}
+        for r in fin.values():
+            if r.get('ORIGEM_RESULTADO') == 'INTERFACEAMENTO':
+                cont_ch[chave_i(r)] = cont_ch.get(chave_i(r), 0) + 1
+        reais_ord = [r for r in sorted(reais, key=lambda r: r['DATA_HORA'], reverse=True)
+                     if cont_ch.get(chave_i(r)) == 1 and chave_i(r) != chave_i(ref)]
         ref6 = next((r for r in reais_ord if txt(r.get('ID_REGISTRO')) != ref_id), None)
         id6a = id6b = subst6 = ''
         ref6_id = txt((ref6 or {}).get('ID_REGISTRO'))
@@ -357,7 +367,8 @@ def executar(produto, caminho, saida):
         # R09 (dados): M9 substitui um 3o interfaceamento; N9 e O9 sem SUBSTITUI_ID, donos diferentes (o carimbo do O9 e
         # anterior a DATA/HORA do N9: no lugar dele, o N9 seria recusado)
         rM9, rM9d, rN9, rO9 = r0 + 40, r0 + 42, r0 + 44, r0 + 46
-        ref9 = next((r for r in reais_ord if txt(r.get('ID_REGISTRO')) not in (ref_id, ref6_id)), None)
+        ref9 = next((r for r in reais_ord if txt(r.get('ID_REGISTRO')) not in (ref_id, ref6_id)
+                     and (ref6 is None or chave_i(r) != chave_i(ref6))), None)
         ref9_id = txt((ref9 or {}).get('ID_REGISTRO'))
         idM9 = subst9 = ''
         car_m9 = ('', None)
