@@ -169,6 +169,20 @@ Este arquivo é atualizado a cada etapa, enviado ao GitHub e mandado para você 
     - Testado no arquivo que falhava: compila nos dois caminhos.
 - Entrega da Hematologia recomeçou à 1h00. Uma revisão independente da correção roda em paralelo, sem Excel.
 
+## 18/11, 9h55: desenvolvimento PAUSADO a pedido do usuário (para não pesar no computador)
+- **Parado:** a regressão completa (36 suítes), iniciada às 8h10.
+  - Na Bioquímica, as 12 primeiras rodaram, todas sem falha: segurança, ADR-097, QA VBA = PQ, ADR-095, ADR-092, ADR-090, ADR-087, casos extremos, troca de lote, lotes automáticos, gráficos e incerteza.
+  - Faltam 24 suítes da Bioquímica e as 36 da Hematologia.
+- **Processos:** fechei só o Excel e o Python que eu tinha aberto. O Excel da tarefa agendada DB_SEAC continua com ela.
+- **Produções:** intactas, com o sha256 conferido (Bio `a9ba35159655b20b`, Hema `1d0d9fe8e720798f`). O QC pode ser usado normalmente, na versão da entrega 45, validada.
+- **Decisões do usuário de 18/11:** OC-0086 encerrada (opção A, deixar como está).
+- **Corrigido no registro:** a OC-0007 já tinha sido resolvida pelo ADR-091.
+- **Para retomar:**
+  1. regressão completa (cerca de 6 horas);
+  2. auditoria completa das 4 frentes nos dois produtos (cerca de 8 horas);
+  3. correção do que for achado.
+- **Depende do laboratório:** OC-0008 (Alta). Conferir na bula do lote 522611 (Hema) os alvos de IG# (níveis 1 a 3), RDW-SD e RDW-CV do nível 2, e HGB, MCH, MCV e HCT do nível 2.
+
 ## 18/11, 7h45: entrega 45 VALIDADA; o QC está pronto para uso, sem cuidados especiais na digitação manual
 - **OC-0084 (recorte) VALIDADA pelo Tester, nos dois produtos.**
   - Os 6 critérios passaram com os eventos ligados e a aba protegida, como depois do login.
