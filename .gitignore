@@ -93,3 +93,6 @@ INTERFACEAMENTO_DB -  TESTE/
 /QC_INI_cadastrar*.xlsm
 _backup_pre_fmt_datas_*/
 _backup_pre_adr084_*/
+
+# Arquivos de trava do Office (guardam o nome de quem abriu)
+~$*
