@@ -3,6 +3,10 @@
 (testes/rodar_suites.py --a-partir ...): faz a troca da producao com as mesmas checagens do entregar.py.
 
 Uso: python trocar_producao.py <produto> <pasta_da_entrega> <sha16_instalado> <log_suites_1> [<log_suites_2> ...]
+                                [--direcionada [--com qa_a.py,qa_b.py]]
+
+--direcionada (decisao do usuario de 15/11, entregas de correcao): as suites exigidas sao as MESMAS que o
+entregar.py --direcionada roda (entregar.direcionadas: NUCLEO + SUITES_DO_LOTE + as do --com), nem uma a menos.
 
 Confere, nesta ordem (qualquer falha = a producao NAO e tocada):
   1. cada log de suites (o do entregar.py e o do rodar_suites.py) cobre, juntos, TODAS as SUITES do entregar.py com OK,
@@ -25,6 +29,16 @@ import entregar  # noqa: E402
 
 
 def main(a):
+    exigidas = list(entregar.SUITES)
+    if '--direcionada' in a:
+        i = a.index('--direcionada')
+        extras = []
+        if '--com' in a:
+            j = a.index('--com')
+            extras = [x.strip() for x in a[j + 1].split(',') if x.strip()]
+            a = a[:j] + a[j + 2:]
+        exigidas = entregar.direcionadas(extras)
+        a = [x for x in a if x != '--direcionada']
     produto, pasta, sha16, logs = a[0], os.path.abspath(a[1]), a[2].lower(), a[3:]
     arq = entregar.ARQ[produto]
     trab = os.path.join(pasta, produto)
@@ -47,7 +61,7 @@ def main(a):
             m = re.search(r'\b(qa_\w+\.py)\s+(OK|FALHOU)\b', linha)
             if m and m.group(2) == 'OK':
                 ok_suites.add(m.group(1))
-    faltam = [s for s in entregar.SUITES if s not in ok_suites]
+    faltam = [s for s in exigidas if s not in ok_suites]
     if faltam:
         print('NAO TROCADA: suites sem OK:', faltam)
         return 1
@@ -72,6 +86,7 @@ def main(a):
         rel = entregar.relatorio_westgard(trab, prod)
     except OSError as e:
         rel = [f'NAO copiado ({e}); ver {trab}']
+    print(f'suites exigidas ({len(exigidas)}): todas com OK')
     print(f'{produto}: ENTREGUE sha256 {sha16} (backup em {os.path.basename(bk)})' + (f'; Westgard: {", ".join(rel)}' if rel else ''))
     return 0
 
