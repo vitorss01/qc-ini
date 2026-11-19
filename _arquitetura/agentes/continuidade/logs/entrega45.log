@@ -1,0 +1,110 @@
+SUITES: 18 de 36 (DIRECIONADA): qa_seguranca.py, qa_adr097.py, qa_equiv_qa_adr094.py, qa_adr095.py, qa_adr092.py, qa_adr090.py, qa_adr087.py, qa_casos_extremos.py, qa_lotes_auto.py, qa_final.py, qa_etl.py, qa_inativar.py, qa_migracao_adr070.py, qa_linhas_alvo.py, qa_sync.py, qa_manual_substitui.py, qa_adr086.py, qa_adr088.py
+
+## Bioquimica
+   producao sha256 fdc173906fff6985 -> copia de trabalho
+   westgard_seq OK  
+   modo_fonte   OK  
+   lotes        OK  
+   seguranca    OK  
+   graficos     OK  
+   desempenho   OK  
+   incerteza    OK  
+   espec_etp    OK  
+   sem_etp      OK  
+   inativar     OK  
+   rodadas_cv   OK  
+   limites_lote OK  
+   espec_hema   OK  
+   blocos_lote  OK  
+   linhas_alvo  OK  
+   motor_dados  OK  
+   corrida_lote OK  
+   inativar_ux  OK  
+   manual_subst OK  
+   adr084       OK  
+   adr085       OK  
+   adr086       OK  
+   adr087       OK  
+   adr088       OK  
+   adr089       OK  
+   adr090       OK  
+   adr091       OK  
+   adr092       OK  
+   adr094       OK  
+   adr095       OK  
+   blindagem    OK     XML: 39 abas | visiveis ['Login'] | sem protecao [] | estrutura travada True -> TRAVADO
+   instalado sha256 2e4367c5126c142b
+   qa_seguranca.py        OK     XML: 39 abas | visiveis ['Login'] | sem protecao [] | estrutura travada True -> TRAVADO |    XML: 39 abas | visiveis ['Login'] | sem protecao [] | estrutura travada True -> TRAVADO | === Bioquimica segurança: 20 PASS / 0 FAIL ===
+   qa_adr097.py           OK  === Bioquimica ADR-097 (carimbo, DETALHE, A01, filtros, ano da Estatística): 29 PASS / 0 FAIL ===
+   qa_equiv_qa_adr094.py  OK  === Bioquimica ADR-094 equivalência do QA (VBA = PQ): 3 PASS / 0 FAIL ===
+   qa_adr095.py           OK  === Bioquimica ADR-095 (listas, acentos, Estatística, aviso do corte): 10 PASS / 0 FAIL ===
+   qa_adr092.py           OK  === Bioquimica ADR-092: 7 PASS / 0 FAIL ===
+   qa_adr090.py           OK  === Bioquimica ADR-090 (lote 3 da auditoria): 21 PASS / 0 FAIL ===
+   qa_adr087.py           OK  === Bioquimica ADR-087 (tabela de registros, filtros, CEQ): 14 PASS / 0 FAIL ===
+   qa_casos_extremos.py   OK  === Bioquimica casos extremos: 11 PASS / 0 FAIL ===
+   qa_lotes_auto.py       OK  === Bioquimica lotes automáticos: 14 PASS / 0 FAIL ===
+   qa_final.py            OK  === Bioquimica: 29 PASS / 0 FAIL ===
+   qa_etl.py              OK  === Bioquimica ETL (parte todas): 64 PASS / 0 FAIL ===
+   qa_inativar.py         OK  === Bioquimica inativar (ADR-070): 12 PASS / 0 FAIL ===
+   qa_migracao_adr070.py  OK  === Bioquimica migração ADR-070: 2 PASS / 0 FAIL ===
+   qa_linhas_alvo.py      OK  === Bioquimica linhas do alvo (ADR-078): 10 PASS / 0 FAIL ===
+   qa_sync.py             OK  
+   qa_manual_substitui.py OK  === Bioquimica manual substitui (ADR-082): 20 PASS / 0 FAIL ===
+   qa_adr086.py           OK  === Bioquimica ADR-086 (H3 vazio = todos os lotes): 11 PASS / 0 FAIL ===
+   qa_adr088.py           OK  === Bioquimica ADR-088 (lote 1 da auditoria): 16 PASS / 0 FAIL / 0 NAO_EXECUTADO ===
+
+## Hematologia
+   producao sha256 5b0e78ace7b98421 -> copia de trabalho
+   westgard_seq OK  
+   modo_fonte   OK  
+   lotes        OK  
+   seguranca    OK  
+   graficos     OK  
+   desempenho   OK  
+   incerteza    OK  
+   espec_etp    OK  
+   sem_etp      OK  
+   inativar     OK  
+   rodadas_cv   OK  
+   limites_lote OK  
+   espec_hema   OK  
+   blocos_lote  OK  
+   linhas_alvo  OK  
+   motor_dados  OK  
+   corrida_lote OK  
+   inativar_ux  OK  
+   manual_subst OK  
+   adr084       OK  
+   adr085       OK  
+   adr086       OK  
+   adr087       OK  
+   adr088       OK  
+   adr089       OK  
+   adr090       OK  
+   adr091       OK  
+   adr092       OK  
+   adr094       OK  
+   adr095       OK  
+   blindagem    OK     XML: 39 abas | visiveis ['Login'] | sem protecao [] | estrutura travada True -> TRAVADO
+   instalado sha256 d92362d3b111e4f4
+   qa_seguranca.py        OK     XML: 39 abas | visiveis ['Login'] | sem protecao [] | estrutura travada True -> TRAVADO |    XML: 39 abas | visiveis ['Login'] | sem protecao [] | estrutura travada True -> TRAVADO | === Hematologia segurança: 20 PASS / 0 FAIL ===
+   qa_adr097.py           OK  === Hematologia ADR-097 (carimbo, DETALHE, A01, filtros, ano da Estatística): 30 PASS / 0 FAIL ===
+   qa_equiv_qa_adr094.py  OK  === Hematologia ADR-094 equivalência do QA (VBA = PQ): 3 PASS / 0 FAIL ===
+   qa_adr095.py           OK  === Hematologia ADR-095 (listas, acentos, Estatística, aviso do corte): 8 PASS / 0 FAIL ===
+   qa_adr092.py           OK  === Hematologia ADR-092: 7 PASS / 0 FAIL ===
+   qa_adr090.py           OK  === Hematologia ADR-090 (lote 3 da auditoria): 23 PASS / 0 FAIL ===
+   qa_adr087.py           OK  === Hematologia ADR-087 (tabela de registros, filtros, CEQ): 14 PASS / 0 FAIL ===
+   qa_casos_extremos.py   OK  === Hematologia casos extremos: 11 PASS / 0 FAIL ===
+   qa_lotes_auto.py       OK  === Hematologia lotes automáticos: 14 PASS / 0 FAIL ===
+   qa_final.py            OK  === Hematologia: 29 PASS / 0 FAIL ===
+   qa_etl.py              OK  === Hematologia ETL (parte todas): 63 PASS / 0 FAIL ===
+   qa_inativar.py         OK  === Hematologia inativar (ADR-070): 12 PASS / 0 FAIL ===
+   qa_migracao_adr070.py  OK  === Hematologia migração ADR-070: 2 PASS / 0 FAIL ===
+   qa_linhas_alvo.py      OK  === Hematologia linhas do alvo (ADR-078): 10 PASS / 0 FAIL ===
+   qa_sync.py             OK  
+   qa_manual_substitui.py FALHOU  FAIL M99 Execução interrompida: os testes seguintes a este ponto não rodaram -- {"erro": "com_error: (-2147023174, 'O servidor RPC não está disponível.', None, None)", "traceback": "lf.wb, nome)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<caminho_local>
+
+MODO_FONTE = SEAC. Logs e evidencias em <QC_RAIZ>\_entrega_2026-11-18_0047
+  Bioquimica: ENTREGUE sha256 2e4367c5126c142b (backup em <QC_RAIZ>\_backup_pre_integracao_2026-11-18_0253)
+  Hematologia: qa_manual_substitui.py falhou (ver <QC_RAIZ>\_entrega_2026-11-18_0047\Hematologia)
+FIM_ENTREGA

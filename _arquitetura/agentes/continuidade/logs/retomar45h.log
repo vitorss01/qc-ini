@@ -1,0 +1,5 @@
+05:35 qa_manual_substitui.py   OK (825s)  === Hematologia manual substitui (ADR-082): 20 PASS / 0 FAIL ===
+05:35 qa_adr086.py             OK (39s)  === Hematologia ADR-086 (H3 vazio = todos os lotes): 11 PASS / 0 FAIL ===
+05:37 qa_adr088.py             OK (85s)  === Hematologia ADR-088 (lote 1 da auditoria): 14 PASS / 0 FAIL / 0 NAO_EXECUTADO ===
+=== Hematologia: 3 OK / 0 FALHOU []
+FIM_RETOMADA

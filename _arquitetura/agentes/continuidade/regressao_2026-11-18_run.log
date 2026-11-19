@@ -1,0 +1,70 @@
+inicio 2026-11-18 09:03:00 commit 7542324
+## Bioquimica producao a9ba35159655b20b
+09:05 qa_seguranca.py          OK (129s)     XML: 39 abas | visiveis ['Login'] | sem protecao [] | estrutura travada True -> TRAVADO |    XML: 39 abas | visiveis ['Login'] | sem protecao [] | estrutura travada True -> TRAVADO | === Bioquimica segurança: 20 PASS / 0 FAIL ===
+09:06 qa_adr097.py             OK (102s)  === Bioquimica ADR-097 (carimbo, DETALHE, A01, filtros, ano da Estatística): 29 PASS / 0 FAIL ===
+09:20 qa_equiv_qa_adr094.py    OK (809s)  === Bioquimica ADR-094 equivalência do QA (VBA = PQ): 3 PASS / 0 FAIL ===
+09:20 qa_adr095.py             OK (30s)  === Bioquimica ADR-095 (listas, acentos, Estatística, aviso do corte): 10 PASS / 0 FAIL ===
+09:21 qa_adr092.py             OK (51s)  === Bioquimica ADR-092: 7 PASS / 0 FAIL ===
+09:25 qa_adr090.py             OK (240s)  === Bioquimica ADR-090 (lote 3 da auditoria): 21 PASS / 0 FAIL ===
+09:29 qa_adr087.py             OK (202s)  === Bioquimica ADR-087 (tabela de registros, filtros, CEQ): 14 PASS / 0 FAIL ===
+09:30 qa_casos_extremos.py     OK (61s)  === Bioquimica casos extremos: 11 PASS / 0 FAIL ===
+09:30 qa_troca_lote.py         OK (31s)  === Bioquimica troca de lote: 3 PASS / 0 FAIL ===
+09:49 qa_lotes_auto.py         OK (1135s)  === Bioquimica lotes automáticos: 14 PASS / 0 FAIL ===
+09:50 qa_graficos.py           OK (55s)  === Bioquimica gráficos: 8 PASS / 0 FAIL ===
+09:51 qa_incerteza.py          OK (60s)  === Bioquimica incerteza: 15 PASS / 0 FAIL ===
+retomada 2026-11-18 11:03:28 (Bio a partir de qa_desempenho.py; as 12 anteriores ja OK)
+## Bioquimica producao a9ba35159655b20b
+11:04 qa_desempenho.py         OK (85s)  === Bioquimica desempenho: 5 PASS / 0 FAIL ===
+11:21 qa_final.py              OK (981s)  === Bioquimica: 29 PASS / 0 FAIL ===
+11:27 qa_etl_recebimento.py    OK (374s)  === Bioquimica ETL recebimento: 26 PASS / 0 FAIL ===
+11:39 qa_etl.py                OK (721s)  === Bioquimica ETL (parte todas): 64 PASS / 0 FAIL ===
+11:41 qa_rodadas_cv.py         OK (102s)  === Bioquimica rodadas/CV: 12 PASS / 0 FAIL ===
+11:42 qa_inativar.py           OK (87s)  === Bioquimica inativar (ADR-070): 12 PASS / 0 FAIL ===
+11:43 qa_migracao_adr070.py    OK (74s)  === Bioquimica migração ADR-070: 2 PASS / 0 FAIL ===
+11:45 qa_lotes_limites.py      OK (120s)  === Bioquimica lotes/limites (ADR-073): 8 PASS / 0 FAIL ===
+11:48 qa_blocos_lote.py        OK (132s)  === Bioquimica blocos por lote (ADR-074): 14 PASS / 0 FAIL ===
+11:49 qa_varredura_lotes.py    OK (88s)  === Bioquimica varredura de lotes (ADR-077): 4 PASS / 0 FAIL ===
+11:50 qa_linhas_alvo.py        OK (74s)  === Bioquimica linhas do alvo (ADR-078): 10 PASS / 0 FAIL ===
+11:55 qa_sync.py               OK (268s)  
+12:00 qa_corrida_lote.py       OK (299s)  === Bioquimica corrida do lote (ADR-080/081): 11 PASS / 0 FAIL ===
+12:03 qa_inativar_ux.py        OK (217s)  === Bioquimica inativar UX (ADR-081): 16 PASS / 0 FAIL ===
+12:10 qa_manual_substitui.py   OK (406s)  === Bioquimica manual substitui (ADR-082): 20 PASS / 0 FAIL ===
+12:15 qa_westgard_sequencia.py OK (298s)  === Bioquimica Westgard na sequência de ativos (ADR-083): 29 PASS / 0 FAIL ===
+12:17 qa_adr084.py             OK (111s)  === Bioquimica ADR-084 (status, motivo livre, indicador): 17 PASS / 0 FAIL ===
+12:18 qa_usuarios_adr084.py    OK (67s)  === Bioquimica usuários/assinatura (ADR-084): 12 PASS / 0 FAIL ===
+12:21 qa_adr085.py             OK (177s)  === Bioquimica ADR-085 (painel tela única): 15 PASS / 0 FAIL ===
+12:22 qa_adr086.py             OK (41s)  === Bioquimica ADR-086 (H3 vazio = todos os lotes): 11 PASS / 0 FAIL ===
+12:23 qa_adr088.py             OK (85s)  === Bioquimica ADR-088 (lote 1 da auditoria): 16 PASS / 0 FAIL / 0 NAO_EXECUTADO ===
+12:27 qa_adr089.py             OK (234s)  === Bioquimica ADR-089 (CEQ: corrigir/excluir, consolidação, mapa, trilha; OC-0051): 10 PASS / 0 FAIL ===
+12:31 qa_adr091.py             OK (261s)  === Bioquimica ADR-091 (material por lote): 7 PASS / 0 FAIL ===
+12:32 qa_adr094.py             OK (51s)  === Bioquimica ADR-094 (data-hora com segundos): 7 PASS / 0 FAIL ===
+=== Bioquimica: 24 OK / 0 FALHOU []
+   producao depois a9ba35159655b20b (intacta: True)
+## Hematologia producao 1d0d9fe8e720798f
+12:34 qa_seguranca.py          OK (119s)     XML: 39 abas | visiveis ['Login'] | sem protecao [] | estrutura travada True -> TRAVADO |    XML: 39 abas | visiveis ['Login'] | sem protecao [] | estrutura travada True -> TRAVADO | === Hematologia segurança: 20 PASS / 0 FAIL ===
+12:36 qa_adr097.py             OK (116s)  === Hematologia ADR-097 (carimbo, DETALHE, A01, filtros, ano da Estatística): 30 PASS / 0 FAIL ===
+13:08 qa_equiv_qa_adr094.py    OK (1892s)  === Hematologia ADR-094 equivalência do QA (VBA = PQ): 3 PASS / 0 FAIL ===
+13:08 qa_adr095.py             OK (23s)  === Hematologia ADR-095 (listas, acentos, Estatística, aviso do corte): 8 PASS / 0 FAIL ===
+13:09 qa_adr092.py             OK (55s)  === Hematologia ADR-092: 7 PASS / 0 FAIL ===
+13:13 qa_adr090.py             OK (244s)  === Hematologia ADR-090 (lote 3 da auditoria): 23 PASS / 0 FAIL ===
+13:17 qa_adr087.py             OK (200s)  === Hematologia ADR-087 (tabela de registros, filtros, CEQ): 14 PASS / 0 FAIL ===
+13:18 qa_casos_extremos.py     OK (73s)  === Hematologia casos extremos: 11 PASS / 0 FAIL ===
+13:19 qa_troca_lote.py         OK (49s)  === Hematologia troca de lote: 3 PASS / 0 FAIL ===
+13:45 qa_lotes_auto.py         OK (1615s)  === Hematologia lotes automáticos: 14 PASS / 0 FAIL ===
+13:46 qa_graficos.py           OK (54s)  === Hematologia gráficos: 8 PASS / 0 FAIL ===
+13:47 qa_incerteza.py          OK (65s)  === Hematologia incerteza: 16 PASS / 0 FAIL ===
+13:49 qa_desempenho.py         OK (81s)  === Hematologia desempenho: 5 PASS / 0 FAIL ===
+14:09 qa_final.py              OK (1238s)  === Hematologia: 29 PASS / 0 FAIL ===
+14:20 qa_etl_recebimento.py    OK (661s)  === Hematologia ETL recebimento: 26 PASS / 0 FAIL ===
+14:36 qa_etl.py                OK (940s)  === Hematologia ETL (parte todas): 63 PASS / 0 FAIL ===
+14:38 qa_rodadas_cv.py         OK (123s)  === Hematologia rodadas/CV: 12 PASS / 0 FAIL ===
+14:40 qa_inativar.py           OK (99s)  === Hematologia inativar (ADR-070): 12 PASS / 0 FAIL ===
+14:41 qa_migracao_adr070.py    OK (84s)  === Hematologia migração ADR-070: 2 PASS / 0 FAIL ===
+14:43 qa_lotes_limites.py      OK (123s)  === Hematologia lotes/limites (ADR-073): 8 PASS / 0 FAIL ===
+14:45 qa_blocos_lote.py        OK (125s)  === Hematologia blocos por lote (ADR-074): 14 PASS / 0 FAIL ===
+14:46 qa_varredura_lotes.py    OK (54s)  === Hematologia varredura de lotes (ADR-077): 4 PASS / 0 FAIL ===
+14:48 qa_linhas_alvo.py        OK (79s)  === Hematologia linhas do alvo (ADR-078): 10 PASS / 0 FAIL ===
+15:25 qa_sync.py               OK (2242s)  
+15:31 qa_corrida_lote.py       OK (378s)  === Hematologia corrida do lote (ADR-080/081): 11 PASS / 0 FAIL ===
+15:36 qa_inativar_ux.py        OK (266s)  === Hematologia inativar UX (ADR-081): 16 PASS / 0 FAIL ===
+retomada 2026-11-19 14:29:39 (Hema a partir de qa_manual_substitui.py; as 26 anteriores ja OK)

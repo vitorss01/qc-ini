@@ -1,3 +1,17 @@
+# Continuar: situação em 19/11/2026 (entregas 43, 44 e 45 em produção e validadas; falta a validação completa)
+
+**Leia primeiro `_arquitetura/agentes/continuidade/README.md`.** Ele traz o estado, as pendências, os scripts, a memória
+das sessões e o que NÃO está no GitHub. Os `.xlsm` vão por OneDrive ou pen drive.
+
+Resumo:
+- **Produção** (18/11): entrega 45 + ATUALIZAR. Bio sha256 `a9ba35159655b20b…`, Hema `1d0d9fe8e720798f…`.
+- **Regressão completa:** Bio 36/36 sem falha; Hema 26/36 sem falha. Faltam 10 suítes da Hema
+  (`continuidade/scripts/regressao_total_c.ps1`).
+- **Depois:** ciclo completo `/auditoria-qc` (F1–F4) nos dois produtos e correção do que aparecer.
+- **Laboratório:** OC-0008, a bula do lote 522611 da Hema.
+
+---
+
 # Continuar: situação em 13/11/2026 (ADR-092 pronto em casa; falta a entrega no trabalho)
 
 ## 0. Feito em casa, 12–13/11/2026 (entrega 39 = ADR-092)
