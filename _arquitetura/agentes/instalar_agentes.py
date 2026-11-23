@@ -15,8 +15,10 @@ import sys
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 FONTE = os.path.join(REPO, '.claude')
-ITENS = [os.path.join('agents', n) for n in ('usuario-simulado.md', 'especialista-cq.md', 'ux-ui.md', 'tester-qa.md')]
-ITENS += [os.path.join('skills', 'auditoria-qc', 'SKILL.md'), os.path.join('workflows', 'auditoria-qc.js')]
+ITENS = [os.path.join('agents', n) for n in ('usuario-simulado.md', 'especialista-cq.md', 'ux-ui.md', 'tester-qa.md',
+                                             'qc-release-manager.md')]               # 23/11/2026: release manager
+ITENS += [os.path.join('skills', 'auditoria-qc', 'SKILL.md'), os.path.join('workflows', 'auditoria-qc.js'),
+          os.path.join('skills', 'qc-release', 'SKILL.md')]
 
 
 def main(argv):
@@ -37,6 +39,16 @@ def main(argv):
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(src, dst)
         print('INSTALADO ', rel)
+    # 23/11/2026: as instrucoes permanentes (CLAUDE.md: fase de fechamento + release manager) tambem valem na pasta de
+    # abertura; um CLAUDE.md que ja exista la NAO e sobrescrito (avisa)
+    cm_src, cm_dst = os.path.join(REPO, 'CLAUDE.md'), os.path.join(os.path.dirname(destino), 'CLAUDE.md')
+    if os.path.exists(cm_src) and os.path.abspath(cm_src) != os.path.abspath(cm_dst):
+        if not os.path.exists(cm_dst):
+            if not conferir:
+                shutil.copy2(cm_src, cm_dst)
+            print('INSTALADO ' if not conferir else 'FALTA     ', 'CLAUDE.md')
+        elif not filecmp.cmp(cm_src, cm_dst, shallow=False):
+            print('CLAUDE.md ja existe na pasta de abertura e e diferente: inclua a secao "RELEASE MANAGER" do repositorio')
     print('destino:', destino)
     return 1 if (conferir and diferentes) else 0
 

@@ -110,6 +110,9 @@ def executar(produto, caminho, saida):
             % (len(cad()), sum(1 for _, lt, _ in cad() if up(lt) in primeira)), not dif and bool(cad()),
             {'diferentes': dif[:10]})
         # ---------------------------------------------------------------- escolha do lote do teste
+        # a referencia e a tblCQ_Final DEPOIS de um ATUALIZAR so das entradas: uma copia em que o ATUALIZAR ainda nao
+        # aplicou as regras ja existentes (ex.: montada sem o --atualizar do ADR-091) mudaria lotes alheios no 1o ATUALIZAR
+        q.run('mIntegracao.AtualizarSoEntradas', '', teto=1800)
         fin0 = q.ler('tblCQ_Final')
         por_lote = collections.Counter(up(x['LOTE']) for x in fin0)
         sem_regra = [(r, lt) for r, lt, f in cad() if up(lt) not in primeira and por_lote.get(up(lt), 0) > 0
@@ -117,7 +120,7 @@ def executar(produto, caminho, saida):
         if not sem_regra:
             reg('M04 pre-condicao ausente: lote do cadastro sem regra e com resultados', False, {'cadastro': cad()[:10]})
         else:
-            r, lt = max(sem_regra, key=lambda x: por_lote[up(x[1])])
+            r, lt = min(sem_regra, key=lambda x: por_lote[up(x[1])])         # o menor lote: o efeito fica localizado
             mz_atual = collections.Counter(up(x['MATRIZ']) for x in fin0 if up(x['LOTE']) == up(lt))
             opc = lista.split(';')
             novo = next((m for m in opc if m not in mz_atual), opc[0])
@@ -139,7 +142,8 @@ def executar(produto, caminho, saida):
             fin1 = q.ler('tblCQ_Final')
             lote1 = foto_lote(fin1, lt)
             mz1 = {up(x['MATRIZ']) for x in fin1 if up(x['LOTE']) == up(lt)}
-            fora_mudou = [k for k, v in foto_fora(fin1, lt).items() if base_fora.get(k) != v]
+            fora_mudou = [(k, dict(zip(CAMPOS, base_fora.get(k) or ())), dict(zip(CAMPOS, v)))
+                          for k, v in foto_fora(fin1, lt).items() if base_fora.get(k) != v]
             reg('M04 material "%s" no lote %s (sem regra): 1 regra MATRIZ nova (LOTE texto, NOTA ADR-099), 1 trilha, '
                 'o lote inteiro com essa MATRIZ depois do ATUALIZAR e nada fora do lote muda' % (novo, lt),
                 r_at.startswith('OK|') and len(novas) == 1 and up(novas[0][0]) == up(lt) and up(novas[0][1]) == 'MATRIZ'

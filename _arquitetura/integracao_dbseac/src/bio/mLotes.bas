@@ -641,6 +641,9 @@ Private Sub SalvarViewNoBloco(ByVal iBloco As Long)
     rb0 = 2 + (iBloco - 1) * NLB_LIBER
     Set srcL = ThisWorkbook.Names("libView").RefersToRange          ' C4:F203 (200 x 4)
     stL.Range(stL.Cells(rb0, 1), stL.Cells(rb0 + NLB_LIBER - 1, 4)).Value = srcL.Value
+    ' 23/11/2026: o RUN de cada linha vai junto (coluna E), para a assinatura voltar ao lado do MESMO RUN
+    stL.Range(stL.Cells(rb0, 5), stL.Cells(rb0 + NLB_LIBER - 1, 5)).Value = _
+        srcL.Worksheet.Range(srcL.Worksheet.Cells(srcL.Row, 1), srcL.Worksheet.Cells(srcL.Row + NLB_LIBER - 1, 1)).Value
     ' ADR-087: a aba Registros virou a tabela unica tblRegistros (todos os lotes) -- a RegistrosStore fica como arquivo
     ' historico e nao e mais gravada
     If Not mCalibracao.TabelaRegistros() Is Nothing Then Exit Sub
@@ -661,6 +664,9 @@ Private Sub CarregarBlocoNaView(ByVal iBloco As Long)
     rb0 = 2 + (iBloco - 1) * NLB_LIBER
     Set dstL = ThisWorkbook.Names("libView").RefersToRange
     dstL.Value = stL.Range(stL.Cells(rb0, 1), stL.Cells(rb0 + NLB_LIBER - 1, 4)).Value
+    ' 23/11/2026: os RUNs com que as assinaturas foram gravadas (vazio em bloco antigo = alinhamento por posicao)
+    dstL.Worksheet.Range(dstL.Worksheet.Cells(dstL.Row, 1), dstL.Worksheet.Cells(dstL.Row + NLB_LIBER - 1, 1)).Value = _
+        stL.Range(stL.Cells(rb0, 5), stL.Cells(rb0 + NLB_LIBER - 1, 5)).Value
     ' ADR-087: tabela unica -- a vista so passa a filtrar o lote que entrou
     If Not mCalibracao.TabelaRegistros() Is Nothing Then Exit Sub
     Dim wsReg As Worksheet, rr0 As Long, dstR As Range
@@ -722,8 +728,9 @@ End Sub
 ' importacao com cinco anos de dados. A regra e a mesma, numa varredura:
 '   A = RUN com ao menos uma linha Ativa do lote em uso (rRunUnico=1, rLote)
 '   B = a menor data Ativa desse RUN no lote (MINIFS)
-' A ORDEM (RUN crescente) e a das formulas, e nao pode mudar: as assinaturas
-' de libView (C:F) estao amarradas a POSICAO da linha.
+' A ORDEM (RUN crescente) e a das formulas. 23/11/2026: as assinaturas de libView (C:F) acompanham o RUN -- um RUN
+' novo no meio da lista (manual num dia passado, automatico atrasado, inativacao) deslocava as assinaturas para o
+' RUN vizinho (qa_fluxo_manual F05e). Assinatura cujo RUN saiu da lista nao se perde: vai para o fim, com aviso.
 ' Chamada por mBanco.AtualizarFlagsBanco (toda gravacao/exclusao no banco),
 ' por TrocarLote e na instalacao.
 Public Sub AtualizarListaLiberacao(Optional ByVal dados As Variant)
@@ -778,16 +785,88 @@ Public Sub AtualizarListaLiberacao(Optional ByVal dados As Variant)
         Next a
         Dim nTodasLib As Long
         nTodasLib = n
-        If n > NLB_LIBER Then n = NLB_LIBER            ' as formulas tambem mostravam as 200 primeiras
+        ' as 200 primeiras (como as formulas); 23/11/2026: corrida ASSINADA nunca sai da lista -- abre espaco tirando as
+        ' mais novas sem assinatura (um manual antigo que entra no meio nao empurra uma assinatura para fora)
+        Dim assin As Object, vA As Variant, vCF As Variant, aa As Long, jj As Long, resto As Long, sel() As Long, m As Long
+        Set assin = CreateObject("Scripting.Dictionary")
+        vA = ws.Range(ws.Cells(4, 1), ws.Cells(3 + NLB_LIBER, 1)).Value
+        vCF = ws.Range(ws.Cells(4, 3), ws.Cells(3 + NLB_LIBER, 6)).Value
+        For aa = 1 To NLB_LIBER
+            If Len(Trim$(CStr(vA(aa, 1)))) > 0 Then
+                For jj = 1 To 4
+                    If Len(Trim$(CStr(vCF(aa, jj)))) > 0 Then
+                        assin(CLng(Val(vA(aa, 1)))) = 1
+                        Exit For
+                    End If
+                Next jj
+            End If
+        Next aa
+        For a = 1 To n
+            If assin.Exists(runs(a)) Then resto = resto + 1
+        Next a
+        ReDim sel(1 To n)
+        For a = 1 To n
+            If assin.Exists(runs(a)) Then
+                m = m + 1: sel(m) = runs(a): resto = resto - 1
+            ElseIf m + resto < NLB_LIBER Then
+                m = m + 1: sel(m) = runs(a)
+            End If
+        Next a
+        n = m
         ReDim out(1 To n, 1 To 2)
         For a = 1 To n
-            out(a, 1) = runs(a)
-            If IsDate(d(runs(a))) Then out(a, 2) = CDate(d(runs(a))) Else out(a, 2) = ""
+            out(a, 1) = sel(a)
+            If IsDate(d(sel(a))) Then out(a, 2) = CDate(d(sel(a))) Else out(a, 2) = ""
         Next a
     End If
     prot = LiberarEscrita(ws)
+    ' assinaturas pelo RUN de antes (A antigo); linha assinada sem RUN = bloco antigo -> fica na mesma posicao
+    Dim velhoA As Variant, velhoCF As Variant, novoCF() As Variant, porRun As Object, j As Long, kR As Variant
+    Dim temAss As Boolean, orfas As String, nOrf As Long, mudou As Boolean, livre As Long
+    velhoA = ws.Range(ws.Cells(4, 1), ws.Cells(3 + NLB_LIBER, 1)).Value
+    velhoCF = ws.Range(ws.Cells(4, 3), ws.Cells(3 + NLB_LIBER, 6)).Value
+    Dim velhoB As Variant, nOrfNova As Long
+    velhoB = ws.Range(ws.Cells(4, 2), ws.Cells(3 + NLB_LIBER, 2)).Value
+    ReDim novoCF(1 To NLB_LIBER, 1 To 4)
+    Set porRun = CreateObject("Scripting.Dictionary")
+    For a = 1 To NLB_LIBER
+        temAss = False
+        For j = 1 To 4
+            If Len(Trim$(CStr(velhoCF(a, j)))) > 0 Then temAss = True
+        Next j
+        If temAss Then
+            If Len(Trim$(CStr(velhoA(a, 1)))) > 0 Then
+                kR = CLng(Val(velhoA(a, 1)))
+                If Not porRun.Exists(kR) Then porRun.Add kR, a
+            Else
+                For j = 1 To 4: novoCF(a, j) = velhoCF(a, j): Next j
+            End If
+        End If
+    Next a
+    For a = 1 To n
+        kR = CLng(out(a, 1))
+        If porRun.Exists(kR) Then
+            For j = 1 To 4: novoCF(a, j) = velhoCF(porRun(kR), j): Next j
+            If porRun(kR) <> a Then mudou = True
+            porRun.Remove kR
+        End If
+    Next a
     ws.Range(ws.Cells(4, 1), ws.Cells(3 + NLB_LIBER, 2)).ClearContents
     If n > 0 Then ws.Range(ws.Cells(4, 1), ws.Cells(3 + n, 2)).Value = out
+    ' RUN assinado que saiu da lista (o unico resultado ativo foi inativado, mudou de lote...): vai para o fim
+    livre = n
+    For Each kR In porRun.Keys
+        livre = livre + 1
+        If livre > NLB_LIBER Then Exit For
+        ws.Cells(3 + livre, 1).Value = kR
+        ws.Cells(3 + livre, 2).Value = "(sem resultado ativo)"
+        For j = 1 To 4: novoCF(livre, j) = velhoCF(porRun(kR), j): Next j
+        orfas = orfas & IIf(Len(orfas) > 0, ", ", "") & kR
+        nOrf = nOrf + 1
+        If CStr(velhoB(porRun(kR), 1)) <> "(sem resultado ativo)" Then nOrfNova = nOrfNova + 1   ' trilha so na 1a vez
+        mudou = True
+    Next kR
+    ws.Range(ws.Cells(4, 3), ws.Cells(3 + NLB_LIBER, 6)).Value = novoCF
     ' ADR-053: a lista cabe 200 corridas. Passando disso, DIZER -- antes o lote
     ' longo simplesmente nao mostrava as corridas novas para assinar.
     If nTodasLib > NLB_LIBER Then
@@ -797,7 +876,14 @@ Public Sub AtualizarListaLiberacao(Optional ByVal dados As Variant)
     Else
         ws.Range("H2").Value = ""
     End If
+    If nOrf > 0 Then
+        ws.Range("H2").Value = Trim$(ws.Range("H2").Value & " " & ChrW(9888) & " Assinatura de corrida que saiu da " & _
+            "lista (sem resultado ativo): RUN " & orfas & " -- mantida no fim da lista.")
+        If nOrfNova > 0 Then mAuditoria.Auditar mAuditoria.CAT_CONFIG, "LIBERACAO_ASSINATURA_SEM_CORRIDA", "mLotes", 0, Empty, "", lote, 0, "", _
+            "", "", "", "", "", "RUN " & orfas & ": a corrida assinada nao tem mais resultado ativo do lote em uso"
+    End If
     RestaurarProtecao ws, prot
+    If mudou Then mSeguranca.RedesenharAssinaturas ws      ' as imagens acompanham as linhas
     Exit Sub
 fim:
     Dim nE As Long, sE As String

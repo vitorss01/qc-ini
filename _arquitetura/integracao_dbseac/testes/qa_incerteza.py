@@ -196,6 +196,14 @@ def modo_antigo(rodada):
     return '|' not in s and ';' not in s and s != 'ACUMULADAS' and not s.startswith(('ULTIMAS', 'ÚLTIMAS'))
 
 
+def ja_piso_zero(e):
+    """ADR-101: a formula da Estatistica L tem MAX(0;...) (o arquivo instalado diz se a regra ja vale)."""
+    try:
+        return 'MAX(0,' in str(e.Range('L14').Formula).replace(' ', '')
+    except Exception:                                  # noqa: BLE001
+        return False
+
+
 def sigma_esperado(e, linhas, etp_cad, esp):
     """Estatistica!L = (ETp - |G|) / CV pooled da janela do Sigma (esp = esperado_ciq na janela); sem bias numerico
     ou sem CV pooled: vazio (nunca o CV do lote nem o historico inteiro); sem ETp: "-" (ADR-068)."""
@@ -211,8 +219,11 @@ def sigma_esperado(e, linhas, etp_cad, esp):
         cv = x['cv'] if x else None
         if num(g) and cv:
             n_num += 1
-            if not perto(lv, (v - abs(g)) / cv):
-                dif.append((an, nv, 'Sigma', lv, (v - abs(g)) / cv, cv))
+            s_esp = (v - abs(g)) / cv
+            if ja_piso_zero(e):                        # ADR-101 (23/11/2026): Sigma negativo = 0
+                s_esp = max(0.0, s_esp)
+            if not perto(lv, s_esp):
+                dif.append((an, nv, 'Sigma', lv, s_esp, cv))
         elif lv not in ('', None):
             dif.append((an, nv, 'Sigma sem bias/CV pooled deveria ser vazio', lv, g, cv))
     return dif, vals, n_num

@@ -278,7 +278,8 @@ def executar(produto, caminho, saida):
 
         # ------------------------------------------------------------ BO alvos do laboratorio (23/11/2026)
         if alvos_ciq:
-            rx_n = re.compile(r'N(\d): n=(\d+)')
+            import re as re_mod                  # 're' e reaproveitado como variavel local nesta funcao
+            rx_n = re_mod.compile(r'N(\d): n=(\d+)')
             por_k = {}
             for r_ in rows:
                 if str(r_.get('PARTICIPA_ESTATISTICA', '')).upper() != 'SIM' or not num(r_.get('RESULTADO')):

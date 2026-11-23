@@ -171,6 +171,13 @@ laboratório preencher (ADR-075).
 ## 4b. Média/DP e limites de cada lote (aba Analitos, um bloco por lote — ADR-074)
 
 - **Um bloco por lote do cadastro.** Lote e validade vêm da Configuração; lote novo ganha o bloco sozinho.
+- **Material do lote** (Configuração, coluna F, ADR-099): soro, urina... (a lista é a das matrizes do de/para).
+  O material vale para TODOS os resultados do lote, do interfaceamento e manuais, a partir do próximo ATUALIZAR; o
+  sistema mostra antes quantos resultados mudam e pede confirmação. Vazio = padrão do equipamento. Material fora da
+  lista (ex.: líquor) precisa antes de linhas no de/para.
+- **Alvo do laboratório** (ADR-100, aplicado uma vez pelo desenvolvimento em 23/11/2026): Média e DP de cada lote
+  com 20 ou mais resultados = os 40 primeiros resultados ativos do lote. A origem fica no bloco ("CIQ dd/mm/aaaa:
+  alvo do laboratório..."). Lote novo continua pelo botão CIQ (20 primeiros) ou pela digitação.
 - **Abrir e recolher:**
   - ▼/▶ abre ou recolhe um bloco;
   - na linha 1, **Abrir todos** e **Recolher todos**;
@@ -259,6 +266,25 @@ fórmula (Bias, |Bias| e as de apoio) recusam digitação; se uma delas for sobr
 
 **Sigma.** Sigma = (ETp − |Bias|) / CV pooled. O "Sigma do plano" no Painel usa esse valor e avisa quando algum nível
 ficou sem Sigma.
+- O Sigma do Painel (I7..) é o **mesmo** da Estatística (coluna L). Quando |Bias| passa do ETp, o Sigma mostra **0**
+  (Inaceitável), nunca um número negativo (ADR-101).
+- **Cores e classe** (número e texto; Painel I e "Classe Sigma" em K, Estatística L e M). A legenda fica no Painel
+  (V5:W11), com a regra de CQ sugerida de cada faixa; ela é só informativa e não muda as regras que rodam:
+
+  | Sigma | Classe | Cor |
+  |---|---|---|
+  | ≥ 6 | Classe mundial | verde-escuro |
+  | 5 a 6 | Excelente | verde |
+  | 4 a 5 | Bom | verde-claro |
+  | 3 a 4 | Marginal | amarelo |
+  | 2 a 3 | Ruim | vermelho-claro |
+  | < 2 | Inaceitável | vermelho-escuro |
+
+**Ao registrar o CEQ** a janela avisa antes de gravar (ADR-099):
+- **avaliação não reconhecida** (ex.: "Adequado"): a amostra NÃO entra no bias; use a avaliação do relatório do
+  provedor (Aceitável / Inaceitável);
+- **ano da rodada depois do Ano EP** (Estatística N4): a rodada só entra no bias quando o Ano EP for esse ano ou
+  TODOS. Quando começar o CEQ de 2026, troque o N4 para 2026 (ou TODOS).
 
 **Incerteza de medição** (Nordtest, ADR-067).
 - Usa só o CIQ (12 meses) e o CEQ, sem certificado de calibrador.

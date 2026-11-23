@@ -61,6 +61,7 @@ from qa_rodadas_cv import (Oraculo, k5_esperado, ler_base, linhas_tabela, ultima
 from qa_incerteza import esperado_ciq, ler_ciq, dia, dia_menos_meses  # noqa: E402
 
 SETA = '→'
+PISO0 = [False]                  # ADR-101: a copia ja tem Sigma com piso 0 e 6 faixas (lido da formula de L14)
 TOL = 1e-9
 TOL_SIGMA = 1e-6                 # CV pooled recalculado por fora: a mesma tolerancia do qa_incerteza (I14/I16)
 ROD = 'QA-FLUXO 1'
@@ -107,10 +108,20 @@ def alerta(teste, evid):
     print('ALERTA ' + teste + ' -- ' + json.dumps(evid, ensure_ascii=False, default=str)[:600], flush=True)
 
 
-def classe_sigma(x):
-    """Escada da Estatistica M (scripts_fase3/reestruturar_qualidade.escada_sigma)."""
-    return ('Classe mundial' if x >= 6 else 'Excelente' if x >= 5 else 'Bom' if x >= 4 else
-            'Marginal' if x >= 3 else 'Inadequado')
+def classe_sigma(x, seis=True):
+    """Estatistica M = classe da tblPlanoQC_Sigma. ADR-101 (23/11/2026): 6 faixas (2-3 Ruim, < 2 Inaceitavel); antes
+    era < 3 "Desempenho inadequado"."""
+    if x >= 6:
+        return 'Classe mundial'
+    if x >= 5:
+        return 'Excelente'
+    if x >= 4:
+        return 'Bom'
+    if x >= 3:
+        return 'Marginal'
+    if not seis:
+        return 'Desempenho inadequado'
+    return 'Ruim' if x >= 2 else 'Inaceitável'
 
 
 def bias_pct(res, alvo):
@@ -215,11 +226,14 @@ def dif_foto(f0, f1):
           for j, (a, b) in enumerate(zip(r0, r1)) if a != b]
     if dp:
         out['Painel'] = dp[:8]
-    if f0['base'] != f1['base']:
-        c0 = collections.Counter(chave_rep(r) for r in f0['base'])
-        c1 = collections.Counter(chave_rep(r) for r in f1['base'])
-        out['EQA_Base'] = {'n_antes': len(f0['base']), 'n_depois': len(f1['base']), 'mesmo_conjunto': c0 == c1,
-                           'diferencas': dif_lista(f0['base'], f1['base'], 3)}
+    # so as linhas com conteudo: a exclusao pode deixar linha vazia no fim da EQA_Base (sem efeito no bias)
+    b0, b1 = cheias(f0['base']), cheias(f1['base'])
+    if b0 != b1:
+        c0 = collections.Counter(chave_rep(r) for r in b0)
+        c1 = collections.Counter(chave_rep(r) for r in b1)
+        out['EQA_Base'] = {'n_antes': len(b0), 'n_depois': len(b1), 'mesmo_conjunto': c0 == c1,
+                           'diferencas': dif_lista(b0, b1, 3), 'linhas_vazias': [len(f0['base']) - len(b0),
+                                                                                  len(f1['base']) - len(b1)]}
     for pv in f0['tab']:
         if f0['tab'][pv] != f1['tab'].get(pv):
             out['tabela ' + pv] = {'n_antes': len(f0['tab'][pv]), 'n_depois': len(f1['tab'].get(pv) or []),
@@ -241,6 +255,7 @@ def executar(produto, caminho, saida):
     try:
         xl = q.ex.xl
         e = q.ws('Estatística')
+        PISO0[0] = 'MAX(0,' in str(e.Range('L14').Formula).replace(' ', '')   # ADR-101
         p = q.ws('Painel')
         base_ws = q.ws('EQA_Base')
         al = q.ws('Audit_Log')
@@ -516,7 +531,10 @@ def executar(produto, caminho, saida):
                     ok = v['L'] == '-'
                 elif num(g) and num(v['K']) and cv:
                     sg = (v['K'] - abs(g)) / cv
-                    ok = perto(v['L'], sg, TOL_SIGMA) and v['M'] == classe_sigma(v['L'] if num(v['L']) else sg)
+                    if PISO0[0]:
+                        sg = max(0.0, sg)                  # ADR-101: Sigma negativo = 0
+                    ok = perto(v['L'], sg, TOL_SIGMA) and v['M'] == classe_sigma(v['L'] if num(v['L']) else sg,
+                                                                              PISO0[0])
                 else:
                     sg, ok = None, v['L'] in ('', None)
                 if not ok:
@@ -551,8 +569,10 @@ def executar(produto, caminho, saida):
         rows_est = {r for r, _ in linhas_an}
 
         def outros(est_a, est_b):
+            # a coluna U ("ordem critico") e um contador acumulado das linhas criticas: muda nas linhas de baixo quando o
+            # analito do teste muda de margem -- nao e "outro analito mudou"
             return [(14 + i, letra(j), a, b) for i, (r0, r1) in enumerate(zip(est_a, est_b)) if 14 + i not in rows_est
-                    for j, (a, b) in enumerate(zip(r0, r1)) if a != b]
+                    for j, (a, b) in enumerate(zip(r0, r1)) if a != b and letra(j) != 'U']
 
         # ============================================================ FOTO
         foto0 = foto()
