@@ -96,3 +96,7 @@ _backup_pre_adr084_*/
 
 # Arquivos de trava do Office (guardam o nome de quem abriu)
 ~$*
+_backup_pre_alvos_*/
+_backup_pre_atualizar_*/
+alvos_ciq_*.csv
+alvos_ciq_*.json

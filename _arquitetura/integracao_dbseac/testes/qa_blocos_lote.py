@@ -220,6 +220,13 @@ def executar(produto, caminho, saida):
                 grupos.setdefault((k_[0], ap_.upper(), k_[2]), []).append(par_)
                 apelidos[f'{k_[0]}: {txt(r_["ANALITO"])} -> {ap_}'] += 1
         import statistics as stt
+        # 23/11/2026: alvos do laboratorio pelos 40 primeiros (agentes/ferramentas/aplicar_alvos_ciq.py, marca blAlvosCIQ)
+        # substituem os valores de TESTE -- pode nao sobrar nenhum par TESTE
+        alvos_ciq = None
+        try:
+            alvos_ciq = str(q.wb.Names('blAlvosCIQ').RefersTo)
+        except Exception:                                                   # noqa: BLE001
+            pass
         conf_n, dif_n, lotes_n = 0, [], set()
         sem_limite = []
         for chave, (i_, linha) in st.items():
@@ -243,7 +250,12 @@ def executar(produto, caminho, saida):
                 if 'DP ja gravado' in parte:
                     ok_s = num(s_)
                 elif '1,5 x DP do lote' in parte:
-                    ok_s = perto(s_, 1.5 * float(q.run('mLotes.DPDoLote', ref, an_, nv) or 0), 1e-9)
+                    # 23/11/2026: com os alvos do laboratorio (aplicar_alvos_ciq) o DP do lote de referencia deixou de ser
+                    # o de TESTE: o 1,5x so e conferido enquanto o par de referencia ainda for TESTE
+                    if alvos_ciq and not q.run('mLotes.AlvoDeTeste', ref, an_, nv):
+                        ok_s = num(s_) and s_ > 0
+                    else:
+                        ok_s = perto(s_, 1.5 * float(q.run('mLotes.DPDoLote', ref, an_, nv) or 0), 1e-9)
                 elif '1,5 x DP dos' in parte:
                     ok_s = len(xs) >= 2 and perto(s_, 1.5 * stt.stdev(xs), 1e-7)
                 elif '5% da media' in parte:
@@ -259,10 +271,38 @@ def executar(produto, caminho, saida):
         reg('BN Valores de TESTE (pedido de 15/10/2026): o que estava vazio recebeu a média de todos os resultados Ativos '
             'do próprio lote (recalculada aqui de forma independente) e DP = 1,5 x o do lote em uso (sem ele, 1,5 x o DP '
             'do próprio lote ou 1,5 x 5% da média); todo par preenchido tem média e DP (limites); origem "TESTE"',
-            bool(marca) and conf_n > 0 and not dif_n and not sem_limite,
-            {'marca': marca, 'lote_referencia_DP': ref, 'pares_conferidos': conf_n, 'lotes': len(lotes_n),
+            bool(marca) and (conf_n > 0 or bool(alvos_ciq)) and not dif_n and not sem_limite,
+            {'marca': marca, 'alvos_ciq': alvos_ciq, 'lote_referencia_DP': ref, 'pares_conferidos': conf_n, 'lotes': len(lotes_n),
              'divergencias': dif_n[:6], 'pares_sem_limite': sem_limite[:6],
              'nome_na_foto_ADR091': dict(sorted(apelidos.items()))})
+
+        # ------------------------------------------------------------ BO alvos do laboratorio (23/11/2026)
+        if alvos_ciq:
+            rx_n = re.compile(r'N(\d): n=(\d+)')
+            por_k = {}
+            for r_ in rows:
+                if str(r_.get('PARTICIPA_ESTATISTICA', '')).upper() != 'SIM' or not num(r_.get('RESULTADO')):
+                    continue
+                k_ = (txt(r_['LOTE']).upper(), txt(r_['ANALITO']).upper(), int(r_['NIVEL']))
+                por_k.setdefault(k_, []).append(r_)
+            conf_o, dif_o = 0, []
+            for chave, (i_, linha) in st.items():
+                org = str(linha[22] or '')
+                if not org.startswith('CIQ ') or 'alvo do laboratorio' not in org:
+                    continue
+                lote_, an_ = txt(linha[0]), txt(linha[14])
+                for nv_s, n_s in rx_n.findall(org):
+                    nv, n_ = int(nv_s), int(n_s)
+                    xs_r = sorted(por_k.get((lote_.upper(), an_.upper(), nv), []),
+                                  key=lambda r_: (r_.get('RUN') or 0, str(r_.get('DATA_HORA')), str(r_.get('ID_REGISTRO'))))
+                    xs = [float(r_['RESULTADO']) for r_ in xs_r[:n_]]
+                    m_, s_ = linha[2 + (nv - 1) * 2], linha[3 + (nv - 1) * 2]
+                    conf_o += 1
+                    if len(xs) < n_ or not (perto(m_, stt.mean(xs), 1e-9) and perto(s_, stt.stdev(xs), 1e-7)):
+                        dif_o.append((lote_, an_, nv, n_, len(xs), m_, stt.mean(xs) if xs else None, s_))
+            reg('BO Alvos do laboratório (pedido de 22/11/2026): média e DP amostral dos n primeiros resultados Ativos do '
+                'lote (n do texto da origem), recalculados aqui de forma independente',
+                conf_o > 0 and not dif_o, {'marca': alvos_ciq, 'pares_conferidos': conf_o, 'divergencias': dif_o[:6]})
 
         # ------------------------------------------------------------ BM largura X = W
         wx, ww = float(b.Columns('X').ColumnWidth), float(b.Columns('W').ColumnWidth)

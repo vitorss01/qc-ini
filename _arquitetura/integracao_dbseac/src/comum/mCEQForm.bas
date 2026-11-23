@@ -365,7 +365,32 @@ Public Function ConfirmacoesCEQ(ByVal campos As Variant, Optional ByVal linhaAlv
     If Len(Trim$(CStr(campos(6)))) = 0 Then
         s = s & IIf(Len(s) > 0, vbLf & vbLf, "") & TextoSemAlvoCEQ()
     End If
+    ' ADR-099: avaliacao que o sistema nao reconhece = NAO AVALIADO -> a amostra fica fora do bias sem ninguem saber
+    If Len(Trim$(CStr(campos(11)))) > 0 Then
+        If mEQA.PadronizarStatus(campos(11)) = "NAO AVALIADO" Then
+            s = s & IIf(Len(s) > 0, vbLf & vbLf, "") & "A avaliação " & ChrW$(8220) & Trim$(CStr(campos(11))) & _
+                ChrW$(8221) & " não é reconhecida: esta amostra NÃO entra no bias (nem no ET e no Sigma). " & _
+                "Use a avaliação do relatório do provedor (ex.: Aceitável / Inaceitável)."
+        End If
+    End If
+    ' ADR-099: rodada de ano POSTERIOR ao Ano EP da Estatistica (N4) so entra no bias quando o Ano EP for esse ano ou TODOS
+    s = s & AvisoAnoEP(campos(2), Len(s) > 0)
     ConfirmacoesCEQ = s
+sai:
+End Function
+
+Private Function AvisoAnoEP(ByVal anoTxt As Variant, ByVal temAntes As Boolean) As String
+    Dim ep As Variant, ano As Long
+    On Error GoTo sai
+    ano = CLng(Val(CStr(anoTxt)))
+    ep = ThisWorkbook.Names("eqAnoEP").RefersToRange.Value
+    If ano > 0 And IsNumeric(ep) And Len(Trim$(CStr(ep))) > 0 Then
+        If ano > CLng(ep) Then
+            AvisoAnoEP = IIf(temAntes, vbLf & vbLf, "") & "O Ano EP da aba Estatística (N4) está em " & CLng(ep) & _
+                ": esta rodada de " & ano & " é gravada, mas só entra no bias, no ET e no Sigma quando o Ano EP for " & _
+                ano & " ou TODOS."
+        End If
+    End If
 sai:
 End Function
 

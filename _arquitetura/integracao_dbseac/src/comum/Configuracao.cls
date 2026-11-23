@@ -16,6 +16,10 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     If Not Intersect(Target, Me.Range("D26:D125")) Is Nothing Then
         mLotes.ValidadeEditada Target
     End If
+    ' ADR-099: material do lote -> regra MATRIZ da tblLotesMaterial (com confirmacao e trilha)
+    If Not Intersect(Target, Me.Range("F26:F125")) Is Nothing Then
+        mMaterialLote.MaterialEditado Target
+    End If
     ' ADR-074: lote digitado direto no cadastro ganha o seu bloco na aba Analitos
     If Not Intersect(Target, Me.Range("C26:C125")) Is Nothing Then
         mLotesBlocos.SincronizarBlocos

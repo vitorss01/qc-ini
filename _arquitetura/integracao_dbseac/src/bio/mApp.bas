@@ -283,6 +283,7 @@ restaura:
         "Lote " & cod & " cadastrado pelo botao Novo lote" & IIf(IsEmpty(dtv), "; validade pendente", "")
     mLotes.InvalidarLotes
     mLotesBlocos.SincronizarBlocos              ' ADR-074: o lote novo ganha o seu bloco na aba Analitos
+    mMaterialLote.SincronizarMaterialCadastro   ' ADR-099: lote novo entra com Material vazio (padrao)
     CadastrarLote = "OK|" & Livre
 End Function
 

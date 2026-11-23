@@ -467,6 +467,7 @@ Public Sub SincronizarLotesAoAbrir()
     If LoteParamTela() <> LotePainel() Then CarregarParametrosView LotePainel()    ' ADR-078: so le a store
     InvalidarLotes
     mLotesBlocos.SincronizarBlocos          ' ADR-074: lote cadastrado sem bloco ganha o seu
+    mMaterialLote.SincronizarMaterialCadastro   ' ADR-099: coluna Material = regra MATRIZ que vale
 End Sub
 
 ' ============================ EDICAO DE PARAMETRO ============================

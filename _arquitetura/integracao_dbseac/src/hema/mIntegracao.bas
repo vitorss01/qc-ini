@@ -133,6 +133,10 @@ Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False,
     nRec1 = Linhas("tblDB_Recebimento")
 
     etapa = "conferir a DB_CQ_FINAL"
+    ' ADR-099: a coluna Material do cadastro mostra a regra MATRIZ que vale (a tabela pode ter sido editada direto)
+    On Error Resume Next
+    mMaterialLote.SincronizarMaterialCadastro
+    On Error GoTo falha
     If Linhas(FONTE_CQ) = 0 Then Err.Raise vbObjectError + 571, , "a tabela Principal - Resultados voltou vazia"
     Set mIdxMan = Nothing                    ' ADR-098: a tblCQ_Final mudou -> o indice dos manuais e refeito
 

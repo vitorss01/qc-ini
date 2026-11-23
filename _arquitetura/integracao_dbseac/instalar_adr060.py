@@ -34,7 +34,7 @@ from instalar_seguranca_usuarios import foto_protecao, devolver_protecao  # noqa
 
 MODULOS = ['mLotes', 'mApp', 'mIntegracao', 'mSeguranca']
 CFG = 'Configuração'
-EDITAVEIS = ['C5:C16', 'C20', 'D26:D125']
+EDITAVEIS = ['C5:C16', 'C20', 'D26:D125', 'F26:F125']   # F: material (ADR-099)
 IDENT_BIO = {'C9': 'DIMENSION EXL-200 / SIEMENS', 'C10': 'A INFORMAR', 'C11': 'A INFORMAR'}
 # Inicio!C5:C9 <- Configuracao (Instituicao, Setor, Equipamento, Controle, Responsavel tecnico)
 INICIO_DE = {'C5': 'C5', 'C6': 'C6', 'C7': 'C9', 'C8': 'C11', 'C9': 'C7'}
