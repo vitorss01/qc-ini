@@ -5,7 +5,7 @@ Documento de acompanhamento do fechamento de versão. **Ler no início de toda s
 
 ## Release em curso: entrega 46 (candidata) — atualizado em 24/11/2026, 09h25
 
-**Fase:** ETAPA 5 concluída em casa (testes direcionados em cópia). **Próxima: ETAPA 6** — validação integrada no PC do
+**Fase:** **ETAPA 6 em andamento no PC do trabalho** (24/11, 11h: `entregar.py --direcionada` da entrega 46, código 9c4021a). Antes: ETAPA 5 concluída em casa. **ETAPA 6** — validação integrada no PC do
 trabalho (precisa da produção e do DB_SEAC). Feature freeze desde 23/11/2026.
 
 **Base em produção (validada):** entrega 45 (Bio sha `a9ba3515…`, Hema `1d0d9fe8…`, 18/11/2026).
@@ -61,7 +61,7 @@ trabalho (precisa da produção e do DB_SEAC). Feature freeze desde 23/11/2026.
 ## Próxima ação objetiva (no trabalho)
 
 1. `git pull`.
-2. Conferir as assinaturas da Liberação na produção.
+2. ~~Conferir as assinaturas da Liberação na produção.~~ **Feito em 24/11, 10h55** (`ferramentas/conferir_assinaturas_liberacao.py`, leitura de cópia, sem Excel): a produção (Bio `a9ba3515…`, Hema `1d0d9fe8…`) não tem nenhuma assinatura na aba Liberação (C:F vazio) nem evento `ASSINATURA_*` no Audit_Log. O P1 não chegou a atingir dado real.
 3. Fechar os outros Excel e pausar a tarefa DB_SEAC.
 4. Rodar:
    ```
