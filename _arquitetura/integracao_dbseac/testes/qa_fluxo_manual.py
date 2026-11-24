@@ -200,6 +200,14 @@ def corridas_candidatas(reais_esc, idx, runs_jan, gap, tol, nlv, excluir):
     return out
 
 
+def valor_f04(z1, mt, st_):
+    """Valor do manual do F04: do lado oposto ao N1, |z1 - zt| > 4 e |zt| < 3 (o mesmo calculo do F04)."""
+    sinal = 1.0 if z1 > 0 else -1.0
+    zt = z1 - sinal * 4.5
+    zt = max(zt, -2.9) if sinal > 0 else min(zt, 2.9)
+    return round(mt + zt * st_, 6)
+
+
 def dias_f05(reais_esc, idx, runs_jan, gap, tol, excluir):
     """_GK/dia com >= 2 corridas, todas na janela, espaco para um manual N1 antes da 1a (fora do GAP e da TOL) e um N1
     automatico ATIVO numa corrida posterior (o que sera inativado)."""
@@ -223,8 +231,11 @@ def dias_f05(reais_esc, idx, runs_jan, gap, tol, excluir):
             continue
         if conflito(idx, k[:4], 1, m, tol):
             continue
+        # 24/11/2026 (entrega 46): a corrida do X precisa de OUTRO resultado ATIVO. Corrida so com X nao consome posicao
+        # da janela cheia (mEstatistica D10, QA-ETL-001) e sai do grafico -- comportamento validado, nao defeito.
         xs = [r for b in blocos[1:] for r in b if iint(r['NIVEL']) == 1 and r['STATUS_ANALITICO'] == 'ATIVO'
-              and eh_auto(r) and eh_num(r['RESULTADO'])]
+              and eh_auto(r) and eh_num(r['RESULTADO'])
+              and any(o['ID_REGISTRO'] != r['ID_REGISTRO'] and o['STATUS_ANALITICO'] == 'ATIVO' for o in b)]
         if not xs:
             continue
         out.append({'gk': k, 'dia': k[4], 'm': m, 'x': xs[-1], 'n_corridas': len(blocos),
@@ -626,7 +637,10 @@ def executar(produto, caminho, saida):
                 z1 = (float(v1) - float(a_[0])) / float(a_[1])
                 if not 1.2 <= abs(z1) <= 2.0:
                     continue
-                t2 = next((t for t in c['niveis_t'] if alvo_t(t)), None)
+                # 24/11/2026 (entrega 46, dados da producao): o valor do F04 tem de ser > 0 -- resultado <= 0 e
+                # IMPLAUSIVEL pela regra do produto (fora da estatistica e do grafico) e o R_4s nao pode ser provado.
+                # Bicarbonato 8974 N2 (DP 6,0 com media 16,4) dava -1,15 e o teste culpava o produto.
+                t2 = next((t for t in c['niveis_t'] if alvo_t(t) and valor_f04(z1, *alvo_t(t)) > 0), None)
                 if t2 is None:
                     continue
                 cand = dict(c, z1=z1, t=t2, alvo_n1=(float(a_[0]), float(a_[1])))
@@ -807,10 +821,7 @@ def executar(produto, caminho, saida):
             t2, run2 = C2['t'], C2['run']
             mt, st_ = alvo_t(t2)
             z1 = C2['z1']
-            sinal = 1.0 if z1 > 0 else -1.0
-            zt = z1 - sinal * 4.5
-            zt = max(zt, -2.9) if sinal > 0 else min(zt, 2.9)
-            v4 = round(mt + zt * st_, 6)
+            v4 = valor_f04(z1, mt, st_)
             zt_real = (v4 - mt) / st_
             r_aud = ms.audit_ult(q)
             r4, M4, _ = escrever_manual('F04', manual_dict(C2['dh_m'], C2['n1']['EQUIPAMENTO'], lote, t2,
