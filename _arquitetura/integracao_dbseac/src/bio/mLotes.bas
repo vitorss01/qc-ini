@@ -804,11 +804,18 @@ Public Sub AtualizarListaLiberacao(Optional ByVal dados As Variant)
         For a = 1 To n
             If assin.Exists(runs(a)) Then resto = resto + 1
         Next a
+        ' assinatura cuja corrida nao tem mais resultado ativo (vai para o fim da lista): o espaco dela e reservado aqui,
+        ' senao, com o lote acima de 200 corridas, nao sobraria linha e a assinatura sumiria da tela
+        Dim reserva As Long
+        For Each k In assin.Keys
+            If Not d.Exists(k) Then reserva = reserva + 1
+        Next k
+        If reserva > NLB_LIBER - resto Then reserva = NLB_LIBER - resto
         ReDim sel(1 To n)
         For a = 1 To n
             If assin.Exists(runs(a)) Then
                 m = m + 1: sel(m) = runs(a): resto = resto - 1
-            ElseIf m + resto < NLB_LIBER Then
+            ElseIf m + resto + reserva < NLB_LIBER Then
                 m = m + 1: sel(m) = runs(a)
             End If
         Next a

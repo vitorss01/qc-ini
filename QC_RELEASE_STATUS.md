@@ -3,7 +3,7 @@
 Documento de acompanhamento do fechamento de versão. **Ler no início de toda sessão; atualizar no fim.** Mantido pelo
 `qc-release-manager` (`.claude/agents/qc-release-manager.md`, procedimento `/qc-release`).
 
-## Release em curso: entrega 46 (candidata) — atualizado em 23/11/2026, 23h10
+## Release em curso: entrega 46 (candidata) — atualizado em 24/11/2026, 09h25
 
 **Fase:** ETAPA 5 concluída em casa (testes direcionados em cópia). **Próxima: ETAPA 6** — validação integrada no PC do
 trabalho (precisa da produção e do DB_SEAC). Feature freeze desde 23/11/2026.
@@ -17,7 +17,7 @@ trabalho (precisa da produção e do DB_SEAC). Feature freeze desde 23/11/2026.
 | ADR-099 coluna Material + avisos do CEQ | pedido do usuário (antes do freeze) | qa_adr099 Bio 8/0 e Hema 8/0 |
 | ADR-100 alvos pelos 40 primeiros (ferramenta de dados) | pedido do usuário | A00–A11 PASS nos dois. Com os alvos: qa_blocos_lote BO Bio 126 pares/0 divergência, Hema 15/0; qa_westgard_sequencia Bio e Hema 29/0; qa_linhas_alvo 10/0 nos dois. **Aplicar no trabalho após o RT revisar o CSV** |
 | ADR-101 cores/classe do Sigma (6 faixas), Sigma negativo = 0, legenda (V5:X8) | pedido do usuário (23/11, antes do freeze) | fumaça do instalador OK nos dois; qa_incerteza Bio 15/0 e Hema 16/0 com o piso 0; qa_adr090 Bio 21/0 e Hema 23/0 (legenda fora dos gráficos) |
-| **Liberação: a assinatura acompanha o RUN** (`src/{bio,hema}/mLotes.bas`) | **P1 corrigido** | qa_fluxo_manual Bio 20/0 e Hema 19/0. F05e: o marcador acompanha o RUN. F07b: a Liberação volta ao estado inicial depois da retirada |
+| **Liberação: a assinatura acompanha o RUN** (`src/{bio,hema}/mLotes.bas`) | **P1 corrigido** | qa_fluxo_manual Bio 20/0 e Hema 19/0 (F05e e F07b). qa_liberacao_run Bio 4/0 e Hema 4/0 (24/11): assinatura de corrida sem resultado ativo vai para o fim com aviso e 1 trilha; com o lote acima de 200 corridas a linha é reservada; a 200ª continua no lugar; tudo volta ao lugar |
 
 ## Critérios do gate
 
@@ -41,8 +41,9 @@ trabalho (precisa da produção e do DB_SEAC). Feature freeze desde 23/11/2026.
   - qa_blocos_lote BN (6354 Creatinina) e B00 (anos "yyyy" na biblioteca);
   - qa_corrida_lote.
 - **Exigem o trabalho:** qa_sync (DB_SEAC) e qa_usuarios_adr084 (cadastro central).
-- **Não testado especificamente:** o caminho "assinatura de corrida que perdeu todo resultado ativo" (vai para o fim da
-  lista com aviso) e a corrida assinada além da 200ª.
+- O caminho "assinatura de corrida sem resultado ativo" foi testado em 24/11 (`qa_liberacao_run`). Ele mostrou e
+  corrigiu uma brecha: com o lote acima de 200 corridas, a assinatura não tinha linha e sumia da tela. Agora a linha é
+  reservada.
 
 ## Pendências
 
@@ -66,7 +67,7 @@ trabalho (precisa da produção e do DB_SEAC). Feature freeze desde 23/11/2026.
    ```
    python _arquitetura/integracao_dbseac/entregar.py Hematologia Bioquimica --direcionada --com qa_westgard_sequencia.py,qa_adr091.py,qa_adr094.py,qa_blocos_lote.py,qa_lotes_auto.py
    ```
-   As suítes novas já estão no gate: qa_adr099, qa_fluxo_manual, qa_fluxo_ceq e qa_incerteza (SUITES_DO_LOTE).
+   As suítes novas já estão no gate: qa_adr099, qa_fluxo_manual, qa_liberacao_run, qa_fluxo_ceq e qa_incerteza (SUITES_DO_LOTE).
 5. `aplicar_atualizar.py` nos dois produtos.
 6. `aplicar_alvos_ciq.py <produto> --simular`, revisão do CSV pelo RT (critérios no PRONTIDAO §4, passo 6), depois
    aplicar sem flag.
