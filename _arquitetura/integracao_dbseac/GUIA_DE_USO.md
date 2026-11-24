@@ -269,7 +269,7 @@ ficou sem Sigma.
 - O Sigma do Painel (I7..) é o **mesmo** da Estatística (coluna L). Quando |Bias| passa do ETp, o Sigma mostra **0**
   (Inaceitável), nunca um número negativo (ADR-101).
 - **Cores e classe** (número e texto; Painel I e "Classe Sigma" em K, Estatística L e M). A legenda fica no Painel
-  (V5:W11), com a regra de CQ sugerida de cada faixa; ela é só informativa e não muda as regras que rodam:
+  (V5:X8, à direita da tabela do Westgard), com a regra de CQ sugerida de cada faixa; ela é só informativa e não muda as regras que rodam:
 
   | Sigma | Classe | Cor |
   |---|---|---|

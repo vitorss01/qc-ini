@@ -795,9 +795,14 @@ def executar(produto, caminho, saida):
 
         # ============================================================ F04 R_4s entre automatico e manual no mesmo RUN
         if C2 is None:
-            reg('F04 R_4s entre automático e manual no mesmo RUN', False,
-                {'falha': 'pré-condição ausente: nenhuma corrida C2 (condições do F01, outro dia) com o N1 em 1,2 <= |z| '
-                          '<= 2,0 e alvo do nível faltante', 'alvo_N1': escolha['alvo1']})
+            # 23/11/2026 (fechamento): NAO_EXECUTADO, nao FAIL -- depende de haver nos DADOS uma corrida com o N1 nessa faixa
+            # (a Hema tem as 3 corridas quase sempre completas); a regra entre automatico e manual ja e provada quando ha
+            # (Bio 20/20). Como o qa_adr088, a falta da pre-condicao fica explicita e nao bloqueia o gate.
+            RES.append({'teste': 'F04 R_4s entre automático e manual no mesmo RUN', 'resultado': 'NAO_EXECUTADO',
+                        'evidencia': {'motivo': 'pré-condição ausente nos dados: nenhuma corrida C2 (condições do F01, '
+                                                'outro dia) com o N1 em 1,2 <= |z| <= 2,0 e alvo do nível faltante',
+                                      'alvo_N1': escolha['alvo1']}})
+            print('NAO_EXECUTADO F04 -- pre-condicao ausente nos dados', flush=True)
         else:
             t2, run2 = C2['t'], C2['run']
             mt, st_ = alvo_t(t2)
@@ -971,7 +976,7 @@ def executar(produto, caminho, saida):
         else:
             j = D0['k']
             run_j = lista_a[j]
-            extras['marcador'] = (j, lib_a[j][2], lib_a[j][3])
+            extras['marcador'] = (j, lib_a[j][2], lib_a[j][3], run_j)
             marca = f'QA_FLUXO_MANUAL: marcador do RUN {run_j}'
             lib_gravar(q, j, 'QA', marca)
             r0 = next((r for r in esc if gk(r)[:4] == chave0), esc[-1])     # grafia real da chave (gk e maiuscula)
@@ -1103,8 +1108,10 @@ def executar(produto, caminho, saida):
         for _, r_, _ in manuais:
             apagar_linha(q, TB_MAN, r_)
         if 'marcador' in extras:
-            jm, c0, d0 = extras['marcador']
-            lib_gravar(q, jm, c0, d0)
+            # o marcador acompanha o RUN (correcao da Liberacao, 23/11/2026): apagar na linha ATUAL do RUN dele
+            jm, c0, d0, run_m = extras['marcador']
+            lista_m = [iint(r[0]) for r in lib_ler(q)]
+            lib_gravar(q, lista_m.index(run_m) if run_m in lista_m else jm, c0, d0)
         completo('F07_retirada')
         fin7 = q.final_por_id()
         cq7 = ms.tabela_v2(q, TB_FIN)
@@ -1141,6 +1148,7 @@ def executar(produto, caminho, saida):
              'painel_inicio': p0, 'painel_fim': p7, 'estatistica_inicio': est0, 'estatistica_fim': est7,
              'westgard_oficiais_iguais': of7 == of0, 'eventos_so_no_inicio': sorted(map(str, of0 - of7))[:5],
              'eventos_so_no_fim': sorted(map(str, of7 - of0))[:5], 'liberacao_igual': lib_norm(lib7) == lib_norm(lib0),
+             'liberacao_dif': [(4 + i, a, b) for i, (a, b) in enumerate(zip(lib_norm(lib0), lib_norm(lib7))) if a != b][:6],
              'retirados_por_manual': retirados,
              'reativado': [x for x in aud7 if 'RESULTADO_REATIVADO' in acoes(x)][:3]})
         q.cfg('MODO_FONTE', modo0)

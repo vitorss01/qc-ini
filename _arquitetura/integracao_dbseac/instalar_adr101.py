@@ -9,7 +9,7 @@ Decisoes do usuario (23/11/2026):
     (amarelo) | 2-3 Ruim (vermelho-claro) | <2 Inaceitavel (vermelho-escuro);
   - pinta o numero E o texto da classe (Estatistica L e M; Painel I e K "Classe Sigma");
   - Sigma negativo (|bias| > ETp) = 0, vermelho-escuro (Estatistica L = MAX(0; ...));
-  - legenda no Painel (V5:W11) com a regra de CQ sugerida de cada faixa (da tblPlanoQC_Sigma: informativa; as regras
+  - legenda no Painel (V5:X8, acima dos graficos) com a regra de CQ sugerida de cada faixa (da tblPlanoQC_Sigma: informativa; as regras
     que rodam nao mudam).
 Idempotente. Passos: 1. VBA atual; 2. tblPlanoQC_Sigma: a faixa "<3 Desempenho inadequado" vira "2-3 Ruim" + "<2
 Inaceitavel" (mesmas regras); 3. Estatistica L com MAX(0;...); 4. Painel K7:K9 = classe; 5. formatacao condicional;
@@ -146,36 +146,38 @@ def painel(wb, nlv, lo, cab):
     p.Range(f'K7:K{ult}').HorizontalAlignment = -4108
     cores(p, f'I7:I{ult}', '$I7')
     cores(p, f'K7:K{ult}', '$I7')
-    # legenda V5:W11
-    v = p.Range('V5:W11')
+    # legenda nas linhas 5 a 8, a direita da tabela do Westgard (V..X): os graficos ocupam a LARGURA DA JANELA a partir
+    # da linha 9 (Bio) / 10 (Hema) -- mUI.AjustarGraficos --, entao abaixo da linha 8 a legenda ficaria por baixo deles
+    # (qa_adr090 V02, 23/11/2026). 6 faixas em 2 linhas x 3 colunas: "faixa · classe · regras sugeridas"
+    if str(p.Range('V5').Value or '') == TITULO_LEG:
+        p.Range('V5:X12').Clear()                        # legenda de instalacao anterior (V5:W12)
+    v = p.Range('V5:X8')
     ocup = [c.Address for c in v.Cells if c.Formula not in (None, '')]
-    if ocup and str(p.Range('V5').Value or '') != TITULO_LEG:
-        raise SystemExit(f'Painel V5:W11 ocupada ({ocup[:4]}) -- nada foi salvo')
+    if ocup:
+        raise SystemExit(f'Painel V5:X8 ocupada ({ocup[:4]}) -- nada foi salvo')
+    for co in p.ChartObjects():
+        if co.TopLeftCell.Row <= 8:
+            raise SystemExit(f'Painel: grafico {co.Name} comeca na linha {co.TopLeftCell.Row} (legenda V5:X8) -- nada foi salvo')
     regras = {}
     for row in lo.DataBodyRange.Value:
         regras[str(row[cab.index('Classificacao')])] = str(row[cab.index('Regras')] or '')
-    p.Range('V5').Value = TITULO_LEG
+    p.Range('V5').Value = TITULO_LEG + ' (informativo; as regras que rodam são as do Westgard configurado)'
     p.Range('V5').Font.Bold = True
-    p.Range('V5').Font.Size = 9
+    p.Range('V5').Font.Size = 8
     for i, (lo_, hi_, cls, fundo, fonte) in enumerate(FAIXAS):
         faixa = (f'≥ {lo_:g}' if hi_ is None else f'< {hi_:g}' if lo_ is None else f'{lo_:g} a {hi_:g}')
-        cv, cw = p.Cells(6 + i, 22), p.Cells(6 + i, 23)
-        cv.Value = f'{faixa} · {cls}'
-        cv.Interior.Color = fundo
-        cv.Font.Color = fonte
-        cv.Font.Bold = True
-        cw.Value = regras.get(cls, '')
-        for c in (cv, cw):
-            c.Font.Size = 8
-            c.ShrinkToFit = True
-    if p.Columns(22).ColumnWidth < 20:
-        p.Columns(22).ColumnWidth = 22
-    if p.Columns(23).ColumnWidth < 24:
-        p.Columns(23).ColumnWidth = 30
-    p.Range('V12').Value = 'Informativo: as regras que rodam são as do Westgard configurado.'
-    p.Range('V12').Font.Size = 7
-    p.Range('V12').Font.Italic = True
-    MUDANCAS.append('Painel I/K cores e legenda V5:W12')
+        c = p.Cells(6 + i // 3, 22 + i % 3)
+        c.Value = f'{faixa} · {cls} · {regras.get(cls, "")}'
+        c.Interior.Color = fundo
+        c.Font.Color = fonte
+        c.Font.Bold = True
+        c.Font.Size = 7
+        c.ShrinkToFit = True
+        c.WrapText = False
+    for col in (22, 23, 24):
+        if p.Columns(col).ColumnWidth < 30:
+            p.Columns(col).ColumnWidth = 34
+    MUDANCAS.append(f'Painel I/K cores e legenda {v.Address}')
 
 
 def estatistica(wb):
