@@ -149,7 +149,7 @@ def painel(wb, nlv, lo, cab):
     # legenda nas linhas 5 a 8, a direita da tabela do Westgard (V..X): os graficos ocupam a LARGURA DA JANELA a partir
     # da linha 9 (Bio) / 10 (Hema) -- mUI.AjustarGraficos --, entao abaixo da linha 8 a legenda ficaria por baixo deles
     # (qa_adr090 V02, 23/11/2026). 6 faixas em 2 linhas x 3 colunas: "faixa · classe · regras sugeridas"
-    if str(p.Range('V5').Value or '') == TITULO_LEG:
+    if str(p.Range('V5').Value or '').startswith(TITULO_LEG):   # 24/11: a celula leva o titulo + ' (informativo...)' -- reinstalacao
         p.Range('V5:X12').Clear()                        # legenda de instalacao anterior (V5:W12)
     v = p.Range('V5:X8')
     ocup = [c.Address for c in v.Cells if c.Formula not in (None, '')]

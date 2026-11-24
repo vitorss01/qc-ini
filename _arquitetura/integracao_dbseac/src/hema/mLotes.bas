@@ -640,10 +640,15 @@ Private Sub SalvarViewNoBloco(ByVal iBloco As Long)
     Set stL = ThisWorkbook.Sheets("LiberStore")
     rb0 = 2 + (iBloco - 1) * NLB_LIBER
     Set srcL = ThisWorkbook.Names("libView").RefersToRange          ' C4:F203 (200 x 4)
+    ' A-01 (24/11/2026): sem UserInterfaceOnly na sessao (automacao, BeforeSave) a gravacao falhava calada e a troca
+    ' de lote apagava as assinaturas -- libera e restaura como pede o ADR-046
+    Dim protL As Boolean
+    protL = mSeguranca.LiberarEscritaRapida(stL)
     stL.Range(stL.Cells(rb0, 1), stL.Cells(rb0 + NLB_LIBER - 1, 4)).Value = srcL.Value
     ' 23/11/2026: o RUN de cada linha vai junto (coluna E), para a assinatura voltar ao lado do MESMO RUN
     stL.Range(stL.Cells(rb0, 5), stL.Cells(rb0 + NLB_LIBER - 1, 5)).Value = _
         srcL.Worksheet.Range(srcL.Worksheet.Cells(srcL.Row, 1), srcL.Worksheet.Cells(srcL.Row + NLB_LIBER - 1, 1)).Value
+    mSeguranca.RestaurarProtecao stL, protL
     ' ADR-087: a aba Registros virou a tabela unica tblRegistros (todos os lotes) -- a RegistrosStore fica como arquivo
     ' historico e nao e mais gravada
     If Not mCalibracao.TabelaRegistros() Is Nothing Then Exit Sub
@@ -652,7 +657,10 @@ Private Sub SalvarViewNoBloco(ByVal iBloco As Long)
     rr0 = 2 + (iBloco - 1) * NLB_LIBER
     ' ADR-084: B4:L203 (200 x 11; K = ID do resultado da calibracao, L = equipamento) -- a largura vem do nome
     Set srcR = ThisWorkbook.Names("regView").RefersToRange          ' B4:J203 (200 x 9) antes do ADR-084
+    Dim protR As Boolean
+    protR = mSeguranca.LiberarEscritaRapida(wsReg)
     wsReg.Range(wsReg.Cells(rr0, 1), wsReg.Cells(rr0 + NLB_LIBER - 1, srcR.Columns.Count)).Value = srcR.Value
+    mSeguranca.RestaurarProtecao wsReg, protR
 End Sub
 
 Private Sub CarregarBlocoNaView(ByVal iBloco As Long)
@@ -663,17 +671,24 @@ Private Sub CarregarBlocoNaView(ByVal iBloco As Long)
     Set stL = ThisWorkbook.Sheets("LiberStore")
     rb0 = 2 + (iBloco - 1) * NLB_LIBER
     Set dstL = ThisWorkbook.Names("libView").RefersToRange
+    ' A-01 (24/11/2026): a aba Liberacao pode estar protegida sem UserInterfaceOnly (ADR-046)
+    Dim protV As Boolean
+    protV = mSeguranca.LiberarEscritaRapida(dstL.Worksheet)
     dstL.Value = stL.Range(stL.Cells(rb0, 1), stL.Cells(rb0 + NLB_LIBER - 1, 4)).Value
     ' 23/11/2026: os RUNs com que as assinaturas foram gravadas (vazio em bloco antigo = alinhamento por posicao)
     dstL.Worksheet.Range(dstL.Worksheet.Cells(dstL.Row, 1), dstL.Worksheet.Cells(dstL.Row + NLB_LIBER - 1, 1)).Value = _
         stL.Range(stL.Cells(rb0, 5), stL.Cells(rb0 + NLB_LIBER - 1, 5)).Value
+    mSeguranca.RestaurarProtecao dstL.Worksheet, protV
     ' ADR-087: tabela unica -- a vista so passa a filtrar o lote que entrou
     If Not mCalibracao.TabelaRegistros() Is Nothing Then Exit Sub
     Dim wsReg As Worksheet, rr0 As Long, dstR As Range
     Set wsReg = ThisWorkbook.Sheets("RegistrosStore")
     rr0 = 2 + (iBloco - 1) * NLB_LIBER
     Set dstR = ThisWorkbook.Names("regView").RefersToRange
+    Dim protRV As Boolean
+    protRV = mSeguranca.LiberarEscritaRapida(dstR.Worksheet)
     dstR.Value = wsReg.Range(wsReg.Cells(rr0, 1), wsReg.Cells(rr0 + NLB_LIBER - 1, dstR.Columns.Count)).Value   ' ADR-084
+    mSeguranca.RestaurarProtecao dstR.Worksheet, protRV
 End Sub
 
 ' Chamado pelo Worksheet_Change da Configuracao quando o lote EM USO muda.
