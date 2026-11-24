@@ -25,7 +25,7 @@ trabalho (precisa da produção e do DB_SEAC). Feature freeze desde 23/11/2026.
 |---|---|---|
 | Inserção manual integra ao interfaceamento | ✅ em cópia | qa_fluxo_manual Bio 20/0, Hema 19/0 + 1 NAO_EXECUTADO (F04: falta a pré-condição nos dados) |
 | Bias, ET e Sigma do CEQ = oráculo | ✅ em cópia | qa_fluxo_ceq Bio e Hema 13/0 + 1 ALERTA (OC-0069, já no backlog BK-06) |
-| Fluxo principal e ATUALIZAR | ✅ em cópia | qa_final Bio e Hema 29/0; qa_lotes_auto Bio 14/0 (v3) e Hema 14/0 (v2) |
+| Fluxo principal e ATUALIZAR | ✅ em cópia | qa_final Bio e Hema 29/0; qa_lotes_auto Bio 14/0 (v3) e Hema 14/0 (24/11, código final; duas tentativas antes travaram por Excel) |
 | Equivalência VBA × Power Query | ✅ (12/11) | equivalencia_cq --fixtures: 0 divergências. O motor não mudou desde então; repetir no gate do trabalho |
 | 0 P0 e 0 P1 conhecidos | ✅ em cópia | o único P1 (Liberação) foi corrigido e retestado nos dois produtos |
 | Validação integrada (entregar --direcionada) | ❌ pendente | só no PC do trabalho |
@@ -34,7 +34,7 @@ trabalho (precisa da produção e do DB_SEAC). Feature freeze desde 23/11/2026.
 ## Testes que não fecharam em casa (não são defeito do produto)
 
 - **Ambiente:** o Excel 16.0.20625 desta máquina cai ou trava (0xc0000005, "Membro não encontrado", timeout).
-  - qa_lotes_auto Hema estourou os 1.500 s (na v2 levou 1.381 s e passou);
+  - qa_lotes_auto Hema travou duas vezes (Excel ocupado/timeout) e passou na 3ª tentativa, na mesma cópia (842 s);
   - várias suítes caíram uma vez e passaram ao rodar de novo.
 - **Dados antigos da cópia (arquivos de 05/10):**
   - qa_adr088 R12c;
