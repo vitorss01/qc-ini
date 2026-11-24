@@ -3,12 +3,19 @@
 Documento de acompanhamento do fechamento de versão. **Ler no início de toda sessão; atualizar no fim.** Mantido pelo
 `qc-release-manager` (`.claude/agents/qc-release-manager.md`, procedimento `/qc-release`).
 
-## Release em curso: entrega 46 (candidata) — atualizado em 24/11/2026, 09h25
+## Release em curso: entrega 47 (candidata) — atualizado em 24/11/2026, 20h45
 
-**Fase:** **ETAPA 6 em andamento no PC do trabalho** (24/11, 11h: `entregar.py --direcionada` da entrega 46, código 9c4021a). Antes: ETAPA 5 concluída em casa. **ETAPA 6** — validação integrada no PC do
-trabalho (precisa da produção e do DB_SEAC). Feature freeze desde 23/11/2026.
+**Fase:** ETAPA 6 no PC do trabalho. A **entrega 46 está em produção** nos dois produtos (21 suítes PASS; ATUALIZAR
+aplicado; MANIFESTO) e foi **VALIDADA pelo Tester** (`_arquitetura/agentes/relatorios/2026-11-24_validacao_entrega46/TESTER.md`):
+ADR-099, ADR-101, Liberação (assinatura acompanha o RUN) e integridade. O Tester achou o **A-01** (troca de lote sem login
+apagava as assinaturas da Liberação na Hema; latente, anterior à 46). Corrigido no commit c362922 (ADR-046: liberar e
+restaurar a proteção) e testado em cópia da produção sem login: Hema 4/8 → 8/8, Bio 8/8 → 8/8. O mesmo commit torna o
+`instalar_adr101.py` reinstalável (recusava sobre a produção atual). **Entrega 47 rodando** (`entregar.py --direcionada`).
+Depois: Tester valida o A-01 na produção nova. ADR-100 **aguarda o RT** (parecer do Especialista em CQ em
+`QC_INI_PRONTO/_revisao_alvos_46/`, fora do repositório: Hema aplicar com ressalvas; Bio NÃO aplicar antes de limpar o N1
+dos lotes 8974/8977 e simular de novo).
 
-**Base em produção (validada):** entrega 45 (Bio sha `a9ba3515…`, Hema `1d0d9fe8…`, 18/11/2026).
+**Base em produção (validada):** entrega 46 + ATUALIZAR (Bio sha `9693db90…`, Hema `a8d6fcb2…`, 24/11/2026).
 
 **Conteúdo da candidata (fechado — nada mais entra além de P0/P1):**
 
@@ -28,7 +35,8 @@ trabalho (precisa da produção e do DB_SEAC). Feature freeze desde 23/11/2026.
 | Fluxo principal e ATUALIZAR | ✅ em cópia | qa_final Bio e Hema 29/0; qa_lotes_auto Bio 14/0 (v3) e Hema 14/0 (24/11, código final; duas tentativas antes travaram por Excel) |
 | Equivalência VBA × Power Query | ✅ (12/11) | equivalencia_cq --fixtures: 0 divergências. O motor não mudou desde então; repetir no gate do trabalho |
 | 0 P0 e 0 P1 conhecidos | ✅ em cópia | o único P1 (Liberação) foi corrigido e retestado nos dois produtos |
-| Validação integrada (entregar --direcionada) | ❌ pendente | só no PC do trabalho |
+| Validação integrada (entregar --direcionada) | ✅ entrega 46 (24/11); entrega 47 em curso | MANIFESTO; Bio retomada após correção do teste (F04/F05d) |
+| Validação independente (Tester) | ✅ entrega 46 | TESTER.md: 4 itens VALIDADA; F04 NAO_EXECUTADO (BK-20); ADR-101 Bio só tem 4 das 6 faixas nos dados |
 | Documentação | ✅ | ADR-099/100/101, GUIA_DE_USO, PRONTIDAO_LIBERACAO_2026-11-23, este arquivo, BACKLOG |
 
 ## Testes que não fecharam em casa (não são defeito do produto)
@@ -48,6 +56,9 @@ trabalho (precisa da produção e do DB_SEAC). Feature freeze desde 23/11/2026.
 ## Pendências
 
 - **P0:** nenhuma.
+- **A-01 (P2, Liberação sem login):** corrigido (c362922), em entrega (47).
+- **E01 Lactato N2 13/10 (Bio):** 4 inativações sem MOTIVO na aba Inativar — pendência do laboratório (P2).
+- **ADR-100:** aplicar só após aprovação escrita do RT (parecer do Especialista; BK-19 para a triagem).
 - **P1:** nenhuma aberta. A da Liberação foi corrigida e retestada em cópia. O defeito também existe na entrega 45, em
   produção: **no trabalho, antes de trocar, conferir se alguma assinatura já está ao lado do RUN errado** (aba
   Liberação × Audit_Log `ASSINATURA_*`, que guarda o RUN).
