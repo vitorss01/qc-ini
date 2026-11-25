@@ -3,41 +3,51 @@
 Documento de acompanhamento do fechamento de versão. **Ler no início de toda sessão; atualizar no fim.** Mantido pelo
 `qc-release-manager` (`.claude/agents/qc-release-manager.md`, procedimento `/qc-release`).
 
-## Release em curso: entrega 47 (candidata) — atualizado em 24/11/2026, 20h45
+## Release: entrega 47 — EM PRODUÇÃO, VALIDADA, RC APROVADO — atualizado em 25/11/2026
 
-**Fase:** ETAPA 6 no PC do trabalho. A **entrega 46 está em produção** nos dois produtos (21 suítes PASS; ATUALIZAR
-aplicado; MANIFESTO) e foi **VALIDADA pelo Tester** (`_arquitetura/agentes/relatorios/2026-11-24_validacao_entrega46/TESTER.md`):
-ADR-099, ADR-101, Liberação (assinatura acompanha o RUN) e integridade. O Tester achou o **A-01** (troca de lote sem login
-apagava as assinaturas da Liberação na Hema; latente, anterior à 46). Corrigido no commit c362922 (ADR-046: liberar e
-restaurar a proteção) e testado em cópia da produção sem login: Hema 4/8 → 8/8, Bio 8/8 → 8/8. O mesmo commit torna o
-`instalar_adr101.py` reinstalável (recusava sobre a produção atual). **Entrega 47 rodando** (`entregar.py --direcionada`).
-Depois: Tester valida o A-01 na produção nova. ADR-100 **aguarda o RT** (parecer do Especialista em CQ em
-`QC_INI_PRONTO/_revisao_alvos_46/`, fora do repositório: Hema aplicar com ressalvas; Bio NÃO aplicar antes de limpar o N1
-dos lotes 8974/8977 e simular de novo).
+**Fase:** ETAPA 7 concluída (relatório de release:
+`_arquitetura/agentes/relatorios/2026-11-25_RELEASE_entrega47.md`). Veredito: **QC_INI — RELEASE CANDIDATE APROVADO
+PARA ENTREGA** (release técnica do código). A **entrega 47** (commit c362922) está em produção nos dois produtos:
+- `entregar.py --direcionada`: 21/21 suítes PASS por produto, blindagem TRAVADO;
+- ATUALIZAR sem mudança de status depois da entrega (MANIFESTO 24/11);
+- validada pelo Tester (`_arquitetura/agentes/relatorios/2026-11-24_validacao_entrega47/TESTER.md`): A-01, instalar_adr101,
+  ferramenta ADR-100 (em cópia) e regressão mínima VALIDADAS.
 
-**Base em produção (validada):** entrega 46 + ATUALIZAR (Bio sha `9693db90…`, Hema `a8d6fcb2…`, 24/11/2026).
+O O-1 (gravação) foi medido em 25/11 pelo Orquestrador: o comando da interface `ExecuteMso("FileSave")` grava nos dois
+produtos, sem e com sessão de login; só `wb.Save()` por automação com eventos ligados não grava. Fica P3 (BK-21).
 
-**Conteúdo da candidata (fechado — nada mais entra além de P0/P1):**
+**Fica fora da release técnica (etapas humanas posteriores):**
+- a aplicação do ADR-100, que aguarda a aprovação escrita do RT. A Bio só vem depois de limpar o N1 dos lotes 8974/8977,
+  simular de novo e remover a trava `~$`;
+- a aprovação institucional/regulatória do laboratório.
+
+**Base em produção (validada):** entrega 47 + ATUALIZAR. Bio sha `27526469…` (entrega `42c69669…`), Hema `53fe8cc8…`
+(entrega `898d5412…`), 24/11/2026.
+
+**Conteúdo da release (entregas 46 + 47; fechado):**
 
 | Item | Tipo | Estado em cópia |
 |---|---|---|
 | ADR-099 coluna Material + avisos do CEQ | pedido do usuário (antes do freeze) | qa_adr099 Bio 8/0 e Hema 8/0 |
 | ADR-100 alvos pelos 40 primeiros (ferramenta de dados) | pedido do usuário | A00–A11 PASS nos dois. Com os alvos: qa_blocos_lote BO Bio 126 pares/0 divergência, Hema 15/0; qa_westgard_sequencia Bio e Hema 29/0; qa_linhas_alvo 10/0 nos dois. **Aplicar no trabalho após o RT revisar o CSV** |
 | ADR-101 cores/classe do Sigma (6 faixas), Sigma negativo = 0, legenda (V5:X8) | pedido do usuário (23/11, antes do freeze) | fumaça do instalador OK nos dois; qa_incerteza Bio 15/0 e Hema 16/0 com o piso 0; qa_adr090 Bio 21/0 e Hema 23/0 (legenda fora dos gráficos) |
-| **Liberação: a assinatura acompanha o RUN** (`src/{bio,hema}/mLotes.bas`) | **P1 corrigido** | qa_fluxo_manual Bio 20/0 e Hema 19/0 (F05e e F07b). qa_liberacao_run Bio 4/0 e Hema 4/0 (24/11): assinatura de corrida sem resultado ativo vai para o fim com aviso e 1 trilha; com o lote acima de 200 corridas a linha é reservada; a 200ª continua no lugar; tudo volta ao lugar |
+| **Liberação: a assinatura acompanha o RUN** (`src/{bio,hema}/mLotes.bas`) | **P1 corrigido** | qa_fluxo_manual 19/0 nos dois + F04 NAO_EXECUTADO (F05e e F07b). qa_liberacao_run Bio 4/0 e Hema 4/0 (24/11): assinatura de corrida sem resultado ativo vai para o fim com aviso e 1 trilha; com o lote acima de 200 corridas a linha é reservada; a 200ª continua no lugar; tudo volta ao lugar |
+| **A-01** troca de lote sem login não apaga as assinaturas da Liberação; instalar_adr101 reinstalável (c362922, entrega 47) | P2 corrigido | Tester 47: repro_e46_liberacao 8/8 nos dois com e sem login (antes Hema 4/8); repro_e47_troca_lote P01–P06 PASS; reinstalação 0 diferenças |
 
-## Critérios do gate
+
+## Critérios do gate (entrega 47)
 
 | Critério | Estado | Evidência |
 |---|---|---|
-| Inserção manual integra ao interfaceamento | ✅ em cópia | qa_fluxo_manual Bio 20/0, Hema 19/0 + 1 NAO_EXECUTADO (F04: falta a pré-condição nos dados) |
-| Bias, ET e Sigma do CEQ = oráculo | ✅ em cópia | qa_fluxo_ceq Bio e Hema 13/0 + 1 ALERTA (OC-0069, já no backlog BK-06) |
-| Fluxo principal e ATUALIZAR | ✅ em cópia | qa_final Bio e Hema 29/0; qa_lotes_auto Bio 14/0 (v3) e Hema 14/0 (24/11, código final; duas tentativas antes travaram por Excel) |
-| Equivalência VBA × Power Query | ✅ (12/11) | equivalencia_cq --fixtures: 0 divergências. O motor não mudou desde então; repetir no gate do trabalho |
-| 0 P0 e 0 P1 conhecidos | ✅ em cópia | o único P1 (Liberação) foi corrigido e retestado nos dois produtos |
-| Validação integrada (entregar --direcionada) | ✅ entrega 46 (24/11); entrega 47 em curso | MANIFESTO; Bio retomada após correção do teste (F04/F05d) |
-| Validação independente (Tester) | ✅ entrega 46 | TESTER.md: 4 itens VALIDADA; F04 NAO_EXECUTADO (BK-20); ADR-101 Bio só tem 4 das 6 faixas nos dados |
-| Documentação | ✅ | ADR-099/100/101, GUIA_DE_USO, PRONTIDAO_LIBERACAO_2026-11-23, este arquivo, BACKLOG |
+| Funções essenciais (CIQ automático e manual, CEQ, inativação, lotes, Painel, Liberação) | ✅ produção | log da entrega 47: qa_final 29/0, qa_lotes_auto 14/0, qa_fluxo_manual 19/0 (F04 NAO_EXECUTADO, BK-20), qa_fluxo_ceq 13/0 + 1 ALERTA (BK-06), qa_liberacao_run 4/0, qa_westgard_sequencia 29/0, nos dois |
+| Cálculos (bias, ET, Sigma, incerteza) = oráculo | ✅ | qa_fluxo_ceq, qa_incerteza (Bio 15/0, Hema 16/0); oráculo do Tester repro_e46_sigma 5/0 |
+| Recebimento/ATUALIZAR/integração | ✅ | qa_sync OK, qa_etl Bio 64/0 Hema 63/0, qa_equiv_qa_adr094 3/0; ATUALIZAR pós-47 sem mudança |
+| Equivalência VBA × PQ (motor completo) | ✅ 25/11 | `equivalencia_cq --fixtures` em cópias da produção nova: Bio 37.009 e Hema 49.266 linhas, 0 divergências |
+| 0 P0 e 0 P1 | ✅ | relatório de release §5 |
+| Validação integrada | ✅ PASS | entrega 47, 21/21 nos dois (MANIFESTO 24/11) |
+| Validação independente | ✅ VALIDADA | TESTER entregas 46 e 47 |
+| Proteção/recuperação | ✅ | blindagem TRAVADO; backups `_backup_pre_integracao_2026-11-24_2102/2345` e `_backup_pre_atualizar_2026-11-24_2346/2347`; sha no MANIFESTO |
+| Documentação | ✅ | ADR-099/100/101, GUIA_DE_USO, PRONTIDAO_LIBERACAO_2026-11-23, relatório de release, BACKLOG |
 
 ## Testes que não fecharam em casa (não são defeito do produto)
 
@@ -48,39 +58,34 @@ dos lotes 8974/8977 e simular de novo).
   - qa_adr088 R12c;
   - qa_blocos_lote BN (6354 Creatinina) e B00 (anos "yyyy" na biblioteca);
   - qa_corrida_lote.
-- **Exigem o trabalho:** qa_sync (DB_SEAC) e qa_usuarios_adr084 (cadastro central).
+- **Rodadas no trabalho:** qa_sync OK nos dois (entrega 47); qa_usuarios_adr084 12/0 nos dois (25/11, cópias). O cadastro central ainda não está ligado na produção (`CAMINHO_USUARIOS` vazio).
 - O caminho "assinatura de corrida sem resultado ativo" foi testado em 24/11 (`qa_liberacao_run`). Ele mostrou e
   corrigiu uma brecha: com o lote acima de 200 corridas, a assinatura não tinha linha e sumia da tela. Agora a linha é
   reservada.
 
-## Pendências
 
-- **P0:** nenhuma.
-- **A-01 (P2, Liberação sem login):** corrigido (c362922), em entrega (47).
-- **E01 Lactato N2 13/10 (Bio):** 4 inativações sem MOTIVO na aba Inativar — pendência do laboratório (P2).
-- **ADR-100:** aplicar só após aprovação escrita do RT (parecer do Especialista; BK-19 para a triagem).
-- **P1:** nenhuma aberta. A da Liberação foi corrigida e retestada em cópia. O defeito também existe na entrega 45, em
-  produção: **no trabalho, antes de trocar, conferir se alguma assinatura já está ao lado do RUN errado** (aba
-  Liberação × Audit_Log `ASSINATURA_*`, que guarda o RUN).
-- **P2 (laboratório ou orientação, não bloqueiam):**
+## Pendências (nenhuma P0/P1)
+
+- **P0:** nenhuma. **P1:** nenhuma (o P1 da Liberação foi corrigido na 46; o A-01 foi corrigido na 47; os dois estão
+  validados em produção).
+- **Ambiente/operacional:** a trava `~$QC_Bioquimica.xlsm` de 17/11 sobrou (nenhum processo segura o arquivo). Removê-la
+  com o Excel da Bio fechado antes do ADR-100 na Bio.
+- **P2, laboratório ou orientação (não bloqueiam):**
+  - 4 E01 de Lactato N2 13/10 (Bio, inativação sem MOTIVO);
   - OC-0011 (especificações 2026);
-  - OC-0039 (lote em uso, Configuração C20);
+  - OC-0039 (lote em uso, C20);
   - logins do cadastro central;
-  - Ano EP N4 = 2026 quando chegar o 1º CEQ de 2026;
-  - ver PRONTIDAO §2 e §4.
+  - Ano EP N4 = 2026 quando chegar o 1º CEQ de 2026.
+- **P2 com prazo:** OC-0067/BK-05 (senha das abas no repositório público), em entrega própria em cerca de 2 semanas.
+- **P3 (backlog):** O-1 → BK-21; ferramenta ADR-100 → BK-22; F04 → BK-20; triagem do `--simular` → BK-19.
+- **Limitações documentadas:**
+  - o F04 não foi executado (falta o caso nos dados);
+  - ADR-101 na Bio: os dados só têm 4 das 6 faixas (a Hema tem as 6).
 
-## Próxima ação objetiva (no trabalho)
+## Próxima ação objetiva
 
-1. `git pull`.
-2. ~~Conferir as assinaturas da Liberação na produção.~~ **Feito em 24/11, 10h55** (`ferramentas/conferir_assinaturas_liberacao.py`, leitura de cópia, sem Excel): a produção (Bio `a9ba3515…`, Hema `1d0d9fe8…`) não tem nenhuma assinatura na aba Liberação (C:F vazio) nem evento `ASSINATURA_*` no Audit_Log. O P1 não chegou a atingir dado real.
-3. Fechar os outros Excel e pausar a tarefa DB_SEAC.
-4. Rodar:
-   ```
-   python _arquitetura/integracao_dbseac/entregar.py Hematologia Bioquimica --direcionada --com qa_westgard_sequencia.py,qa_adr091.py,qa_adr094.py,qa_blocos_lote.py,qa_lotes_auto.py
-   ```
-   As suítes novas já estão no gate: qa_adr099, qa_fluxo_manual, qa_liberacao_run, qa_fluxo_ceq e qa_incerteza (SUITES_DO_LOTE).
-5. `aplicar_atualizar.py` nos dois produtos.
-6. `aplicar_alvos_ciq.py <produto> --simular`, revisão do CSV pelo RT (critérios no PRONTIDAO §4, passo 6), depois
-   aplicar sem flag.
-7. Validação independente (tester-qa) do que mudou.
-8. Relatório de release e declaração do RC, se o gate passar.
+1. **(Humano: RT)** revisar o CSV do `aplicar_alvos_ciq.py Hematologia --simular` (critérios: PRONTIDAO §4, passo 6;
+   ressalvas do parecer). Com a aprovação escrita, aplicar sem flag na Hema.
+2. Bio: limpar o N1 dos lotes 8974/8977, remover a trava `~$` (Excel da Bio fechado), simular de novo e levar ao RT.
+3. **(Humano: qualidade/RT)** aprovação institucional documentada da versão 47.
+4. Depois da release: BK-05 (senha das abas) como a próxima entrega.
