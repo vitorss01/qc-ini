@@ -527,6 +527,9 @@ Public Function PainelEncaixar() As String
     w.ScrollColumn = 1
     mVigiaZoom = z: mVigiaUW = uw: mVigiaUH = uh  ' o vigia nao refaz o que acabou de ser feito
     AjustarGraficos                               ' largura = largura visivel no zoom novo
+    On Error Resume Next                          ' ADR-102: botoes da secao de alvos voltam a sua celula
+    mAlvosRef.AlinharBotoes ws
+    On Error GoTo falhou
     PainelEncaixar = "OK|" & z & "|" & Round(alt, 1) & "|" & n
     encaixou = True
 sai:

@@ -2053,3 +2053,25 @@ Public Function AtualizarTudo() As String
 falha:
     AtualizarTudo = "ERRO|" & Err.Description
 End Function
+' ADR-102 (entrega 48, achado do gate qa_adr090 V02): o PainelEncaixar muda a altura das linhas da faixa
+' dos graficos e o Excel desloca os botoes que ficam abaixo dela (medido: o "Registrar parecer" desceu
+' 26 pt e cobriu o "Ultimo parecer" da linha 181). Recoloca cada botao da secao na sua celula, centrado
+' na altura da linha, como o instalar_adr102 faz. Chamado pelo PainelEncaixar com a aba liberada.
+' So mexe na posicao (nunca no tamanho, texto ou macro); botao ausente e ignorado.
+Public Sub AlinharBotoes(ByVal ws As Worksheet)
+    Dim nomes As Variant, cels As Variant, i As Long, b As Shape, c As Range, t As Double
+    On Error Resume Next
+    nomes = Array("adr102_aplicar", "adr102_liberar", "adr102_manual_gravar", "adr102_parecer")
+    cels = Array("K98", "A111", "K111", "A180")
+    For i = LBound(nomes) To UBound(nomes)
+        Set b = Nothing
+        Set b = ws.Shapes(nomes(i))
+        If Not b Is Nothing Then
+            Set c = ws.Range(cels(i))
+            t = c.Top + (c.Height - b.Height) / 2
+            If t < c.Top Then t = c.Top
+            If Abs(b.Top - t) > 0.5 Then b.Top = t
+            If Abs(b.Left - (c.Left + 2)) > 0.5 Then b.Left = c.Left + 2
+        End If
+    Next i
+End Sub

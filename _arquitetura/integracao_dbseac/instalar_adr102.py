@@ -557,6 +557,31 @@ def painel(wb, nlv, cd):
         MUDANCAS.append(f'Painel A{R_TIT}:U{R_FIM}')
 
 
+def alinhar_com_aba_ativa(wb):
+    # Gate da entrega 48 (qa_adr090 V02): a posicao gravada com o Painel INATIVO e recalculada pelo Excel ao
+    # ativar a aba (medido: o "Registrar parecer" descia 26 pt e cobria o "Ultimo parecer" da linha 181). Gravada
+    # com a aba ATIVA, fica estavel em qualquer ativacao seguinte. Mesma conta do botao() e do
+    # mAlvosRef.AlinharBotoes; so a posicao muda. Devolve a aba ativa e a visibilidade de antes.
+    p = wb.Worksheets('Painel')
+    vis0 = p.Visible
+    ativa0 = wb.ActiveSheet
+    if vis0 != -1:
+        p.Visible = -1
+    p.Activate()
+    for nome_b, (_t, _m, cel) in BOTOES.items():
+        b = p.Shapes(nome_b)
+        c = p.Range(cel)
+        b.Top = float(c.Top) + max(0.0, (float(c.Height) - float(b.Height)) / 2)
+        b.Left = float(c.Left) + 2
+    try:
+        if ativa0.Name != 'Painel' and ativa0.Visible == -1:
+            ativa0.Activate()
+    except Exception:                                  # noqa: BLE001
+        pass
+    if vis0 != -1:
+        p.Visible = vis0
+
+
 def fumaca(ex, wb, nlv):
     nome = wb.Name
     p = wb.Worksheets('Painel')
@@ -624,6 +649,7 @@ def main(produto, caminho, salvar=True):
         cfg(wb)
         log(f'5. Painel linhas {R_TIT}-{R_FIM}')
         painel(wb, nlv, cd)
+        alinhar_com_aba_ativa(wb)
         ex.xl.Calculation = -4105
         log('6. fumaca')
         ex.xl.EnableEvents = False
