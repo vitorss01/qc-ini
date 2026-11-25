@@ -3,6 +3,31 @@
 Documento de acompanhamento do fechamento de versão. **Ler no início de toda sessão; atualizar no fim.** Mantido pelo
 `qc-release-manager` (`.claude/agents/qc-release-manager.md`, procedimento `/qc-release`).
 
+## CICLO 48 ABERTO (25/11/2026, pedido do dono) — ADR-102: código escrito e revisado, NADA rodou no Excel
+
+- **Escopo:** alvos do laboratório por lote e período; transferência Média+DP, só Média ou só DP; exceção temporária
+  manual (bula e DP do lote anterior); referência bula/Unity com observações automáticas e parecer técnico.
+  Detalhes em `_arquitetura/integracao_dbseac/ADR-102.md`, com adendo e revisão.
+- **Regra do N:** <2 bloqueia, 2–19 não recomendado (temporário), 20–89 aceitável, ≥90 ideal. Não há o 40.
+- **Arquivos, sem commit:**
+  - `src/comum/mAlvosRef.bas`;
+  - `src/{bio,hema}/Painel.cls`, `mIntegracao.bas`, `mSeguranca.bas`;
+  - `src/comum/EstaPastaDeTrabalho.cls`;
+  - `instalar_adr102.py`, `entregar.py`, `codigo_atual.py`;
+  - `testes/qa_alvos_manual.py`;
+  - `aplicar_alvos_ciq.py` (pula a origem MANUAL);
+  - `GUIA_DE_USO.md` (4c).
+- **Estático OK:** lint, py_compile, `instalar_adr102 --autoteste` 16/16 e `aplicar_alvos_ciq --autoteste` 20/20.
+- **Próximo:**
+  1. Instalar numa cópia da Bio e rodar `qa_alvos_manual` (prova de compilação); depois a Hema.
+  2. Reinstalar sobre um layout antigo.
+  3. Regressão das `SUITES_DO_LOTE`.
+  4. Tester.
+  5. `entregar.py`.
+- **Riscos a conferir no Excel:** Locked com a aba protegida, spinner do analito, largura dos botões da linha 111,
+  tempo do ATUALIZAR.
+- O RC 47 em produção não é afetado até o gate da 48.
+
 ## Release: entrega 47 — EM PRODUÇÃO, VALIDADA, RC APROVADO — atualizado em 25/11/2026
 
 **Fase:** ETAPA 7 concluída (relatório de release:

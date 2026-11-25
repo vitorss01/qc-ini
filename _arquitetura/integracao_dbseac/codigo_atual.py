@@ -27,7 +27,8 @@ NOVOS = ['mIncerteza',                        # ADR-064
          'mCalibracao',                        # ADR-084: calibracao registrada pelo ID do resultado (aba Registros)
          'mSenha', 'mUsuariosCentral',         # ADR-084: PBKDF2 com salt + copia do cadastro central de usuarios
          'mCEQForm',                           # ADR-087: registro e consulta do CEQ (janela frmCEQ)
-         'mMaterialLote']                      # ADR-099: coluna Material do cadastro de lotes
+         'mMaterialLote',                      # ADR-099: coluna Material do cadastro de lotes
+         'mAlvosRef']                          # ADR-102: alvos por periodo + referencia da bula/Unity no Painel
 # modulos de CLASSE (criados como classe se faltarem). ADR-070: a clsCht (eventos dos graficos do Painel)
 # so existia dentro dos .xlsm; virou fonte versionada
 CLASSES = ['clsCht']

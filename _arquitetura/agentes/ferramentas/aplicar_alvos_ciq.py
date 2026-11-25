@@ -11,6 +11,13 @@ Uso: python aplicar_alvos_ciq.py <Bioquimica|Hematologia> [--arquivo <xlsm>] [--
                                  [--so-copia <saida.xlsm>] [--forcar]
      python aplicar_alvos_ciq.py --autoteste          (so o calculo, dados sinteticos, sem Excel)
 
+ADR-102 (25/11/2026): a aplicacao em massa fica aposentada (alvo = escolha do analista no Painel); a ferramenta continua
+para o --simular e como oraculo, e PULA as linhas lote|analito cuja origem (W) comeca com 'MANUAL' (contadas no JSON
+em pulados_origem_manual). Adendo 25/11: a origem 'EXCECAO TEMPORARIA ...' (valores digitados no Painel: Media da bula
+e DP do lote anterior) NAO e pulada -- e temporaria por definicao e deve ser substituida pelos valores do laboratorio;
+como a aplicacao em massa esta aposentada, quem a substitui e o "Aplicar Alvos ao Lote" do Painel, e o --simular apenas
+a mostra como candidata a troca.
+
   --arquivo   arquivo de entrada (padrao: QC_<produto>.xlsm na raiz do repositorio = a producao)
   --simular   calcula e grava o CSV/JSON em %TEMP%\\qcw\\alvos; NADA e gravado na planilha
   --so-copia  aplica numa copia e grava o resultado em <saida.xlsm>; a entrada NAO e trocada
@@ -217,6 +224,32 @@ def classificar_origem(w, bit, m, s):
     if 'digitado' in w.lower():
         return 'digitado'
     return 'bula/outro'
+
+
+def origem_manual(w):
+    """ADR-102: a linha lote|analito tem alvo gravado pelo analista no Painel ("Aplicar Alvos ao Lote": W comeca com
+    'MANUAL'). A ferramenta NAO a toca (todos os niveis da linha): o que o analista gravou fica. A origem
+    'EXCECAO TEMPORARIA' (adendo 25/11) NAO e manual neste sentido: e temporaria e deve ser substituida."""
+    return txt(w).upper().startswith('MANUAL')
+
+
+def selecionar_pares(lotes, cat, store, calc, nlv):
+    """Pares (LOTE, AN, nv) a considerar, na ordem lote do cadastro x analito do catalogo x nivel. store: {'LOTE|AN':
+    (linha, valores A:Z)}. Devolve (antes, pares, manuais): manuais = chaves 'LOTE|AN' puladas (ADR-102)."""
+    antes, pares, manuais = {}, [], []
+    for lt in lotes:
+        for an in cat:
+            linha = store.get(f'{lt}|{an}', (0, (None,) * 26))[1]
+            if origem_manual(linha[22]):
+                manuais.append(f'{lt}|{an}')
+                continue
+            for nv in range(1, nlv + 1):
+                m, s = linha[2 + 2 * (nv - 1)], linha[3 + 2 * (nv - 1)]
+                rot = classificar_origem(linha[22], linha[23 + nv - 1], m, s)
+                antes[(lt, an, nv)] = (m, s, rot)
+                if (lt, an, nv) in calc or rot != 'vazio':
+                    pares.append((lt, an, nv))
+    return antes, pares, manuais
 
 
 def status_par(res, m_antes, s_antes):
@@ -470,16 +503,10 @@ def main(argv):
             return d
 
         st0 = ler_store()
-        antes, pares = {}, []
-        for lt in lotes:
-            for an in cat:
-                linha = st0.get(f'{lt}|{an}', (0, (None,) * 26))[1]
-                for nv in range(1, nlv + 1):
-                    m, s = linha[2 + 2 * (nv - 1)], linha[3 + 2 * (nv - 1)]
-                    rot = classificar_origem(linha[22], linha[23 + nv - 1], m, s)
-                    antes[(lt, an, nv)] = (m, s, rot)
-                    if (lt, an, nv) in calc or rot != 'vazio':
-                        pares.append((lt, an, nv))
+        antes, pares, manuais = selecionar_pares(lotes, cat, st0, calc, nlv)
+        rel['pulados_origem_manual'] = {'linhas_lote_analito': len(manuais), 'exemplos': manuais[:20]}
+        print(f'ADR-102: {len(manuais)} linha(s) lote|analito com origem MANUAL puladas (alvo do analista mantido)',
+              flush=True)
         cols, linhas_csv, equips = montar_linhas(calc, antes, pares, nlv, a.minimo)
         for lin in linhas_csv:                                  # nomes como no cadastro/catalogo
             lin['lote'], lin['analito'] = lotes[lin['lote']], cat[lin['analito']]
@@ -956,7 +983,20 @@ def autoteste():
     ok('T19 retorno da foto do Westgard no TEMPOS: RECALC k lido; ERRO engolido pelo nucleo sem k (A07 falha)',
        retorno_foto_wg(r_ok) == ('RECALC=7/31 MUDANCAS=412', 7)
        and retorno_foto_wg(r_err) == ('ERRO|Subscript out of range', None) and retorno_foto_wg('OK|x')[1] is None)
-    total = 19
+    # T20 ADR-102: linha com origem MANUAL e pulada (todos os niveis), contada; as outras seguem
+    st = {'L1|GLI': (2, (None, None, 10.0, 1.0, 20.0, 2.0) + (None,) * 16
+                     + ('MANUAL 25/11/2026 10:00 ana: N1 n=25 (01/10/2026 a 31/10/2026) | N2 n=12 (...) TEMPORARIO',
+                        None, None, None)),
+          'L1|URE': (3, (None, None, 5.0, 0.5) + (None,) * 18 + ('digitado na aba Analitos', None, None, None))}
+    calc_t = {('L1', 'GLI', 1): {}, ('L1', 'URE', 1): {}}
+    ant_t, par_t, man_t = selecionar_pares(['L1'], ['GLI', 'URE'], st, calc_t, 2)
+    ok('T20 origem MANUAL (ADR-102): a linha L1|GLI e pulada em todos os niveis e contada; L1|URE segue; '
+       'EXCECAO TEMPORARIA nao e pulada (temporaria: deve ser substituida)',
+       man_t == ['L1|GLI'] and all(k[1] != 'GLI' for k in par_t) and ('L1', 'URE', 1) in par_t
+       and origem_manual(' manual x') and not origem_manual('CIQ 22/11/2026: ...') and not origem_manual(None)
+       and not origem_manual('EXCECAO TEMPORARIA 25/11/2026 10:00 ana: N1 media=BULA; DP=BULA'),
+       {'pulados': man_t, 'pares': par_t})
+    total = 20
     print(f'AUTOTESTE: {total - len(falhou)}/{total} PASS' + (f' -- FAIL {falhou}' if falhou else ''), flush=True)
     return 1 if falhou else 0
 

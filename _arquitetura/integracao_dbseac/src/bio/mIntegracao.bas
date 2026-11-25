@@ -90,7 +90,7 @@ Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False,
     Dim camada As Variant, t0 As Double, tempos As String
     Dim antes As Object, depois As Object, nRec0 As Long, nRec1 As Long, etapa As String, hist As Boolean
     Dim resLotes As String, vba As Boolean, nNovos As Long, mudou As Boolean, semOrigem As Boolean
-    Dim tWg As Double, tWgS As Double, resWg As String
+    Dim tWg As Double, tWgS As Double, resWg As String, resRef As String
     mApp.InicioUsuario "Atualizando dados: preparando as entradas..."
     On Error GoTo falha
     hist = ModoHistorico()
@@ -187,6 +187,13 @@ Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False,
     ' ADR-064: incerteza de medicao (CIQ + CEQ). ADR-081: depois de inativar/reativar UM resultado so a incerteza do
     ' analito dele muda (a dos outros depende so dos resultados deles; o CEQ nao muda) -- recalcula so as linhas dele
     mIncerteza.RecalcularIncerteza IIf(soEntradas, analitoAlvo, "")
+    ' ADR-102: vigilancia contra a referencia da bula/Unity (informativa, sem caixa de mensagem). Nunca derruba o
+    ' ATUALIZAR: a propria rotina registra a falha no Audit_Log e devolve "" (texto so com observacao nova)
+    resRef = ""
+    On Error Resume Next
+    resRef = mAlvosRef.VerificarAoAtualizar()
+    Err.Clear
+    On Error GoTo falha
     mDados.EncerrarSnapshot
     tempos = tempos & " · motor " & Format$(Timer - t0, "0.0") & "s" & _
              " · westgard_fotos " & Format$(tWgS, "0.00") & "s [" & resWg & "]"      ' ADR-083 (dentro do motor)
@@ -212,7 +219,8 @@ Public Function AtualizarDadosCore(Optional ByVal soEntradas As Boolean = False,
            "Resultados recebidos: " & Format$(nRec1, "#,##0") & " (novos nesta atualização: " & (nRec1 - nRec0) & ")" & vbCrLf & _
            UltimoResultado() & _
            "Principal - Resultados: " & Format$(Linhas(FONTE_CQ), "#,##0") & " resultados" & vbCrLf & _
-           ResumoQA() & ResumoLotes(resLotes) & vbCrLf & vbCrLf & "Tempo: " & tempos
+           ResumoQA() & ResumoLotes(resLotes) & IIf(Len(resRef) > 0, vbCrLf & vbCrLf & resRef, "") & _
+           vbCrLf & vbCrLf & "Tempo: " & tempos
     Exit Function
 falha:
     Dim nE As Long, sE As String

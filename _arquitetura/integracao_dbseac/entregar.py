@@ -54,8 +54,10 @@ RAIZ = os.environ.get('QC_RAIZ') or os.path.abspath(os.path.join(AQUI, '..', '..
 ARQ = {'Hematologia': 'QC_Hematologia.xlsm', 'Bioquimica': 'QC_Bioquimica.xlsm'}
 # 14/11/2026: as suites do lote em entrega vem logo depois da seguranca -- o entregar para na 1a falha, e o defeito
 # novo aparece em minutos, nao 6 h depois (a ordem nao muda o resultado: cada suite roda na sua propria copia)
-SUITES_DO_LOTE = ['qa_adr099.py', 'qa_fluxo_manual.py', 'qa_liberacao_run.py', 'qa_fluxo_ceq.py', 'qa_incerteza.py',   # entrega 46
-                  'qa_adr097.py', 'qa_equiv_qa_adr094.py', 'qa_adr095.py', 'qa_adr092.py', 'qa_adr090.py', 'qa_adr087.py']
+# entrega 48 (ADR-102): a suite nova + a regressao que o ADR-102 pede (qa_seguranca ja esta no NUCLEO)
+SUITES_DO_LOTE = ['qa_alvos_manual.py', 'qa_lotes_limites.py', 'qa_blocos_lote.py', 'qa_linhas_alvo.py',
+                  'qa_varredura_lotes.py', 'qa_troca_lote.py', 'qa_lotes_auto.py', 'qa_westgard_sequencia.py',
+                  'qa_graficos.py', 'qa_adr090.py']
 SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lotes_auto.py',
           'qa_graficos.py', 'qa_incerteza.py', 'qa_desempenho.py', 'qa_final.py',
           'qa_etl_recebimento.py', 'qa_etl.py',          # ADR-066: QA-ETL-001, gate obrigatorio da camada de dados
@@ -84,7 +86,9 @@ SUITES = ['qa_seguranca.py', 'qa_casos_extremos.py', 'qa_troca_lote.py', 'qa_lot
           'qa_adr094.py',                                # ADR-094: data-hora com segundos (so apresentacao)
           'qa_equiv_qa_adr094.py',                       # ADR-094: QA do VBA = QA do PQ (textos com segundos)
           'qa_adr095.py',                                # ADR-095: listas com o separador do Excel, acentos, Estatistica
-          'qa_adr097.py']                                # ADR-097: carimbo da linha apagada, DETALHE, A01, filtros, ano
+          'qa_adr097.py',                                # ADR-097: carimbo da linha apagada, DETALHE, A01, filtros, ano
+          'qa_adr099.py', 'qa_fluxo_manual.py', 'qa_liberacao_run.py', 'qa_fluxo_ceq.py',   # entregas 46/47
+          'qa_alvos_manual.py']                          # ADR-102: alvos por periodo + referencia da bula/Unity
 SUITES = SUITES[:1] + SUITES_DO_LOTE + [x for x in SUITES[1:] if x not in SUITES_DO_LOTE]
 # --direcionada (15/11/2026): o gate minimo de toda entrega -- seguranca/protecao, ATUALIZAR completo (qa_final),
 # camada de dados e equivalencia VBA x PQ (qa_etl, qa_sync), inativacoes reais preservadas (qa_migracao_adr070)
@@ -172,6 +176,7 @@ def entregar(produto, modo, testar, pasta, origem=None):
               ('adr095', ['instalar_adr095.py', produto, alvo]),         # ADR-095: ano literal nos formatos de data (fim da cadeia)
               ('adr099', ['instalar_adr099.py', produto, alvo]),         # ADR-099: coluna Material no cadastro de lotes
               ('adr101', ['instalar_adr101.py', produto, alvo]),         # ADR-101: cor/classe do Sigma (6 faixas), piso 0
+              ('adr102', ['instalar_adr102.py', produto, alvo]),         # ADR-102: alvos por periodo + referencia bula/Unity
               ('blindagem', ['blindar_entrega.py', alvo])]
     for nome, args in passos:
         ok, fim = rodar(os.path.join(trab, f'{nome}.log'), AQUI, *args)

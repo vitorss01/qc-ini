@@ -32,6 +32,22 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         ' periodo: a janela de corridas do motor depende do fim do periodo
         mEstatistica.FiltroMudou
     End If
+    ' ADR-102: secao do rodape (linhas 97-183). Lote/periodo -> apuracao dos alvos, grade e observacoes do lote;
+    ' grade da referencia da bula/Unity (B115:K154) -> grava na RefBulaStore e verifica os resultados
+    If Not Intersect(Target, Me.Range("B98:C98,E98,G98")) Is Nothing Then
+        mAlvosRef.SecaoMudou
+    End If
+    If Not Intersect(Target, Me.Range("B115:K154")) Is Nothing Then
+        mAlvosRef.GradeEditada Target
+    End If
+    ' ADR-102 (adendo): excecao temporaria -- Lote anterior digitado (E107:F109) puxa o DP desse lote da
+    ' LotesStore; trocar o analito tranca de novo a digitacao manual liberada para outro lote|analito
+    If Not Intersect(Target, Me.Range("E107:F109")) Is Nothing Then
+        mAlvosRef.ManualEditado Target
+    End If
+    If Not Intersect(Target, Me.Range("B3:C3")) Is Nothing Then
+        mAlvosRef.ManualContextoMudou
+    End If
 End Sub
 
 Private Sub Worksheet_Activate()

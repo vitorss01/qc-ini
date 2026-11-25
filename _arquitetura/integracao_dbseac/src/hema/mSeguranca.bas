@@ -689,7 +689,8 @@ Public Sub UnlockApp()
         Select Case ws.Name
             Case SHEET_LOGIN
                 ws.Visible = xlSheetVeryHidden
-            Case "Calc", "LiberStore", "RegistrosStore", "Cfg_Integracao", "Usuarios_Central"   ' ADR-073: LotesStore visivel a todos (historico de limites, protegida)
+            Case "Calc", "LiberStore", "RegistrosStore", "Cfg_Integracao", "Usuarios_Central", _
+                 "RefBulaStore", "RefBulaObs", "RefBulaParecer"   ' ADR-073: LotesStore visivel a todos (historico de limites, protegida); ADR-102: abas de referencia ocultas
                 ws.Visible = IIf(isAdm, xlSheetVisible, xlSheetVeryHidden)
             Case Else
                 ws.Visible = xlSheetVisible

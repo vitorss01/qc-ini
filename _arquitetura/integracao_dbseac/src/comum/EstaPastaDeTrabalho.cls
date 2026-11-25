@@ -3,6 +3,7 @@ Private Sub Workbook_Open()
     mApp.Reset                      ' calculo/eventos/tela num estado conhecido
     mDados.AtualizarListasAno
     mLotes.SincronizarLotesAoAbrir
+    mAlvosRef.BloquearManual        ' ADR-102: a digitacao manual (excecao temporaria) abre TRANCADA
     ' AutoSave (arquivo no OneDrive/SharePoint) gravaria a cada poucos segundos -- e cada gravacao
     ' passa pelo estado trancado. Gravar e decisao do usuario (Ctrl+S). Excel sem a propriedade: ignora.
     CallByName ThisWorkbook, "AutoSaveOn", VbLet, False
@@ -78,6 +79,7 @@ Private Sub Workbook_BeforeClose(Cancel As Boolean)
     salvo = Me.Saved
     mUI.GrafVigiaEncerrar           ' ADR-061: tique pendente/vencido com a pasta fechada REABRE o arquivo
     SystemLook False
+    mAlvosRef.BloquearManual        ' ADR-102: fechar tranca de novo a digitacao manual liberada
     ' ADR-063: devolver a aparencia do Excel marca a pasta como alterada e o Excel perguntava
     ' "Quer salvar?" mesmo sem nada do usuario mudado. Pasta que estava salva continua salva;
     ' com alteracao de verdade (Saved = False) a pergunta continua.

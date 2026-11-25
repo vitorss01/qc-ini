@@ -176,8 +176,9 @@ laboratório preencher (ADR-075).
   sistema mostra antes quantos resultados mudam e pede confirmação. Vazio = padrão do equipamento. Material fora da
   lista (ex.: líquor) precisa antes de linhas no de/para.
 - **Alvo do laboratório** (ADR-100, aplicado uma vez pelo desenvolvimento em 23/11/2026): Média e DP de cada lote
-  com 20 ou mais resultados = os 40 primeiros resultados ativos do lote. A origem fica no bloco ("CIQ dd/mm/aaaa:
-  alvo do laboratório..."). Lote novo continua pelo botão CIQ (20 primeiros) ou pela digitação.
+  com 20 ou mais resultados = os primeiros resultados ativos do lote. A origem fica no bloco ("CIQ dd/mm/aaaa:
+  alvo do laboratório..."). Desde o ADR-102 o alvo é escolhido pelo analista no Painel (seção 4c); o botão CIQ
+  (20 primeiros) do bloco e a digitação continuam.
 - **Abrir e recolher:**
   - ▼/▶ abre ou recolhe um bloco;
   - na linha 1, **Abrir todos** e **Recolher todos**;
@@ -228,6 +229,36 @@ laboratório preencher (ADR-075).
   - A troca de ano fica na trilha de auditoria.
 - **Registro:** cada gravação fica no `LotesStore` com a especificação do lote naquele momento (fonte, "CLIA aaaa · VB
   aaaa", ETp, CVTp), data, usuário e origem. Esse é o histórico de limites de cada lote.
+
+## 4c. Alvos do laboratório e referência da bula/Unity (Painel, rodapé a partir da linha 97 — ADR-102)
+
+A regra do laboratório: Média e DP **próprios**, calculados pelo CIQ. A bula/Unity é só vigilância à parte.
+
+1. **Apuração (linhas 97–103).** Escolha o **Lote** (B98, obrigatório), **De** (E98) e **Até** (G98); o analito é o
+   do Painel (C3). A tabela mostra, por nível, N, Média, DP e CV% dos resultados **ativos** do lote no período (todos os
+   equipamentos; datas vazias = sem limite) e a Média/DP gravados hoje. Mudar lote ou datas **não grava nada**.
+   - Regra do N: **< 2 bloqueia** · **2 a 19 não recomendado** (grava só como TEMPORÁRIO, com uma 2ª confirmação) ·
+     **20 a 89 aceitável** · **≥ 90 ideal**.
+2. **Transferir (botão "Aplicar Alvos ao Lote").** O sistema pergunta o que gravar: **1 = Média e DP** (padrão),
+   **2 = só a Média**, **3 = só o DP**. Cancelar não grava. Só o campo escolhido muda; o outro fica como está. A escolha
+   fica na origem (`MANUAL ... [MEDIA+DP]`, `[MEDIA]` ou `[DP]`) e no Audit_Log. Os valores ficam fixos na LotesStore.
+3. **Exceção temporária (linhas 105–111): valores digitados.** Só no **início de um lote**, enquanto o laboratório ainda
+   não tem os próprios valores.
+   - As células ficam **cinza e trancadas**. Clique em **"Liberar digitação manual"**, leia o aviso
+     e confirme (fica no Audit_Log).
+   - Por nível: **Média (bula)**, **DP**, **Origem do DP** (Lote anterior / Bula) e **Lote anterior**. Ao digitar o lote
+     anterior, o DP desse lote vem sozinho da LotesStore (pode corrigir). Preencha a **Justificativa** (B110).
+   - **"Gravar valores manuais"**: exige justificativa e números maiores que zero, pede confirmação e grava só o que foi
+     preenchido (origem `EXCECAO TEMPORARIA ...`). Depois as células são limpas e trancadas de novo.
+   - Trocar o lote ou o analito, abrir ou fechar a pasta também trancam de novo.
+   - Enquanto o alvo for temporário (exceção ou N < 20), a **Origem atual** fica **amarela**: "temporário: substituir
+     pelos valores do laboratório". Substitua pelo "Aplicar Alvos ao Lote" assim que houver resultados suficientes.
+4. **Referência da bula / Unity (linhas 113–154).** Digite, por analito e nível, a **Média**, o **LI** e o **LS** do
+   lote da seção (B98) e a fonte. **Nunca grava na LotesStore** nem muda status, Westgard, LJ ou liberação.
+5. **Observações automáticas (linhas 156–173).** Todo resultado ativo do lote abaixo do LI ou acima do LS vira uma
+   observação PENDENTE, com alerta só quando é nova (também no fim do ATUALIZAR). Corrigido o limite, a pendente que
+   deixou de estar fora sai sozinha (RETIRADA).
+6. **Parecer técnico (linhas 175–181).** Escreva a razão da ciência e a conduta (A176) e clique em **"Registrar parecer"**: fica registrado com usuário e data/hora e dá ciência a todas as pendentes do lote.
 
 ## 5. Controle externo (CEQ) e Sigma (aba Estatística)
 
