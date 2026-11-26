@@ -24,7 +24,7 @@ aqui (PARTICIPA = SIM, lote e analito exatos, todos os equipamentos, DATA entre 
   S02 classificacao e status literais nas fronteiras +-1e-6 (oraculo proprio); vazio e texto = ""
   S03 Estatistica M = regra institucional em todas as linhas com Sigma; Painel mostra a classe
   P01 C4:D4 sem a informacao; P02 H4:I4 mescladas e centralizadas; P03 status por nivel na coluna tecnica oculta AB
-      (stNivel), Q4 lendo dela, Classe Sigma em J6:J com 5 cores, K6:K vazio; P04 sem #REF! no topo
+      (stNivel), Q4 lendo dela, Classe Sigma em J6:J (J:K mesclados) com 5 cores, larguras de J/K inalteradas; P04 sem #REF! no topo
   B01 tabela de digitacao (N114) com a estrutura da grade; vazia = recusa; B02 cancelar nao transfere; B03 so
       valores (formula vira valor), linhas/colunas certas, RefBulaStore, digitacao intacta, trilha; B04 sobrescrever
       avisa; B05 invalidos recusam tudo; B06 LotesStore intacta
@@ -344,12 +344,14 @@ def executar(produto, caminho, saida):
         q4 = txt(p.Range('Q4').Formula)
         st = [txt(painel_layout.status_nivel(p, i)) for i in range(1, nlv + 1)]
         reg('P03 Status por nivel fora da interface (coluna tecnica oculta, nome stNivel); Q4 continua lendo o status; '
-            'J6:J = Classe Sigma (formula da Estatistica M) com as 5 cores; K6:K vazio',
+            'J6:J = Classe Sigma (formula da Estatistica M) com as 5 cores, em J:K mesclados (larguras '
+            'inalteradas: o corte do K4 e conferido pelo qa_adr090 V02)',
             painel_layout.layout_novo(p) and cs == 'AB' and p.Columns('AB').Hidden
             and f'$AB$7:$AB${6 + nlv}' in q4 and all(s_ for s_ in st)
             and all('Estatística!$M$' in txt(p.Range(f'J{6 + i}').Formula) for i in range(1, nlv + 1))
             and p.Range('J7').FormatConditions.Count == 5
             and all(txt(p.Range(f'K{r_}').Formula) == '' for r_ in range(6, 7 + nlv))
+            and all(p.Range(f'J{r_}').MergeArea.Address == f'$J${r_}:$K${r_}' for r_ in range(6, 7 + nlv))
             and txt(q.wb.Names('stNivel').RefersTo).replace(' ', '') == f'=Painel!$AB$7:$AB${6 + nlv}',
             {'status': st, 'Q4': q4[:90], 'J6': txt(p.Range('J6').Value)})
         ruins = [c_.Address for c_ in p.Range('A1:AB12').Cells if '#REF' in txt(c_.Formula).upper()]

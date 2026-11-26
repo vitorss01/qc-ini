@@ -84,8 +84,9 @@ def layout_topo(wb, nlv):
     a) C4:D4 (informativo "Analito n de m · Lançamentos no lote") sai: conteudo e mesclagem;
     b) H4:I4 mescladas, centralizadas nos dois eixos (a formula continua em H4);
     c) status por nivel (J6:J9) RECORTADO para a coluna tecnica AB, oculta (mesmas linhas: as referencias relativas, o
-       Q4 e as regras de cor vao junto; nome stNivel); a Classe Sigma (K6:K9) RECORTADA para J6:J9; larguras de J e K
-       trocadas (a largura total nao muda: o encaixe dos graficos e o mesmo)."""
+       Q4 e as regras de cor vao junto; nome stNivel); a Classe Sigma (K6:K9) RECORTADA para J6:J9 e cada linha mesclada
+       J:K (o texto mais longo, "Excelente — Classe mundial", cabe; nenhuma largura muda: o filtro K3:K4 e o encaixe
+       dos graficos ficam como estavam -- trocar as larguras cortava o K4, qa_adr090 V02)."""
     import painel_layout as pl
     p = wb.Worksheets('Painel')
     ult = 6 + nlv
@@ -119,13 +120,17 @@ def layout_topo(wb, nlv):
         alvo = p.Range(f'{C}6:{C}{ult}')
         if any(c.Formula not in (None, '') for c in alvo.Cells):
             raise SystemExit(f'Painel {alvo.Address} ocupada -- nada foi salvo')
-        wj, wk = float(p.Columns('J').ColumnWidth), float(p.Columns('K').ColumnWidth)
         p.Range(f'J6:J{ult}').Cut(p.Range(f'{C}6'))
         p.Range(f'K6:K{ult}').Cut(p.Range('J6'))
-        p.Columns('J').ColumnWidth = wk
-        p.Columns('K').ColumnWidth = wj
-        MUDANCAS.append(f'Painel: status por nível J6:J{ult} -> {C} (oculta); Classe Sigma K6:K{ult} -> J6:J{ult}; '
-                        f'larguras J {wj:g} <-> K {wk:g}')
+        MUDANCAS.append(f'Painel: status por nível J6:J{ult} -> {C} (oculta); Classe Sigma K6:K{ult} -> J6:J{ult}')
+    for r in range(6, ult + 1):                         # classe em J:K mesclados (K vazio depois do recorte)
+        m = p.Range(f'J{r}:K{r}')
+        if not (p.Range(f'J{r}').MergeCells and p.Range(f'J{r}').MergeArea.Address == f'$J${r}:$K${r}'):
+            if str(p.Range(f'K{r}').Formula or '') != '':
+                raise SystemExit(f'Painel K{r} ocupada: a Classe Sigma nao pode ocupar J{r}:K{r} -- nada foi salvo')
+            m.Merge()
+            MUDANCAS.append(f'Painel J{r}:K{r} mescladas')
+        m.HorizontalAlignment = -4108
     if not p.Columns(C).Hidden:
         p.Columns(C).Hidden = True
         MUDANCAS.append(f'Painel coluna {C} oculta')

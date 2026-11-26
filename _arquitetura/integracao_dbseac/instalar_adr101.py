@@ -216,6 +216,10 @@ def estatistica(wb, nlv):
     e = wb.Worksheets('Estatística')
     cores(e, 'L14:L133', '$L14')
     cores(e, 'M14:M133', '$L14')
+    # ADR-103: o rotulo mais longo ("Excelente — Classe mundial") passa ~3 % da largura da coluna M (qa_adr090 V02)
+    if e.Range('M14').ShrinkToFit is not True:
+        e.Range('M14:M133').ShrinkToFit = True
+        MUDANCAS.append('Estatística M14:M133 reduzir para caber')
     if nlv == 2:                                  # Bio: quadro de resumo A98:A102 (COUNTIF da coluna M pelo rotulo)
         atual = [str(e.Range(f'A{98 + i}').Value or '') for i in range(5)]
         novo = [f[2] for f in FAIXAS]
