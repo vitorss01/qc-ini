@@ -47,7 +47,14 @@ O sha completo está no MANIFESTO.
 - **P0:** nenhuma. **P1:** nenhuma.
 - **Verificação pendente (não é defeito conhecido):** a verificação visual da seção do Painel, da linha 97 em diante, e
   dos botões. A política proíbe captura de tela; o qa_adr090 V02 prova a posição.
-- **Pendente de conferência:** o 1º ATUALIZAR da produção depois da 48 (Sync_Log, sem erro da vigilância bula/Unity).
+- ~~1º ATUALIZAR depois da 48~~ feito em 26/11 nos dois produtos (Bio +191, Hema +124; sem erro novo de QA: Bio 4 E01
+  já conhecidos, Hema 0), junto com a **ação pontual** pedida pelo usuário: inativar só em nov/2026 os resultados com
+  1-3s que foram repetidos no mesmo dia dentro de ±3DP (Bio 13, Hema 31; MANIFESTO 26/11). Não é regra nova do sistema.
+  Escopo escolhido pelo usuário: nov/2026. A simulação do histórico inteiro (out/2025 em diante) deu 783 na Bio e 275 na Hema,
+  e nada disso foi aplicado.
+- **Para o RT (dado/alvo, não defeito de código):** em nov/2026 há violações persistentes **sem repetição**, compatíveis
+  com alvo que não corresponde ao lote: Cálcio N1 z≈−15 diário; LDH e Magnésio N1 z≈+30 em 06/11; Cloro e Lipase
+  rondando −3 a −4; na Hema RDW-SD N2 +4 a +15 quase diário. Conferir os alvos desses analitos no Painel (ADR-102).
 - **P2:**
   - OC-0067/BK-05: a senha das abas está no repositório público, inclusive em `testes/qa_final.py:64`. A aceitação do
     risco ainda não foi registrada.
@@ -68,7 +75,7 @@ O sha completo está no MANIFESTO.
    - a exceção aparece TRANCADA;
    - a grade bula/Unity está legível.
 2. ~~Push~~ feito em 25/11 (`be185df`, com `8e38d99` e `58d2847`), diff conferido: sem senha, caminho de rede, `.xlsm` ou dados.
-3. Conferir no Sync_Log o 1º ATUALIZAR da tarefa agendada depois da 48.
+3. ~~1º ATUALIZAR depois da 48~~ feito em 26/11 (ver Pendências). **RT:** conferir os alvos de Cálcio N1, LDH, Magnésio N1, Cloro, Lipase (Bio) e RDW-SD N2 (Hema).
 4. **ADR-100 em massa aposentado:** não aplicar o `aplicar_alvos_ciq.py` sem `--simular` em produção. O alvo passa a ser
    definido pelo analista no Painel (ADR-102). A pendência "RT revisar o CSV" da entrega 47 fica sem efeito, salvo uma
    decisão nova do usuário.
