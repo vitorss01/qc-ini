@@ -67,7 +67,7 @@ O sha completo está no MANIFESTO.
      "Registrar parecer");
    - a exceção aparece TRANCADA;
    - a grade bula/Unity está legível.
-2. Fazer o push de `8e38d99` e `58d2847`, com o diff conferido: nada de senha, caminho de rede, `.xlsm` ou dados.
+2. ~~Push~~ feito em 25/11 (`be185df`, com `8e38d99` e `58d2847`), diff conferido: sem senha, caminho de rede, `.xlsm` ou dados.
 3. Conferir no Sync_Log o 1º ATUALIZAR da tarefa agendada depois da 48.
 4. **ADR-100 em massa aposentado:** não aplicar o `aplicar_alvos_ciq.py` sem `--simular` em produção. O alvo passa a ser
    definido pelo analista no Painel (ADR-102). A pendência "RT revisar o CSV" da entrega 47 fica sem efeito, salvo uma
