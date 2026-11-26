@@ -24,6 +24,7 @@ import sys
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 from qa_final import QA, reg, RES, sha256_arquivo  # noqa: E402
+import painel_layout  # noqa: E402  (ADR-103)
 
 
 def num(v):
@@ -110,7 +111,7 @@ def executar(produto, caminho, saida):
             for k, cc in col.items():
                 vals = c.Range(c.Cells(3, cc), c.Cells(182, cc)).Value
                 cont[k] = sum(1 for v in vals if num(v[0]))
-            st = [txt(p.Range(f'J{7 + i}').Value) for i in range(nlv)]
+            st = [txt(painel_layout.status_nivel(p, 1 + i)) for i in range(nlv)]
             exp = []
             for i in range(1, nlv + 1):
                 exp += [q.run('mLotes.MediaDoLote', lote, an, i), q.run('mLotes.DPDoLote', lote, an, i)]

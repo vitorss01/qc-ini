@@ -19,6 +19,7 @@ import sys
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 from qa_final import QA, reg, RES  # noqa: E402
+import painel_layout  # noqa: E402  (ADR-103)
 
 LOTE_TESTE = 'QA9999'
 SEM = 'SEM MÉD/DP'                 # ADR-092: forma curta em J7:J9 (o Q4 diz "SEM MÉDIA/DP")
@@ -47,7 +48,7 @@ def executar(produto, caminho, saida):
             lote2 = LOTE_TESTE
         par1 = [(q.run('mLotes.MediaDoLote', lote1, analito, n), q.run('mLotes.DPDoLote', lote1, analito, n))
                 for n in range(1, q.nlv + 1)]
-        st = lambda: [p.Range(f'J{6 + n}').Text for n in range(1, q.nlv + 1)]
+        st = lambda: [painel_layout.status_celula(p, n).Text for n in range(1, q.nlv + 1)]
         media_painel = lambda: [p.Range(f'C{6 + n}').Text for n in range(1, q.nlv + 1)]
         st1 = st()
         marca = q.ws('Audit_Log').Cells(q.ws('Audit_Log').Rows.Count, 1).End(-4162).Row

@@ -34,6 +34,7 @@ sys.path.insert(0, os.path.join(AQUI, '..', 'etapa1_multilote'))
 import xlh  # noqa: E402
 import instalar_integracao as ii  # noqa: E402
 from instalar_seguranca_usuarios import foto_protecao, devolver_protecao  # noqa: E402
+import painel_layout  # noqa: E402  (ADR-103: status/classe do topo do Painel)
 
 LIM = ['-3s', '-2s', '-1s', 'Média', '+1s', '+2s', '+3s']
 SUF = ['m3', 'm2', 'm1', 'med', 'p1', 'p2', 'p3']
@@ -279,8 +280,9 @@ STATUS_LONGO = {'DESATUAL.': 'DESATUALIZADO', 'BASE VAZIA': 'BASE SEM DADOS', 'S
                 'PER. VAZIO': 'SEM CORRIDA NO PERÍODO', 'SEM PONTO': 'SEM PONTO NO PERÍODO'}
 
 
-def q4(nlv):
-    J = f'$J$7:$J${6 + nlv}'
+def q4(nlv, col='J'):
+    # ADR-103: col = coluna do status por nivel (J no layout antigo; AB, oculta, no novo -- painel_layout)
+    J = f'${col}$7:${col}${6 + nlv}'
     # ADR-092: J7:J9 com a forma curta; o Q4 (largo) diz a forma longa
     return (f'=IF(COUNTIF({J},"DESATUAL.")>0,"DESATUALIZADO",'
             f'IF(COUNTIF({J},"BASE VAZIA")>0,"BASE SEM DADOS",'
@@ -372,16 +374,17 @@ def regras_texto(rng, extras):
 
 def painel(wb, m, nlv):
     p = wb.Worksheets('Painel')
+    cs = painel_layout.col_status(p)                   # ADR-103: J (antigo) ou AB oculta (novo)
     for i in range(1, nlv + 1):
-        setf(p.Range(f'J{6 + i}'), status_nivel(m, i), f'Painel J{6 + i}')
-    setf(p.Range('Q4'), q4(nlv), 'Painel Q4')
+        setf(p.Range(f'{cs}{6 + i}'), status_nivel(m, i), f'Painel {cs}{6 + i}')
+    setf(p.Range('Q4'), q4(nlv, cs), 'Painel Q4')
     setf(p.Range('A39'), a39(m, nlv), 'Painel A39')
     setf(p.Range('H4'), '=IF(engAviso<>"","▲ lote em análise · ver o aviso abaixo dos gráficos","▲ lote em análise")',
          'Painel H4')
     # "comeca com": as formas curtas (J7:J9) e as longas (Q4) -- ADR-092
     extras = [('AGUARDA', AZUL), ('SEM CORRIDA', AZUL), ('SEM PONTO', AZUL), ('PER. VAZIO', AZUL),
               ('DESATUAL', AMBAR), ('BASE VAZIA', AMBAR), ('BASE SEM DADOS', AMBAR), ('SEM MÉD', SEM_MEDIA)]
-    regras_texto(p.Range(f'J7:J{6 + nlv}'), extras)
+    regras_texto(p.Range(f'{cs}7:{cs}{6 + nlv}'), extras)
     regras_texto(p.Range('Q4'), extras)
 
 

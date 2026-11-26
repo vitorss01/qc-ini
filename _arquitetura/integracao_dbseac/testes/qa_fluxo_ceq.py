@@ -109,19 +109,16 @@ def alerta(teste, evid):
 
 
 def classe_sigma(x, seis=True):
-    """Estatistica M = classe da tblPlanoQC_Sigma. ADR-101 (23/11/2026): 6 faixas (2-3 Ruim, < 2 Inaceitavel); antes
-    era < 3 "Desempenho inadequado"."""
+    """ADR-103 (26/11/2026): REGRA INSTITUCIONAL da Metrica Sigma, operadores literais (sigma = 4 Marginal, sigma = 5 Bom)."""
     if x >= 6:
-        return 'Classe mundial'
-    if x >= 5:
+        return 'Excelente — Classe mundial'
+    if 5 < x < 6:
         return 'Excelente'
-    if x >= 4:
+    if 4 < x <= 5:
         return 'Bom'
-    if x >= 3:
+    if 3 <= x <= 4:
         return 'Marginal'
-    if not seis:
-        return 'Desempenho inadequado'
-    return 'Ruim' if x >= 2 else 'Inaceitável'
+    return 'Insatisfatório'
 
 
 def bias_pct(res, alvo):

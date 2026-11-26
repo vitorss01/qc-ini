@@ -31,6 +31,7 @@ import instalar_integracao as ii  # noqa: E402
 import codigo_atual  # noqa: E402
 import camada_dados as cd  # noqa: E402
 from instalar_seguranca_usuarios import foto_protecao, devolver_protecao  # noqa: E402
+import painel_layout  # noqa: E402  (ADR-103: status/classe do topo do Painel)
 
 MUDANCAS = []
 CONSULTAS = ['DB_CQ_FINAL', 'QA_INTEGRACAO']
@@ -98,9 +99,10 @@ def setf(rng, f, antigo, oque):
 def painel(wb):
     """Regra 'comeca com SEM MÉD' em J7:J9 (pega 'SEM MÉD/DP'), com as cores da regra 'SEM MÉDIA/DP'."""
     p = wb.Worksheets('Painel')
-    nlv = 3 if p.Range('J9').HasFormula else 2
-    rng = p.Range(f'J7:J{6 + nlv}')
-    if 'SEM MÉD/DP' not in str(p.Range('J7').Formula):
+    cs = painel_layout.col_status(p)                   # ADR-103: J (antigo) ou AB oculta (novo)
+    nlv = 3 if p.Range(f'{cs}9').HasFormula else 2
+    rng = p.Range(f'{cs}7:{cs}{6 + nlv}')
+    if 'SEM MÉD/DP' not in str(p.Range(f'{cs}7').Formula):
         raise SystemExit('Painel J7 sem a forma curta "SEM MÉD/DP" (instalar_adr078 nao rodou antes) -- nada foi salvo')
     fcs = rng.FormatConditions
     for i in range(1, fcs.Count + 1):

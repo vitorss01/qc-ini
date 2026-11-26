@@ -52,6 +52,8 @@ Private Const N_OBS_TELA As Long = 15
 Private Const R_OBS_TOT As Long = 173
 Private Const R_PAR_TXT As Long = 176
 Private Const R_PAR_ULT As Long = 181
+Private Const DESLOC_DIG As Long = 13             ' ADR-103: tabela de digitacao da bula = grade + 13 colunas (N114)
+Private Const R_DIG_CAB As Long = 114
 Private Const C_MAN_MED As Long = 2             ' B107.. Media (bula)
 Private Const C_MAN_DP As Long = 3              ' C107.. DP
 Private Const C_MAN_ORIG As Long = 4            ' D107.. Origem do DP (lista Lote anterior / Bula)
@@ -128,6 +130,7 @@ Private mUltimoAviso As String
 Private mUltimaPergunta As String
 Private mDentro As Boolean
 Private mLiberado As String               ' chave LOTE|ANALITO com a digitacao manual liberada nesta sessao ("" = trancada)
+Private mSilencioso As Boolean            ' ADR-103: laco de varios analitos (sem caixa por analito)
 
 ' ============================ GANCHOS DO QA ============================
 ' "SIM|NAO|..." responde as proximas perguntas, na ordem; vazio limpa. Sem resposta guardada e sem gente olhando
@@ -271,6 +274,7 @@ End Function
 ' MsgBox so com gente olhando (sob automacao um modal invisivel trava o Excel); o texto fica para o QA.
 Private Sub Avisar(ByVal msg As String, ByVal estilo As VbMsgBoxStyle)
     mUltimoAviso = msg
+    If mSilencioso Then Exit Sub                ' ADR-103: dentro do laco de varios analitos o aviso e um so, no fim
     If Application.Interactive Then MsgBox msg, estilo, TITULO_CX
 End Sub
 
@@ -664,7 +668,14 @@ End Sub
 
 ' Nucleo do botao (o QA chama este, com DefinirRespostasTeste). "OK|niveis gravados|campos alterados|condicoes",
 ' "CANCELADO|motivo" ou "ERRO|motivo". Nada e gravado fora do OK.
-Public Function AplicarAlvos() As String
+' ADR-103 (varios analitos): sem argumentos e o botao de UM analito, exatamente como antes. Com anLote (chamado SO
+' pelo AplicarAlvosVarios): o analito vem do argumento, o modo de modoLote, a base de dadosLote; nao ha caixa por
+' analito (a confirmacao e a ciencia do TEMPORARIO foram feitas uma vez, para todos: temporarioAceito), nem
+' InicioUsuario/fim, nem recalculo da tela (feitos uma vez no laco). A apuracao, a trava, a gravacao, a origem, o
+' AA:AO e o Audit_Log sao os MESMOS, por analito.
+Public Function AplicarAlvos(Optional ByVal anLote As String = "", Optional ByVal modoLote As Long = 0, _
+                             Optional ByVal dadosLote As Variant, _
+                             Optional ByVal temporarioAceito As Boolean = False) As String
     Dim ws As Worksheet, lote As String, an As String, ok1 As Boolean, ok2 As Boolean, dIni As Double, dFim As Double
     Dim n() As Long, m() As Double, s() As Double, d0() As Double, d1() As Double, nv As Long, dados As Variant
     Dim vezes As Long, rLs As Long, cond(1 To 3) As String, nGrav As Long, temTemp As Boolean, msg As String
@@ -674,11 +685,12 @@ Public Function AplicarAlvos() As String
     Dim pIni(1 To 3) As Double, pFim(1 To 3) As Double, temAceit As Boolean, dentroOp As Boolean
     Dim modo As Long, wAnt As String, herda As String, bitT As Long, condAnt As String
     Dim tM As String, tD As String, novaM As String, novaD As String, condNova(1 To 3) As String
-    Dim keepM As Boolean, keepD As Boolean
+    Dim keepM As Boolean, keepD As Boolean, emLote As Boolean
+    emLote = (Len(Trim$(anLote)) > 0)
     If Not SecaoInstalada() Then AplicarAlvos = "ERRO|secao do ADR-102 nao instalada no Painel": Exit Function
     Set ws = Pn()
     lote = LoteSecao()
-    an = AnalitoPainel()
+    If emLote Then an = Trim$(anLote) Else an = AnalitoPainel()
     If Len(lote) = 0 Or UCase$(lote) = "TODOS" Then
         AplicarAlvos = Falhar("Escolha o LOTE em B98 (obrigatório). Nada foi gravado.")
         Exit Function
@@ -707,7 +719,7 @@ Public Function AplicarAlvos() As String
         Exit Function
     End If
     On Error GoTo falha
-    dados = mDados.CarregarDB()
+    If emLote And Not IsMissing(dadosLote) Then dados = dadosLote Else dados = mDados.CarregarDB()
     Apurar dados, lote, an, dIni, dFim, n, m, s, d0, d1
     LimitesN rec, ideal
     For nv = 1 To NLV()
@@ -723,7 +735,7 @@ Public Function AplicarAlvos() As String
     Next nv
     periodo = IIf(dIni > 0, DataTxt(dIni), "início") & " a " & IIf(dFim > 0, DataTxt(dFim), "hoje")
     If nGrav = 0 Then
-        AtualizarVistaAlvos dados
+        If Not emLote Then AtualizarVistaAlvos dados
         AplicarAlvos = Falhar("Impossível calcular o DP: nenhum nível tem ao menos 2 resultados ativos do lote " & lote & _
             " (" & an & ") no período " & periodo & " com DP maior que zero. Nada foi gravado.")
         Exit Function
@@ -732,7 +744,7 @@ Public Function AplicarAlvos() As String
     msg = "O que transferir para o lote " & lote & " (" & an & ")?" & vbCrLf & vbCrLf & _
           "1 = Média e DP" & vbCrLf & "2 = só a Média (o DP atual fica como está)" & vbCrLf & _
           "3 = só o DP (a Média atual fica como está)" & vbCrLf & vbCrLf & "Digite 1, 2 ou 3 (Cancelar não grava nada)."
-    modo = PerguntarModo(msg)
+    If emLote Then modo = modoLote Else modo = PerguntarModo(msg)
     If modo = 0 Then
         AtualizarVistaAlvos dados
         AplicarAlvos = "CANCELADO|transferencia"
@@ -756,14 +768,22 @@ Public Function AplicarAlvos() As String
     Next nv
     msg = msg & vbCrLf & vbCrLf & "Os valores ficam gravados (estáticos) na LotesStore: mudar o lote ou as datas " & _
           "depois não muda o alvo gravado."
-    If Not Perguntar(msg, vbQuestion) Then
+    If emLote Then
+        ' confirmacao feita uma vez para todos os analitos (AplicarAlvosVarios)
+    ElseIf Not Perguntar(msg, vbQuestion) Then
         AtualizarVistaAlvos dados
         AplicarAlvos = "CANCELADO|confirmacao"
         mUltimoAviso = "Cancelado: nada foi gravado."
         Exit Function
     End If
     ' confirmacao 2: N abaixo do recomendado = TEMPORARIO, com ciencia
-    If temTemp Then
+    If temTemp And emLote Then
+        If Not temporarioAceito Then
+            AplicarAlvos = "CANCELADO|temporario"
+            mUltimoAviso = "Cancelado: nada foi gravado em " & an & " (alvo temporário não confirmado)."
+            Exit Function
+        End If
+    ElseIf temTemp Then
         tmp = ""
         For nv = 1 To NLV()
             If cond(nv) = "TEMPORARIO" Then tmp = tmp & IIf(Len(tmp) > 0, ", ", "") & "N" & nv & " (n = " & n(nv) & ")"
@@ -823,8 +843,10 @@ Public Function AplicarAlvos() As String
         If Len(tmp) > 0 Then wAnt = wAnt & IIf(Len(wAnt) > 0, ", ", "") & "N" & nv & " " & tmp
     Next nv
     If Len(wAnt) > 0 Then origem = origem & "; mantido do registro anterior: " & wAnt
-    mApp.InicioUsuario "Gravando os alvos do lote " & lote & "..."
-    dentroOp = True
+    If Not emLote Then
+        mApp.InicioUsuario "Gravando os alvos do lote " & lote & "..."
+        dentroOp = True
+    End If
     esp = mLotesBlocos.EspecDoLote(lote, an)
     For nv = 1 To NLV()
         If Not Mantido(cond(nv)) Then
@@ -871,6 +893,10 @@ Public Function AplicarAlvos() As String
     prot = False
     Application.EnableEvents = ev
     mLotes.InvalidarLotes
+    If emLote Then
+        AplicarAlvos = "OK|" & nGrav & "|" & nAlt & "|" & conds & "|" & ModoTxt(modo)
+        Exit Function
+    End If
     If StrComp(lote, mLotes.LoteEmTela(), vbTextCompare) = 0 Then mLotes.CarregarParametrosView lote
     mEstatistica.InvalidarParametros
     mEstatistica.RecalcularAnalitoAtual
@@ -891,10 +917,250 @@ falha:
     nE = Err.Number: sE = Err.Description
     On Error Resume Next
     If Not ls Is Nothing Then mSeguranca.RestaurarProtecao ls, prot
-    If dentroOp Then mApp.fim Else Application.EnableEvents = True
+    If dentroOp Then
+        mApp.fim
+    ElseIf Not emLote Then
+        Application.EnableEvents = True
+    End If
     mLotes.InvalidarLotes
     On Error GoTo 0
-    AplicarAlvos = Falhar("Falha ao aplicar os alvos do lote " & lote & ": " & sE)
+    AplicarAlvos = Falhar("Falha ao aplicar os alvos do lote " & lote & IIf(emLote, " (" & an & ")", "") & ": " & sE)
+End Function
+
+' ============================ ADR-103: APLICAR ALVOS A VARIOS ANALITOS ============================
+' Botao "Aplicar a vários analitos": a janela frmAlvosLote escolhe os analitos (um a um, todos, desmarcar); o lote e o
+' periodo sao os da secao (B98, E98, G98), os mesmos para todos. Cada analito e apurado e gravado pelo MESMO nucleo do
+' botao de um analito (AplicarAlvos com anLote), com os seus proprios resultados -- nunca a Media/DP de outro.
+Public Sub AplicarAlvosVariosUI()
+    Dim f As Object, lista As String, r As String
+    If Not SecaoInstalada() Then Exit Sub
+    On Error GoTo semJanela
+    Set f = VBA.UserForms.Add("frmAlvosLote")
+    On Error GoTo 0
+    f.Preparar CatalogoAnalitos(), "Lote: " & LoteSecao() & "    Período: " & PeriodoSecaoTxt()
+    f.Show
+    If f.Confirmado Then lista = f.Selecionados
+    Unload f
+    If Len(lista) = 0 Then Exit Sub
+    r = AplicarAlvosVarios(lista)
+    Exit Sub
+semJanela:
+    Avisar "A janela de seleção de analitos (frmAlvosLote) não está instalada. Nada foi gravado.", vbExclamation
+End Sub
+
+' Para o QA: a janela sem Show. acoes = "TODOS", "NENHUM", "+Analito", "-Analito" separadas por "|", aplicadas na
+' ordem. Devolve "selecionados<TAB>legenda da contagem<TAB>botao Aplicar habilitado (1/0)" (TAB: ha analito com "#",
+' ex. NEUT#). Nada e gravado.
+Public Function TesteJanelaVarios(ByVal acoes As String) As String
+    Dim f As Object, a As Variant, t As String, ok As Boolean
+    Set f = VBA.UserForms.Add("frmAlvosLote")
+    f.Preparar CatalogoAnalitos(), "teste"
+    For Each a In Split(acoes, "|")
+        t = Trim$(CStr(a))
+        If UCase$(t) = "TODOS" Then
+            f.MarcarTodos True
+        ElseIf UCase$(t) = "NENHUM" Then
+            f.MarcarTodos False
+        ElseIf Left$(t, 1) = "+" Or Left$(t, 1) = "-" Then
+            ok = f.Marcar(Mid$(t, 2), Left$(t, 1) = "+")
+        End If
+    Next a
+    TesteJanelaVarios = f.SelecaoAtual() & vbTab & f.Controls("lblQtd").Caption & vbTab & IIf(f.Controls("btnAplicar").Enabled, "1", "0")
+    Unload f
+End Function
+
+' Analitos do catalogo (aba Especificacoes A4:A43), separados por "|", na ordem da aba.
+Public Function CatalogoAnalitos() As String
+    Dim wa As Worksheet, v As Variant, i As Long, out As String
+    Set wa = ThisWorkbook.Worksheets(mLotes.AbaEspec())
+    v = wa.Range(wa.Cells(4, 1), wa.Cells(4 + N_REF - 1, 1)).Value
+    For i = 1 To UBound(v, 1)
+        If Len(Txt(v(i, 1))) > 0 Then out = out & IIf(Len(out) > 0, "|", "") & Txt(v(i, 1))
+    Next i
+    CatalogoAnalitos = out
+End Function
+
+Private Function PeriodoSecaoTxt() As String
+    Dim ok1 As Boolean, ok2 As Boolean, dIni As Double, dFim As Double
+    dIni = LerData(Pn().Cells(R_ENT, C_DE).Value, ok1)
+    dFim = LerData(Pn().Cells(R_ENT, C_ATE).Value, ok2)
+    If Not (ok1 And ok2) Then PeriodoSecaoTxt = "(datas inválidas)": Exit Function
+    PeriodoSecaoTxt = IIf(dIni > 0, DataTxt(dIni), "início") & " a " & IIf(dFim > 0, DataTxt(dFim), "hoje")
+End Function
+
+' Nucleo do botao de varios analitos (o QA chama este com DefinirRespostasTeste "modo|SIM|SIM"). lista = analitos
+' separados por "|". Perguntas: o modo (1/2/3, uma vez), a confirmacao (periodo, modo, quantidade, bloqueados) e, se
+' houver nivel com N abaixo do recomendado, UMA ciencia de TEMPORARIO para todos (NAO = os analitos com nivel
+' temporario ficam de fora, como no botao de um analito). Devolve "OK|gravados|bloqueados|temporarios fora|erros|
+' detalhe (analito=resultado;...)", "CANCELADO|motivo" ou "ERRO|motivo".
+Public Function AplicarAlvosVarios(ByVal lista As String) As String
+    Dim lote As String, ok1 As Boolean, ok2 As Boolean, dIni As Double, dFim As Double, dados As Variant
+    Dim nomes() As String, nA As Long, i As Long, nv As Long, vezes As Long, an As String, p As Variant
+    Dim n() As Long, m() As Double, s() As Double, d0() As Double, d1() As Double, cond As String
+    Dim estado() As String, temTemp() As Boolean, nTemp As Long, nBloq As Long, nOkPrev As Long
+    Dim modo As Long, msg As String, periodo As String, rec As Long, ideal As Long, aceita As Boolean
+    Dim r As String, nOk As Long, nErr As Long, nFora As Long, det As String, bloqTxt As String, tempTxt As String
+    Dim visto As Object, grav As Boolean, dentroOp As Boolean, sE As String
+    If Not SecaoInstalada() Then AplicarAlvosVarios = "ERRO|secao do ADR-102 nao instalada no Painel": Exit Function
+    lote = LoteSecao()
+    If Len(lote) = 0 Or UCase$(lote) = "TODOS" Then
+        AplicarAlvosVarios = Falhar("Escolha o LOTE em B98 (obrigatório). Nada foi gravado.")
+        Exit Function
+    End If
+    dIni = LerData(Pn().Cells(R_ENT, C_DE).Value, ok1)
+    dFim = LerData(Pn().Cells(R_ENT, C_ATE).Value, ok2)
+    If Not (ok1 And ok2) Then
+        AplicarAlvosVarios = Falhar("As datas De (E98) e Até (G98) precisam ser datas (ou ficar vazias). Nada foi gravado.")
+        Exit Function
+    End If
+    If dIni > 0 And dFim > 0 And dIni > dFim Then
+        AplicarAlvosVarios = Falhar("A data De (E98) é posterior a Até (G98). Nada foi gravado.")
+        Exit Function
+    End If
+    Set visto = CreateObject("Scripting.Dictionary")
+    visto.CompareMode = 1
+    ReDim nomes(1 To 1)
+    For Each p In Split(lista, "|")
+        If Len(Trim$(CStr(p))) > 0 Then
+            If Not visto.Exists(Trim$(CStr(p))) Then
+                visto.Add Trim$(CStr(p)), 1
+                nA = nA + 1
+                ReDim Preserve nomes(1 To nA)
+                nomes(nA) = Trim$(CStr(p))
+            End If
+        End If
+    Next p
+    If nA = 0 Then
+        AplicarAlvosVarios = "CANCELADO|nenhum analito"
+        mUltimoAviso = "Nenhum analito selecionado: nada foi gravado."
+        Exit Function
+    End If
+    On Error GoTo falha
+    dados = mDados.CarregarDB()
+    LimitesN rec, ideal
+    ReDim estado(1 To nA): ReDim temTemp(1 To nA)
+    ' pre-apuracao (nao grava): o que cada analito vai ser
+    For i = 1 To nA
+        an = nomes(i)
+        LinhaStore lote, an, vezes
+        If vezes = 0 Then
+            estado(i) = "SEM_REGISTRO"
+        ElseIf vezes > 1 Then
+            estado(i) = "CHAVE_DUPLICADA"
+        Else
+            Apurar dados, lote, an, dIni, dFim, n, m, s, d0, d1
+            grav = False
+            For nv = 1 To NLV()
+                cond = CondicaoNivel(n(nv), s(nv))
+                If Not Mantido(cond) Then
+                    grav = True
+                    If cond = "TEMPORARIO" Then temTemp(i) = True
+                End If
+            Next nv
+            If Not grav Then
+                estado(i) = "BLOQUEADO"
+            Else
+                estado(i) = "GRAVAVEL"
+                nOkPrev = nOkPrev + 1
+                If temTemp(i) Then
+                    nTemp = nTemp + 1
+                    tempTxt = tempTxt & IIf(Len(tempTxt) > 0, ", ", "") & an
+                End If
+            End If
+        End If
+        If estado(i) <> "GRAVAVEL" Then
+            nBloq = nBloq + 1
+            bloqTxt = bloqTxt & IIf(Len(bloqTxt) > 0, ", ", "") & an & " (" & LCase$(Replace(estado(i), "_", " ")) & ")"
+        End If
+    Next i
+    periodo = IIf(dIni > 0, DataTxt(dIni), "início") & " a " & IIf(dFim > 0, DataTxt(dFim), "hoje")
+    If nOkPrev = 0 Then
+        AplicarAlvosVarios = Falhar("Nenhum dos " & nA & " analito(s) selecionado(s) pode ser gravado no lote " & lote & _
+            " no período " & periodo & ": " & bloqTxt & ". Nada foi gravado.")
+        Exit Function
+    End If
+    msg = "O que transferir para o lote " & lote & " nos " & nA & " analito(s) selecionado(s)?" & vbCrLf & vbCrLf & _
+          "1 = Média e DP" & vbCrLf & "2 = só a Média (o DP atual fica como está)" & vbCrLf & _
+          "3 = só o DP (a Média atual fica como está)" & vbCrLf & vbCrLf & "Digite 1, 2 ou 3 (Cancelar não grava nada)."
+    modo = PerguntarModo(msg)
+    If modo = 0 Then
+        AplicarAlvosVarios = "CANCELADO|transferencia"
+        mUltimoAviso = "Cancelado: nada foi gravado (nenhuma opção 1, 2 ou 3 escolhida)."
+        Exit Function
+    End If
+    msg = "Aplicar os alvos do laboratório a VÁRIOS analitos do lote " & lote & "?" & vbCrLf & vbCrLf & _
+          "Período (o mesmo para todos): " & periodo & " (todos os equipamentos; só resultados ativos)" & vbCrLf & _
+          "Transferir: " & Choose(modo, "Média e DP", "SÓ A MÉDIA (o DP fica como está)", _
+                                  "SÓ O DP (a Média fica como está)") & vbCrLf & _
+          "Analitos selecionados: " & nA & vbCrLf & "Podem ser gravados: " & nOkPrev & _
+          IIf(nTemp > 0, " (" & nTemp & " com nível de N < " & rec & ": TEMPORÁRIO)", "") & vbCrLf & _
+          IIf(nBloq > 0, "Ficam de fora (nada é alterado): " & nBloq & " -- " & bloqTxt & vbCrLf, "") & vbCrLf & _
+          "Cada analito usa SÓ os seus próprios resultados do período (Média e DP calculados um a um). " & _
+          "Os analitos não selecionados não mudam. Os valores ficam gravados (estáticos) na LotesStore."
+    If Not Perguntar(msg, vbQuestion) Then
+        AplicarAlvosVarios = "CANCELADO|confirmacao"
+        mUltimoAviso = "Cancelado: nada foi gravado."
+        Exit Function
+    End If
+    If nTemp > 0 Then
+        msg = "ATENÇÃO: N abaixo de " & rec & " em " & nTemp & " analito(s): " & tempTxt & "." & vbCrLf & vbCrLf & _
+              "Com menos de " & rec & " resultados o alvo NÃO É RECOMENDADO: a média e o DP ainda são instáveis. " & _
+              "O ideal é N >= " & ideal & "." & vbCrLf & vbCrLf & _
+              "Declaro que estou ciente de que esses alvos são TEMPORÁRIOS e devem ser refeitos quando houver " & _
+              "resultados suficientes. Gravar esses analitos como TEMPORÁRIO?" & vbCrLf & vbCrLf & _
+              "(Não = esses " & nTemp & " analito(s) ficam de fora; os demais são gravados.)"
+        aceita = Perguntar(msg, vbExclamation)
+    End If
+    mApp.InicioUsuario "Gravando os alvos do lote " & lote & " (" & nOkPrev & " analitos)..."
+    dentroOp = True
+    mSilencioso = True
+    For i = 1 To nA
+        If estado(i) = "GRAVAVEL" Then
+            If temTemp(i) And Not aceita Then
+                nFora = nFora + 1
+                r = "CANCELADO|temporario"
+            Else
+                r = AplicarAlvos(nomes(i), modo, dados, aceita)
+                If Left$(r, 3) = "OK|" Then nOk = nOk + 1 Else nErr = nErr + 1
+            End If
+        Else
+            r = estado(i)
+        End If
+        det = det & IIf(Len(det) > 0, ";", "") & nomes(i) & "=" & Split(r, "|")(0)
+        If Left$(r, 9) = "CANCELADO" Then det = det & ":" & Split(r, "|")(1)
+    Next i
+    mSilencioso = False
+    mAuditoria.Auditar mAuditoria.CAT_CONFIG, "PARAMETRO_LOTE_CALCULADO_VARIOS", MODULO, 0, Empty, "", lote, 0, "", _
+        "", nOk & " gravado(s)", "", "", "Varios analitos", "Aplicar alvos a varios analitos do lote " & lote & _
+        " (" & periodo & "; " & ModoTxt(modo) & "; " & Quem() & "): " & det
+    mLotes.InvalidarLotes
+    If StrComp(lote, mLotes.LoteEmTela(), vbTextCompare) = 0 Then mLotes.CarregarParametrosView lote
+    mEstatistica.InvalidarParametros
+    mEstatistica.RecalcularAnalitoAtual
+    mLotes.AtualizarResumoLote
+    mLotesBlocos.EscreverValoresDoLote lote
+    AtualizarVistaAlvos dados
+    mApp.fim
+    dentroOp = False
+    msg = "Alvos gravados no lote " & lote & " (" & periodo & "): " & nOk & " analito(s)." & vbCrLf & _
+          "Transferido: " & Choose(modo, "Média e DP", "só a Média", "só o DP") & "." & _
+          IIf(nBloq > 0, vbCrLf & "Fora (nada alterado): " & bloqTxt & ".", "") & _
+          IIf(nFora > 0, vbCrLf & "Temporários não confirmados (nada alterado): " & nFora & ".", "") & _
+          IIf(nErr > 0, vbCrLf & "Com erro (nada alterado nesses): " & nErr & ". Veja o Audit_Log.", "") & _
+          IIf(nTemp > 0 And aceita, vbCrLf & vbCrLf & "Analito(s) com N < " & rec & " gravado(s) como TEMPORÁRIO: " & _
+              "refaça quando houver resultados suficientes.", "")
+    Avisar msg, IIf(nErr > 0 Or (nTemp > 0 And aceita), vbExclamation, vbInformation)
+    AplicarAlvosVarios = "OK|" & nOk & "|" & nBloq & "|" & nFora & "|" & nErr & "|" & det
+    Exit Function
+falha:
+    sE = Err.Description
+    mSilencioso = False
+    On Error Resume Next
+    If dentroOp Then mApp.fim
+    mLotes.InvalidarLotes
+    On Error GoTo 0
+    AplicarAlvosVarios = Falhar("Falha ao aplicar os alvos a vários analitos do lote " & lote & ": " & sE & _
+        IIf(Len(det) > 0, " (já processados: " & det & ")", ""))
 End Function
 
 Private Function Falhar(ByVal msg As String) As String
@@ -2038,6 +2304,137 @@ falha:
     Avisar "Falha ao atualizar a seção de alvos/referência: " & sE, vbExclamation
 End Sub
 
+' ============================ ADR-103: TABELA DE DIGITACAO DA BULA (N114) E TRANSFERENCIA ============================
+' A partir de N114 (instalar_adr103): a MESMA estrutura da grade da referencia (A114 em diante: Analito, Media/LI/LS
+' por nivel e Fonte), deslocada 13 colunas -- coluna da tabela de digitacao = coluna da grade + 13; as linhas sao as
+' mesmas (115..154, o analito espelhado da coluna A). Digitar ali NAO grava nada. O botao "TRANSFERIR VALORES PARA
+' REFERÊNCIA INICIAL" copia SO OS VALORES preenchidos (nunca formula, nem formula como texto, nem vinculo) para a grade
+' da referencia do lote em B98 e entrega as celulas copiadas ao GradeEditada -- a mesma validacao, gravacao na
+' RefBulaStore, trilha e verificacao da digitacao direta na grade. Celula vazia na digitacao nao mexe no destino. A
+' tabela de digitacao nao e alterada.
+
+Public Sub TransferirReferenciaInicial()
+    Dim r As String
+    r = TransferirReferenciaCore()
+End Sub
+
+' Nucleo do botao (o QA chama este, com DefinirRespostasTeste). "OK|valores copiados|linhas", "CANCELADO|motivo" ou
+' "ERRO|motivo". Nada e gravado fora do OK.
+Public Function TransferirReferenciaCore() As String
+    Dim ws As Worksheet, lote As String, i As Long, c As Long, nCol As Long, rr As Long, v As Variant, d As Variant
+    Dim invalidos As String, nVal As Long, nSobre As Long, lin As Object, alvo As Range, ev As Boolean, prot As Boolean
+    Dim an As String, cabG As String, cabD As String, nE As Long, sE As String, msg As String, k As Variant
+    Dim li As Variant, ls_ As Variant
+    If Not SecaoInstalada() Then TransferirReferenciaCore = "ERRO|secao do ADR-102 nao instalada no Painel": Exit Function
+    Set ws = Pn()
+    lote = LoteSecao()
+    If Len(lote) = 0 Or UCase$(lote) = "TODOS" Then
+        TransferirReferenciaCore = Falhar("Escolha o LOTE em B98 antes de transferir: a referência é do lote. Nada foi transferido.")
+        Exit Function
+    End If
+    nCol = ColFonte()
+    ' estrutura: cabecalho e analitos iguais aos da grade
+    For c = 1 To nCol
+        cabG = Txt(ws.Cells(R_DIG_CAB, c).Value)
+        cabD = Txt(ws.Cells(R_DIG_CAB, c + DESLOC_DIG).Value)
+        If StrComp(cabG, cabD, vbBinaryCompare) <> 0 Then
+            TransferirReferenciaCore = Falhar("A tabela de digitação (N114) não tem a mesma estrutura da grade da referência " & _
+                "(coluna " & c & ": """ & cabD & """ em vez de """ & cabG & """). Nada foi transferido.")
+            Exit Function
+        End If
+    Next c
+    For i = 0 To N_REF - 1
+        rr = R_REF1 + i
+        If StrComp(Txt(ws.Cells(rr, 1).Value), Txt(ws.Cells(rr, 1 + DESLOC_DIG).Value), vbTextCompare) <> 0 Then
+            TransferirReferenciaCore = Falhar("O analito da linha " & rr & " da tabela de digitação não é o mesmo da grade (" & _
+                Txt(ws.Cells(rr, 1).Value) & "). Nada foi transferido.")
+            Exit Function
+        End If
+    Next i
+    ' valores: numero nas colunas de Media/LI/LS; texto sem "=" na Fonte; LI <= LS no mesmo nivel
+    Set lin = CreateObject("Scripting.Dictionary")
+    For i = 0 To N_REF - 1
+        rr = R_REF1 + i
+        an = Txt(ws.Cells(rr, 1).Value)
+        For c = 2 To nCol
+            v = ws.Cells(rr, c + DESLOC_DIG).Value
+            If IsError(v) Then
+                invalidos = invalidos & vbCrLf & "  linha " & rr & " (" & an & "), coluna " & Txt(ws.Cells(R_DIG_CAB, c).Value) & ": erro"
+            ElseIf Len(Trim$(CStr(v))) > 0 Then
+                If c < nCol And Not NumOk(v) Then
+                    invalidos = invalidos & vbCrLf & "  " & an & ", " & Txt(ws.Cells(R_DIG_CAB, c).Value) & ": não é número"
+                ElseIf c = nCol And Left$(Trim$(CStr(v)), 1) = "=" Then
+                    invalidos = invalidos & vbCrLf & "  " & an & ", Fonte: fórmula como texto não é aceita"
+                ElseIf Len(an) = 0 Then
+                    invalidos = invalidos & vbCrLf & "  linha " & rr & ": valor sem analito"
+                Else
+                    nVal = nVal + 1
+                    If Not lin.Exists(rr) Then lin.Add rr, 1
+                    d = ws.Cells(rr, c).Value
+                    If Len(Trim$(CStr(d))) > 0 Then
+                        If CStr(d) <> CStr(v) Then nSobre = nSobre + 1
+                    End If
+                End If
+            End If
+        Next c
+        For c = 1 To NLV()                      ' LI <= LS com o valor que ficara na grade
+            li = ws.Cells(rr, ColRef(c, 1) + DESLOC_DIG).Value
+            If Len(Trim$(CStr(li))) = 0 Then li = ws.Cells(rr, ColRef(c, 1)).Value
+            ls_ = ws.Cells(rr, ColRef(c, 2) + DESLOC_DIG).Value
+            If Len(Trim$(CStr(ls_))) = 0 Then ls_ = ws.Cells(rr, ColRef(c, 2)).Value
+            If NumOk(li) And NumOk(ls_) Then
+                If CDbl(li) > CDbl(ls_) Then invalidos = invalidos & vbCrLf & "  " & an & " N" & c & ": LI maior que LS"
+            End If
+        Next c
+    Next i
+    If Len(invalidos) > 0 Then
+        TransferirReferenciaCore = Falhar("Valores inválidos na tabela de digitação; nada foi transferido:" & invalidos)
+        Exit Function
+    End If
+    If nVal = 0 Then
+        TransferirReferenciaCore = Falhar("A tabela de digitação (a partir de N114) está vazia. Nada foi transferido.")
+        Exit Function
+    End If
+    msg = "Transferir " & nVal & " valor(es) de " & lin.Count & " analito(s) para a referência inicial (bula / Unity) " & _
+          "do lote " & lote & "?" & vbCrLf & vbCrLf & "Só os valores preenchidos são copiados (nunca fórmulas); célula " & _
+          "vazia na digitação não altera o destino; a tabela de digitação fica como está."
+    If nSobre > 0 Then msg = msg & vbCrLf & vbCrLf & "ATENÇÃO: " & nSobre & " valor(es) já transferido(s) antes serão " & _
+                             "SUBSTITUÍDOS (o anterior fica no Audit_Log)."
+    If Not Perguntar(msg, IIf(nSobre > 0, vbExclamation, vbQuestion)) Then
+        TransferirReferenciaCore = "CANCELADO|confirmacao"
+        mUltimoAviso = "Cancelado: nada foi transferido."
+        Exit Function
+    End If
+    ev = Application.EnableEvents
+    On Error GoTo falha
+    Application.EnableEvents = False             ' o GradeEditada e chamado UMA vez, com todas as celulas copiadas
+    prot = mSeguranca.LiberarEscritaRapida(ws)
+    For Each k In lin.Keys
+        For c = 2 To nCol
+            v = ws.Cells(k, c + DESLOC_DIG).Value
+            If Len(Trim$(CStr(v))) > 0 Then
+                If c < nCol Then ws.Cells(k, c).Value = CDbl(v) Else ws.Cells(k, c).Value = CStr(v)
+                If alvo Is Nothing Then Set alvo = ws.Cells(k, c) Else Set alvo = Union(alvo, ws.Cells(k, c))
+            End If
+        Next c
+    Next k
+    mSeguranca.RestaurarProtecao ws, prot
+    prot = False
+    Application.EnableEvents = ev
+    GradeEditada alvo
+    Avisar "Transferidos " & nVal & " valor(es) de " & lin.Count & " analito(s) para a referência inicial do lote " & _
+           lote & ".", vbInformation
+    TransferirReferenciaCore = "OK|" & nVal & "|" & lin.Count
+    Exit Function
+falha:
+    nE = Err.Number: sE = Err.Description
+    On Error Resume Next
+    If prot Then mSeguranca.RestaurarProtecao ws, prot
+    Application.EnableEvents = ev
+    On Error GoTo 0
+    TransferirReferenciaCore = Falhar("Falha ao transferir os valores: " & sE)
+End Function
+
 ' Instalador e QA: refaz todas as vistas da secao (sem alerta). "OK|<verificacao>" ou "ERRO|motivo".
 Public Function AtualizarTudo() As String
     Dim dados As Variant, novas As String, r As String
@@ -2061,8 +2458,8 @@ End Function
 Public Sub AlinharBotoes(ByVal ws As Worksheet)
     Dim nomes As Variant, cels As Variant, i As Long, b As Shape, c As Range, t As Double
     On Error Resume Next
-    nomes = Array("adr102_aplicar", "adr102_liberar", "adr102_manual_gravar", "adr102_parecer")
-    cels = Array("K98", "A111", "K111", "A180")
+    nomes = Array("adr102_aplicar", "adr102_liberar", "adr102_manual_gravar", "adr102_parecer", "adr103_transferir")
+    cels = Array("K98", "A111", "K111", "A180", "N155")
     For i = LBound(nomes) To UBound(nomes)
         Set b = Nothing
         Set b = ws.Shapes(nomes(i))
@@ -2074,4 +2471,13 @@ Public Sub AlinharBotoes(ByVal ws As Worksheet)
             If Abs(b.Left - (c.Left + 2)) > 0.5 Then b.Left = c.Left + 2
         End If
     Next i
+    ' ADR-103: "Aplicar a vários analitos" logo a direita do "Aplicar Alvos ao Lote", na mesma linha
+    Dim a As Shape
+    Set a = Nothing: Set b = Nothing
+    Set a = ws.Shapes("adr102_aplicar")
+    Set b = ws.Shapes("adr103_varios")
+    If Not a Is Nothing And Not b Is Nothing Then
+        If Abs(b.Top - a.Top) > 0.5 Then b.Top = a.Top
+        If Abs(b.Left - (a.Left + a.Width + 6)) > 0.5 Then b.Left = a.Left + a.Width + 6
+    End If
 End Sub

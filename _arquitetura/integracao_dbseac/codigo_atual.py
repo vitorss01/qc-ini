@@ -18,7 +18,8 @@ SRC = os.path.join(AQUI, 'src')
 MODULOS = ['mLotes', 'mApp', 'mIntegracao', 'mSeguranca', 'mEstatistica', 'mUI',
            'mWestgardKnowledge', 'mAuditoria',
            'mCEQ', 'mEQA', 'mPlanoQC',          # ADR-064: CEQ da incerteza; texto acentuado corrompido
-           'mDados']                            # ADR-064 (auditoria): ultima data so do que participa
+           'mDados',                            # ADR-064 (auditoria): ultima data so do que participa
+           'mQualidade']                        # ADR-103: regra institucional da Metrica Sigma (fonte versionada)
 # modulos que podem ainda nao existir no arquivo (criados na primeira instalacao)
 NOVOS = ['mIncerteza',                        # ADR-064
          'mLotesBlocos',                       # ADR-074: aba Analitos com um bloco por lote

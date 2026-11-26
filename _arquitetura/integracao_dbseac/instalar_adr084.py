@@ -30,6 +30,7 @@ import instalar_frm_inativar  # noqa: E402
 import instalar_frm_carregando  # noqa: E402
 import instalar_adr078 as a78  # noqa: E402
 from instalar_seguranca_usuarios import foto_protecao, devolver_protecao  # noqa: E402
+import painel_layout  # noqa: E402  (ADR-103: status/classe do topo do Painel)
 
 MUDANCAS = []
 R0, R1 = 4, 203
@@ -208,7 +209,7 @@ def main(produto, caminho, salvar=True):
         ex.xl.Calculate()
         ex.esperar()
         p = wb.Worksheets('Painel')
-        st = [str(p.Range(f'J{6 + i}').Value) for i in range(1, nlv + 1)]
+        st = [str(painel_layout.status_nivel(p, i)) for i in range(1, nlv + 1)]     # ADR-103
         if any('TESTE' in s.upper() for s in st):
             raise SystemExit(f'fumaca: status ainda com TESTE: {st} -- nada foi salvo')
         log(f'   fumaca: status {st}')

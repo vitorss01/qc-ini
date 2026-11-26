@@ -41,6 +41,7 @@ sys.path.insert(0, os.path.join(AQUI, '..'))
 import instalar_integracao as ii  # noqa: E402
 from qa_inativar_ux import (criar_usuario, fazer_login, preparar_painel, series, Leitor, x_do_id,  # noqa: E402
                             SENHA_QA, USUARIO_QA)
+import painel_layout  # noqa: E402  (ADR-103)
 
 SEP = ' · '
 TB_C = 'tblComentariosTecnicos'
@@ -283,7 +284,7 @@ def executar(produto, caminho, saida):
         # ------------------------------------------------------------ Z08 so comentario num ponto ativo
         base8 = L.eng_por_run()
         lin8 = next(d['linha'] for d in base8.values() if d['id'][0] == PC[2])
-        st8 = [str(p.Range(f'J{7 + t}').Value) for t in range(nlv)]
+        st8 = [str(painel_layout.status_nivel(p, 1 + t)) for t in range(nlv)]
         inat8 = L.inativar()
         txt8 = 'QA ADR-085: só observação técnica'
         r8 = acao('ACAO|COMENTAR|' + txt8, 1, s_res, lin8 + 1, 'comentario_s')
@@ -291,7 +292,7 @@ def executar(produto, caminho, saida):
         reg('Z08 Só comentário num ponto ativo: estado ATIVO, gráfico, n e veredito iguais, nada na aba Inativar; '
             'comentário na aba COMENTARIOS_TECNICOS e na Principal, sem ATUALIZAR',
             r8.startswith('OK|') and f8['STATUS_ANALITICO'] == 'ATIVO' and L.eng_por_run() == base8
-            and [str(p.Range(f'J{7 + t}').Value) for t in range(nlv)] == st8 and L.inativar() == inat8
+            and [str(painel_layout.status_nivel(p, 1 + t)) for t in range(nlv)] == st8 and L.inativar() == inat8
             and f8['COMENTARIO_TECNICO'] == txt8 and len(coment_do(q, PC[2])) == 1,
             {'retorno': r8[:200], 'tempo_s': tempos['comentario_s'], 'comentario_cq': f8['COMENTARIO_TECNICO']})
         z11.append(('so_comentario', str(xl.ActiveSheet.Name), filtros(q)))

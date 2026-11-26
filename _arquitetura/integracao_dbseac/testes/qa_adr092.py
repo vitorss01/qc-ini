@@ -36,6 +36,7 @@ sys.path.insert(0, os.path.join(AQUI, '..'))
 import config_produtos as cp  # noqa: E402
 import instalar_integracao as ii  # noqa: E402
 import auditoria_abas  # noqa: E402
+import painel_layout  # noqa: E402  (ADR-103)
 
 TAG = 'TESTE-ADR092'
 NAO = 'NÃO'
@@ -229,18 +230,21 @@ def executar(produto, caminho, saida):
         # ------------------------------------------------------------ K04 OC-0043
         p = q.ws('Painel')
         nlv = 2 if bio else 3
-        j7 = p.Range('J7')
+        j7 = painel_layout.status_celula(p, 1)          # ADR-103: J ou AB (oculta)
+        visivel = not j7.EntireColumn.Hidden
         fonte = j7.DisplayFormat.Font
         larg = j7.MergeArea.Width - 3
         literais = [x for x in re.findall(r'"([^"]*)"', str(j7.Formula)) if x and x.upper() == x and len(x) > 1]
         status = sorted(set(literais) | {'OK', 'ALERTA', 'REJEITADO'})
         med = {s: round(auditoria_abas.largura_pt(s, fonte.Name, fonte.Bold, fonte.Size), 1) for s in status}
-        corta = {s: round(larg / w, 2) for s, w in med.items() if w > 0 and larg / w < 0.70}
+        # ADR-103: no layout novo o status por nivel saiu da interface (coluna tecnica oculta): nada a medir
+        corta = {s: round(larg / w, 2) for s, w in med.items() if visivel and w > 0 and larg / w < 0.70}
         q4 = str(p.Range('Q4').Formula)
         q4s = q4.replace(' ', '')
         # cada forma curta mapeada para a sua longa no Q4: COUNTIF(J,"<curta>")>0,"<longa>"
         sem_longo = [c for c, lg in LONGOS.items() if c in literais and f'"{c}")>0,"{lg}"'.replace(' ', '') not in q4s]
-        shrink = all(p.Range(f'J{6 + i}').ShrinkToFit is True for i in range(1, nlv + 1))
+        shrink = (not visivel) or all(painel_layout.status_celula(p, i).ShrinkToFit is True
+                                      for i in range(1, nlv + 1))
         fcs = j7.FormatConditions
         cor_sem = [int(fcs(i).Interior.Color) for i in range(1, fcs.Count + 1)
                    if fcs(i).Type == 9 and 'SEM MÉD/DP'.startswith(str(fcs(i).Text))]

@@ -31,6 +31,7 @@ import traceback
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 from qa_final import QA, reg, RES, sha256_arquivo  # noqa: E402
+import painel_layout  # noqa: E402  (ADR-103)
 
 N_ALVO = 20
 
@@ -185,7 +186,7 @@ def executar(produto, caminho, saida):
             q.ex.xl.Calculate()
             m1, s1 = q.run('mLotes.MediaDoLote', lote, an_ok, 1), q.run('mLotes.DPDoLote', lote, an_ok, 1)
             mn, mx = q.nome('axmin1').Value, q.nome('axmax1').Value
-            st1 = str(p.Range('J7').Value or '')
+            st1 = str(painel_layout.status_nivel(p, 1) or '')
             ok4 = num(mn) and num(mx) and mn <= m1 - 3 * s1 + 1e-9 and mx >= m1 + 3 * s1 - 1e-9 and 'SEM M' not in st1.upper()
             ev4 = {'analito': an_ok, 'media': m1, 'dp': s1, 'axmin1': mn, 'axmax1': mx, 'status_N1': st1,
                    'C3': str(p.Range('C3').Value)}

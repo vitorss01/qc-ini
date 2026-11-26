@@ -32,6 +32,7 @@ import traceback
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 from qa_final import QA, reg, RES, sha256_arquivo  # noqa: E402
+import painel_layout  # noqa: E402  (ADR-103)
 
 RX_FOTO = re.compile(r'media de (\d+) resultado')   # BN: N da foto dos valores de TESTE
 
@@ -357,7 +358,7 @@ def executar(produto, caminho, saida):
         exp2 = [mX[1] + k * sX[1] for k in range(-3, 4)]
         ok1 = bool(lin1) and all(all(perto(a, e_) for a, e_ in zip(l, exp1)) for l in lin1)
         ok2 = bool(lin2) and all(all(perto(a, e_) for a, e_ in zip(l, exp2)) for l in lin2)
-        st7 = [str(p.Range(x).Value or '') for x in ('J7', 'J8')]
+        st7 = [str(painel_layout.status_nivel(p, i) or '') for i in (1, 2)]
         selecionar_lote(q, lote0, i_an + 1)
         ax0 = [c.Range(x).Value for x in cel_md]
         reg('BC Gráficos: com o lote X no Painel, média e DP do gráfico (Calc, N1 e N2) e as 7 linhas de cada '
@@ -387,7 +388,7 @@ def executar(produto, caminho, saida):
             got = [c.Range(x).Value for x in cel_md]
             exp = [q.run('mLotes.MediaDoLote', l, an_alt, 1), q.run('mLotes.DPDoLote', l, an_alt, 1),
                    q.run('mLotes.MediaDoLote', l, an_alt, 2), q.run('mLotes.DPDoLote', l, an_alt, 2)]
-            stl = [str(p.Range(x).Value or '') for x in ('J7', 'J8')]
+            stl = [str(painel_layout.status_nivel(p, i) or '') for i in (1, 2)]
             ok_n1 = perto(got[0], exp[0]) and perto(got[1], exp[1]) and 'SEM M' not in stl[0].upper()
             ok_n2 = (perto(got[2], exp[2]) and perto(got[3], exp[3])) if num(exp[3]) else (got[2] in ('', None))
             if not (ok_n1 and ok_n2):
@@ -422,7 +423,7 @@ def executar(produto, caminho, saida):
         axY = [c.Range(x).Value for x in cel_md]
         v1, _ = linhas_calc(q)
         sem_linha = all(not num(l[3]) for l in v1)
-        stY = [str(p.Range(x).Value or '') for x in ('J7', 'J8')]
+        stY = [str(painel_layout.status_nivel(p, i) or '') for i in (1, 2)]
         rY = hY + O_AN + i_an
         blocoY = b.Range(b.Cells(rY, 5), b.Cells(rY, 10)).Value[0] + b.Range(b.Cells(rY, 25), b.Cells(rY, 38)).Value[0]
         reg('BD Parâmetros ausentes: lote sem Média/DP -> Calc sem média/DP, nenhuma linha de limite, Painel "SEM MÉDIA/DP" '

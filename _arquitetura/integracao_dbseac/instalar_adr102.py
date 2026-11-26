@@ -50,7 +50,23 @@ BOTOES = {'adr102_aplicar': ('Aplicar Alvos ao Lote', 'mAlvosRef.AplicarAlvosAoL
           'adr102_liberar': ('Liberar digitação manual', 'mAlvosRef.LiberarDigitacaoManual',
                              f'A{R_MAN_BOT}'),
           'adr102_manual_gravar': ('Gravar valores manuais', 'mAlvosRef.GravarValoresManuais', f'K{R_MAN_BOT}'),
-          'adr102_parecer': ('Registrar parecer', 'mAlvosRef.RegistrarParecer', f'A{R_PAR_BOT}')}
+          'adr102_parecer': ('Registrar parecer', 'mAlvosRef.RegistrarParecer', f'A{R_PAR_BOT}'),
+          # ADR-103: varios analitos -- na linha do "Aplicar Alvos ao Lote", logo a direita dele (ao_lado_do_aplicar)
+          'adr103_varios': ('Aplicar a vários analitos', 'mAlvosRef.AplicarAlvosVariosUI', f'K{R_ENT}'),
+          # ADR-103: transferencia da tabela de digitacao da bula (N114, instalar_adr103) para a grade da referencia
+          'adr103_transferir': ('TRANSFERIR VALORES PARA REFERÊNCIA INICIAL', 'mAlvosRef.TransferirReferenciaInicial',
+                                f'N{R_REF1 + N_REF}')}
+# ADR-103: largura em multiplos do botao padrao (o texto pedido pelo usuario nao cabe na largura padrao)
+LARGURA_X = {'adr103_transferir': 2.0}
+# ADR-103: valores digitados na tabela de digitacao da bula (N115 ate a Fonte), guardados na reinstalacao da secao
+C_DIG1 = 15                                      # O (a coluna N e o analito, espelho da A)
+
+
+def ao_lado_do_aplicar(p):
+    # ADR-103: mesma conta do mAlvosRef.AlinharBotoes (6 pt a direita do "Aplicar Alvos ao Lote", mesmo Top)
+    a, b = p.Shapes('adr102_aplicar'), p.Shapes('adr103_varios')
+    b.Top = float(a.Top)
+    b.Left = float(a.Left) + float(a.Width) + 6
 CFG = [('ALVO_N_RECOMENDADO', 20, 'ADR-102: N mínimo recomendado para o alvo do laboratório (abaixo: só TEMPORÁRIO, '
                                   'com ciência; < 2 bloqueia)'),
        ('ALVO_N_IDEAL', 90, 'ADR-102: N ideal para o alvo do laboratório (informativo)')]
@@ -316,12 +332,12 @@ def botao(ws, nome_b, texto, celula, macro):
             modelo = ws.Shapes(nm)
             break
     if modelo is not None:
-        larg, alt = float(modelo.Width), float(modelo.Height)
+        larg, alt = float(modelo.Width) * LARGURA_X.get(nome_b, 1.0), float(modelo.Height)
         fundo = modelo.Fill.ForeColor.RGB
         mtr = modelo.TextFrame2.TextRange.Font
         cor_txt, tam, fonte = mtr.Fill.ForeColor.RGB, float(mtr.Size), str(mtr.Name)
     else:
-        larg, alt, fundo, cor_txt, tam, fonte = 150.0, 24.0, 0x6B6F1F, BRANCO, 9.0, 'Segoe UI'
+        larg, alt, fundo, cor_txt, tam, fonte = 150.0 * LARGURA_X.get(nome_b, 1.0), 24.0, 0x6B6F1F, BRANCO, 9.0, 'Segoe UI'
     c = ws.Range(celula)
     if float(c.RowHeight) < alt + 4:                   # a linha do botao comporta a altura padrao
         c.EntireRow.RowHeight = alt + 4
@@ -371,6 +387,12 @@ def painel(wb, nlv, cd):
         for e in (f'B{R_ENT}', f'E{R_ENT}', f'G{R_ENT}'):
             guardado[e] = p.Range(e).Value
         guardado[f'A{R_PAR_TXT}'] = p.Range(f'A{R_PAR_TXT if novo else R_PAR_TXT_ANTIGO}').Value
+        if novo:                                   # ADR-103: o que esta digitado na tabela de digitacao da bula
+            for r_ in range(R_REF1, R_REF1 + N_REF):
+                for c_ in range(C_DIG1, C_DIG1 + nlv * 3 + 1):
+                    v_ = p.Cells(r_, c_).Value
+                    if v_ not in (None, ''):
+                        guardado[p.Cells(r_, c_).Address.replace('$', '')] = v_
         if not novo:
             extra = p.Range(p.Cells(R_FIM_ANTIGO + 1, 1), p.Cells(R_FIM, C_FIM_AREA))
             ocup = [c.Address for c in extra.Cells if c.Formula not in (None, '')]
@@ -550,6 +572,7 @@ def painel(wb, nlv, cd):
     p.Rows(R_PAR_ULT).RowHeight = 30
     for nome_b, (texto, macro, cel) in BOTOES.items():
         botao(p, nome_b, texto, cel, macro)
+    ao_lado_do_aplicar(p)
     for e, v in guardado.items():
         if v not in (None, ''):
             p.Range(e).Value = v
@@ -573,6 +596,7 @@ def alinhar_com_aba_ativa(wb):
         c = p.Range(cel)
         b.Top = float(c.Top) + max(0.0, (float(c.Height) - float(b.Height)) / 2)
         b.Left = float(c.Left) + 2
+    ao_lado_do_aplicar(p)
     try:
         if ativa0.Name != 'Painel' and ativa0.Visible == -1:
             ativa0.Activate()

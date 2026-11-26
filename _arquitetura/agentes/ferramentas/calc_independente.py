@@ -34,7 +34,7 @@ DEFINICAO USADA (conferida no codigo e nos ADR em 31/10/2026 -- reconfirme a cad
         <> 0; CVp = raiz(soma((n_i-1)*CV_i^2)/soma(n_i-1)).
     Sigma (Estatistica L) = (ETp - |bias|)/CVp.  Margem N = ETp - ET; O = N/ETp*100.
     DPM (V) = (1 - Phi(Sigma - 1,5))*1e6; Rendimento (W) = 100 - DPM/1e4 (ADR-035).
-    Classe (M): >=6 Classe mundial; 5-6 Excelente; 4-5 Bom; 3-4 Marginal; <3 Desempenho inadequado.
+    Classe (M), ADR-103: >=6 Excelente — Classe mundial; 5<s<6 Excelente; 4<s<=5 Bom; 3<=s<=4 Marginal; <3 Insatisfatório.
     Vies com sinal e RMS do CEQ (AR/AT; mCEQ.ViesEQ, ADR-064): so amostras avaliadas (Status_Padronizado <>
         NAO AVALIADO), resultado e alvo <> 0, cada chave uma vez; ano vigente, e o anterior se nao houver
         >= 6 amostras de >= 2 rodadas.
@@ -573,11 +573,12 @@ class Calculadora:
     def classe(s):
         if s is None or isinstance(s, str):
             return s
-        if s >= 6: return "Classe mundial"
-        if s >= 5: return "Excelente"
-        if s >= 4: return "Bom"
-        if s >= 3: return "Marginal"
-        return "Desempenho inadequado"
+        # ADR-103: regra institucional (operadores literais)
+        if s >= 6: return "Excelente — Classe mundial"
+        if 5 < s < 6: return "Excelente"
+        if 4 < s <= 5: return "Bom"
+        if 3 <= s <= 4: return "Marginal"
+        return "Insatisfatório"
 
     # ---- linha completa da Estatistica
     def linha_estatistica(self, analito, nivel):

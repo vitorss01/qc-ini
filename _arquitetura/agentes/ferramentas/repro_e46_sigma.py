@@ -3,8 +3,7 @@
 
 Uso: python repro_e46_sigma.py <Bioquimica|Hematologia> <copia.xlsm> <saida.json>
 
-  G01 Estatistica L14:L133: todo Sigma numerico >= 0; a classe M = faixa de 6 (>=6 mundial, 5-6 excelente, 4-5 bom,
-      3-4 marginal, 2-3 ruim, <2 inaceitavel) em TODAS as linhas (todos os analitos x niveis); L = 0 quando
+  G01 Estatistica L14:L133: todo Sigma numerico >= 0; a classe M = regra institucional do ADR-103 (5 faixas literais) em TODAS as linhas (todos os analitos x niveis); L = 0 quando
       (ETp - |bias|) < 0 (ver colunas lidas do cabecalho)
   G02 tblPlanoQC_Sigma com as 6 faixas (Ruim 2-3 e Inaceitavel < 2)
   G03 Painel: em ate 6 analitos (um por faixa encontrada, se houver), I7.. = Estatistica L do analito/nivel, K = classe
@@ -22,15 +21,19 @@ TESTES = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'i
 sys.path.insert(0, os.path.abspath(TESTES))
 from qa_final import QA, reg, RES, sha256_arquivo  # noqa: E402
 from qa_fluxo_manual import SENHA  # noqa: E402
+import painel_layout  # noqa: E402  (ADR-103)
 
-FAIXAS = [(6, 'mundial'), (5, 'excelente'), (4, 'bom'), (3, 'marginal'), (2, 'ruim'), (-1e9, 'inaceit')]
-
-
+# ADR-103: regra institucional (operadores literais); nomes sem acento, comparados por igualdade
 def faixa(s):
-    for lim, nome in FAIXAS:
-        if s >= lim - 1e-12:
-            return nome
-    return 'inaceit'
+    if s >= 6:
+        return 'excelente — classe mundial'
+    if 5 < s < 6:
+        return 'excelente'
+    if 4 < s <= 5:
+        return 'bom'
+    if 3 <= s <= 4:
+        return 'marginal'
+    return 'insatisfatorio'
 
 
 def num(v):
@@ -58,10 +61,10 @@ def executar(produto, caminho, saida):
             if s < 0:
                 neg.append(14 + i)
             f = faixa(s)
-            if f not in sem_ac(c):
+            if f != sem_ac(c):
                 dif.append({'linha': 14 + i, 'sigma': s, 'classe': c})
             por_faixa[f].append((str(r[0]).strip(), int(r[1] or 0), s, 14 + i))
-        reg('G01 Estatistica: Sigma >= 0 e classe M = faixa das 6 em todas as linhas com Sigma',
+        reg('G01 Estatistica: Sigma >= 0 e classe M = regra institucional (ADR-103) em todas as linhas com Sigma',
             n > 0 and not neg and not dif,
             {'linhas_com_sigma': n, 'negativos': neg[:10], 'classe_diferente': dif[:10],
              'por_faixa': {k: len(v) for k, v in por_faixa.items()}, 'cabecalho_L_M': cab[11:13]})
@@ -95,10 +98,11 @@ def executar(produto, caminho, saida):
             q.run('mEstatistica.RecalcularAnalitoAtual', teto=600)
             q.ex.xl.Calculate()
             ri = 6 + nv
-            vi, vk = p.Range(f'I{ri}').Value, str(p.Range(f'K{ri}').Value or '')
+            ck_ = painel_layout.col_classe(p)              # ADR-103: K (antigo) ou J (novo)
+            vi, vk = p.Range(f'I{ri}').Value, str(p.Range(f'{ck_}{ri}').Value or '')
             ci = p.Range(f'I{ri}').DisplayFormat.Interior.Color
-            ck = p.Range(f'K{ri}').DisplayFormat.Interior.Color
-            ok = num(vi) and abs(vi - s) <= 1e-9 * max(1, abs(s)) and f in sem_ac(vk)
+            ck = p.Range(f'{ck_}{ri}').DisplayFormat.Interior.Color
+            ok = num(vi) and abs(vi - s) <= 1e-9 * max(1, abs(s)) and f == sem_ac(vk)
             cores[f].add((ci, ck))
             res.append({'faixa': f, 'analito': an, 'nivel': nv, 'est_L': s, 'painel_I': vi, 'painel_K': vk,
                         'cor_I': ci, 'cor_K': ck, 'ok': ok})
@@ -116,8 +120,8 @@ def executar(produto, caminho, saida):
                 cruza.append(co.Name)
         txt = [str(x or '') for r in leg.Value for x in r]
         n_fc = (p.Range('I7').FormatConditions.Count, est.Range('L14').FormatConditions.Count)
-        reg('G04 Legenda V5:X8 preenchida e fora de todos os graficos; 6 regras de cor em Painel I7 e Estatistica L14',
-            bool(txt[0]) and sum(1 for t in txt if t) >= 6 and not cruza and n_fc == (6, 6),
+        reg('G04 Legenda V5:X8 preenchida e fora de todos os graficos; 5 regras de cor (ADR-103) em Painel I7 e Estatistica L14',
+            bool(txt[0]) and sum(1 for t in txt if t) >= 6 and not cruza and n_fc == (5, 5),
             {'V5': txt[0][:80], 'celulas_preenchidas': sum(1 for t in txt if t), 'graficos_que_cruzam': cruza,
              'n_graficos': p.ChartObjects().Count, 'regras_cor_I7_L14': n_fc})
     except Exception as e:                                # noqa: BLE001

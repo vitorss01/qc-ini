@@ -62,6 +62,7 @@ import qa_corrida_lote as cl  # noqa: E402
 import qa_manual_substitui as ms  # noqa: E402
 import qa_westgard_sequencia as wsq  # noqa: E402
 import qa_etl as etl  # noqa: E402
+import painel_layout  # noqa: E402  (ADR-103)
 
 SIM = 'SIM'
 SENHA = 'qcini2025'
@@ -1052,7 +1053,7 @@ def executar(produto, caminho, saida):
             fl6 = wsq.flags_por_run(q).get(run6)
             pv6 = eng_painel(q)[0][9]
             q.ex.xl.Calculate()
-            j7 = txt(q.ws('Painel').Range('J7').Value)
+            j7 = txt(painel_layout.status_nivel(q.ws('Painel'), 1))
             comuns = [rn for rn in ver_a if rn in ver_d and rn != run6]
             voltou_ok = [rn for rn in comuns if ver_a[rn] == 'REJEITADO' and ver_d[rn] != 'REJEITADO']
             k6 = sum(1 for rn in comuns if ver_d[rn] == 'REJEITADO') - sum(1 for rn in comuns if ver_a[rn] == 'REJEITADO') + 1
@@ -1077,7 +1078,7 @@ def executar(produto, caminho, saida):
             ver_b = veredito_por_run(e6b, 1)
             fl6b = wsq.flags_por_run(q).get(run6)
             q.ex.xl.Calculate()
-            j7b = txt(q.ws('Painel').Range('J7').Value)
+            j7b = txt(painel_layout.status_nivel(q.ws('Painel'), 1))
             lin6b = ms.linha_manual(q, r6)
             ev6 = [x for x in ms.audit_desde(q, r_aud6b) if 'RESULTADO_MANUAL_ALTERADO' in acoes(x)
                    and x['motivo'] == f'ID {M6}']

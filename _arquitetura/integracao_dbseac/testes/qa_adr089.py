@@ -39,6 +39,7 @@ sys.path.insert(0, os.path.join(AQUI, '..'))
 import instalar_integracao as ii  # noqa: E402
 from qa_inativar_ux import criar_usuario, fazer_login, USUARIO_QA  # noqa: E402
 import auditoria_janelas  # noqa: E402
+import painel_layout  # noqa: E402  (ADR-103)
 
 SETA = '→'
 CANON = {'Bioquimica': 'Proteína total', 'Hematologia': 'RBC'}
@@ -89,7 +90,7 @@ def executar(produto, caminho, saida):
         def tela(rot):
             q.ex.esperar()
             d = {'passo': rot, 'H3': txt(p.Range('H3').Value), 'E1': txt(eng.Range('E1').Value),
-                 'AD1': eng.Range('AD1').Value, 'J7': txt(p.Range('J7').Value), 'H4': txt(p.Range('H4').Value)[:60],
+                 'AD1': eng.Range('AD1').Value, 'J7': txt(painel_layout.status_nivel(p, 1)), 'H4': txt(p.Range('H4').Value)[:60],
                  'G6': txt(p.Range('G6').Value)}
             passos.append(d)
             return d

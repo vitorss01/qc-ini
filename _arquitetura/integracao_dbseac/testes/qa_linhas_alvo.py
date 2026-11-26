@@ -32,6 +32,7 @@ import traceback
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 from qa_final import QA, reg, RES, sha256_arquivo  # noqa: E402
+import painel_layout  # noqa: E402  (ADR-103)
 
 LIM = ['-3s', '-2s', '-1s', 'Média', '+1s', '+2s', '+3s']
 KS = [-3, -2, -1, 0, 1, 2, 3]
@@ -124,7 +125,7 @@ def executar(produto, caminho, saida):
             return c.Cells(1, cel[i][0]).Value, c.Cells(1, cel[i][1]).Value
 
         def status():
-            return [txt(p.Range(f'J{6 + i}').Value) for i in range(1, nlv + 1)]
+            return [txt(painel_layout.status_nivel(p, i)) for i in range(1, nlv + 1)]
 
         # ------------------------------------------------------------ A01 o caso do usuario
         sem = [l for l in cad if n_lote.get(l, 0) == 0]

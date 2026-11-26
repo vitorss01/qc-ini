@@ -34,6 +34,7 @@ from qa_final import QA, reg, RES, sha256_arquivo  # noqa: E402
 sys.path.insert(0, os.path.join(AQUI, '..'))
 import instalar_integracao as ii  # noqa: E402
 from qa_inativar_ux import criar_usuario, fazer_login, preparar_painel, series, Leitor  # noqa: E402
+import painel_layout  # noqa: E402  (ADR-103)
 
 USUARIO_QA = 'QA_INATIVAR_UX'           # o mesmo usuario de teste do qa_inativar_ux (senha de teste de la)
 ETAPAS = ['Preparando as entradas', None, 'Conferindo os resultados', 'Atualizando Levey-Jennings',
@@ -90,7 +91,8 @@ def executar(produto, caminho, saida):
         nlv = q.nlv
         # ------------------------------------------------------------ K01 / K02 status
         preparar_painel(q)
-        cels = [f'J{6 + i}' for i in range(1, nlv + 1)] + ['Q4', 'A39']
+        cs = painel_layout.col_status(p)                # ADR-103: J ou AB (oculta)
+        cels = [f'{cs}{6 + i}' for i in range(1, nlv + 1)] + ['Q4', 'A39']
         txts = {c: str(p.Range(c).Value or '') for c in cels}
         forms = {c: str(p.Range(c).Formula or '') for c in cels}
         reg('K01 Painel: status (J7..), Q4 e A39 sem "TESTE" no texto e nas fórmulas',
@@ -100,7 +102,7 @@ def executar(produto, caminho, saida):
         normais = {}
         for i in range(1, nlv + 1):
             ver = str(eng[i - 1][9] or '')
-            st = txts[f'J{6 + i}']
+            st = txts[f'{cs}{6 + i}']
             normais[f'N{i}'] = {'motor': ver, 'status': st}
         k02 = all(v['status'] == v['motor'] for v in normais.values() if v['motor'] in ('OK', 'REJEITADO'))
         reg('K02 Regra preservada: status de cada nível = veredito do motor (engPainel col. 10), sem sufixo',

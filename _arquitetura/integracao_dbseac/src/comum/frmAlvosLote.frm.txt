@@ -1,0 +1,98 @@
+Option Explicit
+' ============================================================================
+'  frmAlvosLote -- janela "Aplicar a vários analitos" do Painel (ADR-103)
+'
+'  Aberta pelo botao "Aplicar a vários analitos" (mAlvosRef.AplicarAlvosVariosUI): a lista traz os analitos do
+'  catalogo com uma caixa de selecao em cada linha; "Selecionar todos" marca todos, "Desmarcar todos" limpa, e cada
+'  analito pode ser marcado/desmarcado um a um. A janela NAO grava nada: devolve Confirmado e Selecionados
+'  ("A|B|C"); quem chamou confirma (periodo e quantidade) e grava, um analito por vez, pelo nucleo de sempre.
+'  Criada pelo instalador (instalar_adr103.py: controles e propriedades; sem .frx versionado).
+' ============================================================================
+Public Confirmado As Boolean
+Public Selecionados As String
+
+' lista = analitos separados por "|"; info = lote e periodo (so leitura, vem da secao do Painel).
+Public Sub Preparar(ByVal lista As String, ByVal info As String)
+    Dim p As Variant
+    Confirmado = False
+    Selecionados = ""
+    lstAnalitos.Clear
+    For Each p In Split(lista, "|")
+        If Len(Trim$(CStr(p))) > 0 Then lstAnalitos.AddItem Trim$(CStr(p))
+    Next p
+    lblInfo.Caption = info
+    AtualizarContagem
+End Sub
+
+' Analitos marcados agora, separados por "|" (na ordem da lista).
+Public Function SelecaoAtual() As String
+    Dim i As Long, s As String
+    For i = 0 To lstAnalitos.ListCount - 1
+        If lstAnalitos.Selected(i) Then s = s & IIf(Len(s) > 0, "|", "") & lstAnalitos.List(i)
+    Next i
+    SelecaoAtual = s
+End Function
+
+Public Sub MarcarTodos(ByVal valor As Boolean)
+    Dim i As Long
+    For i = 0 To lstAnalitos.ListCount - 1
+        lstAnalitos.Selected(i) = valor
+    Next i
+    AtualizarContagem
+End Sub
+
+' Marca ou desmarca UM analito pelo nome (o QA usa; o usuario clica na caixa da linha). False = nao esta na lista.
+Public Function Marcar(ByVal nome As String, ByVal valor As Boolean) As Boolean
+    Dim i As Long
+    For i = 0 To lstAnalitos.ListCount - 1
+        If StrComp(lstAnalitos.List(i), Trim$(nome), vbTextCompare) = 0 Then
+            lstAnalitos.Selected(i) = valor
+            Marcar = True
+        End If
+    Next i
+    AtualizarContagem
+End Function
+
+Private Sub AtualizarContagem()
+    Dim i As Long, n As Long
+    For i = 0 To lstAnalitos.ListCount - 1
+        If lstAnalitos.Selected(i) Then n = n + 1
+    Next i
+    lblQtd.Caption = n & " de " & lstAnalitos.ListCount & " analito(s) selecionado(s)"
+    btnAplicar.Enabled = (n > 0)
+End Sub
+
+Private Sub lstAnalitos_Change()
+    AtualizarContagem
+End Sub
+
+Private Sub btnTodos_Click()
+    MarcarTodos True
+End Sub
+
+Private Sub btnNenhum_Click()
+    MarcarTodos False
+End Sub
+
+Private Sub btnAplicar_Click()
+    Selecionados = SelecaoAtual()
+    If Len(Selecionados) = 0 Then
+        MsgBox "Selecione ao menos um analito.", vbExclamation, "Aplicar a vários analitos"
+        Exit Sub
+    End If
+    Confirmado = True
+    Me.Hide
+End Sub
+
+Private Sub btnCancelar_Click()
+    Confirmado = False
+    Selecionados = ""
+    Me.Hide
+End Sub
+
+Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
+    If CloseMode = 0 Then                         ' vbFormControlMenu: o X da janela = Cancelar
+        Cancel = True
+        btnCancelar_Click
+    End If
+End Sub
