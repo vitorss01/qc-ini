@@ -2097,6 +2097,9 @@ def e16(ctx, fin):
     e = q.eng_saida()
     t = ctx.tela
     pos = {r: i for i, r in enumerate(e['runs'])}
+    # Hematologia: o Painel e a serie do equipamento padrao do CFG; o mesmo RUN de outro equipamento fica fora do LJ por
+    # desenho (alerta A10, E14c). Antes de 27/11/2026 o dia do E14 caia fora da janela do lote e isso nao aparecia.
+    padrao_hema = '' if ctx.bio else up(ctx.equip_filtro() or '')
     amostra = random.Random(57).sample(sorted(f), min(40, len(f)))
     alvo = sorted(set(ctx.ids) | set(amostra), key=str)
     linhas, prob = [], []
@@ -2119,7 +2122,9 @@ def e16(ctx, fin):
         if up(r['ANALITO']) == t['analito'].upper() and cstr(r['LOTE']).strip() == t['lote'] and \
                 (not ctx.bio or up(r['EQUIPAMENTO']) == up(t['equip'])):
             run = iint(r['RUN'])
-            if run not in pos:
+            if padrao_hema and up(r['EQUIPAMENTO']) != padrao_hema:
+                no_lj = 'OUTRO_EQUIPAMENTO'
+            elif run not in pos:
                 no_lj = 'FORA_DA_JANELA'
             else:
                 nv = (iint(r['NIVEL']) or 1) - 1
@@ -2172,6 +2177,35 @@ def e16(ctx, fin):
          'problemas': prob[:15]})
 
 
+def anos_do_lote(ctx, fin):
+    """Pre-condicao (27/11/2026): o recorte da Estatistica da Hematologia vem do estado da producao. Se o lote em B4 nao
+    tem nenhum resultado PARTICIPA=SIM nos anos B3..D3 (ex.: o laboratorio passou ao lote novo 625311 com Ano 2025), as
+    conferencias ficam sem populacao. Ajusta Ano De/Ate NA COPIA para os anos do lote; nao muda o que e verificado.
+    Devolve True se ajustou."""
+    q = ctx.q
+    if q.bio:
+        return False
+    pred, desc = filtro_estatistica(ctx)
+    if any(pred(r) for r in fin):
+        return False
+    lote = desc['lote']
+    anos = sorted({r['DATA_HORA'].year for r in fin if isinstance(r['DATA_HORA'], dt.datetime)
+                   and up(r['PARTICIPA_ESTATISTICA']) == SIM and (not lote or cstr(r['LOTE']).strip() == lote)})
+    if not anos:
+        return False
+    e = q.ws('Estatística')
+    e.Unprotect(SENHA)
+    q.ex.xl.EnableEvents = False
+    try:
+        e.Range('B3').Value = anos[0]
+        e.Range('D3').Value = anos[-1]
+    finally:
+        q.ex.xl.EnableEvents = True
+    print(f'   pre-condicao: lote {lote} sem dados em {desc["ano_de"]}..{desc["ano_ate"]}; Ano De/Até -> '
+          f'{anos[0]}..{anos[-1]} (na copia)', flush=True)
+    return True
+
+
 # =============================================================================
 def executar(produto, copia, parte):
     q = QA(produto, copia)
@@ -2180,6 +2214,8 @@ def executar(produto, copia, parte):
         ctx = Ctx(q, produto)
         print(f'   PREFIXO={ctx.pref} GAP={ctx.gap} TOL={ctx.tol} parte={parte}', flush=True)
         ctx.atualizar('estado-base')
+        if anos_do_lote(ctx, ler_final(ctx)):
+            ctx.atualizar('estado-base (Ano De/Até = anos do lote)')
         fin = reconciliar_global(ctx, 'estado-base')
         if escolher_tela(ctx, fin) is None:
             reg('E10/E12/E14 tela do Painel -- pré-condição ausente: nenhum analito com resultado no lote em análise',
