@@ -768,20 +768,43 @@ def executar(produto, caminho, saida):
             dserial = (d - dtm.datetime(1899, 12, 30)).days if hasattr(d, 'year') else 0
             return (str(r['LOTE']) == lote_est and (ini == 0 or dserial >= ini) and (fim_ == 0 or dserial < int(fim_) + 1)
                     and (equip is None or r['EQUIPAMENTO'] == equip))
+        def pool_de(a):
+            return [r for r in fin5.values() if r['ANALITO'] == a and r['PARTICIPA_ESTATISTICA'] == 'SIM' and int(r['NIVEL']) == 1
+                    and r['ORIGEM_RESULTADO'] == 'INTERFACEAMENTO' and no_filtro(r)]
+        # pre-condicao (26/11/2026): o filtro da Estatistica vem do estado da producao; se o lote escolhido no Painel nao
+        # tem dados nos anos filtrados (ex.: lote novo 625311 com Ano 2025), o teste ajusta Ano De/Ate NA COPIA para os
+        # anos do lote. Nao muda o criterio verificado.
+        if any(len(pool_de(a)) < k for a, k in alvo_q.items()):
+            anos = sorted({r['DATA'].year for r in fin5.values() if str(r['LOTE']) == lote_est and r['ANALITO'] in alvo_q
+                           and hasattr(r['DATA'], 'year')})
+            if anos:
+                q.ex.xl.EnableEvents = False
+                est.Unprotect('qcini2025')
+                est.Range('B3').Value = anos[0]
+                est.Range('D3').Value = anos[-1]
+                q.ex.xl.EnableEvents = True
+                q.atualizar()
+                ini = valor_nome('Estat_Ini_Efetiva')
+                fim_ = valor_nome('Estat_Fim_Efetiva')
         antes_est = {a: q.estat_motor(a, 1) for a in nomes_an}
+        # o bloco ja pode ter repeticoes reais da producao (ex.: inativacao 1-3s de 26/11/2026): conta-se o ACRESCIMO
+        bloco0 = q.bloco_repeticoes()
         escolhidos = {}
         for a, k in alvo_q.items():
-            pool = [r for r in fin5.values() if r['ANALITO'] == a and r['PARTICIPA_ESTATISTICA'] == 'SIM' and int(r['NIVEL']) == 1
-                    and r['ORIGEM_RESULTADO'] == 'INTERFACEAMENTO' and no_filtro(r)]
+            pool = pool_de(a)
             escolhidos[a] = [r['ID_REGISTRO'] for r in pool[:k]]
             for i in escolhidos[a]:
                 q.escrever_linha('tblInativacao_NaoConformes', {'ID_REGISTRO': i, 'ANALITO': a})
                 q.escrever_linha('tblComentariosTecnicos', {'ID_REGISTRO': i, 'COMENTARIO_TECNICO': 'QA: repetição registrada.'})
         _, t17 = q.atualizar()
         bloco = q.bloco_repeticoes()
-        ok = all(bloco.get(a) == k for a, k in alvo_q.items())
-        reg(f'T17 Estatística: bloco RESULTADOS NÃO CONFORMES / REPETIÇÕES conta {alvo_q}', ok,
-            {'bloco': {a: bloco.get(a) for a in nomes_an}, 'outros_nao_zero': {a: v for a, v in bloco.items() if v and a not in alvo_q},
+        def acresc(a):
+            return float(bloco.get(a) or 0) - float(bloco0.get(a) or 0)
+        ok = (all(len(escolhidos[a]) == k and acresc(a) == k for a, k in alvo_q.items())
+              and not any(acresc(a) for a in bloco if a not in alvo_q))
+        reg(f'T17 Estatística: bloco RESULTADOS NÃO CONFORMES / REPETIÇÕES conta +{alvo_q}', ok,
+            {'bloco': {a: bloco.get(a) for a in nomes_an}, 'antes': {a: bloco0.get(a) for a in nomes_an},
+             'outros_alterados': {a: acresc(a) for a in bloco if a not in alvo_q and acresc(a)},
              'ids': escolhidos, 'filtro': {'lote': lote_est, 'ini': ini, 'fim': fim_, 'equip': equip}})
         # estatistica antes x depois, recalculada independentemente
         fin6 = q.final_por_id()
