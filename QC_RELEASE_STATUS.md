@@ -3,11 +3,11 @@
 Documento de acompanhamento do fechamento de versão. **Ler no início de toda sessão; atualizar no fim.** Mantido pelo
 `qc-release-manager` (`.claude/agents/qc-release-manager.md`, procedimento `/qc-release`).
 
-## Release: entrega 49 — HEMA EM PRODUÇÃO, BIO AGUARDANDO A TROCA (atualizado em 27/11/2026)
+## Release: entrega 49 — EM PRODUÇÃO NOS DOIS PRODUTOS (atualizado em 27/11/2026 11:45)
 
 **Fase:** a ETAPA 7 está concluída. O relatório é
 `_arquitetura/agentes/relatorios/2026-11-27_RELEASE_entrega49.md`. Veredito: **QC_INI — RELEASE CANDIDATE APROVADO
-PARA ENTREGA** (release técnica do código), com a **Bioquímica aguardando a troca**.
+PARA ENTREGA** (release técnica do código). Bio trocada em 27/11 11:45 (gate refeito, 26/26).
 
 A entrega 49 é o ADR-103, mudança de escopo autorizada pelo dono em 26/11 ("3. ok — pode!"):
 1. regra institucional do Sigma, literal, 5 faixas (**σ = 4 é Marginal**, decisão do usuário);
@@ -17,14 +17,14 @@ A entrega 49 é o ADR-103, mudança de escopo autorizada pelo dono em 26/11 ("3.
 5. "INADEQUADO" (Bio Painel A57): **pendente de definição do usuário, nada alterado**.
 
 BI fora (BK-26). Produto: `355781e`, `c8137a3`. Só testes: `eb13620`, `a5a263b`. MANIFESTO: `b97bf3b`.
-**Os cinco commits ainda não foram enviados ao remoto.**
+Commits enviados ao remoto (até e865fcd e o registro da troca Bio).
 
 **Base em produção:**
 
 | Produto | Estado | sha256 | Backup anterior |
 |---|---|---|---|
 | Hematologia | entrega 49, desde 27/11 05:18 | `b8c501144f1c8e0f…` (41.003.831 bytes) | `_backup_pre_integracao_2026-11-27_0518` |
-| Bioquímica | **ainda entrega 48** (+ ATUALIZAR/13s de 26/11); validado `44f713c92b3542bf…` aguarda troca | `e9589911bebc0ff3…` | `_backup_pre_integracao_2026-11-27_0156` |
+| Bioquímica | entrega 49, desde 27/11 11:45 (gate refeito `_entrega_2026-11-27_0918`, 26/26) | `0e600d2fd263a855…` (36.699.090 bytes) | `_backup_pre_integracao_2026-11-27_1145` |
 
 ### Critérios do gate (entrega 49)
 
@@ -44,12 +44,8 @@ BI fora (BK-26). Produto: `355781e`, `c8137a3`. Só testes: `eb13620`, `a5a263b`
 ### Pendências
 
 - **P0:** nenhuma. **P1:** nenhuma.
-- **Troca da Bio (operacional, não defeito):** `shutil.copy2` → WinError 32; a produção Bio está aberta num Excel do
-  laboratório desde a madrugada. Um script em segundo plano espera o fechamento (até 10 h) e roda `trocar_producao.py`,
-  que recusa se a produção tiver sido gravada desde o início dos testes. **Se recusar, refazer o gate Bio.** Depois da
-  troca, registrar a linha da Bio no MANIFESTO.
-- **Versões mistas** até a troca: Bio classifica o Sigma pelas 6 faixas do ADR-101, Hema pela regra institucional (o
-  número do Sigma é o mesmo).
+- **Troca da Bio:** feita em 27/11 11:45. A 1ª tentativa (WinError 32, arquivo aberto) e a espera recusaram porque o laboratório gravou a produção às 09:16; gate Bio refeito sobre a produção atual, 26/26, troca com backup e sha (MANIFESTO).
+- **Achado para decisão do usuário (27/11):** a regra de Westgard sugerida (`tblPlanoQC_Sigma`, faixas `Min ≤ s < Max`) em σ = 4,00 e 5,00 exatos segue a faixa de cima, enquanto a classe segue o ADR-103 (4,00 Marginal, 5,00 Bom). Opções levadas: A) alinhar as fronteiras; B) registrar como limitação. Sem mudança até a resposta.
 - **Tarefa 5 "INADEQUADO":** aguarda a definição do usuário.
 - **Verificação visual (não é defeito conhecido):** Painel compacto (topo, J6:J9, H4:I4) e tabela N114 com o botão, nos
   dois produtos. Política sem captura de tela; qa_adr103 e o Tester provam a estrutura.
