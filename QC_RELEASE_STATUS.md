@@ -3,7 +3,75 @@
 Documento de acompanhamento do fechamento de versão. **Ler no início de toda sessão; atualizar no fim.** Mantido pelo
 `qc-release-manager` (`.claude/agents/qc-release-manager.md`, procedimento `/qc-release`).
 
-## Release: entrega 48 — EM PRODUÇÃO (atualizado em 25/11/2026)
+## Release: entrega 49 — HEMA EM PRODUÇÃO, BIO AGUARDANDO A TROCA (atualizado em 27/11/2026)
+
+**Fase:** a ETAPA 7 está concluída. O relatório é
+`_arquitetura/agentes/relatorios/2026-11-27_RELEASE_entrega49.md`. Veredito: **QC_INI — RELEASE CANDIDATE APROVADO
+PARA ENTREGA** (release técnica do código), com a **Bioquímica aguardando a troca**.
+
+A entrega 49 é o ADR-103, mudança de escopo autorizada pelo dono em 26/11 ("3. ok — pode!"):
+1. regra institucional do Sigma, literal, 5 faixas (**σ = 4 é Marginal**, decisão do usuário);
+2. "Aplicar a vários analitos" (`frmAlvosLote` + `AplicarAlvosVarios`, mesmo núcleo do botão de um);
+3. Painel compacto (C4:D4 removido, H4:I4 mesclado, status por nível → coluna AB oculta, Classe Sigma em J);
+4. tabela de digitação da bula em N114 + "TRANSFERIR VALORES PARA REFERÊNCIA INICIAL";
+5. "INADEQUADO" (Bio Painel A57): **pendente de definição do usuário, nada alterado**.
+
+BI fora (BK-26). Produto: `355781e`, `c8137a3`. Só testes: `eb13620`, `a5a263b`. MANIFESTO: `b97bf3b`.
+**Os cinco commits ainda não foram enviados ao remoto.**
+
+**Base em produção:**
+
+| Produto | Estado | sha256 | Backup anterior |
+|---|---|---|---|
+| Hematologia | entrega 49, desde 27/11 05:18 | `b8c501144f1c8e0f…` (41.003.831 bytes) | `_backup_pre_integracao_2026-11-27_0518` |
+| Bioquímica | **ainda entrega 48** (+ ATUALIZAR/13s de 26/11); validado `44f713c92b3542bf…` aguarda troca | `e9589911bebc0ff3…` | `_backup_pre_integracao_2026-11-27_0156` |
+
+### Critérios do gate (entrega 49)
+
+| Critério | Estado | Evidência |
+|---|---|---|
+| Validação integrada | ✅ PASS | 2ª tentativa (eb13620), `--direcionada` + 10 `--com`: 26/26 por produto. Bio `_entrega_2026-11-26_2333`; Hema `_entrega_2026-11-27_0157` (G03 do qa_graficos = ambiente, passou na retomada 8/0; qa_etl 63/0 no rerun isolado após a5a263b). Logs não versionados |
+| O gate barra a regressão | ✅ | 1ª tentativa (c8137a3) barrada no qa_final T17 nos dois; produção não trocada. Causa: premissa do teste × estado da produção (repetições reais na Bio; Hema no lote 625311 com Ano 2025). Correção só do teste (eb13620); rerun 29/0 nos dois |
+| Funções essenciais | ✅ | qa_final, qa_lotes_auto, qa_westgard_sequencia, qa_troca_lote, qa_blocos_lote, qa_fluxo_manual, qa_alvos_manual OK nos dois |
+| Cálculos = oráculo | ✅ | Tester: Sigma = oráculo em 22 fronteiras; Estatística M e Painel J = oráculo em todas as linhas (Bio 58/57, Hema 31/28). Fórmula do Sigma, motor e Westgard/LJ inalterados |
+| Recebimento/ATUALIZAR/integração | ✅ (em cópia) | qa_sync OK, qa_etl Bio 64/0 e Hema 63/0, qa_migracao_adr070 2/0 |
+| Segurança/blindagem | ✅ | qa_seguranca 20/0; qa_adr084 17/0; qa_usuarios_adr084 12/0; blindagem TRAVADO nos dois |
+| Validação independente | ✅ VALIDADA | Tester `repro_e49_adr103.py`: Bio 24/0, Hema 23/0, itens 1–5; Y00 sha inalterado |
+| 0 P0 e 0 P1 | ✅ | relatório 49, §5 |
+| Proteção/recuperação | ✅ | backups acima; Bio intacta (sha = backup); sha no MANIFESTO |
+| Documentação | ✅ | ADR-103, MANIFESTO (Hema), BACKLOG, relatório 49 |
+
+### Pendências
+
+- **P0:** nenhuma. **P1:** nenhuma.
+- **Troca da Bio (operacional, não defeito):** `shutil.copy2` → WinError 32; a produção Bio está aberta num Excel do
+  laboratório desde a madrugada. Um script em segundo plano espera o fechamento (até 10 h) e roda `trocar_producao.py`,
+  que recusa se a produção tiver sido gravada desde o início dos testes. **Se recusar, refazer o gate Bio.** Depois da
+  troca, registrar a linha da Bio no MANIFESTO.
+- **Versões mistas** até a troca: Bio classifica o Sigma pelas 6 faixas do ADR-101, Hema pela regra institucional (o
+  número do Sigma é o mesmo).
+- **Tarefa 5 "INADEQUADO":** aguarda a definição do usuário.
+- **Verificação visual (não é defeito conhecido):** Painel compacto (topo, J6:J9, H4:I4) e tabela N114 com o botão, nos
+  dois produtos. Política sem captura de tela; qa_adr103 e o Tester provam a estrutura.
+- **Para o usuário/RT (configuração, não defeito):** a produção Hema está no lote 625311 com Estatística Ano De/Até
+  2025; o lote não tem dados nesse ano, então a tela de Estatística da Hema aparece vazia até ajustar Ano De/Até para 2026.
+- **Para o RT (herdado da 48):** conferir os alvos de Cálcio N1, LDH, Magnésio N1, Cloro, Lipase (Bio) e RDW-SD N2 (Hema).
+- **P2 (herdadas, sem mudança):** OC-0067/BK-05 (senha das abas no repositório); 4 E01 de governança na Bio; OC-0011,
+  OC-0039, logins do cadastro central, Ano EP N4; trava `~$` da Bio (ambiente).
+- **P3 (backlog):** entrega 49: BK-26 (BI), BK-27 (cores Analitos), BK-28 (lint), BK-29 (largura N114 Hema), BK-30
+  (qa_fluxo_ceq Hema), BK-31 (V07 do Tester). Anteriores: BK-23 a BK-25 e demais.
+- **Fora da release técnica:** a aprovação do RT e da qualidade, uma etapa humana documentada.
+
+### Próxima ação objetiva
+
+1. **(Automático/Claude)** Conferir o resultado do script de troca da Bio: se trocou, registrar sha e backup no MANIFESTO;
+   se recusou (produção gravada), refazer o gate Bio (`entregar.py --direcionada` com as mesmas `--com`).
+2. **(Usuário)** Ajustar Ano De/Até da Estatística da Hema para 2026; conferir visualmente o Painel compacto e a N114;
+   definir a Tarefa 5.
+3. Push dos commits 355781e..b97bf3b (e da linha Bio do MANIFESTO) com o diff conferido: sem senha, caminho de rede,
+   `.xlsm` ou dados.
+
+## Histórico: entrega 48 (RC aprovado em 25/11/2026; Hema substituída pela 49 em 27/11, Bio até a troca)
 
 **Fase:** a ETAPA 7 está concluída. O relatório é
 `_arquitetura/agentes/relatorios/2026-11-25_RELEASE_entrega48.md`. Veredito: **QC_INI — RELEASE CANDIDATE APROVADO
